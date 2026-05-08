@@ -166,19 +166,6 @@ In the repo on GitHub: **Settings → Secrets and variables → Actions → New 
 
 This lets the `ledger_verification.yml` workflow run the on-disk chain check on every push. Without it, the workflow skips chain verification with a warning (so it doesn't block your initial commits before secrets are configured).
 
-### Step 11 — Enable branch protection on `main`
-
-In the repo on GitHub: **Settings → Branches → Add branch protection rule**.
-
-- **Branch name pattern:** `main`
-- ✅ Require status checks to pass before merging
-  - Required: `test`, `audit`, `verify`
-- ✅ Do not allow bypassing the above settings
-- ✅ Restrict deletions
-- ✅ Block force pushes
-
-> **Branch protection is not optional.** It's the second integrity layer that makes git history a reliable audit trail independent of the HMAC chain. See [Security model](#security-model).
-
 ---
 
 ## Daily commands
@@ -307,14 +294,6 @@ No. Without the HMAC secret (which lives in your `.env` and is gitignored), `bin
 - Local `verify` fails immediately
 - CI on the next push to your repo fails immediately
 
-**Q: Can someone tamper with my existing entries by editing the file?**
-
-They can edit the file locally on their fork or clone. But:
-- The HMAC chain breaks the moment they change any byte → `verify` fails
-- They cannot recompute valid signatures without the secret
-- They cannot push to your protected `main` branch
-- Even if you accept their PR, CI's `ledger_verification.yml` rejects it
-
 **Q: What if I clone the repo on a new machine?**
 
 Restore the secret from your password manager into a new `.env`. The chain continues from where you left off. If you don't have the backup, see "What if I lose the secret entirely" below.
@@ -355,9 +334,6 @@ Two options:
 
 GPG or sigstore would prove identity (you signed it) in addition to integrity. For a solo doctoral researcher with a single audit trail, HMAC + branch protection is sufficient and simpler to operate. The full proposal (Appendix B.12) specifies Ed25519 signatures as the binding scheme — the MVP uses HMAC for operational simplicity, and this contraction is itself a deviation log entry to be filed.
 
-**Q: Can I share the secret with collaborators or my supervisor?**
-
-Yes, via a password manager. For a dissertation you're solo, so the secret should never leave your possession. If your supervisor needs verification access, give them read access to the GitHub repo — they can verify chain integrity through CI without holding the secret themselves (the workflow uses the GitHub-encrypted secret).
 
 ---
 
