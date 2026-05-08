@@ -3,6 +3,7 @@
 These tests are the canary for C1 §6.5: they prove the deviation_log.jsonl
 chain is genuinely tamper-evident, not just decoratively signed.
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -16,7 +17,9 @@ import pytest
 def _load_log_deviation_module():
     """Import bin/log_deviation.py without putting bin/ on sys.path globally."""
     here = Path(__file__).resolve().parent.parent
-    spec = importlib.util.spec_from_file_location("log_deviation", here / "bin" / "log_deviation.py")
+    spec = importlib.util.spec_from_file_location(
+        "log_deviation", here / "bin" / "log_deviation.py"
+    )
     assert spec is not None and spec.loader is not None
     mod = importlib.util.module_from_spec(spec)
     sys.modules["log_deviation"] = mod
@@ -147,4 +150,5 @@ def test_canonical_signature_is_deterministic(secret_env):
         "reason": "R",
         "analytic_consequence": "A",
     }
-    assert log_deviation.compute_signature(key, entry) == log_deviation.compute_signature(key, entry)
+    sig = log_deviation.compute_signature(key, entry)
+    assert sig == log_deviation.compute_signature(key, entry)
