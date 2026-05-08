@@ -1,0 +1,13 @@
+# Ablation Architecture — Living ADR
+
+**Purpose:** Living architectural decision record. Captures VCL, peer pipelines, consensus rule, snapshot hash gating, schema evolution. Source for Chapter 4 §4.2.
+
+**Update cadence:** After every pipeline-stage change
+**Owner module:** Researcher (solo)
+**Status:** Stage 0 stub — populate as work progresses.
+
+---
+
+_(Replace this block with the appropriate table or content. Each tracking
+document is part of the C1 audit trail and must be updated in the same PR
+as the code change it tracks.)_

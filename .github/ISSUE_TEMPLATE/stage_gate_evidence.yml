@@ -1,0 +1,37 @@
+name: Stage Gate Evidence
+description: Sign-off package for a stage exit gate.
+title: "[Gate] Stage  exit"
+labels: ["stage-gate"]
+body:
+  - type: input
+    id: stage
+    attributes:
+      label: Stage
+      placeholder: "Stage 0"
+    validations:
+      required: true
+  - type: textarea
+    id: criteria
+    attributes:
+      label: Exit criteria met
+      description: List each criterion and link to evidence (commit SHA, doc, log entry).
+    validations:
+      required: true
+  - type: textarea
+    id: deviations
+    attributes:
+      label: Deviations logged this stage
+      description: List deviation_log entries (sig prefixes) created this stage.
+  - type: checkboxes
+    id: cli
+    attributes:
+      label: Pre-tag checklist
+      options:
+        - label: All deviations logged via CLI
+          required: true
+        - label: All tracking docs in `docs/tracking/` updated
+          required: true
+        - label: CI green
+          required: true
+        - label: Will tag `stage-N-exit` after merge
+          required: true

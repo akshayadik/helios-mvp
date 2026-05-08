@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Data (reproducible from corpus + seeds; regenerated, not committed)
+data/calibration/*.parquet
+data/*.parquet
+
+# Secrets
+.env
+*.pem
+*.key
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp

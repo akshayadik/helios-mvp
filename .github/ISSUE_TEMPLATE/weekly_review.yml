@@ -1,0 +1,22 @@
+name: Weekly Self-Review
+description: Friday EOD progress + risk check.
+title: "[Weekly Review] Week of "
+labels: ["weekly-review"]
+body:
+  - type: textarea
+    id: completed
+    attributes:
+      label: Completed this week
+  - type: textarea
+    id: blocked
+    attributes:
+      label: Blocked / risks
+  - type: textarea
+    id: next
+    attributes:
+      label: Plan for next week
+  - type: dropdown
+    id: burnout
+    attributes:
+      label: Burnout indicator (1=fine, 5=red)
+      options: ["1", "2", "3", "4", "5"]

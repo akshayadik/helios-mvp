@@ -1,0 +1,23 @@
+name: Disjointness Audit
+
+on:
+  pull_request:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pipx install poetry
+      - run: poetry install
+      # TODO: implement static disjointness audit per Execution Plan §6.3.
+      # The audit must verify that toggling each feature flag affects exactly
+      # one well-defined code path with no hidden coupling. Until implemented,
+      # this stub passes; replace before Stage 5 freeze.
+      - name: Disjointness audit (stub)
+        run: |
+          echo "STUB: disjointness audit not yet implemented."
+          echo "TODO before Stage 5 freeze: enforce Execution Plan §6.3."

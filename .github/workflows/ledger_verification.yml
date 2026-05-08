@@ -1,0 +1,31 @@
+name: Ledger Verification
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      # Set this in repo Settings → Secrets and variables → Actions
+      DEVIATION_HMAC_SECRET: ${{ secrets.DEVIATION_HMAC_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pipx install poetry
+      - run: poetry install
+      - name: HMAC chain integrity tests
+        run: poetry run pytest tests/test_deviation_log.py -v
+      - name: Verify on-disk deviation_log chain
+        # Skips cleanly if the secret isn't configured (so the workflow doesn't
+        # block early-Stage-0 commits before the secret is set up).
+        run: |
+          if [ -z "${DEVIATION_HMAC_SECRET:-}" ]; then
+            echo "DEVIATION_HMAC_SECRET not set — skipping on-disk chain verification."
+            exit 0
+          fi
+          poetry run python bin/log_deviation.py verify
