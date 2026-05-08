@@ -17,6 +17,7 @@ Schema:
     analytic_consequence: Typically: which hypothesis/variant moves status
     signature:            HMAC-SHA256 hex over canonical JSON of all above fields
 """
+
 from __future__ import annotations
 
 import argparse
@@ -38,14 +39,10 @@ def load_key() -> bytes:
     """Read the HMAC secret from $DEVIATION_HMAC_SECRET. Exit on failure."""
     key = os.getenv(ENV_KEY)
     if not key:
-        sys.stderr.write(
-            f"ERROR: {ENV_KEY} not set. Copy .env.example to .env and set a secret.\n"
-        )
+        sys.stderr.write(f"ERROR: {ENV_KEY} not set. Copy .env.example to .env and set a secret.\n")
         sys.exit(2)
     if len(key) < 32:
-        sys.stderr.write(
-            f"ERROR: {ENV_KEY} must be at least 32 characters (got {len(key)}).\n"
-        )
+        sys.stderr.write(f"ERROR: {ENV_KEY} must be at least 32 characters (got {len(key)}).\n")
         sys.exit(2)
     return key.encode("utf-8")
 
@@ -77,7 +74,7 @@ def append_entry(log_path: Path, fields: dict[str, Any]) -> dict[str, Any]:
     key = load_key()
     prev_sig = previous_signature(log_path)
     entry: dict[str, Any] = {
-        "timestamp_utc": dt.datetime.now(dt.timezone.utc).isoformat().replace("+00:00", "Z"),
+        "timestamp_utc": dt.datetime.now(dt.UTC).isoformat().replace("+00:00", "Z"),
         "commit_sha": os.getenv("GITHUB_SHA", "LOCAL"),
         "prev_signature": prev_sig,
         **fields,
@@ -102,9 +99,10 @@ def verify_chain(log_path: Path) -> tuple[bool, str]:
                 continue
             entry = json.loads(stripped)
             if entry.get("prev_signature") != expected_prev:
+                got = entry.get("prev_signature", "")[:12]
                 return False, (
                     f"Line {lineno}: prev_signature mismatch "
-                    f"(expected {expected_prev[:12]}..., got {entry.get('prev_signature', '')[:12]}...)"
+                    f"(expected {expected_prev[:12]}..., got {got}...)"
                 )
             recomputed = compute_signature(key, entry)
             if recomputed != entry.get("signature"):
@@ -137,7 +135,8 @@ def main() -> int:
     required = ["stage", "clause", "change", "reason", "analytic_consequence"]
     missing = [r for r in required if not getattr(args, r, None)]
     if missing:
-        parser.error(f"Missing required arguments: {', '.join('--' + m.replace('_','-') for m in missing)}")
+        flags = ", ".join("--" + m.replace("_", "-") for m in missing)
+        parser.error(f"Missing required arguments: {flags}")
 
     fields = {
         "stage": args.stage,
