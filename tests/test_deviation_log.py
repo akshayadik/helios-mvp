@@ -10,6 +10,7 @@ import importlib.util
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -41,7 +42,7 @@ def log_path(tmp_path):
     return tmp_path / "deviation_log.jsonl"
 
 
-def make_fields(change: str = "test change") -> dict:
+def make_fields(change: str = "test change") -> dict[str, Any]:
     return {
         "stage": "Stage 0",
         "clause": "§test",

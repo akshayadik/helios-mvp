@@ -39,10 +39,14 @@ def load_key() -> bytes:
     """Read the HMAC secret from $DEVIATION_HMAC_SECRET. Exit on failure."""
     key = os.getenv(ENV_KEY)
     if not key:
-        sys.stderr.write(f"ERROR: {ENV_KEY} not set. Copy .env.example to .env and set a secret.\n")
+        sys.stderr.write(
+            f"ERROR: {ENV_KEY} not set. Copy .env.example to .env and set a secret.\n"
+        )
         sys.exit(2)
     if len(key) < 32:
-        sys.stderr.write(f"ERROR: {ENV_KEY} must be at least 32 characters (got {len(key)}).\n")
+        sys.stderr.write(
+            f"ERROR: {ENV_KEY} must be at least 32 characters (got {len(key)}).\n"
+        )
         sys.exit(2)
     return key.encode("utf-8")
 
@@ -59,13 +63,15 @@ def previous_signature(log_path: Path) -> str:
                 last = stripped
     if not last:
         return GENESIS
-    return json.loads(last)["signature"]
+    return str(json.loads(last)["signature"])
 
 
 def compute_signature(key: bytes, entry: dict[str, Any]) -> str:
     """HMAC-SHA256 over canonical JSON of entry, excluding the signature field itself."""
     payload_dict = {k: v for k, v in entry.items() if k != "signature"}
-    payload = json.dumps(payload_dict, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    payload = json.dumps(payload_dict, sort_keys=True, separators=(",", ":")).encode(
+        "utf-8"
+    )
     return hmac.new(key, payload, hashlib.sha256).hexdigest()
 
 
@@ -106,7 +112,10 @@ def verify_chain(log_path: Path) -> tuple[bool, str]:
                 )
             recomputed = compute_signature(key, entry)
             if recomputed != entry.get("signature"):
-                return False, f"Line {lineno}: signature does not verify (entry tampered)."
+                return (
+                    False,
+                    f"Line {lineno}: signature does not verify (entry tampered).",
+                )
             expected_prev = entry["signature"]
     return True, "Chain verified."
 

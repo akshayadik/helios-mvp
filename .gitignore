@@ -10,6 +10,8 @@ venv/
 # Test / coverage
 .pytest_cache/
 .coverage
+.coverage.*
+coverage.xml
 htmlcov/
 
 # Data (reproducible from corpus + seeds; regenerated, not committed)
@@ -29,3 +31,6 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# Agents
+.claude/
