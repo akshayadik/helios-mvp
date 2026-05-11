@@ -1,0 +1,11 @@
+categories:
+  - infra
+  - config
+  - resource_exhaustion
+  - topology_change
+  - deployment
+  - concurrency
+  - dependency
+  - network
+  - memory_leak
+  - queue_saturation

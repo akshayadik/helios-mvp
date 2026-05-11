@@ -170,11 +170,127 @@ This lets the `ledger_verification.yml` workflow run the on-disk chain check on 
 
 ## Daily commands
 
-### Append a deviation entry
+### Pre-push gate — run before every PR
 
-When any protocol change has analytic consequence:
+This is the exact sequence CI runs. All steps must be green before opening a PR.
 
 ```bash
+# Load the HMAC secret (needed for chain verify; harmless for other commands)
+set -a; source .env; set +a
+
+poetry run ruff check helios/ scripts/ tests/          # lint
+poetry run ruff format --check helios/ scripts/ tests/ # format
+poetry run mypy                                        # type check
+poetry run pytest                                      # tests
+poetry run python bin/log_deviation.py verify          # HMAC chain integrity
+make validate-tracking                                 # tracking schema
+```
+
+One-liner (fails fast on first error):
+
+```bash
+set -a; source .env; set +a && \
+  poetry run ruff check helios/ scripts/ tests/ && \
+  poetry run ruff format --check helios/ scripts/ tests/ && \
+  poetry run mypy && \
+  poetry run pytest && \
+  poetry run python bin/log_deviation.py verify && \
+  make validate-tracking
+```
+
+---
+
+### Testing
+
+```bash
+# All tests (quiet)
+poetry run pytest
+
+# All tests, verbose
+poetry run pytest -v
+
+# Single file
+poetry run pytest tests/test_deviation_log.py -v
+poetry run pytest tests/test_validate_tracking.py -v
+
+# Single test
+poetry run pytest tests/test_deviation_log.py::test_verify_chain_passes_on_clean_log -v
+
+# HMAC chain canary (12 tests — run after every deviation log entry)
+poetry run pytest tests/test_deviation_log.py -v
+
+# Tracking validator tests via Makefile
+make test-tracking
+```
+
+---
+
+### Coverage
+
+```bash
+# Terminal report showing uncovered lines
+poetry run pytest --cov=helios --cov-report=term-missing
+
+# HTML report (open htmlcov/index.html)
+poetry run pytest --cov=helios --cov-report=html
+
+# Enforce the CI threshold (90%)
+poetry run pytest --cov=helios --cov-fail-under=90
+```
+
+`.coverage` and `htmlcov/` are gitignored — local build artefacts only.
+
+---
+
+### Lint and format
+
+```bash
+# Lint check (no changes)
+poetry run ruff check helios/ scripts/ tests/
+
+# Lint with auto-fix
+poetry run ruff check --fix helios/ scripts/ tests/
+
+# Format check (no changes)
+poetry run ruff format --check helios/ scripts/ tests/
+
+# Apply formatting
+poetry run ruff format helios/ scripts/ tests/
+```
+
+---
+
+### Type checking
+
+```bash
+poetry run mypy
+```
+
+Targets come from `[tool.mypy] files` in `pyproject.toml` (`helios`, `bin`, `tests`).
+
+---
+
+### Tracking document validation
+
+The `docs/tracking/helios_mvp_tracking.md` schema is enforced by a pre-commit hook and replicated in CI to catch `--no-verify` bypasses.
+
+```bash
+make validate-tracking   # run the validator (exit 0 = clean, 1 = violations)
+make test-tracking       # run the full pytest suite against the validator
+make install-hooks       # (once per clone) install the pre-commit hook
+```
+
+Violations print to stderr with rule codes R1–R8 (status state machine, immutable columns, DONE-row evidence, deviation refs). Fix flagged rows and re-stage before committing.
+
+---
+
+### Deviation log
+
+When any protocol change has analytic consequence, log it **before merging**:
+
+```bash
+set -a; source .env; set +a
+
 poetry run python bin/log_deviation.py \
   --stage "Stage N" \
   --clause "§..." \
@@ -183,13 +299,7 @@ poetry run python bin/log_deviation.py \
   --analytic-consequence "..."
 ```
 
-**What this does:**
-- Reads `DEVIATION_HMAC_SECRET` from `.env`
-- Computes HMAC-SHA256 over (your fields + previous entry's signature + timestamp + commit SHA)
-- **Appends one line to `deviation_log.jsonl` at the repo root**
-- Prints the new entry's signature prefix on success
-
-The file is JSONL (one JSON object per line). Each entry contains:
+Each entry is HMAC-SHA256 signed and chained to the previous entry. The written record looks like:
 
 ```json
 {
@@ -205,40 +315,30 @@ The file is JSONL (one JSON object per line). Each entry contains:
 }
 ```
 
-### Verify the chain
+After every entry, verify the chain and run the HMAC canary:
 
 ```bash
 poetry run python bin/log_deviation.py verify
+poetry run pytest tests/test_deviation_log.py -v
 ```
 
-Walks the chain from genesis. On success: `✅ Chain verified.`. On failure: prints the line number and tampering type (signature mismatch, prev_signature mismatch, etc.).
+**Never edit `deviation_log.jsonl` by hand.** See [Security model](#security-model) for recovery options.
 
-### Append an exclusion entry (Stage 1+)
+---
 
-`bin/log_exclusion.py` is currently a stub. When implemented, it will:
-- Read `DEVIATION_HMAC_SECRET` from `.env`
-- **Append one line to `exclusion_ledger.jsonl` at the repo root**
-- Use the same HMAC chain pattern as the deviation log
+### Exclusion ledger (Stage 1+)
 
-Schema (planned): `run_id`, `variant_config_hash`, `snapshot_hash`, `excluded_metric`, `reason`, `prev_signature`, `signature`.
+`bin/log_exclusion.py` is a stub. When implemented it will sign and append metric-integrity-gate failures to `exclusion_ledger.jsonl` using the same HMAC chain pattern.
 
-### Run all tests
+---
 
-```bash
-poetry run pytest
-```
+### Stage gate tagging
 
-### Lint and type-check
+At each stage exit, tag the commit and push (Zenodo mints a DOI automatically):
 
 ```bash
-poetry run ruff check .
-poetry run mypy
-```
-
-### Run all CI checks locally before pushing
-
-```bash
-poetry run ruff check . && poetry run mypy && poetry run pytest
+git tag stage-N-exit
+git push origin stage-N-exit
 ```
 
 ---
