@@ -1,5 +1,24 @@
-"""Variant Control Layer — C1 §6.1.
+"""Variant Control Layer — C1 §6.1."""
 
-Skeleton modules (registry.py, config.py, decorators.py, variants.py) land in
-the next PR. This file exists so `poetry install` resolves the package.
-"""
+from .config import VCLManifest
+from .decorators import (
+    GatedComponentInactiveError,
+    gated_by,
+    get_current_manifest,
+    set_current_manifest,
+)
+from .registry import VCLFlag
+from .utils import canonical_json
+from .variants import CONFIRMATORY_VARIANTS, get_variant
+
+__all__ = [
+    "VCLFlag",
+    "VCLManifest",
+    "gated_by",
+    "GatedComponentInactiveError",
+    "set_current_manifest",
+    "get_current_manifest",
+    "CONFIRMATORY_VARIANTS",
+    "get_variant",
+    "canonical_json",
+]
