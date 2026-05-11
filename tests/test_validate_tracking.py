@@ -20,8 +20,7 @@ import pytest
 SCRIPT_DIR = Path(__file__).parent.parent / "scripts"
 sys.path.insert(0, str(SCRIPT_DIR))
 
-import validate_tracking as vt  # noqa: E402,I001
-
+import validate_tracking as vt  # noqa: E402
 
 # --------------------------------------------------------------------------- #
 # Test fixtures
