@@ -238,6 +238,7 @@ target-version = "py311"   # PRESERVED
 line-length    = 88        # CHANGED from 100 → 88 to match black (see audit)
  
 [tool.ruff.lint]
+preview = true   # enables stable-preview rules (e.g. RUF022) so local == CI
 # PRESERVED rules: E, F, W, I, B, UP
 # ADDED rules:     N (naming), C4 (comprehensions), SIM (simplify),
 #                  TCH (TYPE_CHECKING guards), RUF (ruff-native)
