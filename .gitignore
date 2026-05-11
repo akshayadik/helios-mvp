@@ -33,4 +33,5 @@ Thumbs.db
 *.swp
 
 # Agents
-.claude/
+.claude/docs/pdf/*.pdf
+.claude/docs/pdf/*.md

@@ -155,7 +155,7 @@ L4  Auto-Remediation
 | Workflow | What it checks |
 |---|---|
 | `ci.yml` | ruff, mypy, pytest |
-| `disjointness_audit.yml` | Feature-flag disjointness (stub until Stage 5) |
+| `disjointness_audit.yml` | Feature-flag disjointness — Stage 5 stub; exits 0 on `ImportError` until `helios/vcl/disjointness.py` is implemented |
 | `ledger_verification.yml` | HMAC chain integrity; requires `DEVIATION_HMAC_SECRET` in repo Secrets |
 
 ### Tracking schema rules (R1–R8)
@@ -170,10 +170,6 @@ Enforced by `scripts/validate_tracking.py` as a pre-commit hook and in CI:
 - **R6** Task_ID format: `S0-D{1-5}-{ENG|RES|EVAL|GATE}{nn}`.
 - **R7** Day must be 1–5.
 - **R8** Type must be ENG, RES, EVAL, or GATE.
-
-### HMAC chain security model
-
-Each `deviation_log.jsonl` entry is HMAC-SHA256 signed over its own fields plus the previous entry's signature. Tampering with any past entry breaks all subsequent signatures. The chain relies on two independent integrity layers: the HMAC chain (this repo) and git commit history with branch protection (GitHub).
 
 ---
 

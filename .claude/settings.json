@@ -1,0 +1,55 @@
+{
+    "hooks": {
+        "PreToolUse": [
+            {
+                "matcher": "Write|Edit|MultiEdit",
+                "command": "python .claude/hooks/research-compliance.py",
+                "priority": 10,
+                "blocking": true,
+                "failure_action": "abort"
+            },
+            {
+                "matcher": "Write|Edit|MultiEdit|Bash",
+                "command": "python .claude/hooks/flag-guard.py",
+                "priority": 5,
+                "blocking": true
+            }
+        ],
+        "PostToolUse": [
+            {
+                "matcher": "Write|Edit|MultiEdit",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "bash .claude/hooks/auto-test-and-log.sh"
+                    }
+                ]
+            },
+            {
+                "matcher": "Write|Edit|MultiEdit",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "bash .claude/hooks/format-and-matrix-update.sh"
+                    }
+                ]
+            }
+        ]
+    },
+    "defaultModel": "claude-4-sonnet-2025",
+    "modelPreferences": {
+        "complexReasoning": "claude-4-opus-2025",
+        "crossPipeline": "claude-4-opus-2025",
+        "finalAnalysis": "claude-4-opus-2025"
+    },
+    "allowedTools": [
+        "Read",
+        "Edit",
+        "MultiEdit",
+        "Bash",
+        "Grep",
+        "ListFiles",
+        "Task",
+        "Search"
+    ]
+}

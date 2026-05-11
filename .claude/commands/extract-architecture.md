@@ -1,0 +1,1 @@
+From pages ~105-120 and system spec: Describe HELIOS pipelines, data flow, observability layers, novelty (ablation-aware). Diagram in Mermaid if possible. List formal algorithms.
