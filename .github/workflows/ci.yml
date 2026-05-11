@@ -1,25 +1,318 @@
+# .github/workflows/ci.yml — HELIOS MVP
+#
+# Merge audit (your file → this file)
+# ─────────────────────────────────────────────────────────────────────────────
+# PRESERVED as-is:
+#   actions/checkout@v4
+#   actions/setup-python@v5  python-version: "3.11"
+#   poetry install mechanism (pipx → kept, see note below)
+#   ruff check step (scope widened from "." to explicit dirs)
+#   mypy step
+#   pytest step
+#
+# CHANGED (with reason):
+#   Single "test" job  →  5 jobs: lint, typecheck, test, tracking, disjointness
+#     Reason: a monolithic job conflates failure modes. A type error that
+#     causes a test import failure produces misleading coverage numbers.
+#     Splitting makes each failure clean and attributable.
+#
+#   runs-on: ubuntu-latest  →  ubuntu-22.04
+#     Reason: ubuntu-latest is a floating label — it advanced from 22.04
+#     to 24.04 in mid-2024. Non-deterministic runner OS is a reproducibility
+#     defect for a research artefact. ubuntu-22.04 is the stable LTS pinned
+#     in the binding hardware config (§B.1 comparable x86 environment).
+#
+#   pipx install poetry  →  pip install "poetry==1.8.4"
+#     Reason: pipx isolates Poetry into its own virtualenv, which can hide
+#     dependency conflicts with the project venv. Direct pip install with an
+#     explicit version pin makes the Poetry version part of the audit trail.
+#     POETRY_VERSION env var is the single source of truth.
+#
+#   ruff check .  →  ruff check helios/ scripts/ tests/ + ruff format --check
+#     Reason: "." includes generated files and docs/. Explicit dirs are
+#     faster and avoid false positives. format --check is added because
+#     ruff check only lints; format violations slip through without it.
+#
+#   poetry run mypy  →  separate typecheck job with explicit targets
+#     Reason: mypy with no arguments uses [tool.mypy] files list, which is
+#     correct, but isolating it lets CI report "type error" vs "test failure"
+#     separately. Explicit targets also document what is being checked.
+#
+#   poetry run pytest  →  explicit coverage flags repeated in the step
+#     Reason: pyproject.toml addopts already carries the flags, but stating
+#     them explicitly in CI makes the 90% gate visible without requiring
+#     reviewers to cross-reference pyproject.toml.
+#
+# ADDED (not in your file):
+#   concurrency.cancel-in-progress
+#     Reason: prevents stale-run queue on rapid pushes. Without it, two
+#     quick commits queue two full CI runs; the second starts before the
+#     first finishes and wastes 3+ minutes on a result you already supersede.
+#
+#   permissions: contents:read, checks:write
+#     Reason: minimal-privilege principle. checks:write is required for
+#     the PR annotation steps (::error:: annotations). contents:read is
+#     the minimum for checkout. No token permissions beyond these.
+#
+#   env: PYTHON_BINDING, POETRY_VERSION
+#     Reason: single source of truth for version values used across jobs.
+#     Changing Python or Poetry version is one edit, not a search-replace.
+#
+#   fetch-depth: 0  on test and tracking jobs
+#     Reason: validate_tracking.py reads the tracker at HEAD via
+#     `git show HEAD:<path>`, which requires full history. fetch-depth: 1
+#     (the default) would silently make the validator skip all cross-commit
+#     checks (immutability, transitions), defeating its purpose.
+#
+#   job: tracking
+#     Reason: re-runs validate_tracking.py in CI to catch the
+#     `git commit --no-verify` bypass that skips the pre-commit hook.
+#     The hook is your first line of defence; this is the second.
+#
+#   job: disjointness (Stage 0 stub)
+#     Reason: §3.9.1 Threat 2 (hidden flag coupling) requires a
+#     runtime audit. Defined as a stub now so it appears in CI history
+#     from Day 1. Enabling it in Stage 1 only requires changes to
+#     vcl/disjointness.py, not a new workflow entry.
+#
+#   sequential needs: lint → typecheck → test → tracking / disjointness
+#     Reason: correct causal ordering. Linting before type-checking avoids
+#     formatting noise in the type-check output. Type-checking before tests
+#     avoids misleading coverage numbers from import failures.
+#
+#   coverage XML upload artifact
+#     Reason: makes uncovered lines inspectable without re-running locally.
+#     retention-days: 14 is enough for a Stage 0 sprint.
+#
+#   PR annotations on tracking and disjointness failure
+#     Reason: ::error file=:: annotations appear inline on the PR diff,
+#     not buried in a log tab. Reviewers see the failure at the file level.
+#
+#   develop branch push trigger + workflow_dispatch
+#     Reason: develop is the integration branch for day-by-day Stage 0
+#     work. workflow_dispatch enables manual re-runs for debugging without
+#     a dummy commit.
+# ─────────────────────────────────────────────────────────────────────────────
+ 
 name: CI
-
+ 
 on:
   push:
-    branches: [main]
-  pull_request:
-
+    branches: [main, develop]     # ADDED: develop trigger
+  pull_request:                   # PRESERVED
+  workflow_dispatch:              # ADDED: manual trigger
+ 
+# ADDED: cancel stale runs on the same branch/PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+ 
+# ADDED: minimal-privilege permissions
+permissions:
+  contents: read
+  checks: write
+ 
+# ADDED: single source of truth for version values
+env:
+  PYTHON_BINDING: "3.11"
+  POETRY_VERSION: "1.8.4"
+ 
+# =============================================================================
+# JOBS
+# =============================================================================
+ 
 jobs:
-  test:
-    runs-on: ubuntu-latest
+ 
+# ─────────────────────────────────────────────────────────────────────────────
+# JOB 1: lint
+# Runs ruff check (lint + import order) and ruff format --check.
+# black --check runs after as a second format authority for editor consistency.
+# No Poetry install needed — linting tools are pure Python with no C ext deps.
+# ─────────────────────────────────────────────────────────────────────────────
+  lint:
+    name: Lint (ruff + black)
+    runs-on: ubuntu-22.04          # CHANGED from ubuntu-latest
+ 
+    steps:
+      - uses: actions/checkout@v4  # PRESERVED action
+ 
+      - uses: actions/setup-python@v5   # PRESERVED action
+        with:
+          python-version: ${{ env.PYTHON_BINDING }}
+          cache: pip
+ 
+      # Direct pip install — no Poetry needed for linting-only tools
+      - name: Install lint tools
+        run: |
+          pip install --upgrade pip
+          pip install "ruff>=0.6,<1.0" "black>=24.0,<27.0"
+ 
+      # CHANGED: was "ruff check ." — explicit dirs, plus format check added
+      - name: ruff check (lint + import order)
+        run: ruff check helios/ scripts/ tests/
+ 
+      - name: ruff format --check
+        run: ruff format --check helios/ scripts/ tests/
+ 
+      - name: black --check
+        run: black --check helios/ scripts/ tests/
+ 
+# ─────────────────────────────────────────────────────────────────────────────
+# JOB 2: typecheck
+# Runs mypy --strict over helios/ and scripts/.
+# Requires full Poetry install for pydantic stubs and the mypy plugin.
+# ─────────────────────────────────────────────────────────────────────────────
+  typecheck:
+    name: Type-check (mypy --strict)
+    runs-on: ubuntu-22.04
+    needs: lint                    # ADDED: sequential gate
+ 
     steps:
       - uses: actions/checkout@v4
+ 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-      - name: Install poetry
-        run: pipx install poetry
-      - name: Install dependencies
-        run: poetry install
-      - name: Lint (ruff)
-        run: poetry run ruff check .
-      - name: Type check (mypy)
-        run: poetry run mypy
-      - name: Run tests
-        run: poetry run pytest
+          python-version: ${{ env.PYTHON_BINDING }}
+          cache: pip
+ 
+      # CHANGED: pip install with explicit version (was pipx install poetry)
+      - name: Install Poetry ${{ env.POETRY_VERSION }}
+        run: pip install "poetry==${{ env.POETRY_VERSION }}"
+ 
+      - name: Install project dependencies
+        run: poetry install --no-interaction --no-root --with dev
+ 
+      # CHANGED: was "poetry run mypy" with no args; now explicit targets
+      - name: mypy (helios/)
+        run: poetry run mypy helios/
+ 
+      - name: mypy (scripts/)
+        run: poetry run mypy scripts/
+ 
+# ─────────────────────────────────────────────────────────────────────────────
+# JOB 3: test
+# Full pytest suite with coverage enforcement.
+# --cov-fail-under=90 is the binding Stage 0 gate (EG1-EG6 depend on it).
+# ─────────────────────────────────────────────────────────────────────────────
+  test:
+    name: Test (pytest + coverage >= 90%)
+    runs-on: ubuntu-22.04
+    needs: typecheck               # ADDED: sequential gate
+ 
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0           # ADDED: full history for validate_tracking.py
+ 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_BINDING }}
+          cache: pip
+ 
+      - name: Install Poetry ${{ env.POETRY_VERSION }}
+        run: pip install "poetry==${{ env.POETRY_VERSION }}"
+ 
+      - name: Install all dependencies
+        run: poetry install --no-interaction --no-root --with dev
+ 
+      # CHANGED: was "poetry run pytest" — coverage flags now explicit in step
+      # (pyproject.toml addopts also carries them; stated here for CI log clarity)
+      - name: Run pytest with coverage
+        run: |
+          poetry run pytest \
+            -q \
+            --tb=short \
+            --strict-markers \
+            --cov=helios \
+            --cov=scripts \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage.xml \
+            --cov-fail-under=90
+ 
+      # ADDED: upload coverage for inspection even on failure
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
+          retention-days: 14
+ 
+# ─────────────────────────────────────────────────────────────────────────────
+# JOB 4: tracking
+# Re-runs validate_tracking.py to catch `git commit --no-verify` bypasses.
+# stdlib only — no Poetry install needed.
+# ─────────────────────────────────────────────────────────────────────────────
+  tracking:
+    name: Tracking-sheet validation (§B.12)
+    runs-on: ubuntu-22.04
+    needs: test                    # ADDED
+ 
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0           # ADDED: validator diffs vs HEAD via git show
+ 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_BINDING }}
+ 
+      # stdlib only — no pip/poetry step needed
+      - name: Validate tracking sheet
+        run: python scripts/validate_tracking.py
+ 
+      # ADDED: inline PR annotation so the error is visible on the Files tab
+      - name: Annotate PR on failure
+        if: failure()
+        run: |
+          echo "::error file=docs/tracking/helios_mvp_tracking.md::Tracking sheet violated schema invariants. Run 'python scripts/validate_tracking.py' locally for details. File a deviation-log entry per Appendix B.12 if the change is intentional."
+ 
+# ─────────────────────────────────────────────────────────────────────────────
+# JOB 5: disjointness  (Stage 0 STUB)
+# Verifies no two VCL flags gate the same code path (§3.9.1 Threat 2).
+# Passes on empty registry in Stage 0; substantive from Stage 1.
+# ─────────────────────────────────────────────────────────────────────────────
+  disjointness:
+    name: VCL disjointness audit (§3.9.1)
+    runs-on: ubuntu-22.04
+    needs: test                    # runs in parallel with tracking
+ 
+    steps:
+      - uses: actions/checkout@v4
+ 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_BINDING }}
+          cache: pip
+ 
+      - name: Install Poetry ${{ env.POETRY_VERSION }}
+        run: pip install "poetry==${{ env.POETRY_VERSION }}"
+ 
+      - name: Install project
+        run: poetry install --no-interaction --no-root --with dev
+ 
+      # Stage 0: exits 0 on ImportError (module not yet implemented).
+      # Stage 1: replace with the real audit after pipeline stubs are wired.
+      - name: Run disjointness audit
+        run: |
+          poetry run python - <<'PYEOF'
+          import sys
+          try:
+              from helios.vcl.disjointness import DisjointnessRegistry
+              registry = DisjointnessRegistry()
+              violations = registry.audit()
+              if violations:
+                  for v in violations:
+                      print(f"DISJOINTNESS VIOLATION: {v}", file=sys.stderr)
+                  sys.exit(1)
+              print(f"Disjointness audit passed: {len(registry)} path(s) registered.")
+          except ImportError:
+              # Stage 0 stub: module not yet implemented. Intentional exit-0.
+              print("Stage 0 stub: helios.vcl.disjointness not yet implemented.")
+              print("Audit becomes substantive in Stage 1 (vcl/disjointness.py).")
+          PYEOF
+ 
+      - name: Annotate PR on failure
+        if: failure()
+        run: |
+          echo "::error::VCL disjointness violation detected. Two or more feature flags gate the same code path. See §3.9.1 (Threat 2) for resolution protocol."

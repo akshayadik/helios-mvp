@@ -10,3 +10,15 @@ repos:
       - id: ruff
         args: [--fix]
       - id: ruff-format
+  - repo: local
+    hooks:
+      - id: validate-tracking
+        name: Validate helios_mvp_tracking.md schema
+        entry: python scripts/validate_tracking.py
+        language: system
+        files: '^(docs/tracking/helios_mvp_tracking\.md|scripts/validate_tracking\.py)$'
+        pass_filenames: false
+        description: |
+          Enforces the tracking-file schema contract (immutability, state machine,
+          DONE-row evidence requirements, deviation references). See
+          docs/tracking/helios_mvp_tracking.md for the rules.
