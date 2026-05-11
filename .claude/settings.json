@@ -3,16 +3,21 @@
         "PreToolUse": [
             {
                 "matcher": "Write|Edit|MultiEdit",
-                "command": "python .claude/hooks/research-compliance.py",
-                "priority": 10,
-                "blocking": true,
-                "failure_action": "abort"
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "python .claude/hooks/research-compliance.py"
+                    }
+                ]
             },
             {
                 "matcher": "Write|Edit|MultiEdit|Bash",
-                "command": "python .claude/hooks/flag-guard.py",
-                "priority": 5,
-                "blocking": true
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "python .claude/hooks/flag-guard.py"
+                    }
+                ]
             }
         ],
         "PostToolUse": [
