@@ -152,8 +152,8 @@ addopts = [
     "-q",                             # PRESERVED: keep quiet output
     "--tb=short",                     # ADDED: concise tracebacks
     "--strict-markers",               # ADDED: unknown markers fail the run
-    "--cov=helios",                   # ADDED: measure helios/ package
-    "--cov=scripts",                  # ADDED: measure scripts/ (validator)
+    "--cov=helios/",                  # ADDED: measure helios/ package (path avoids import-time lookup)
+    "--cov=scripts/",                 # ADDED: measure scripts/ (path avoids import-time lookup)
     "--cov-branch",                   # ADDED: branch coverage (sets COV_CORE_BRANCH for subprocesses)
     "--cov-report=term-missing",      # ADDED: show uncovered lines in terminal
     "--cov-report=xml:coverage.xml",  # ADDED: machine-readable for CI upload
@@ -170,6 +170,7 @@ markers = [
 filterwarnings = [
     "error",
     "ignore::DeprecationWarning:pyarrow",
+    "ignore::coverage.exceptions.CoverageWarning",  # carve-out: coverage source-not-found warnings must not abort collection
 ]
  
 # ─────────────────────────────────────────────────────────────────────────────
@@ -177,7 +178,7 @@ filterwarnings = [
 # ─────────────────────────────────────────────────────────────────────────────
  
 [tool.coverage.run]
-source         = ["helios", "scripts"]
+source         = ["helios/", "scripts/"]
 branch         = true           # branch coverage catches partial conditionals
 relative_files = true           # normalise all paths so subprocess measurements
                                 # (/tmp/.../scripts/foo.py) merge with the main

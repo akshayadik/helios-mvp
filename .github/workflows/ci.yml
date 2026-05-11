@@ -215,19 +215,14 @@ jobs:
       - name: Install all dependencies
         run: poetry install --no-interaction --no-root --with dev
  
-      # CHANGED: was "poetry run pytest" — coverage flags now explicit in step
-      # (pyproject.toml addopts also carries them; stated here for CI log clarity)
+      # All coverage flags (--cov, --cov-branch, --cov-fail-under=90, etc.)
+      # live in pyproject.toml [tool.pytest.ini_options] addopts so they apply
+      # identically locally and in CI.  Duplicating them here caused pytest-cov
+      # to emit CoverageWarning (source-not-found for 'helios' before pythonpath
+      # is applied), which filterwarnings=error converted to an exception that
+      # silently dropped test_validate_tracking.py collection.
       - name: Run pytest with coverage
-        run: |
-          poetry run pytest \
-            -q \
-            --tb=short \
-            --strict-markers \
-            --cov=helios \
-            --cov=scripts \
-            --cov-report=term-missing \
-            --cov-report=xml:coverage.xml \
-            --cov-fail-under=90
+        run: poetry run pytest
  
       # ADDED: upload coverage for inspection even on failure
       - name: Upload coverage report
