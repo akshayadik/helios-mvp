@@ -145,7 +145,7 @@ jobs:
       - name: Install lint tools
         run: |
           pip install --upgrade pip
-          pip install "ruff>=0.6,<1.0" "black>=24.0,<27.0"
+          pip install "ruff>=0.6.9,<0.7" "black>=24.0,<27.0"
  
       # CHANGED: was "ruff check ." — explicit dirs, plus format check added
       - name: ruff check (lint + import order)

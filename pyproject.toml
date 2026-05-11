@@ -114,7 +114,7 @@ duckdb   = ">=1.1,<1.2"     # ADDED; result store (Day 3, store/schema.sql)
  
 [tool.poetry.group.dev.dependencies]
 # PRESERVED — versions tightened to match actual current releases
-ruff       = ">=0.6,<1.0"    # PRESERVED range; <1.0 guards against pre→1.0 breaks
+ruff       = ">=0.6.9,<0.7"  # pinned to 0.6.x to match CI; widen after vetting 0.7+ formatting
 mypy       = ">=1.11,<3.0"   # PRESERVED floor; ceiling added
 pytest     = ">=8.3,<10.0"   # PRESERVED floor; ceiling added
 pytest-cov = ">=5.0,<8.0"    # PRESERVED floor; ceiling added
