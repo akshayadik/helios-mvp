@@ -12,13 +12,13 @@ from .utils import canonical_json
 from .variants import CONFIRMATORY_VARIANTS, get_variant
 
 __all__ = [
+    "CONFIRMATORY_VARIANTS",
+    "GatedComponentInactiveError",
     "VCLFlag",
     "VCLManifest",
-    "gated_by",
-    "GatedComponentInactiveError",
-    "set_current_manifest",
-    "get_current_manifest",
-    "CONFIRMATORY_VARIANTS",
-    "get_variant",
     "canonical_json",
+    "gated_by",
+    "get_current_manifest",
+    "get_variant",
+    "set_current_manifest",
 ]
