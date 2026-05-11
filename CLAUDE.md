@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 HELIOS is a doctoral research artefact: a Root Cause Analysis (RCA) framework built around **ablation-first design science**. The entire architecture is structured so every major component (C1–C6) can be toggled at runtime via feature flags, enabling controlled ablation studies. Research integrity is enforced by code — not convention.
 
-Current stage: **Stage 0** (Spine + Harness). Most pipeline modules (`helios/vcl/`, `helios/pipelines/`) are stubs; `bin/log_exclusion.py` is a Stage 1+ stub. The two canonical, fully-implemented artefacts this stage are the **HMAC-chained deviation log** (`bin/log_deviation.py`) and the **tracking validator** (`scripts/validate_tracking.py`). Python must be exactly `>=3.11,<3.12` — the upper bound is a reproducibility commitment, not a preference.
+Current stage: **Stage 0** (Spine + Harness). Pipeline modules (`helios/pipelines/`) are stubs; `bin/log_exclusion.py` is a Stage 1+ stub. Fully-implemented Stage 0 artefacts: **HMAC-chained deviation log** (`bin/log_deviation.py`), **tracking validator** (`scripts/validate_tracking.py`), and **VCL core** (`helios/vcl/`). Python must be exactly `>=3.11,<3.12` — the upper bound is a reproducibility commitment, not a preference.
 
 ---
 
@@ -126,7 +126,33 @@ L4  Auto-Remediation
 | Deviation log | `deviation_log.jsonl` | HMAC-SHA256 chained; append via CLI only |
 | Exclusion ledger | `exclusion_ledger.jsonl` | Metric-integrity failures; Stage 1+ |
 | Tracking docs | `docs/tracking/*.md` | 18 living documents; schema enforced by pre-commit + CI |
-| VCL manifest | `helios/vcl/` | Feature-flag registry (stub in Stage 0) |
+| VCL manifest | `helios/vcl/` | Feature-flag registry — **implemented** (registry, config, decorators, variants) |
+
+### VCL implementation (Stage 0)
+
+`helios/vcl/` contains the Variant Control Layer — C1 of the dissertation's methodological contribution. Key modules and non-obvious decisions:
+
+**Flag registry (`registry.py`)**
+- **14 flags** (not 13): 12 proposal flags + `router` (bool) + `ingest_mode` (str).
+- `VCLFlag.bool_flags()` returns the 13 boolean flags, excluding `INGEST_MODE`. Always use this when iterating flags for gating — never iterate `VCLFlag` directly.
+
+**Manifest and hashing (`config.py`, `utils.py`)**
+- `VCLManifest` is `frozen=True` + `extra="forbid"`. Hash is exhaustive — adding a field without updating the model breaks hash stability.
+- `canonical_json()` pre-normalises floats with `round(o, 6)` **before** passing to `json.dumps`. This is required because `json.dumps` handles `float` natively and never calls the `default` hook for them; a `default`-only approach silently produces un-rounded output.
+- `ingest_mode` is validated by `@field_validator` to `"recorded" | "live"` at every construction path (direct, `from_flags`, deserialization).
+
+**Decorator (`decorators.py`)**
+- `@gated_by(VCLFlag.X)` raises `TypeError` at **decoration time** (import time) if `X` is not a boolean flag. Do not attempt to gate on `INGEST_MODE`.
+- `VCLManifest` is imported under `TYPE_CHECKING` only — with `from __future__ import annotations` all annotations are lazy strings, so this is correct and satisfies `TCH001`.
+- Uses `ContextVar` for thread/async safety. Call `set_current_manifest()` before invoking any `@gated_by` component; missing manifest raises `RuntimeError`.
+
+**Variants (`variants.py`)**
+- `router` defaults to `True` in `VCLManifest`; only `HELIOS-noRouter` sets it `False`. All other 7 confirmatory variants inherit `router=True` implicitly — do not set it explicitly in every variant.
+- All 8 variant hashes are unique (enforced by `test_all_variant_hashes_are_unique`). If you add a variant that duplicates an existing hash, a test will fail.
+
+**Hook and lint**
+- `flag-guard.py` exempts `helios/vcl/` from the "component without flag" check — VCL is the flag system itself. Consumers of VCL (files outside `helios/vcl/`) are recognised as flag-compliant if they import `VCLFlag`, `gated_by`, or `VCLManifest`.
+- `[tool.ruff.lint]` has `preview = true` so `RUF022` (`__all__` sort) fires locally as it does in CI. ruff is pinned to `>=0.6.9,<0.7` in both `pyproject.toml` and `ci.yml` — widen only after reformatting the codebase with the new version.
 
 ### Key documents to read before multi-pipeline changes
 
