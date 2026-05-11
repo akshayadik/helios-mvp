@@ -1,0 +1,1 @@
+Analyze token usage in current session/context. Suggest /compact points or CLAUDE.md pruning. Estimate cost for next 10 turns on Sonnet vs Haiku vs Opus.
