@@ -7,6 +7,7 @@ from collections.abc import Callable
 from contextvars import ContextVar
 from typing import TYPE_CHECKING, Any, TypeVar
 
+from .disjointness import register as _disjointness_register
 from .registry import VCLFlag
 
 if TYPE_CHECKING:
@@ -44,6 +45,7 @@ def gated_by(flag: VCLFlag) -> Callable[[F], F]:
 
     def decorator(func: F) -> F:
         func.__gated_by__ = flag.value  # type: ignore[attr-defined]
+        _disjointness_register(f"{func.__module__}.{func.__qualname__}", flag.value)
 
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
