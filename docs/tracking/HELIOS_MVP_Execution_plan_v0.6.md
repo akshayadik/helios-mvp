@@ -31,7 +31,7 @@
 **Step-by-Step Plan**  
 1. Create Poetry project, directory structure (`helios/vcl/`, `schemas/`, `telemetry/`, `store/`, `pipelines/`, `eval/`, `tests/`, `docs/`), CI (ruff, mypy, pytest, coverage, disjointness).  
 2. Implement VCL core: `config.py` (Pydantic manifest + `variant_config_hash`), `decorators.py` (`@gated_by`), `registry.py` (12 flags with MVP defaults).  
-3. Implement deviation log (`eval/deviation_log.py` — append-only JSONL + HMAC-SHA256).  
+3. Implement deviation log (`bin/log_deviation.py` — append-only JSONL + HMAC-SHA256).  
 4. OTEL Demo spike: `docker compose up`, inject 1 fault, capture 5-min telemetry → Parquet (P1/P2/P3).  
 5. Draft UEG-C canonical JSON schema (4 typed edge classes declared) + verdict schema (Pydantic).  
 6. Start **Ablation Architecture Notebook** (`docs/ablation_architecture.md`) — VCL + spine section.  
