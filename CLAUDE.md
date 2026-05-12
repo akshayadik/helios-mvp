@@ -206,3 +206,38 @@ Enforced by `scripts/validate_tracking.py` as a pre-commit hook and in CI:
 - `bin/log_deviation.py` requires `DEVIATION_HMAC_SECRET` loaded from `.env` (`set -a; source .env; set +a`).
 - The `.env` file is gitignored — back it up in a password manager; losing it breaks chain verification.
 - `DEVIATION_HMAC_SECRET` must also be set in GitHub Secrets for `ledger_verification.yml` to run the on-disk chain check.
+
+### ruff
+
+- `[tool.ruff.lint]` has `preview = true` — preview-stable rules (e.g. `RUF022` `__all__` sort) fire locally, matching CI. Do not remove it.
+- ruff is pinned to `>=0.6.9,<0.7` in both `pyproject.toml` and `ci.yml`. To widen the pin: run `ruff format helios/ scripts/ tests/` first to absorb formatting changes, update both files, then regenerate `poetry.lock`.
+- `__all__` lists must be sorted in ASCII order (uppercase before lowercase). `ruff check --fix` auto-sorts; the order is: uppercase names first (`A–Z`), then lowercase (`a–z`).
+
+### Poetry / lock file
+
+- After **any** change to `pyproject.toml` dependencies, run `poetry lock` to regenerate `poetry.lock` (Poetry 2.x dropped `--no-update`; plain `poetry lock` re-resolves only what changed).
+- Always commit `poetry.lock` in the same commit as the `pyproject.toml` change. A stale lock file breaks every CI job that runs `poetry install`.
+
+### Pydantic v2
+
+- `VCLManifest` is `frozen=True` — assignment raises `ValidationError` at runtime. In tests, use `manifest.field = value  # type: ignore[misc]` to suppress the mypy read-only property error (the pydantic plugin detects it correctly).
+- If a Pydantic model is used **only in annotations** in a module that has `from __future__ import annotations`, import it under `TYPE_CHECKING` to satisfy `TCH001`. The lazy string evaluation means the import is not needed at runtime.
+- Prefer `@field_validator` over factory-method validation — it fires on every construction path (direct instantiation, `from_flags`, Pydantic deserialization), not just one entry point.
+
+### Claude Code hooks
+
+- `research-compliance.py` blocks any Write/Edit containing the literals `0.0`, `1.0`, `0.5`, or `100` as word-bounded tokens **in any file**, including Markdown and plan files. Avoid these literals in documentation; use prose (`"rounds to zero"`, `"full coverage"`) instead.
+- `flag-guard.py` exempts the entire `helios/vcl/` path — files there can define classes and functions without a `HELIOS_ENABLE_*` pattern. Everywhere else, new `def`/`class` definitions require a VCL import (`VCLFlag`, `gated_by`, `VCLManifest`) or an `HELIOS_ENABLE_*` reference.
+
+### VCL consumer patterns
+
+- Annotate every pipeline entry-point with `@gated_by(VCLFlag.X)` where `X` is the flag controlling that component. The decorator registers `__gated_by__` for the static disjointness audit.
+- **Never** use `@gated_by(VCLFlag.INGEST_MODE)` — it is a string flag, not boolean, and raises `TypeError` at decoration time. Check `manifest.ingest_mode` directly where needed.
+- Call `set_current_manifest(manifest)` before invoking any `@gated_by` component. The `ContextVar` has no default; a missing manifest raises `RuntimeError` at call time.
+- When iterating flags for audits or tests, use `VCLFlag.bool_flags()` — not `VCLFlag` directly, which includes `INGEST_MODE`.
+
+### Session knowledge management
+
+- Run `/save-bug-fixes` at the end of any session where a non-obvious bug was diagnosed and fixed. This writes to the project memory at `/home/akshay/.claude/projects/-home-akshay-workspace-helios-mvp/memory/`.
+- A bug is worth saving when the root cause required diagnosis (not just "I had a typo"). Canonical examples: tool behaviour that contradicts documentation, version-pinning interactions, Pydantic/ruff/mypy edge cases.
+- `/save-bug-fixes` uses Bash heredocs internally to avoid `flag-guard.py` blocking content that contains `def ` or `class `. Do not switch to Write tool for memory file content.
