@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
+from helios.integrity_gate import MetricIntegrityGate
 from helios.vcl import (
     CONFIRMATORY_VARIANTS,
     GatedComponentInactiveError,
@@ -34,6 +35,14 @@ def clear_manifest():
 @pytest.fixture()
 def full_manifest() -> VCLManifest:
     return CONFIRMATORY_VARIANTS["HELIOS-Full"]
+
+
+class _GateMockLedger:
+    def __init__(self) -> None:
+        self.entries: list[dict[str, str]] = []
+
+    def append(self, fields: dict[str, str]) -> None:
+        self.entries.append(fields)
 
 
 # ---------------------------------------------------------------------------
@@ -136,6 +145,38 @@ class TestVCLManifest:
     def test_ingest_mode_invalid_raises(self) -> None:
         with pytest.raises(ValidationError):
             VCLManifest.from_flags(ingest_mode="batch")
+
+    def test_three_mutations(self) -> None:
+        """Three manifest mutations each hash-differ and are rejected by MetricIntegrityGate."""
+        baseline = VCLManifest.from_flags()
+        baseline_hash = baseline.compute_variant_config_hash()
+
+        mutations = [
+            VCLManifest.from_flags(lpipe=True),
+            VCLManifest.from_flags(model_version="helios-llm-experimental"),
+            VCLManifest.from_flags(prompt_template_id="variant-v2"),
+        ]
+
+        for mutated in mutations:
+            mutated_hash = mutated.compute_variant_config_hash()
+            assert mutated_hash != baseline_hash
+
+            ledger = _GateMockLedger()
+            gate = MetricIntegrityGate(
+                expected_config_hash=baseline_hash,
+                ledger=ledger,
+                run_id="run-001",
+                analytic_consequence="test",
+            )
+            row = {
+                "variant_config_hash": mutated_hash,
+                "snapshot_hash": "a" * 64,
+                "run_id": "run-001",
+            }
+            result = gate.check(row, incident_id="INC-001")
+            assert result.status == "FAIL"
+            assert result.gate_check == "variant_config_hash_match"
+            assert len(ledger.entries) == 1
 
 
 # ---------------------------------------------------------------------------

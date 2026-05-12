@@ -16,7 +16,7 @@ class VCLManifest(BaseModel):
     canonical JSON is exhaustive — no silent omissions from new fields.
     """
 
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = ConfigDict(extra="forbid", frozen=True, protected_namespaces=())
 
     # 12 proposal flags (Table 12 / §3.6.7)
     l2c_llm: bool = False
@@ -37,6 +37,10 @@ class VCLManifest(BaseModel):
 
     # Operational string flag — validated, not a boolean gate
     ingest_mode: str = "recorded"
+
+    # Model identity for C1 hash stability — changing either field invalidates all variant hashes
+    model_version: str = "helios-llm-baseline"
+    prompt_template_id: str = "baseline-v1"
 
     @field_validator("ingest_mode")
     @classmethod

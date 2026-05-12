@@ -13,6 +13,8 @@ from typing import Any
 
 import pytest
 
+from helios.vcl.hmac_chain import TamperDetectedError
+
 _HERE = Path(__file__).resolve().parent.parent
 
 
@@ -191,3 +193,38 @@ def test_canonical_signature_is_deterministic(log: Any) -> None:
     }
     sig = log.compute_signature(entry)
     assert sig == log.compute_signature(entry)
+
+
+# ── Tamper detection ──────────────────────────────────────────────────────────
+
+
+def test_tamper(log: Any, log_path: Path) -> None:
+    """Middle-entry tamper detected; verify_hmac_chain() raises TamperDetectedError."""
+    log.append({**_FIELDS, "change": "first"})
+    log.append({**_FIELDS, "change": "second"})
+    log.append({**_FIELDS, "change": "third"})
+
+    # Tamper the middle entry (line index 1 = line number 2)
+    lines = log_path.read_text(encoding="utf-8").splitlines()
+    middle = json.loads(lines[1])
+    middle["change"] = "MALICIOUS"
+    lines[1] = json.dumps(middle, sort_keys=True)
+    log_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    # verify_hmac_chain() raises on tamper
+    with pytest.raises(TamperDetectedError, match="Line 2"):
+        log.verify_hmac_chain()
+
+    # verify() backward compat unchanged
+    ok, _ = log.verify()
+    assert not ok
+
+    # Post-tamper append still works (previous_signature reads last valid line)
+    e4 = log.append({**_FIELDS, "change": "fourth"})
+    assert e4 is not None
+
+    # File has 4 lines, all valid JSONL
+    final_lines = log_path.read_text(encoding="utf-8").splitlines()
+    assert len(final_lines) == 4
+    for line in final_lines:
+        json.loads(line)
