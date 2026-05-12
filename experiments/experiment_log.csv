@@ -85,3 +85,17 @@
 2026-05-12T11:14:12Z,9796320,/home/akshay/workspace/helios-mvp/tests/test_disjointness.py,Edit,42
 2026-05-12T11:14:18Z,9796320,/home/akshay/workspace/helios-mvp/helios/integrity_gate.py,Edit,42
 2026-05-12T11:14:25Z,9796320,/home/akshay/workspace/helios-mvp/tests/test_integrity_gate.py,Edit,42
+2026-05-12T11:55:27Z,7223795,/home/akshay/workspace/helios-mvp/docs/superpowers/specs/2026-05-12-mutation-blocking-tamper-detection-design.md,Write,42
+2026-05-12T11:55:45Z,7223795,/home/akshay/workspace/helios-mvp/docs/superpowers/specs/2026-05-12-mutation-blocking-tamper-detection-design.md,Edit,42
+2026-05-12T12:03:09Z,1b2e8cf,/home/akshay/workspace/helios-mvp/docs/superpowers/plans/2026-05-12-mutation-blocking-tamper-detection.md,Write,42
+2026-05-12T12:32:16Z,3b7eab3,/home/akshay/workspace/helios-mvp/tests/test_vcl.py,Edit,42
+2026-05-12T12:32:22Z,3b7eab3,/home/akshay/workspace/helios-mvp/tests/test_vcl.py,Edit,42
+2026-05-12T12:32:30Z,3b7eab3,/home/akshay/workspace/helios-mvp/tests/test_vcl.py,Edit,42
+2026-05-12T12:32:45Z,3b7eab3,/home/akshay/workspace/helios-mvp/helios/vcl/config.py,Edit,42
+2026-05-12T12:34:04Z,3b7eab3,/home/akshay/workspace/helios-mvp/helios/vcl/config.py,Edit,42
+2026-05-12T12:34:58Z,3b7eab3,/home/akshay/workspace/helios-mvp/tests/test_vcl.py,Edit,42
+2026-05-12T12:41:01Z,e4a6594,/home/akshay/workspace/helios-mvp/tests/test_deviation_log.py,Edit,42
+2026-05-12T12:41:11Z,e4a6594,/home/akshay/workspace/helios-mvp/tests/test_deviation_log.py,Edit,42
+2026-05-12T12:41:23Z,e4a6594,/home/akshay/workspace/helios-mvp/helios/vcl/hmac_chain.py,Edit,42
+2026-05-12T12:41:27Z,e4a6594,/home/akshay/workspace/helios-mvp/helios/vcl/hmac_chain.py,Edit,42
+2026-05-12T12:57:06Z,573c82f,/home/akshay/workspace/helios-mvp/docs/tracking/vcl_manifest_tracking.md,Edit,42
