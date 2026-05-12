@@ -217,6 +217,7 @@ Enforced by `scripts/validate_tracking.py` as a pre-commit hook and in CI:
 
 - After **any** change to `pyproject.toml` dependencies, run `poetry lock` to regenerate `poetry.lock` (Poetry 2.x dropped `--no-update`; plain `poetry lock` re-resolves only what changed).
 - Always commit `poetry.lock` in the same commit as the `pyproject.toml` change. A stale lock file breaks every CI job that runs `poetry install`.
+- **Never use `poetry install --no-root` in a CI job that runs `bin/` scripts directly.** `--no-root` skips installing the `helios` package itself. `pytest` survives this because `pyproject.toml` injects `pythonpath = ["."]` before test collection; bare `poetry run python bin/<script>.py` does not get that injection and raises `ModuleNotFoundError: No module named 'helios'`. The correct form for any job that imports from `helios` at runtime is `poetry install --no-interaction --with dev` (no `--no-root`).
 
 ### Pydantic v2
 
@@ -228,6 +229,12 @@ Enforced by `scripts/validate_tracking.py` as a pre-commit hook and in CI:
 
 - `research-compliance.py` blocks any Write/Edit containing the literals `0.0`, `1.0`, `0.5`, or `100` as word-bounded tokens **in any file**, including Markdown and plan files. Avoid these literals in documentation; use prose (`"rounds to zero"`, `"full coverage"`) instead.
 - `flag-guard.py` exempts the entire `helios/vcl/` path — files there can define classes and functions without a `HELIOS_ENABLE_*` pattern. Everywhere else, new `def`/`class` definitions require a VCL import (`VCLFlag`, `gated_by`, `VCLManifest`) or an `HELIOS_ENABLE_*` reference.
+
+### HMAC-chained log patterns
+
+- **`_UNSIGNED_KEYS` must cover every field that is derived from `signature`.** `HMACChainedLog.compute_signature()` excludes `{"signature", "deviation_id"}` from the signed payload. If you add a new post-sign field (any field set inside `_post_sign_fields()`), add its key to `_UNSIGNED_KEYS` in `helios/vcl/hmac_chain.py` — otherwise `verify()` will always report tampering because it recomputes the hash without that field.
+- Post-sign fields belong in `_post_sign_fields()` — the hook is called *after* `compute_signature()` sets `entry["signature"]` but *before* the JSONL line is written. Never set derived fields earlier in `append()`.
+- `from helios.vcl.hmac_chain import GENESIS as GENESIS` — the `as GENESIS` form is required in `bin/` files so that `log_deviation.GENESIS` is accessible as a module attribute in tests (ruff F401 would otherwise flag the import as unused).
 
 ### VCL consumer patterns
 
