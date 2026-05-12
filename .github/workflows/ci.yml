@@ -284,7 +284,7 @@ jobs:
         run: pip install "poetry==${{ env.POETRY_VERSION }}"
  
       - name: Install project
-        run: poetry install --no-interaction --no-root --with dev
+        run: poetry install --no-interaction --with dev
  
       # Stage 0: exits 0 on ImportError (module not yet implemented).
       # Stage 1: replace with the real audit after pipeline stubs are wired.

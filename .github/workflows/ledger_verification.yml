@@ -19,7 +19,7 @@ jobs:
           python-version: "3.11"
           cache: pip
       - run: pip install "poetry==${{ env.POETRY_VERSION }}"
-      - run: poetry install --no-interaction --no-root --with dev
+      - run: poetry install --no-interaction --with dev
       - name: HMAC chain integrity tests
         # --no-cov: this is a targeted canary run; pyproject.toml addopts carries
         # --cov-fail-under=90 which would always fail when only 12 tests run
