@@ -31,7 +31,7 @@ Every protocol change with analytic consequence is logged to `deviation_log.json
 │   └── workflows/              # CI, disjointness audit, ledger verification
 ├── bin/
 │   ├── log_deviation.py        # CLI: append signed entries to deviation_log.jsonl
-│   └── log_exclusion.py        # Stub (to be implemented Stage 1+)
+│   └── log_exclusion.py        # CLI: append signed entries to exclusion_ledger.jsonl (§3.6.8)
 ├── docs/
 │   ├── memos/                  # One-off frozen memos
 │   ├── tracking/               # 18 living tracking documents (C1 evidence base)

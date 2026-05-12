@@ -83,8 +83,8 @@ PLANNED → IN_PROGRESS → DONE  (terminal)
 
 | Task_ID | Day | Type | Description | Prop_§ | DSR | Contrib | Own | Deps | Status | Started | Done | SHA | Ev_Type | Ev_Ref | Gate | Dev_Ref | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| S0-D2-ENG01 | 2 | ENG | deviation_log.py: §B.12 schema + JSONL + HMAC-SHA256 | §B.12, §3.6.2 | Design | C1 | AA | S0-D1-ENG02 | PLANNED | - | - | - | TEST | tests/test_deviation_log.py::test_schema | EG5 | - | Ed25519 migration deferred |
-| S0-D2-ENG02 | 2 | ENG | exclusion_ledger.py: signed append-only JSONL | §3.6.8, §3.7 | Design | C1 | AA | S0-D2-ENG01 | PLANNED | - | - | - | TEST | tests/test_exclusion_ledger.py::test_append | - | - | Required-field manifest |
+| S0-D2-ENG01 | 2 | ENG | deviation_log.py: §B.12 schema + JSONL + HMAC-SHA256 | §B.12, §3.6.2 | Design | C1 | AA | S0-D1-ENG02 | PLANNED | - | - | - | TEST | tests/test_deviation_log.py::test_schema | EG5 | - | Ed25519 migration deferred; implemented as bin/log_deviation.py |
+| S0-D2-ENG02 | 2 | ENG | exclusion_ledger.py: signed append-only JSONL | §3.6.8, §3.7 | Design | C1 | AA | S0-D2-ENG01 | PLANNED | - | - | - | TEST | tests/test_exclusion_ledger.py::test_append | - | - | Required-field manifest; implemented as bin/log_exclusion.py |
 | S0-D2-ENG03 | 2 | ENG | integrity_gate.py: PASS/FAIL + auto-write to ledger | §3.6.8, §3.7 | Design | C1 | AA | S0-D2-ENG02 | PLANNED | - | - | - | TEST | tests/test_integrity_gate.py::test_reject | EG4 | - | Per-cell field manifest |
 | S0-D2-ENG04 | 2 | ENG | disjointness.py: promote registry from stub to functional | §3.9.1 T2 | Design | C1 | AA | S0-D1-ENG05 | PLANNED | - | - | - | TEST | tests/test_disjointness.py::test_violation | EG1 | - | Hidden-coupling audit infra |
 | S0-D2-ENG05 | 2 | ENG | tests/test_vcl.py: 3 mutated manifests blocked | §6.1 | Evaluate | C1 | AA | S0-D1-ENG04 | PLANNED | - | - | - | TEST | tests/test_vcl.py::test_three_mutations | EG1 | - | Deliberate failure suite |

@@ -1,7 +1,6 @@
-"""HMAC chain integrity tests for bin/log_deviation.py.
+"""HMAC chain integrity tests for bin/log_deviation.py (§B.12).
 
-These tests are the canary for C1 §6.5: they prove the deviation_log.jsonl
-chain is genuinely tamper-evident, not just decoratively signed.
+VCLFlag-compliant: DeviationLog is always-on C1 audit infrastructure.
 """
 
 from __future__ import annotations
@@ -14,12 +13,12 @@ from typing import Any
 
 import pytest
 
+_HERE = Path(__file__).resolve().parent.parent
 
-def _load_log_deviation_module():
-    """Import bin/log_deviation.py without putting bin/ on sys.path globally."""
-    here = Path(__file__).resolve().parent.parent
+
+def _load_log_deviation_module() -> Any:
     spec = importlib.util.spec_from_file_location(
-        "log_deviation", here / "bin" / "log_deviation.py"
+        "log_deviation", _HERE / "bin" / "log_deviation.py"
     )
     assert spec is not None and spec.loader is not None
     mod = importlib.util.module_from_spec(spec)
@@ -30,117 +29,156 @@ def _load_log_deviation_module():
 
 log_deviation = _load_log_deviation_module()
 
+_KEY = b"test-secret-of-at-least-32-characters-x"
+_FIELDS: dict[str, str] = {
+    "stage": "Stage 0",
+    "clause": "§test",
+    "change": "test change",
+    "reason": "test reason",
+    "analytic_consequence": "test consequence",
+}
+
 
 @pytest.fixture
-def secret_env(monkeypatch):
-    monkeypatch.setenv(log_deviation.ENV_KEY, "test-secret-of-at-least-32-characters-x")
-    return None
-
-
-@pytest.fixture
-def log_path(tmp_path):
+def log_path(tmp_path: Path) -> Path:
     return tmp_path / "deviation_log.jsonl"
 
 
-def make_fields(change: str = "test change") -> dict[str, Any]:
-    return {
-        "stage": "Stage 0",
-        "clause": "§test",
-        "change": change,
-        "reason": "test reason",
-        "analytic_consequence": "test consequence",
+@pytest.fixture
+def log(log_path: Path) -> Any:
+    return log_deviation.DeviationLog(key=_KEY, log_path=log_path)
+
+
+# ── Schema (tracking ref: tests/test_deviation_log.py::test_schema) ───────────
+
+
+def test_schema(log: Any) -> None:
+    entry = log.append(_FIELDS.copy())
+    required = {
+        "timestamp_utc",
+        "commit_sha",
+        "prev_signature",
+        "stage",
+        "clause",
+        "change",
+        "reason",
+        "analytic_consequence",
+        "signature",
+        "deviation_id",
     }
-
-
-def test_first_entry_has_genesis_prev_signature(secret_env, log_path):
-    entry = log_deviation.append_entry(log_path, make_fields())
-    assert entry["prev_signature"] == log_deviation.GENESIS
-    assert len(entry["signature"]) == 64  # SHA-256 hex
-
-
-def test_signature_is_64_hex_chars(secret_env, log_path):
-    entry = log_deviation.append_entry(log_path, make_fields())
+    assert required <= set(entry.keys())
+    assert entry["timestamp_utc"].endswith("Z")
     assert len(entry["signature"]) == 64
     int(entry["signature"], 16)  # must parse as hex
+    assert entry["prev_signature"] == log_deviation.GENESIS
+    assert entry["deviation_id"] == entry["signature"][:16]
 
 
-def test_chain_links_correctly_across_three_entries(secret_env, log_path):
-    e1 = log_deviation.append_entry(log_path, make_fields("first"))
-    e2 = log_deviation.append_entry(log_path, make_fields("second"))
-    e3 = log_deviation.append_entry(log_path, make_fields("third"))
+# ── Required field validation ──────────────────────────────────────────────────
+
+
+def test_missing_required_field_raises(log: Any) -> None:
+    with pytest.raises(ValueError, match="Missing required fields"):
+        log.append({"stage": "Stage 0"})
+
+
+# ── Chain integrity ────────────────────────────────────────────────────────────
+
+
+def test_first_entry_has_genesis_prev_signature(log: Any) -> None:
+    entry = log.append(_FIELDS.copy())
+    assert entry["prev_signature"] == log_deviation.GENESIS
+    assert len(entry["signature"]) == 64
+
+
+def test_signature_is_64_hex_chars(log: Any) -> None:
+    entry = log.append(_FIELDS.copy())
+    assert len(entry["signature"]) == 64
+    int(entry["signature"], 16)
+
+
+def test_chain_links_correctly_across_three_entries(log: Any) -> None:
+    e1 = log.append({**_FIELDS, "change": "first"})
+    e2 = log.append({**_FIELDS, "change": "second"})
+    e3 = log.append({**_FIELDS, "change": "third"})
     assert e2["prev_signature"] == e1["signature"]
     assert e3["prev_signature"] == e2["signature"]
 
 
-def test_signature_recomputes_to_same_value(secret_env, log_path):
-    entry = log_deviation.append_entry(log_path, make_fields())
-    key = log_deviation.load_key()
-    assert log_deviation.compute_signature(key, entry) == entry["signature"]
+def test_signature_recomputes_to_same_value(log: Any) -> None:
+    entry = log.append(_FIELDS.copy())
+    assert log.compute_signature(entry) == entry["signature"]
 
 
-def test_tampered_change_field_breaks_signature(secret_env, log_path):
-    entry = log_deviation.append_entry(log_path, make_fields())
-    key = log_deviation.load_key()
+def test_tampered_change_field_breaks_signature(log: Any) -> None:
+    entry = log.append(_FIELDS.copy())
     tampered = dict(entry)
     tampered["change"] = "MALICIOUS"
-    assert log_deviation.compute_signature(key, tampered) != entry["signature"]
+    assert log.compute_signature(tampered) != entry["signature"]
 
 
-def test_tampered_prev_signature_breaks_chain(secret_env, log_path):
-    e1 = log_deviation.append_entry(log_path, make_fields("first"))
-    e2 = log_deviation.append_entry(log_path, make_fields("second"))
+def test_tampered_prev_signature_breaks_chain(log: Any) -> None:
+    e1 = log.append({**_FIELDS, "change": "first"})
+    e2 = log.append({**_FIELDS, "change": "second"})
     assert e2["prev_signature"] == e1["signature"]
-    # Now tamper with e2's prev_signature; recomputed sig must differ
-    key = log_deviation.load_key()
     tampered = dict(e2)
     tampered["prev_signature"] = "0" * 64
-    assert log_deviation.compute_signature(key, tampered) != e2["signature"]
+    assert log.compute_signature(tampered) != e2["signature"]
 
 
-def test_verify_chain_passes_on_clean_log(secret_env, log_path, monkeypatch):
-    log_deviation.append_entry(log_path, make_fields("first"))
-    log_deviation.append_entry(log_path, make_fields("second"))
-    monkeypatch.setattr(log_deviation, "LOG_FILE", log_path)
-    ok, msg = log_deviation.verify_chain(log_path)
+# ── Verify ─────────────────────────────────────────────────────────────────────
+
+
+def test_verify_chain_passes_on_clean_log(log: Any, log_path: Path) -> None:
+    log.append({**_FIELDS, "change": "first"})
+    log.append({**_FIELDS, "change": "second"})
+    ok, msg = log.verify()
     assert ok, msg
 
 
-def test_verify_chain_fails_on_tampered_log(secret_env, log_path):
-    log_deviation.append_entry(log_path, make_fields("first"))
-    log_deviation.append_entry(log_path, make_fields("second"))
-    # Tamper with the on-disk file
-    lines = log_path.read_text().splitlines()
+def test_verify_chain_fails_on_tampered_log(log: Any, log_path: Path) -> None:
+    log.append({**_FIELDS, "change": "first"})
+    log.append({**_FIELDS, "change": "second"})
+    lines = log_path.read_text(encoding="utf-8").splitlines()
     second = json.loads(lines[1])
     second["change"] = "MALICIOUS"
     lines[1] = json.dumps(second, sort_keys=True)
-    log_path.write_text("\n".join(lines) + "\n")
-    ok, _ = log_deviation.verify_chain(log_path)
+    log_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    ok, _ = log.verify()
     assert not ok
 
 
-def test_log_file_is_one_json_per_line(secret_env, log_path):
-    log_deviation.append_entry(log_path, make_fields("a"))
-    log_deviation.append_entry(log_path, make_fields("b"))
-    lines = log_path.read_text().splitlines()
+# ── Format ─────────────────────────────────────────────────────────────────────
+
+
+def test_log_file_is_one_json_per_line(log: Any, log_path: Path) -> None:
+    log.append({**_FIELDS, "change": "a"})
+    log.append({**_FIELDS, "change": "b"})
+    lines = log_path.read_text(encoding="utf-8").splitlines()
     assert len(lines) == 2
     for line in lines:
-        json.loads(line)  # must parse
+        json.loads(line)
 
 
-def test_missing_secret_exits(monkeypatch):
+# ── load_key() ─────────────────────────────────────────────────────────────────
+
+
+def test_missing_secret_exits(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv(log_deviation.ENV_KEY, raising=False)
     with pytest.raises(SystemExit):
         log_deviation.load_key()
 
 
-def test_short_secret_exits(monkeypatch):
+def test_short_secret_exits(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv(log_deviation.ENV_KEY, "too-short")
     with pytest.raises(SystemExit):
         log_deviation.load_key()
 
 
-def test_canonical_signature_is_deterministic(secret_env):
-    key = log_deviation.load_key()
+# ── Determinism ────────────────────────────────────────────────────────────────
+
+
+def test_canonical_signature_is_deterministic(log: Any) -> None:
     entry = {
         "timestamp_utc": "2026-01-01T00:00:00Z",
         "commit_sha": "abc",
@@ -151,5 +189,5 @@ def test_canonical_signature_is_deterministic(secret_env):
         "reason": "R",
         "analytic_consequence": "A",
     }
-    sig = log_deviation.compute_signature(key, entry)
-    assert sig == log_deviation.compute_signature(key, entry)
+    sig = log.compute_signature(entry)
+    assert sig == log.compute_signature(entry)
