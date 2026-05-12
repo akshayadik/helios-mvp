@@ -12,6 +12,17 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from pathlib import Path
 
+__all__ = [
+    "GENESIS",
+    "HMACChainedLog",
+    "TamperDetectedError",
+]
+
+
+class TamperDetectedError(RuntimeError):
+    """Raised by verify_hmac_chain() when HMAC chain integrity fails."""
+
+
 GENESIS = "GENESIS"
 _UNSIGNED_KEYS: frozenset[str] = frozenset({"signature", "deviation_id"})
 
@@ -101,3 +112,9 @@ class HMACChainedLog:
                     )
                 expected_prev = entry["signature"]
         return True, "Chain verified."
+
+    def verify_hmac_chain(self) -> None:
+        """Raises TamperDetectedError on failure; delegates to verify()."""
+        ok, msg = self.verify()
+        if not ok:
+            raise TamperDetectedError(msg)
