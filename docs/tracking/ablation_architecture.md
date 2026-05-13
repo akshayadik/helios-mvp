@@ -1,8 +1,8 @@
 # HELIOS Ablation Architecture — Living ADR
 
-**Document Version:** v0.1
-**Date:** 2026-05-12
-**Status:** Section 1 frozen at Stage 0. §2–§6 stubs — populated and frozen incrementally at their respective stage gates.
+**Document Version:** v0.2
+**Date:** 2026-05-13
+**Status:** §1 frozen at Stage 0. §2 schemas frozen at Stage 0 (builder sub-sections remain stubs until Stage 3). §3–§6 stubs.
 **Canonical Reference:** `docs/memos/spine_freeze_memo_v0.md`
 **Update Cadence:** After every pipeline-stage change.
 
@@ -109,10 +109,99 @@ This section directly implements MVP Execution Plan §4 (Architecture) and §6 (
 
 ---
 
-## 2. UEG-C Builder & Snapshot Hashing   [STUB — Stage 3]
+## 2. L0-L3 Canonical Data Contracts   [SCHEMAS FROZEN — Stage 0 | Builder STUB — Stage 3]
 
-> **Not yet implemented.** This section will be written and frozen at the Stage 3 gate.
-> No implementation claims may be added before that gate passes.
+Canonical schemas for all pipeline-crossing message types are frozen at `schema-draft-v0.1` (2026-05-13).
+All models enforce `extra="forbid"` and `frozen=True` (Pydantic v2). Hash identity uses
+`SHA-256(canonical_json(model.model_dump()))` where `canonical_json` sorts keys, rounds floats
+to 6 decimal places, and emits no whitespace.
+
+### 2.1 UEG-C Node Taxonomy (`helios/schemas/ueg_c.py`)   [FROZEN — Stage 0]
+
+| NodeType value | Meaning | Used in |
+|---|---|---|
+| `service` | Microservice-level entity | D-pipe, G-pipe |
+| `operation` | RPC/HTTP operation on a service | G-pipe edge endpoints |
+| `pod` | Kubernetes pod instance | D-pipe anomaly source |
+| `database` | Persistent store (SQL, Redis, etc.) | G-pipe causal paths |
+| `external` | Third-party or out-of-mesh dependency | G-pipe boundary nodes |
+
+### 2.2 UEG-C Edge Taxonomy (`helios/schemas/ueg_c.py`)   [FROZEN — Stage 0]
+
+| EdgeType value | Meaning | Gated by flag |
+|---|---|---|
+| `structural` | Topology edge from K8s/service mesh config | `ueg_c_structural` |
+| `call` | Observed RPC call (trace-derived) | `l2b_graph` |
+| `metric` | Metric-correlation edge (D-pipe output) | `dpipe` |
+| `log` | Log co-occurrence edge | `l2b_graph` |
+
+`weight: float` is constrained to `[0, 1]`. Structural edges are enabled only when
+`VCLFlag.UEG_C_STRUCTURAL` is active, maintaining the ablation boundary between
+topology-aware and topology-agnostic graph variants.
+
+### 2.3 UEGCSnapshot Contract (`helios/schemas/ueg_c.py`)   [FROZEN — Stage 0]
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `incident_id` | `str` | Yes | Links to fault event |
+| `variant_config_hash` | `str` (64-char hex) | Yes | VCLManifest identity |
+| `nodes` | `list[UEGCNode]` | Yes | May be empty list |
+| `edges` | `list[UEGCEdge]` | Yes | May be empty list |
+| `captured_at_iso` | `str` (ISO 8601 UTC) | Yes | Capture timestamp |
+| `schema_version` | `str` | Default `schema-draft-v0.1` | Bumped at OSF Stage 5 freeze |
+
+`compute_snapshot_hash()` produces a SHA-256 snapshot identity used by `PipelineVerdict.snapshot_hash`
+for deduplication and C1 run-level inclusion (§5.1). The snapshot itself does **not** store its own
+hash (avoids circular dependency); callers inject the result into verdict rows.
+
+### 2.4 PipelineVerdict Field Manifest (`helios/schemas/verdict.py`)   [FROZEN — Stage 0]
+
+Per-pipeline result row for dpipe, gpipe, and lpipe. All fields required by the metric integrity gate
+and result store (`helios/store/schema.sql`).
+
+| Field | Type | Constraint | Notes |
+|---|---|---|---|
+| `run_id` | `str` | PK | Unique run identifier |
+| `incident_id` | `str` | FK to snapshot | Links verdict to incident |
+| `variant_config_hash` | `str` (64-char hex) | C1 invariant | Must match active manifest |
+| `snapshot_hash` | `str` (64-char hex) | C1 invariant | SHA-256 of UEGCSnapshot |
+| `pipeline` | `str` | `dpipe | gpipe | lpipe` | Source pipeline label |
+| `evaluation_phase` | `EvaluationPhase` | Enum | `exploratory` or `confirmatory` |
+| `ranked_candidates` | `list[str]` | Ordered | Top-k service names (HR@3 source) |
+| `hr_at_3` | `float` | `[0, 1]` | Hit-Rate@3 |
+| `cpr` | `float` | `[0, 1]` | Causal Precision-Recall |
+| `latency_ms` | `float` | `>= 0` | Pipeline wall-clock latency |
+| `token_count` | `int` | `>= 0` | LLM tokens consumed (L-pipe) or 0 |
+| `narrative` | `str` | Non-empty | Chain of Explanation (CoE) text |
+| `schema_version` | `str` | Default `schema-draft-v0.1` | Bumped at OSF Stage 5 freeze |
+
+`compute_verdict_hash()` produces a SHA-256 row identity for deduplication and audit.
+
+### 2.5 TelemetryWindow Contract (`helios/schemas/telemetry.py`)   [FROZEN — Stage 0]
+
+L0 5-minute multi-modal observability window. Captures the P1-P5 stream paths and gates the
+two-environment firewall (§1.4) via `evaluation_phase`.
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `incident_id` | `str` | Yes | Fault event identity |
+| `variant_config_hash` | `str` (64-char hex) | Yes | VCLManifest identity |
+| `window_start_iso` | `str` (ISO 8601 UTC) | Yes | Window open timestamp |
+| `window_end_iso` | `str` (ISO 8601 UTC) | Yes | Window close timestamp |
+| `evaluation_phase` | `EvaluationPhase` | Yes | `exploratory` or `confirmatory` |
+| `p1_metrics_path` | `str \| None` | Optional | Prometheus metrics Parquet |
+| `p2_traces_path` | `str \| None` | Optional | OTEL traces Parquet |
+| `p3_logs_path` | `str \| None` | Optional | Structured logs Parquet |
+| `p4_events_path` | `str \| None` | Optional | K8s events Parquet |
+| `p5_profiles_path` | `str \| None` | Optional | Profiling data Parquet |
+| `schema_version` | `str` | Default `schema-draft-v0.1` | Bumped at OSF Stage 5 freeze |
+
+Path fields are `None` when a stream is not captured in the current environment (e.g., no profiler in OTEL Demo).
+
+### 2.6 UEG-C Builder   [STUB — Stage 3]
+
+> **Not yet implemented.** Graph construction algorithm (Alg 5 in proposal), incremental update,
+> pruned-subgraph generation, and snapshot registry will be written and frozen at the Stage 3 gate.
 > Cross-reference: `spine_freeze_memo_v0.md` (canonical) + `docs/tracking/snapshot_integrity_tracking.md`.
 
 ---
@@ -150,4 +239,5 @@ This section directly implements MVP Execution Plan §4 (Architecture) and §6 (
 ---
 
 **Document History**
-- v0.1 (2026-05-12): Section 1 (VCL/C1) written and frozen at Stage 0. §2–§6 stubs added.
+- v0.1 (2026-05-12): §1 (VCL/C1) written and frozen at Stage 0. §2–§6 stubs added.
+- v0.2 (2026-05-13): §2.1–§2.4 schema tables written and frozen (schema-draft-v0.1). Builder stubs remain.
