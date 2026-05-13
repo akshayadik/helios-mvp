@@ -285,3 +285,27 @@ Partial evaluations are excluded.
 **Cell-completion threshold:** ≥ 80-percent of cells per incident must have valid runs before the
 incident enters the confirmatory analysis matrix. Enforced at runtime by the metric integrity gate
 (Stage 1+ implementation; gate logic pre-registered here).
+
+---
+
+## §6 Scope Contraction Register   [FROZEN: Stage 0 | 2026-05-12]
+
+This register tracks evidential-status changes from the original proposal Table 15 commitments.
+It is a scientific audit tool — it records hypothesis evidential status and the analytic
+consequences of known power shortfalls. It is not a project-planning document.
+
+| Entry | Original scope | Status at Stage 0 | Asymmetric rule? | Rationale |
+|-------|--------------|------------------|-----------------|-----------|
+| A-H4 | Consensus HR@3 (confirmatory) | Underpowered-disclosed (~65% power) | Yes — non-rejection ≠ falsification | n = 174 pairs at α = 0.00625 yields only ~65-percent power for the expected consensus effect size |
+| A-H8 | Structural edges HR@3 (confirmatory) | Underpowered-disclosed (~62% power) | Yes — non-rejection ≠ falsification | Same n; smaller expected effect size for structural-edge contribution |
+| E-H1 | HELIOS-noGraph sensitivity (originally ablation-adjacent) | Reclassified exploratory | No | Tier 4 incident subset, n = 12 — insufficient power for confirmatory claim |
+| E-H4 | Cross-service topology sensitivity | Exploratory (synthetic injection required) | No | Requires AIOpsLab synthetic fault injection; targeted for Stage 2+ |
+| E-H6 | Token efficiency sensitivity | Exploratory | No | Ordinal measurement requires sign test; separate power analysis in progress |
+| E-H7 | Human-in-loop feedback loop | Deferred | No | Human-participant data collection pending IRB approval |
+| C1 | Runtime-enforced ablation discipline | Descriptive by design | N/A | C1 is the audit infrastructure; evidenced via VCL verification-rate, completion-rate, and ledger entry counts — not via statistical inference |
+| C3' | Extended graph causal inference | Exploratory empirical validation | No | Full causal identification requires Stage 4 G-pipe + ORAR pre-training |
+| C5 | Auto-remediation scaffolding | Exploratory empirical validation | No | Stage 4+ artefact; confirmatory evaluation not feasible in MVP phase |
+
+**Reactivation rule:** Any entry may be moved from exploratory to confirmatory in a future
+protocol revision, provided that revision is deposited at OSF before data collection for that
+hypothesis begins, and a deviation log entry is filed recording the analytic consequence.
