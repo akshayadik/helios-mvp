@@ -104,7 +104,7 @@ PLANNED → IN_PROGRESS → DONE  (terminal)
 | S0-D3-ENG04 | 3 | ENG | tests/test_schema_stability.py: canonical → hash → roundtrip | §6.2 | Evaluate | C1 | AA | S0-D3-ENG03 | DONE | 2026-05-13 | 2026-05-13 | 4dd4f1e | TEST | tests/test_schema_stability.py | EG3 | - | MUST FAIL on any schema change |
 | S0-D3-ENG05 | 3 | ENG | store/schema.sql: DuckDB result table + tag schema-draft-v0.1 | §3.7 | Design | infra | AA | S0-D3-ENG02 | DONE | 2026-05-13 | 2026-05-13 | 4dd4f1e | MANIFEST | helios/store/schema.sql | EG4 | - | Mirrors PipelineVerdict |
 | S0-D3-RES01 | 3 | RES | Schema diff vs §3.6.3 - any discrepancy → deviation BEFORE commit | §3.6.3 | Evaluate | C1 | AA | S0-D3-ENG01 | DONE | 2026-05-13 | 2026-05-13 | 4dd4f1e | LEDGER_ENTRY | deviation_log (no discrepancy found) | - | - | Schema matches §3.6.3; no deviation required |
-| S0-D3-RES02 | 3 | RES | ablation_architecture.md §2: schema tables | §3.6.3, §3.6.7 | Communicate | C2 | AA | S0-D3-ENG04 | PLANNED | - | - | - | DOC | docs/tracking/ablation_architecture.md | EG6 | - | Node + edge taxonomy tables |
+| S0-D3-RES02 | 3 | RES | ablation_architecture.md §2: schema tables | §3.6.3, §3.6.7 | Communicate | C2 | AA | S0-D3-ENG04 | IN_PROGRESS | 2026-05-13 | - | - | DOC | docs/tracking/ablation_architecture.md | EG6 | - | Node + edge taxonomy tables |
 
 ---
 
