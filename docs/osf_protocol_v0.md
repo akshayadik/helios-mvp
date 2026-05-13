@@ -58,3 +58,62 @@ recording the analytic consequence.
 | C4 | Uniform Borda consensus fusion | Exploratory — A-H4 (underpowered-disclosed) |
 | C5 | Auto-remediation scaffolding | Exploratory empirical validation (Stage 4+) |
 | C6 | LLM-assisted explanation (L-pipe + P4 cognitive layer) | Confirmatory — A-H7 |
+
+---
+
+## §2 Hypothesis Register   [FROZEN: Stage 0 | 2026-05-12]
+
+### 2.1 Family A — Ablation (Confirmatory)
+
+**Scope:** AIOpsLab only. Paired Wilcoxon signed-rank (one-sided), Holm–Bonferroni within this family.
+**n:** 174 incident pairs.
+**Holm rank order (binding from this deposit):** A-H3 > A-H7 > A-H1 > A-H2 > A-H6 > A-H5 > A-H4 > A-H8
+**α at rank 1:** 0.00625
+
+| Rank | ID | Null hypothesis | Comparison pair | Primary metric | Direction | Power note |
+|------|----|----------------|----------------|----------------|-----------|-----------|
+| 1 | A-H3 | Adding G+L to D-pipe does not improve HR@3 | HELIOS-Full vs HELIOS-D | HR@3 | Full > D | — |
+| 2 | A-H7 | Removing L-pipe does not degrade HR@3 | HELIOS-Full vs HELIOS-noLLM | HR@3 | Full > noLLM | — |
+| 3 | A-H1 | HELIOS-Full HR@3 does not exceed 0.73 | HELIOS-Full vs fixed threshold 0.60 | HR@3 | Full > 0.60 | — |
+| 4 | A-H2 | Removing G-pipe does not degrade CpR | HELIOS-Full vs HELIOS-noGraph | CpR | Full > noGraph | — |
+| 5 | A-H6 | When G entry gate fires, G-pipe does not improve HR@3 | HELIOS-G vs HELIOS-D (gate-conditional) | HR@3 | G > D | Conditional |
+| 6 | A-H5 | Router does not improve HR@3 | HELIOS-Full vs HELIOS-noRouter | HR@3 | Full > noRouter | — |
+| 7 | A-H4 | Consensus does not improve HR@3 | HELIOS-Full vs HELIOS-noConsensus | HR@3 | Full > noConsensus | ~65% power — underpowered-disclosed |
+| 8 | A-H8 | Structural edges do not improve HR@3 | HELIOS-Full vs HELIOS-noStructural | HR@3 | Full > noStructural | ~62% power — underpowered-disclosed |
+
+**Effect size commitment:** Cohen's h ≥ 0.276 (n = 174, one-sided α = 0.00625, ρ = one-half, 80-percent power).
+HELIOS target: HR@3 = 0.73 vs AIOpsLab-equivalent CHASE baseline: HR@3 = 0.60.
+
+### 2.2 Family B — Baseline Comparison (Confirmatory)
+
+**Scope:** AIOpsLab only. Same statistical method as Family A, independent Holm correction.
+**Holm rank order (binding from this deposit):** B-H1 > B-H2 > B-H3 > B-H4 > B-H5 > B-H6 > B-H7 > B-H8
+**α at rank 1:** 0.00625
+
+| Rank | ID | Null hypothesis | Baseline | Primary metric | Direction |
+|------|----|----------------|---------|----------------|-----------|
+| 1 | B-H1 | HELIOS-Full HR@3 does not exceed CHASE | CHASE | HR@3 | HELIOS > CHASE |
+| 2 | B-H2 | HELIOS-Full HR@3 does not exceed RCACopilot | RCACopilot | HR@3 | HELIOS > RCACopilot |
+| 3 | B-H3 | HELIOS-Full CpR does not exceed CHASE | CHASE | CpR | HELIOS > CHASE |
+| 4 | B-H4 | HELIOS-Full CpR does not exceed RCACopilot | RCACopilot | CpR | HELIOS > RCACopilot |
+| 5 | B-H5 | HELIOS-Full MTTR reduction does not exceed CHASE | CHASE | log-MTTR delta | HELIOS > CHASE |
+| 6 | B-H6 | HELIOS-Full hallucination rate is not lower than CHASE | CHASE | hallucination rate | HELIOS < CHASE |
+| 7 | B-H7 | HELIOS-Full CoE quality does not exceed CHASE | CHASE | CoE score | HELIOS > CHASE |
+| 8 | B-H8 | HELIOS-Full macro-F1 does not exceed CHASE | CHASE | macro-F1 | HELIOS > CHASE |
+
+### 2.3 Family E — Exploratory
+
+**Scope:** OTEL Demo + AIOpsLab subsets. BCa bootstrap, 10,000 resamples, seed deferred to Stage 5. No Holm correction. 95% BCa CI reported.
+
+| ID | Topic | Condition |
+|----|-------|-----------|
+| E-H1 | HELIOS-noGraph sensitivity on Tier 4 incidents | Reclassified exploratory (n = 12) |
+| E-H2 | UEG-C graph hash stability under replay | Structural |
+| E-H3 | UEG-C edge taxonomy coverage | Structural |
+| E-H4 | Cross-service topology sensitivity | Requires synthetic fault injection (Stage 2+) |
+| E-H5 | Latency vs HR@3 trade-off | Operational |
+| E-H6 | Token efficiency sensitivity | Sign test, ordinal |
+| E-H7 | Human-in-loop feedback loop | Deferred — IRB pending |
+| E-H8 | Noise tolerance (telemetry gap injection) | Operational |
+| E-H9 | Seed stability (HR@3 variance across seeds) | Reproducibility |
+| E-H10 | Multi-fault exclusion sensitivity | Corpus |
