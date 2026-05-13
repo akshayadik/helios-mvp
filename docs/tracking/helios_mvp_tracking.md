@@ -67,15 +67,15 @@ PLANNED → IN_PROGRESS → DONE  (terminal)
 
 | Task_ID | Day | Type | Description | Prop_§ | DSR | Contrib | Own | Deps | Status | Started | Done | SHA | Ev_Type | Ev_Ref | Gate | Dev_Ref | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| S0-D1-ENG01 | 1 | ENG | Init Poetry project, pin Python 3.11, dev deps | §3.6.2 | Design | infra | AA | - | PLANNED | - | - | - | MANIFEST | pyproject.toml | - | - | pyenv fallback if conflict |
-| S0-D1-ENG02 | 1 | ENG | Create directory skeleton (helios/, tests/, docs/) | §3.6.3 | Design | infra | AA | S0-D1-ENG01 | PLANNED | - | - | - | MANIFEST | repo tree | - | - | Must include vcl/variants.py |
-| S0-D1-ENG03 | 1 | ENG | registry.py: declare 13 flags (12 proposal + ingest_mode) | §3.6.2 | Design | C1 | AA | S0-D1-ENG02 | PLANNED | - | - | - | TEST | tests/test_vcl.py::test_flag_count | EG1 | - | ueg_structural is in §3.6.7 |
-| S0-D1-ENG04 | 1 | ENG | config.py: VCLManifest + variant_config_hash (Pydantic) | §6.1 | Design | C1 | AA | S0-D1-ENG03 | PLANNED | - | - | - | TEST | tests/test_vcl.py::test_hash_canonical | EG1 | - | SHA-256 over canonical JSON |
-| S0-D1-ENG05 | 1 | ENG | decorators.py: @gated_by + GatedComponentInactiveError | §3.6.2, §3.9.1 T2 | Design | C1 | AA | S0-D1-ENG03 | PLANNED | - | - | - | TEST | tests/test_vcl.py::test_gated_raises | EG1 | - | Disjointness reg promoted to D2 |
-| S0-D1-ENG06 | 1 | ENG | variants.py: 8 confirmatory variants from Table 12 | §3.6.7 | Design | C1 | AA | S0-D1-ENG03 | PLANNED | - | - | - | TEST | tests/test_vcl.py::test_eight_variants | EG1 | - | Maps A-H1..A-H8 |
-| S0-D1-ENG07 | 1 | ENG | CI workflow: ruff, mypy, pytest, coverage ≥90% | §3.6.2 | Design | infra | AA | S0-D1-ENG02 | PLANNED | - | - | - | MANIFEST | .github/workflows/ci.yml | - | - | Disjointness stub today, real D2 |
-| S0-D1-RES01 | 1 | RES | spine_freeze_memo_v0.md (1 page) | §6.1 | Communicate | methodology | AA | - | PLANNED | - | - | - | DOC | docs/spine_freeze_memo_v0.md | EG6 | - | Frozen / extensible / deferred |
-| S0-D1-RES02 | 1 | RES | ablation_architecture.md §1: VCL + flag registry | §3.6.7, §6.1 | Communicate | C1 | AA | S0-D1-ENG03 | PLANNED | - | - | - | DOC | docs/ablation_architecture.md | EG6 | - | §2 on Day 3, §3 on Day 5 |
+| S0-D1-ENG01 | 1 | ENG | Init Poetry project, pin Python 3.11, dev deps | §3.6.2 | Design | infra | AA | - | IN_PROGRESS | 2026-05-08 | - | - | MANIFEST | pyproject.toml | - | - | pyenv fallback if conflict |
+| S0-D1-ENG02 | 1 | ENG | Create directory skeleton (helios/, tests/, docs/) | §3.6.3 | Design | infra | AA | S0-D1-ENG01 | IN_PROGRESS | 2026-05-08 | - | - | MANIFEST | repo tree | - | - | Must include vcl/variants.py |
+| S0-D1-ENG03 | 1 | ENG | registry.py: declare 13 flags (12 proposal + ingest_mode) | §3.6.2 | Design | C1 | AA | S0-D1-ENG02 | IN_PROGRESS | 2026-05-08 | - | - | TEST | tests/test_vcl.py::test_flag_count | EG1 | - | ueg_structural is in §3.6.7 |
+| S0-D1-ENG04 | 1 | ENG | config.py: VCLManifest + variant_config_hash (Pydantic) | §6.1 | Design | C1 | AA | S0-D1-ENG03 | IN_PROGRESS | 2026-05-08 | - | - | TEST | tests/test_vcl.py::test_hash_canonical | EG1 | - | SHA-256 over canonical JSON |
+| S0-D1-ENG05 | 1 | ENG | decorators.py: @gated_by + GatedComponentInactiveError | §3.6.2, §3.9.1 T2 | Design | C1 | AA | S0-D1-ENG03 | IN_PROGRESS | 2026-05-08 | - | - | TEST | tests/test_vcl.py::test_gated_raises | EG1 | - | Disjointness reg promoted to D2 |
+| S0-D1-ENG06 | 1 | ENG | variants.py: 8 confirmatory variants from Table 12 | §3.6.7 | Design | C1 | AA | S0-D1-ENG03 | IN_PROGRESS | 2026-05-11 | - | - | TEST | tests/test_vcl.py::test_eight_variants | EG1 | - | Maps A-H1..A-H8 |
+| S0-D1-ENG07 | 1 | ENG | CI workflow: ruff, mypy, pytest, coverage ≥90% | §3.6.2 | Design | infra | AA | S0-D1-ENG02 | IN_PROGRESS | 2026-05-08 | - | - | MANIFEST | .github/workflows/ci.yml | - | - | Disjointness stub today, real D2 |
+| S0-D1-RES01 | 1 | RES | spine_freeze_memo_v0.md (1 page) | §6.1 | Communicate | methodology | AA | - | IN_PROGRESS | 2026-05-12 | - | - | DOC | docs/spine_freeze_memo_v0.md | EG6 | - | Frozen / extensible / deferred |
+| S0-D1-RES02 | 1 | RES | ablation_architecture.md §1: VCL + flag registry | §3.6.7, §6.1 | Communicate | C1 | AA | S0-D1-ENG03 | IN_PROGRESS | 2026-05-12 | - | - | DOC | docs/tracking/ablation_architecture.md | EG6 | - | §2 on Day 3, §3 on Day 5 |
 
 ---
 
@@ -83,14 +83,14 @@ PLANNED → IN_PROGRESS → DONE  (terminal)
 
 | Task_ID | Day | Type | Description | Prop_§ | DSR | Contrib | Own | Deps | Status | Started | Done | SHA | Ev_Type | Ev_Ref | Gate | Dev_Ref | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| S0-D2-ENG01 | 2 | ENG | deviation_log.py: §B.12 schema + JSONL + HMAC-SHA256 | §B.12, §3.6.2 | Design | C1 | AA | S0-D1-ENG02 | PLANNED | - | - | - | TEST | tests/test_deviation_log.py::test_schema | EG5 | - | Ed25519 migration deferred; implemented as bin/log_deviation.py |
-| S0-D2-ENG02 | 2 | ENG | exclusion_ledger.py: signed append-only JSONL | §3.6.8, §3.7 | Design | C1 | AA | S0-D2-ENG01 | PLANNED | - | - | - | TEST | tests/test_exclusion_ledger.py::test_append | - | - | Required-field manifest; implemented as bin/log_exclusion.py |
-| S0-D2-ENG03 | 2 | ENG | integrity_gate.py: PASS/FAIL + auto-write to ledger | §3.6.8, §3.7 | Design | C1 | AA | S0-D2-ENG02 | PLANNED | - | - | - | TEST | tests/test_integrity_gate.py::test_reject | EG4 | - | Per-cell field manifest |
-| S0-D2-ENG04 | 2 | ENG | disjointness.py: promote registry from stub to functional | §3.9.1 T2 | Design | C1 | AA | S0-D1-ENG05 | PLANNED | - | - | - | TEST | tests/test_disjointness.py::test_violation | EG1 | - | Hidden-coupling audit infra |
-| S0-D2-ENG05 | 2 | ENG | tests/test_vcl.py: 3 mutated manifests blocked | §6.1 | Evaluate | C1 | AA | S0-D1-ENG04 | PLANNED | - | - | - | TEST | tests/test_vcl.py::test_three_mutations | EG1 | - | Deliberate failure suite |
-| S0-D2-ENG06 | 2 | ENG | tests/test_deviation_log.py: write + verify HMAC | §B.12 | Evaluate | C1 | AA | S0-D2-ENG01 | PLANNED | - | - | - | TEST | tests/test_deviation_log.py::test_tamper | EG5 | - | Tamper test mandatory |
-| S0-D2-RES01 | 2 | RES | osf_protocol_v0.md: problem, intervention, eval sketch | §3.3, §3.6.1 | Communicate | methodology | AA | - | PLANNED | - | - | - | DOC | docs/osf_protocol_v0.md | EG6 | - | Sections 1-3 only on D2 |
-| S0-D2-EVAL01 | 2 | EVAL | First deviation entry: project init + HMAC migration note | §B.12 | Evaluate | C1 | AA | S0-D2-ENG01 | PLANNED | - | - | - | LEDGER_ENTRY | deviation_log:001-002 | EG5 | dev-001 | Genesis + signing-scheme entries |
+| S0-D2-ENG01 | 2 | ENG | deviation_log.py: §B.12 schema + JSONL + HMAC-SHA256 | §B.12, §3.6.2 | Design | C1 | AA | S0-D1-ENG02 | IN_PROGRESS | 2026-05-12 | - | - | TEST | tests/test_deviation_log.py::test_schema | EG5 | - | Ed25519 migration deferred; implemented as bin/log_deviation.py |
+| S0-D2-ENG02 | 2 | ENG | exclusion_ledger.py: signed append-only JSONL | §3.6.8, §3.7 | Design | C1 | AA | S0-D2-ENG01 | IN_PROGRESS | 2026-05-12 | - | - | TEST | tests/test_exclusion_ledger.py::test_append | - | - | Required-field manifest; implemented as bin/log_exclusion.py |
+| S0-D2-ENG03 | 2 | ENG | integrity_gate.py: PASS/FAIL + auto-write to ledger | §3.6.8, §3.7 | Design | C1 | AA | S0-D2-ENG02 | IN_PROGRESS | 2026-05-12 | - | - | TEST | tests/test_integrity_gate.py::test_reject | EG4 | - | Per-cell field manifest |
+| S0-D2-ENG04 | 2 | ENG | disjointness.py: promote registry from stub to functional | §3.9.1 T2 | Design | C1 | AA | S0-D1-ENG05 | IN_PROGRESS | 2026-05-12 | - | - | TEST | tests/test_disjointness.py::test_violation | EG1 | - | Hidden-coupling audit infra |
+| S0-D2-ENG05 | 2 | ENG | tests/test_vcl.py: 3 mutated manifests blocked | §6.1 | Evaluate | C1 | AA | S0-D1-ENG04 | IN_PROGRESS | 2026-05-12 | - | - | TEST | tests/test_vcl.py::test_three_mutations | EG1 | - | Deliberate failure suite |
+| S0-D2-ENG06 | 2 | ENG | tests/test_deviation_log.py: write + verify HMAC | §B.12 | Evaluate | C1 | AA | S0-D2-ENG01 | IN_PROGRESS | 2026-05-12 | - | - | TEST | tests/test_deviation_log.py::test_tamper | EG5 | - | Tamper test mandatory |
+| S0-D2-RES01 | 2 | RES | osf_protocol_v0.md: problem, intervention, eval sketch | §3.3, §3.6.1 | Communicate | methodology | AA | - | IN_PROGRESS | 2026-05-12 | - | - | DOC | docs/osf_protocol_v0.md | EG6 | - | All sections complete; Holm table corrected 2026-05-13 |
+| S0-D2-EVAL01 | 2 | EVAL | First deviation entry: project init + HMAC migration note | §B.12 | Evaluate | C1 | AA | S0-D2-ENG01 | IN_PROGRESS | 2026-05-12 | - | - | LEDGER_ENTRY | deviation_log:001-003 | EG5 | dev-001 | Genesis + signing-scheme + VCLManifest extension entries |
 
 ---
 
@@ -98,13 +98,13 @@ PLANNED → IN_PROGRESS → DONE  (terminal)
 
 | Task_ID | Day | Type | Description | Prop_§ | DSR | Contrib | Own | Deps | Status | Started | Done | SHA | Ev_Type | Ev_Ref | Gate | Dev_Ref | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| S0-D3-ENG01 | 3 | ENG | schemas/ueg_c.py: NodeType + EdgeType enums + UEGCSnapshot | §3.6.3, §3.6.7 | Design | C2 | AA | S0-D1-ENG02 | PLANNED | - | - | - | TEST | tests/test_schema_stability.py::test_roundtrip | EG3 | - | Snapshot = pruned subgraph (Alg 5) |
-| S0-D3-ENG02 | 3 | ENG | schemas/verdict.py: PipelineVerdict (all fields required) | §3.6.3 | Design | C1 | AA | S0-D3-ENG01 | PLANNED | - | - | - | TEST | tests/test_schema_stability.py::test_verdict | EG3 | - | (ranked, mu, sigma, cost, latency) |
-| S0-D3-ENG03 | 3 | ENG | schemas/telemetry.py: TelemetryWindow (P1-P5 + phase) | §3.7 | Design | C1 | AA | S0-D3-ENG01 | PLANNED | - | - | - | TEST | tests/test_schema_stability.py::test_telemetry | EG3 | - | evaluation_phase enum required |
-| S0-D3-ENG04 | 3 | ENG | tests/test_schema_stability.py: canonical → hash → roundtrip | §6.2 | Evaluate | C1 | AA | S0-D3-ENG03 | PLANNED | - | - | - | TEST | tests/test_schema_stability.py | EG3 | - | MUST FAIL on any schema change |
-| S0-D3-ENG05 | 3 | ENG | store/schema.sql: DuckDB result table + tag schema-draft-v0.1 | §3.7 | Design | infra | AA | S0-D3-ENG02 | PLANNED | - | - | - | MANIFEST | helios/store/schema.sql | EG4 | - | Mirrors PipelineVerdict |
-| S0-D3-RES01 | 3 | RES | Schema diff vs §3.6.3 - any discrepancy → deviation BEFORE commit | §3.6.3 | Evaluate | C1 | AA | S0-D3-ENG01 | PLANNED | - | - | - | LEDGER_ENTRY | deviation_log (if needed) | - | - | Pre-commit gate |
-| S0-D3-RES02 | 3 | RES | ablation_architecture.md §2: schema tables | §3.6.3, §3.6.7 | Communicate | C2 | AA | S0-D3-ENG04 | PLANNED | - | - | - | DOC | docs/ablation_architecture.md | EG6 | - | Node + edge taxonomy tables |
+| S0-D3-ENG01 | 3 | ENG | schemas/ueg_c.py: NodeType + EdgeType enums + UEGCSnapshot | §3.6.3, §3.6.7 | Design | C2 | AA | S0-D1-ENG02 | IN_PROGRESS | 2026-05-13 | - | - | TEST | tests/test_schema_stability.py::test_roundtrip | EG3 | - | Snapshot = pruned subgraph (Alg 5) |
+| S0-D3-ENG02 | 3 | ENG | schemas/verdict.py: PipelineVerdict (all fields required) | §3.6.3 | Design | C1 | AA | S0-D3-ENG01 | IN_PROGRESS | 2026-05-13 | - | - | TEST | tests/test_schema_stability.py::test_verdict | EG3 | - | (ranked, mu, sigma, cost, latency) |
+| S0-D3-ENG03 | 3 | ENG | schemas/telemetry.py: TelemetryWindow (P1-P5 + phase) | §3.7 | Design | C1 | AA | S0-D3-ENG01 | IN_PROGRESS | 2026-05-13 | - | - | TEST | tests/test_schema_stability.py::test_telemetry | EG3 | - | evaluation_phase enum required |
+| S0-D3-ENG04 | 3 | ENG | tests/test_schema_stability.py: canonical → hash → roundtrip | §6.2 | Evaluate | C1 | AA | S0-D3-ENG03 | IN_PROGRESS | 2026-05-13 | - | - | TEST | tests/test_schema_stability.py | EG3 | - | MUST FAIL on any schema change |
+| S0-D3-ENG05 | 3 | ENG | store/schema.sql: DuckDB result table + tag schema-draft-v0.1 | §3.7 | Design | infra | AA | S0-D3-ENG02 | IN_PROGRESS | 2026-05-13 | - | - | MANIFEST | helios/store/schema.sql | EG4 | - | Mirrors PipelineVerdict |
+| S0-D3-RES01 | 3 | RES | Schema diff vs §3.6.3 - any discrepancy → deviation BEFORE commit | §3.6.3 | Evaluate | C1 | AA | S0-D3-ENG01 | IN_PROGRESS | 2026-05-13 | - | - | LEDGER_ENTRY | deviation_log (no discrepancy found) | - | - | Schema matches §3.6.3; no deviation required |
+| S0-D3-RES02 | 3 | RES | ablation_architecture.md §2: schema tables | §3.6.3, §3.6.7 | Communicate | C2 | AA | S0-D3-ENG04 | PLANNED | - | - | - | DOC | docs/tracking/ablation_architecture.md | EG6 | - | Node + edge taxonomy tables |
 
 ---
 
