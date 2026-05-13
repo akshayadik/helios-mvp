@@ -8,12 +8,15 @@ from .decorators import (
     set_current_manifest,
 )
 from .registry import VCLFlag
+from .snapshot_registry import DuplicateSnapshotError, SnapshotRegistry
 from .utils import canonical_json
 from .variants import CONFIRMATORY_VARIANTS, get_variant
 
 __all__ = [
     "CONFIRMATORY_VARIANTS",
+    "DuplicateSnapshotError",
     "GatedComponentInactiveError",
+    "SnapshotRegistry",
     "VCLFlag",
     "VCLManifest",
     "canonical_json",

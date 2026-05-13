@@ -19,14 +19,14 @@ CREATE TABLE IF NOT EXISTS result_row (
     token_count         BIGINT      NOT NULL,
     narrative           TEXT        NOT NULL,
     schema_version      VARCHAR     NOT NULL    DEFAULT 'schema-draft-v0.1',
-    created_at          TIMESTAMPTZ             DEFAULT CURRENT_TIMESTAMP,
+    created_at          TIMESTAMP               DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (run_id)
 );
 
 -- Schema version registry — tracks deployed schema tags for audit trail
 CREATE TABLE IF NOT EXISTS schema_tag (
     tag         VARCHAR     NOT NULL PRIMARY KEY,
-    applied_at  TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    applied_at  TIMESTAMP   DEFAULT CURRENT_TIMESTAMP
 );
 
 INSERT INTO schema_tag (tag)

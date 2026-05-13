@@ -24,12 +24,11 @@ def _unique_tests_path() -> str:
 
 @pytest.fixture(autouse=True)
 def _clean_registry() -> Generator[None, Any, None]:
-    """Isolate each test: snapshot keys added during the test and remove them after."""
-    before = set(_REGISTRY.keys())
+    """Isolate each test: snapshot the full registry and restore it after."""
+    snapshot = dict(_REGISTRY)
     yield
-    added = set(_REGISTRY.keys()) - before
-    for key in added:
-        del _REGISTRY[key]
+    _REGISTRY.clear()
+    _REGISTRY.update(snapshot)
 
 
 # ---------------------------------------------------------------------------
@@ -39,23 +38,26 @@ def _clean_registry() -> Generator[None, Any, None]:
 
 def test_no_helios_paths_registered_at_stage0() -> None:
     registry = DisjointnessRegistry()
-    assert (
-        len(registry) == 0
-    ), "At Stage 0, no helios.* pipeline functions are decorated with @gated_by yet."
+    # Stage 0 has g_pipe and l_pipe null stubs decorated with @gated_by.
+    # Verify known stage-0 pipeline stubs are present.
+    assert "helios.pipelines.g_pipe.stub.run_gpipe" in registry._paths
+    assert "helios.pipelines.l_pipe.stub.run_lpipe" in registry._paths
 
 
 def test_register_increments_len() -> None:
     path = _unique_helios_path()
+    before = len(DisjointnessRegistry())
     register(path, "dpipe")
     registry = DisjointnessRegistry()
-    assert len(registry) == 1
+    assert len(registry) == before + 1
 
 
 def test_test_module_functions_filtered_out() -> None:
     tests_path = _unique_tests_path()
+    before = len(DisjointnessRegistry())
     register(tests_path, "gpipe")
     registry = DisjointnessRegistry()
-    assert len(registry) == 0
+    assert len(registry) == before
 
 
 def test_decorator_registers_helios_module_function() -> None:
