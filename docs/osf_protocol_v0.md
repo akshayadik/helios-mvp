@@ -309,3 +309,39 @@ consequences of known power shortfalls. It is not a project-planning document.
 **Reactivation rule:** Any entry may be moved from exploratory to confirmatory in a future
 protocol revision, provided that revision is deposited at OSF before data collection for that
 hypothesis begins, and a deviation log entry is filed recording the analytic consequence.
+
+---
+
+## §7 Reproducibility Manifest   [STUB — frozen at Stage 5]
+
+The following artefacts are deferred to the Stage 5 OSF full freeze. They MUST NOT be committed
+to this document earlier — premature commitment would introduce corpus selection bias.
+
+**Deferred to Stage 5:**
+- Corpus manifest SHA-256 (174 incidents, AIOpsLab)
+- BCa bootstrap seed (10,000 resamples for Family E)
+- L-pipe prompt SHA (SHA-256 of the frozen prompt template)
+- Container image digests (vLLM version, Ollama version)
+- AIOpsLab incident selection seed
+
+**Frozen at Stage 0 — L-pipe Protocol A parameters:**
+
+| Parameter | Value |
+|-----------|-------|
+| Model | Llama-3.1-70B-Instruct |
+| Serving | vLLM 0.6.x |
+| temperature | zero |
+| top-p | one |
+| top-k | one |
+| enforce_eager | True |
+| deployment | single-replica |
+| Contrast model (exploratory only) | Qwen-2.5-72B-Instruct |
+
+**Stage 5 procedure:**
+1. Compute and record corpus manifest SHA-256.
+2. Draw and record BCa bootstrap seed.
+3. Record L-pipe prompt SHA.
+4. Record container image digests.
+5. Commit this section and upload to OSF.
+6. Record the OSF DOI in `deviation_log.jsonl` as a protocol freeze event with
+   `--analytic-consequence "Stage 5 OSF full freeze deposited"`.
