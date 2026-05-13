@@ -117,3 +117,55 @@ HELIOS target: HR@3 = 0.73 vs AIOpsLab-equivalent CHASE baseline: HR@3 = 0.60.
 | E-H8 | Noise tolerance (telemetry gap injection) | Operational |
 | E-H9 | Seed stability (HR@3 variance across seeds) | Reproducibility |
 | E-H10 | Multi-fault exclusion sensitivity | Corpus |
+
+---
+
+## §3 Variant × Flag Matrix   [FROZEN: Stage 0 | 2026-05-12]
+
+Flag column key: `l2c` = l2c_llm, `p4c` = p4_cognitive, `l2b` = l2b_graph, `rec` = reconcile,
+`ueg` = ueg_c_structural, `dpi` = dpipe, `dpp` = dpipe_propagation, `gpi` = gpipe,
+`lpi` = lpipe, `rtr` = router.
+
+### 3.1 Confirmatory Variants (8)
+
+| Variant | l2c | p4c | mahc | cbr | l2b | acp | rec | ueg | dpi | dpp | gpi | lpi | rtr | Status | Hypothesis |
+|---------|:---:|:---:|:----:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|--------|-----------|
+| HELIOS-Full | T | T | T | T | T | T | T | T | T | T | T | T | T | Confirmatory | A-H1, A-H3, B-H1..B-H8 |
+| HELIOS-noLLM | F | T | T | T | T | T | T | T | T | T | T | F | T | Confirmatory | A-H7 |
+| HELIOS-noGraph | T | T | T | T | F | T | T | T | T | T | F | T | T | Exploratory | A-H2 sensitivity |
+| HELIOS-D | F | T | F | F | F | F | F | T | T | T | F | F | F | Confirmatory | A-H3 |
+| HELIOS-G | F | T | F | F | T | F | F | T | T | F | T | F | F | Cond. Confirmatory | A-H6 |
+| HELIOS-noConsensus | T | T | F | T | T | T | T | T | T | T | T | T | T | Exploratory | A-H4 |
+| HELIOS-noRouter | T | T | T | T | T | T | T | T | T | T | T | T | F | Exploratory | A-H5 |
+| HELIOS-noStructural | T | T | T | T | T | T | T | F | T | T | T | T | T | Exploratory | A-H8 |
+
+### 3.2 Exploratory Variants (7)
+
+Used for OTEL Demo calibration only (`evaluation_phase = "exploratory"`). Not included in any confirmatory analysis.
+
+| Variant | Purpose | Key flags off |
+|---------|---------|--------------|
+| HELIOS-noP4 | Cognitive layer ablation | p4_cognitive=False |
+| HELIOS-noMAHC | MAHC module ablation | mahc=False, cbr=False |
+| HELIOS-noCBR | CBR ablation only | cbr=False |
+| HELIOS-noACP | ACP ablation | acp=False |
+| HELIOS-noReconcile | Reconciliation ablation | reconcile=False |
+| HELIOS-live | Live ingest mode | ingest_mode="live" |
+| HELIOS-noLLM-noGraph | Dual-ablation sensitivity | l2c_llm=False, lpipe=False, l2b_graph=False, gpipe=False |
+
+### 3.3 Variant Config Hashes
+
+Hash computation: SHA-256 of `canonical_json(manifest.model_dump())` where `canonical_json` sorts
+keys and rounds floats to 6 decimal places. All hashes computed at commit `573c82f` (post-PR #12).
+Source of truth: `docs/tracking/vcl_manifest_tracking.md`.
+
+| Variant | variant_config_hash |
+|---------|-------------------|
+| HELIOS-Full | `20ab0977d268d0441364f39380cd62b5de94d030a0a70f3c68ec04eaa27db472` |
+| HELIOS-noLLM | `84b80788261fb97b562edeae9bddb06fb53c4c18d88df9c1c505e7e12aa87bdc` |
+| HELIOS-noGraph | `beb9869d764a2edce8cd7c938cde375f0cdfdcebd249c7a39f9b2110ca08aaca` |
+| HELIOS-noConsensus | `5e95946bd5d5be76271082c840a500403379762d5da621fac68fd2202b95e9fb` |
+| HELIOS-noRouter | `1ab2b9c0888841ce7fd759032dd78e7acb76a3f9b89f2bcb3c9c1d225bfa87c0` |
+| HELIOS-noStructural | `f13360dcaa47132086b94bd743ce1ad90a75dc23e90a9a29356dd64dce7016d0` |
+| HELIOS-D | `615bdbb7f18dc963da8e1348e4927c2f766e92e8f49032d6f9fe5dfea67599a7` |
+| HELIOS-G | `7a0df90d85909a58480b1331ba3f703f01c98d52e0822231e7d45ba515681b0a` |
