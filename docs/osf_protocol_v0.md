@@ -169,3 +169,60 @@ Source of truth: `docs/tracking/vcl_manifest_tracking.md`.
 | HELIOS-noStructural | `f13360dcaa47132086b94bd743ce1ad90a75dc23e90a9a29356dd64dce7016d0` |
 | HELIOS-D | `615bdbb7f18dc963da8e1348e4927c2f766e92e8f49032d6f9fe5dfea67599a7` |
 | HELIOS-G | `7a0df90d85909a58480b1331ba3f703f01c98d52e0822231e7d45ba515681b0a` |
+
+---
+
+## §4 Statistical Analysis Plan   [FROZEN: Stage 0 | 2026-05-12]
+
+### 4.1 Primary Tests
+
+| Metric | Test | Pairing | Sidedness | Notes |
+|--------|------|---------|-----------|-------|
+| HR@3 (continuous) | Wilcoxon signed-rank | Incident-level pairs | One-sided | Primary for A-H1..A-H8 |
+| HR@3 (binary threshold pass/fail) | McNemar's exact | Incident-level pairs | One-sided | Pre-registered sensitivity check |
+| Token efficiency (ordinal) | Sign test | Incident-level pairs | One-sided | Primary for A-H7 |
+| CpR | Wilcoxon signed-rank | Incident-level pairs | One-sided | Primary for A-H2, A-H3 |
+| Family E metrics | BCa bootstrap | N/A | Two-sided | 95% BCa CI; seed deferred to Stage 5 |
+| GLMM sensitivity | Mixed-effects Poisson | Nested (incident + variant) | N/A | Supplementary only — no binding inference status |
+
+All primary tests computed with `scipy.stats.wilcoxon(alternative="greater")`,
+`statsmodels.stats.contingency_tables.mcnemar`, and `scipy.stats.sign_test`.
+
+### 4.2 Error Control
+
+**Strategy:** Holm–Bonferroni within each confirmatory family independently. Families A and B are
+corrected separately; cross-family multiplicity is not controlled (families are conceptually
+orthogonal).
+
+**Adjusted α values — Family A (n = 8 hypotheses):**
+
+| Rank | Adjusted α = 0.05 / (9 − rank) | Bound hypothesis |
+|------|----------------------------------|-----------------|
+| 1 | 0.00625 | A-H3 |
+| 2 | 0.00714 | A-H7 |
+| 3 | 0.00833 | A-H1 |
+| 4 | 0.0125 | A-H2 |
+| 5 | 0.0167 | A-H6 |
+| 6 | 0.025 | A-H5 |
+| 7 | 0.0357 | A-H4 |
+| 8 | 0.05 | A-H8 |
+
+The same rank structure applies to Family B (B-H1 at rank 1 → α = 0.00625).
+
+### 4.3 Effect Size Commitment
+
+**Pre-registered MDE:** Cohen's h ≥ 0.276.
+**Derivation:** n = 174 incident pairs, one-sided α = 0.00625, ρ = one-half (equal allocation),
+80-percent power.
+**Concrete target:** HELIOS HR@3 = 0.73 vs AIOpsLab-equivalent CHASE baseline HR@3 = 0.60.
+This commitment is binding. Post-hoc power reduction requires a deviation log entry.
+
+### 4.4 Asymmetric Inferential Rule
+
+Applies to A-H4 and A-H8 only (underpowered-disclosed at Stage 0):
+
+- **Rejection** of the null → supports the contribution claim at the stated power.
+- **Non-rejection** → "inconclusive at delivered power" — not a falsification.
+
+This rule is binding from this Stage 0 deposit. It cannot be invoked post-hoc for any hypothesis
+not listed here.
