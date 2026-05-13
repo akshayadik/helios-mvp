@@ -226,3 +226,62 @@ Applies to A-H4 and A-H8 only (underpowered-disclosed at Stage 0):
 
 This rule is binding from this Stage 0 deposit. It cannot be invoked post-hoc for any hypothesis
 not listed here.
+
+---
+
+## §5 Inclusion/Exclusion and Exclusion-Ledger Rules   [FROZEN: Stage 0 | 2026-05-12]
+
+### 5.1 Run-Level Inclusion Criteria
+
+All three criteria must hold for a run to enter an analysis cell:
+
+1. **VCL hash match** — `row.variant_config_hash` equals the registered hash for that variant
+   (source: `docs/tracking/vcl_manifest_tracking.md`).
+2. **Snapshot hash match** — `row.snapshot_hash` matches the corpus snapshot hash for that
+   incident at replay.
+3. **L-pipe Protocol A conformance** — Token sequence matches Protocol A exactly (temperature =
+   zero, top-p = one, top-k = one, enforce_eager = True, single-replica deployment).
+
+### 5.2 Run-Level Exclusion Triggers
+
+Each failure is logged to `exclusion_ledger.jsonl` with a `gate_check` label:
+
+| Trigger | gate_check value | Analytic consequence |
+|---------|-----------------|----------------------|
+| VCL hash mismatch | `variant_config_hash_match` | Run excluded; variant-identity rate decremented |
+| Snapshot hash mismatch | `cross_pipeline_snapshot_hash_match` | Run excluded; snapshot-consistency rate decremented |
+| Protocol A token deviation | `protocol_a_deviation` | Run excluded; L-pipe integrity failure logged |
+| Cell completion below threshold | `cell_completion_threshold` | Cell excluded; C1 completion rate decremented |
+| Missing required field | `required_field_present` | Run excluded immediately |
+
+### 5.3 Exclusion-Ledger Entry Fields (7 required)
+
+Every exclusion-ledger entry must contain exactly these 7 fields:
+
+| Field | Description |
+|-------|-------------|
+| `variant_config_hash` | Hash of the manifest that produced the run |
+| `snapshot_hash` | Hash of the telemetry snapshot for this incident |
+| `run_id` | Unique identifier of this execution |
+| `incident_id` | Corpus incident identifier |
+| `gate_check` | One of the labels from §5.2 |
+| `reason` | Human-readable description of the failure |
+| `analytic_consequence` | Impact on C1 evidence rates |
+
+This schema is binding. Adding fields requires a deviation log entry. Removing fields is not
+permitted.
+
+### 5.4 Corpus-Level Inclusion
+
+**Fault taxonomy:** 6 categories — resource, network, dependency, config, code, external.
+Incidents outside this taxonomy are excluded and logged.
+
+**Label requirement:** Single-cause ground-truth labels only. Multi-cause incidents are excluded
+(logged with `gate_check = "multi_cause_label"`).
+
+**Pairing requirement:** All 8 confirmatory variants must be evaluated on every included incident.
+Partial evaluations are excluded.
+
+**Cell-completion threshold:** ≥ 80-percent of cells per incident must have valid runs before the
+incident enters the confirmatory analysis matrix. Enforced at runtime by the metric integrity gate
+(Stage 1+ implementation; gate logic pre-registered here).
