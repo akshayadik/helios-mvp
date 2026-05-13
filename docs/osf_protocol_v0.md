@@ -132,7 +132,7 @@ Flag column key: `l2c` = l2c_llm, `p4c` = p4_cognitive, `l2b` = l2b_graph, `rec`
 |---------|:---:|:---:|:----:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|--------|-----------|
 | HELIOS-Full | T | T | T | T | T | T | T | T | T | T | T | T | T | Confirmatory | A-H1, A-H3, B-H1..B-H8 |
 | HELIOS-noLLM | F | T | T | T | T | T | T | T | T | T | T | F | T | Confirmatory | A-H7 |
-| HELIOS-noGraph | T | T | T | T | F | T | T | T | T | T | F | T | T | Exploratory | A-H2 sensitivity |
+| HELIOS-noGraph | T | T | T | T | F | T | T | T | T | T | F | T | T | Confirmatory | A-H2 |
 | HELIOS-D | F | T | F | F | F | F | F | T | T | T | F | F | F | Confirmatory | A-H3 |
 | HELIOS-G | F | T | F | F | T | F | F | T | T | F | T | F | F | Cond. Confirmatory | A-H6 |
 | HELIOS-noConsensus | T | T | F | T | T | T | T | T | T | T | T | T | T | Exploratory | A-H4 |
@@ -181,7 +181,7 @@ Source of truth: `docs/tracking/vcl_manifest_tracking.md`.
 | HR@3 (continuous) | Wilcoxon signed-rank | Incident-level pairs | One-sided | Primary for A-H1..A-H8 |
 | HR@3 (binary threshold pass/fail) | McNemar's exact | Incident-level pairs | One-sided | Pre-registered sensitivity check |
 | Token efficiency (ordinal) | Sign test | Incident-level pairs | One-sided | Primary for A-H7 |
-| CpR | Wilcoxon signed-rank | Incident-level pairs | One-sided | Primary for A-H2, A-H3 |
+| CpR | Wilcoxon signed-rank | Incident-level pairs | One-sided | Primary for A-H2 |
 | Family E metrics | BCa bootstrap | N/A | Two-sided | 95% BCa CI; seed deferred to Stage 5 |
 | GLMM sensitivity | Mixed-effects Poisson | Nested (incident + variant) | N/A | Supplementary only — no binding inference status |
 
@@ -201,10 +201,10 @@ orthogonal).
 | 1 | 0.00625 | A-H3 |
 | 2 | 0.00714 | A-H7 |
 | 3 | 0.00833 | A-H1 |
-| 4 | 0.0125 | A-H2 |
-| 5 | 0.0167 | A-H6 |
-| 6 | 0.025 | A-H5 |
-| 7 | 0.0357 | A-H4 |
+| 4 | 0.01 | A-H2 |
+| 5 | 0.0125 | A-H6 |
+| 6 | 0.0167 | A-H5 |
+| 7 | 0.025 | A-H4 |
 | 8 | 0.05 | A-H8 |
 
 The same rank structure applies to Family B (B-H1 at rank 1 → α = 0.00625).
