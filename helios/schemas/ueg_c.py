@@ -11,7 +11,7 @@ from __future__ import annotations
 import hashlib
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 
 from helios.vcl.utils import canonical_json
 
@@ -38,6 +38,29 @@ class EdgeType(StrEnum):
     LOG = "log"
 
 
+class EdgeClass(StrEnum):
+    """Semantic 4-class edge taxonomy (proposal §3.6.4) — maps onto EdgeType sub-types.
+
+    STRUCTURAL → STRUCTURAL   (topology / dependency edges)
+    CALL       → BEHAVIOURAL  (runtime invocation behaviour)
+    METRIC     → CAUSAL       (metric-signal causation)
+    LOG        → ECONOMIC     (log-evidenced cost / impact)
+    """
+
+    STRUCTURAL = "structural"
+    BEHAVIOURAL = "behavioural"
+    CAUSAL = "causal"
+    ECONOMIC = "economic"
+
+
+_EDGE_TYPE_TO_CLASS: dict[EdgeType, EdgeClass] = {
+    EdgeType.STRUCTURAL: EdgeClass.STRUCTURAL,
+    EdgeType.CALL: EdgeClass.BEHAVIOURAL,
+    EdgeType.METRIC: EdgeClass.CAUSAL,
+    EdgeType.LOG: EdgeClass.ECONOMIC,
+}
+
+
 class UEGCNode(BaseModel):
     """Single vertex in the UEG-C graph."""
 
@@ -58,6 +81,24 @@ class UEGCEdge(BaseModel):
     target: str
     edge_type: EdgeType
     weight: float = Field(ge=0, le=1)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _strip_computed_fields(cls, data: object) -> object:
+        """Remove edge_class from incoming data — it is a derived computed_field.
+
+        Allows round-trip deserialization of model_dump() output without extra="ignore".
+        Genuine unknown fields are still rejected by extra="forbid" after stripping.
+        """
+        if isinstance(data, dict):
+            data = {k: v for k, v in data.items() if k != "edge_class"}
+        return data
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def edge_class(self) -> EdgeClass:
+        """Semantic class auto-derived from edge_type — always consistent, never stale."""
+        return _EDGE_TYPE_TO_CLASS[self.edge_type]
 
 
 class UEGCSnapshot(BaseModel):
