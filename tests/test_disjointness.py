@@ -10,7 +10,13 @@ if TYPE_CHECKING:
 
 import pytest
 
-from helios.vcl.disjointness import _REGISTRY, DisjointnessRegistry, register
+from helios.vcl.disjointness import (
+    _REGISTRY,
+    DisjointnessAuditor,
+    DisjointnessRegistry,
+    register,
+)
+from helios.vcl.registry import VCLFlag
 
 
 def _unique_helios_path() -> str:
@@ -114,3 +120,32 @@ def test_violation_string_contains_path_and_flags() -> None:
     assert path in msg
     assert "dpipe" in msg
     assert "lpipe" in msg
+
+
+# ---------------------------------------------------------------------------
+# DisjointnessAuditor
+# ---------------------------------------------------------------------------
+
+
+class TestDisjointnessAuditor:
+    def test_audit_passes_on_current_pipeline_stubs(self) -> None:
+        auditor = DisjointnessAuditor()
+        report = auditor.audit()
+        assert report.violations == []
+
+    def test_report_accounts_for_all_bool_flags(self) -> None:
+        auditor = DisjointnessAuditor()
+        report = auditor.audit()
+        covered_flags = {e.flag for e in report.covered}
+        uncovered_flags = set(report.uncovered)
+        all_accounted = covered_flags | uncovered_flags
+        for flag in VCLFlag.bool_flags():
+            assert flag in all_accounted, f"{flag} not in audit report"
+
+    def test_dpipe_gpipe_lpipe_are_covered(self) -> None:
+        auditor = DisjointnessAuditor()
+        report = auditor.audit()
+        covered_flags = {e.flag for e in report.covered}
+        assert VCLFlag.DPIPE in covered_flags
+        assert VCLFlag.L2B_GRAPH in covered_flags
+        assert VCLFlag.L2C_LLM in covered_flags
