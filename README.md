@@ -386,6 +386,24 @@ For research-integrity purposes, the deviation log relies on **two independent i
 
 To tamper with the audit trail without leaving evidence, an adversary would need to (a) hold the HMAC secret AND (b) successfully force-push to a protected branch on GitHub. The intersection makes silent tampering impractical.
 
+### External OTEL Demo Setup (Pinned Harness)
+
+HELIOS uses a **strictly pinned** version of the OpenTelemetry Demo as the execution environment. This ensures full reproducibility of all telemetry snapshots and ablation experiments.
+
+#### Quick Setup
+
+```bash
+# 1. Clone / reset to exact pinned version
+./bin/pin-otel-demo.sh
+
+# 2. Verify
+cd external/otel-demo-pinned
+git tag --points-at HEAD          # Should show: 2.2.0
+cat ../otel-demo-commit.txt
+```
+
+See [`external/README.md`](external/README.md) for full pinning and reproducibility details.
+
 ### FAQ
 
 **Q: Can someone who downloads the repo add fake deviation entries?**

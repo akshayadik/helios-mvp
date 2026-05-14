@@ -1,8 +1,8 @@
 # HELIOS Ablation Architecture — Living ADR
 
-**Document Version:** v0.2
-**Date:** 2026-05-13
-**Status:** §1 frozen at Stage 0. §2 schemas frozen at Stage 0 (builder sub-sections remain stubs until Stage 3). §3–§6 stubs.
+**Document Version:** v0.3
+**Date:** 2026-05-14
+**Status:** §1 frozen at Stage 0. §2 schemas frozen at Stage 0 (builder sub-sections remain stubs until Stage 3). §3.0 frozen at Stage 0 (registry + stubs). §3.1–§3.3 stubs. §4–§6 stubs.
 **Canonical Reference:** `docs/memos/spine_freeze_memo_v0.md`
 **Update Cadence:** After every pipeline-stage change.
 
@@ -206,11 +206,103 @@ Path fields are `None` when a stream is not captured in the current environment 
 
 ---
 
-## 3. Peer Pipelines (D-pipe, G-pipe, L-pipe)   [STUB — Stages 2–5]
+## 3. Peer Pipelines (D-pipe, G-pipe, L-pipe)   [§3.0 FROZEN — Stage 0 | §3.1–§3.3 STUB — Stages 1–5]
 
-> **Not yet implemented.** This section will be written and frozen incrementally: Stage 2 (D-pipe), Stage 4 (G-pipe), Stage 5 (L-pipe).
-> No implementation claims may be added before the respective gate passes.
-> Cross-reference: `spine_freeze_memo_v0.md` (canonical) + `docs/tracking/hypothesis_variant_metric_mapping.md`.
+### 3.0 Stage 0 Pipeline Foundation   [FROZEN — Stage 0]
+
+Stage 0 establishes two gate-level artefacts that pipeline stages 1–5 will consume without modification:
+the **SnapshotRegistry** (L2 analysis identity gate) and **gated null stubs** for G-pipe and L-pipe.
+D-pipe has no stub; it is the first non-trivial implementation target (Stage 1).
+
+#### Ingest-to-Analysis Flow (as of Stage 0)
+
+```
+L0  CaptureReader       helios/telemetry/reader.py
+      │  TelemetryWindow Parquets (5 recordings, schema-validated)
+      │
+      ▼  [D-pipe gap — Stage 1]
+      ·  Statistical anomaly detection → UEGCSnapshot construction (not yet built)
+      │
+      ▼
+L2  SnapshotRegistry    helios/vcl/snapshot_registry.py
+      │  Content-addressable JSONL; snapshot_hash must be registered before any pipeline run
+      │
+      ▼
+    Pipeline dispatch   helios/pipelines/{g,l}_pipe/stub.py
+      │  G-pipe (Stage 4) + L-pipe (Stage 5) — gated null stubs at Stage 0
+```
+
+`CaptureReader` guards **L0 data integrity** (telemetry recording hash round-trip).
+`SnapshotRegistry` guards **L2 analysis integrity** (UEGCSnapshot identity before pipeline invocation).
+These are complementary layers; the Stage 1 D-pipe bridges the gap between them.
+
+#### SnapshotRegistry (`helios/vcl/snapshot_registry.py`)   [FROZEN — Stage 0]
+
+Content-addressable, append-only JSONL mapping `snapshot_hash → (variant_config_hash, registered_at)`.
+SHA-256 identity is proved by hash content — no HMAC chain (unlike the deviation log).
+
+| Method | Behaviour |
+|---|---|
+| `register(snapshot_hash, variant_config_hash)` | Appends entry; raises `DuplicateSnapshotError` if hash already registered |
+| `contains(snapshot_hash)` | O(n) scan; returns `True` if hash present |
+| `all_hashes()` | Returns all hashes in insertion order |
+| `verify()` | Raises `DuplicateSnapshotError` on any duplicate — called at pipeline entry |
+
+Both `snapshot_hash` and `variant_config_hash` must be 64-character lowercase hex; `_validate_hex64`
+enforces this at `register()` time, preventing malformed entries from contaminating the registry.
+
+The registry is a **pre-condition gate** for all three peer pipelines: every `run_{d,g,l}pipe` call must
+pass a `snapshot_hash` that `SnapshotRegistry.contains()` returns `True` for. This enforcement is
+wired in the Stage 1 metric integrity gate (not yet implemented); the Stage 0 E2E smoke test
+exercises the registry in isolation via direct `register()` + `verify()` calls.
+
+#### Pipeline Null Stubs   [FROZEN — Stage 0]
+
+G-pipe and L-pipe are implemented as gated null stubs. Each stub:
+- Is decorated with `@gated_by(VCLFlag.X)` — raises `GatedComponentInactiveError` when invoked
+  with the controlling flag inactive (e.g., in `HELIOS-noLLM`, `lpipe=False` blocks `run_lpipe`)
+- Returns a sentinel `PipelineVerdict`-shaped dict (empty `ranked_candidates`, narrative `"stub"`)
+  when the flag is active — preserving the E2E smoke contract without real computation
+- Records `variant_config_hash` from the active `VCLManifest` via `get_current_manifest()`
+
+| Stub | Path | Gated by | Implemented at |
+|---|---|---|---|
+| `run_gpipe` | `helios/pipelines/g_pipe/stub.py` | `VCLFlag.L2B_GRAPH` | Stage 4 |
+| `run_lpipe` | `helios/pipelines/l_pipe/stub.py` | `VCLFlag.L2C_LLM` | Stage 5 |
+
+D-pipe (`dpipe` flag) has no stub. It is the first non-trivial pipeline (Stage 1): statistical anomaly
+detection on `TelemetryWindow` Parquets → `UEGCSnapshot` hash computation → `SnapshotRegistry.register()`.
+Until Stage 1, D-pipe runs are simulated in the E2E smoke test via a synthetic snapshot fixture.
+
+*Traceability: EG4 smoke test (`tests/test_e2e_smoke.py`) validates the full Stage 0 flow — manifest set,
+synthetic snapshot registered, both stubs invoked, `PipelineVerdict` row inserted into DuckDB result store.*
+
+---
+
+### 3.1 D-pipe — Statistical Anomaly Detection   [STUB — Stage 1]
+
+> **Not yet implemented.** D-pipe will be written and frozen at the Stage 1 gate.
+> Responsibility: ingest `TelemetryWindow` Parquets → detect anomalies → produce `UEGCSnapshot` →
+> register `snapshot_hash` in `SnapshotRegistry`. This bridges the L0→L2 gap shown in §3.0.
+> Cross-reference: `spine_freeze_memo_v0.md` + `docs/tracking/hypothesis_variant_metric_mapping.md` (A-H3).
+
+---
+
+### 3.2 G-pipe — Graph Causal Inference   [STUB — Stage 4]
+
+> **Not yet implemented.** G-pipe will be written and frozen at the Stage 4 gate.
+> Responsibility: consume registered `UEGCSnapshot` → graph-based causal ranking → `PipelineVerdict`.
+> Gated by `VCLFlag.L2B_GRAPH`; ablation variant `HELIOS-noGraph` disables this path.
+> Cross-reference: `spine_freeze_memo_v0.md` + `docs/tracking/hypothesis_variant_metric_mapping.md` (A-H6).
+
+---
+
+### 3.3 L-pipe — LLM Explanation   [STUB — Stage 5]
+
+> **Not yet implemented.** L-pipe will be written and frozen at the Stage 5 gate.
+> Responsibility: consume `PipelineVerdict` from D/G-pipe → generate Chain of Explanation (CoE) narrative.
+> Gated by `VCLFlag.L2C_LLM`; ablation variant `HELIOS-noLLM` disables this path.
+> Cross-reference: `spine_freeze_memo_v0.md` + `docs/tracking/hypothesis_variant_metric_mapping.md` (A-H1).
 
 ---
 
@@ -241,3 +333,4 @@ Path fields are `None` when a stream is not captured in the current environment 
 **Document History**
 - v0.1 (2026-05-12): §1 (VCL/C1) written and frozen at Stage 0. §2–§6 stubs added.
 - v0.2 (2026-05-13): §2.1–§2.4 schema tables written and frozen (schema-draft-v0.1). Builder stubs remain.
+- v0.3 (2026-05-14): §3.0 written and frozen (Stage 0). SnapshotRegistry, G/L-pipe stubs, ingest-to-analysis flow. §3.1–§3.3 sub-stubs added for D/G/L-pipe.

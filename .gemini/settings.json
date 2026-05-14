@@ -1,0 +1,22 @@
+{
+  "context": {
+    "fileName": [
+      ".claude/docs/pdf/research_proposal_akshayadik.pdf",
+      ".claude/docs/pdf/project_plan.md"
+    ]
+  },
+  "hooks": {
+    "AfterTool": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "name": "helios-verify-and-log",
+            "type": "command",
+            "command": "$GEMINI_PROJECT_DIR/.gemini/hooks/post_tool.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
