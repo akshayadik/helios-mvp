@@ -60,3 +60,17 @@ class TestCorpusLoaderErrors:
         loader = CorpusLoader(f)
         with pytest.raises(ValueError, match="directory or a .json file"):
             list(loader.incident_ids())
+
+    def test_non_list_incidents_raises(self, tmp_path: Path) -> None:
+        manifest = tmp_path / "corpus.json"
+        manifest.write_text(json.dumps({"incidents": "not-a-list"}))
+        loader = CorpusLoader(manifest)
+        with pytest.raises(ValueError, match="must be a list"):
+            list(loader.incident_ids())
+
+    def test_non_string_incident_raises(self, tmp_path: Path) -> None:
+        manifest = tmp_path / "corpus.json"
+        manifest.write_text(json.dumps({"incidents": [1, 2, 3]}))
+        loader = CorpusLoader(manifest)
+        with pytest.raises(ValueError, match="must be strings"):
+            list(loader.incident_ids())

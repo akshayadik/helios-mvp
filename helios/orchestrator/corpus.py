@@ -50,4 +50,14 @@ class CorpusLoader:
             raise ValueError(
                 f"Corpus JSON must have an 'incidents' key: {self._corpus}"
             )
-        yield from data["incidents"]  # type: ignore[misc]
+        incidents = data["incidents"]
+        if not isinstance(incidents, list):
+            raise ValueError(
+                f"'incidents' must be a list, got {type(incidents).__name__}: {self._corpus}"
+            )
+        for item in incidents:
+            if not isinstance(item, str):
+                raise ValueError(
+                    f"All incidents must be strings, got {type(item).__name__}: {item!r}"
+                )
+            yield item
