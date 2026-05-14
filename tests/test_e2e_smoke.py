@@ -164,3 +164,54 @@ def test_snapshot_registry_integration(
 def test_vcl_flag_accessible() -> None:
     assert VCLFlag.L2B_GRAPH in VCLFlag.bool_flags()
     assert VCLFlag.L2C_LLM in VCLFlag.bool_flags()
+
+
+def test_orchestrator_e2e_three_pipeline_dispatch(tmp_path: Path) -> None:
+    """Full C1 path: capture → registry → 3 stubs → gate → 3 result_rows inserted."""
+    import datetime as dt
+    import json
+    from unittest.mock import MagicMock
+
+    from helios.integrity_gate import AppendOnlyLedger
+    from helios.orchestrator.runner import RunOrchestrator
+    from helios.schemas.telemetry import EvaluationPhase, TelemetryWindow
+    from helios.store.result_store import ResultStore
+    from helios.vcl import get_variant, set_current_manifest
+
+    captures = tmp_path / "captures"
+    inc_dir = captures / "smoke-001"
+    inc_dir.mkdir(parents=True)
+    window = TelemetryWindow(
+        incident_id="smoke-001",
+        variant_config_hash="a" * 64,
+        window_start_iso=dt.datetime(2026, 1, 1, tzinfo=dt.UTC).isoformat(),
+        window_end_iso=dt.datetime(2026, 1, 1, 0, 5, tzinfo=dt.UTC).isoformat(),
+        evaluation_phase=EvaluationPhase.EXPLORATORY,
+        p1_metrics_path=None,
+        p2_traces_path=None,
+        p3_logs_path=None,
+    )
+    mdata = window.model_dump()
+    mdata["window_hash"] = window.compute_window_hash()
+    (inc_dir / "manifest.json").write_text(json.dumps(mdata, default=str))
+
+    vcl = get_variant("HELIOS-Full")
+    set_current_manifest(vcl)
+    key = b"test-secret-at-least-32-chars-long!!"
+
+    orch = RunOrchestrator(
+        manifest=vcl,
+        captures_dir=captures,
+        db_path=tmp_path / "results.duckdb",
+        registry_path=tmp_path / "registry.jsonl",
+        reconciliation_path=tmp_path / "reconciliation.jsonl",
+        exclusion_ledger=MagicMock(spec=AppendOnlyLedger),
+        hmac_key=key,
+    )
+    orch.run(captures)
+
+    store = ResultStore(tmp_path / "results.duckdb")
+    rows = store._con.execute(
+        "SELECT pipeline FROM result_row WHERE incident_id='smoke-001'"
+    ).fetchall()
+    assert {r[0] for r in rows} == {"dpipe", "gpipe", "lpipe"}
