@@ -59,7 +59,7 @@ PLANNED → IN_PROGRESS → DONE  (terminal)
 - **EG3**: Schema stability round-trip — identical SHA-256 across canonical → parse → re-canonical.
 - **EG4**: E2E smoke test — DuckDB result row inserted, evaluation_phase='exploratory'.
 - **EG5**: Deviation log ≥1 signed entry — minimum 3 entries by Friday EOD.
-- **EG6**: Spine memo + ablation arch + OSF v0.8 complete — three docs committed.
+- **EG6**: Spine memo + ablation arch + OSF protocol complete — three docs committed.
 
 ---
 
@@ -112,13 +112,13 @@ PLANNED → IN_PROGRESS → DONE  (terminal)
 
 | Task_ID | Day | Type | Description | Prop_§ | DSR | Contrib | Own | Deps | Status | Started | Done | SHA | Ev_Type | Ev_Ref | Gate | Dev_Ref | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| S0-D4-ENG01 | 4 | ENG | Clone OTEL Demo at fixed Git tag; record tag+SHA in dev log | §3.7 | Demonstrate | infra | AA | - | PLANNED | - | - | - | LEDGER_ENTRY | deviation_log:NNN | EG2 | - | Tag selection is binding |
-| S0-D4-ENG02 | 4 | ENG | docker compose up -d; verify all services healthy | §3.7 | Demonstrate | infra | AA | S0-D4-ENG01 | PLANNED | - | - | - | ARTEFACT_HASH | docker-compose.yml | EG2 | - | docker compose ps green |
-| S0-D4-ENG03 | 4 | ENG | Identify fault-injection mechanism (featureflagservice) | §3.7 | Demonstrate | infra | AA | S0-D4-ENG02 | PLANNED | - | - | - | DOC | docs/fault_catalogue_v0.md | EG2 | - | Document toggle path |
-| S0-D4-ENG04 | 4 | ENG | telemetry/otel_demo_capture.py: 5min window → Parquet | §3.7 | Design | infra | AA | S0-D3-ENG03 | PLANNED | - | - | - | TEST | tests/test_capture.py::test_window | - | - | Schema-enforced, not inferred |
-| S0-D4-ENG05 | 4 | ENG | Capture 5 Parquet recordings, ≥3 fault classes | §3.7 | Demonstrate | infra | AA | S0-D4-ENG04 | PLANNED | - | - | - | ARTEFACT_HASH | data/captures/*.parquet | EG2 | - | productCatalog/recommendation/cart |
-| S0-D4-ENG06 | 4 | ENG | telemetry/parquet_reader.py: read + validate against schema | §3.7 | Design | infra | AA | S0-D4-ENG04 | PLANNED | - | - | - | TEST | tests/test_capture.py::test_validate | EG2 | - | In telemetry/ not schemas/ |
-| S0-D4-EVAL01 | 4 | EVAL | Verify 5 Parquets: schema-valid, non-empty, fault-active | §3.7 | Evaluate | infra | AA | S0-D4-ENG05 | PLANNED | - | - | - | DOC | docs/fault_catalogue_v0.md | EG2 | - | SHA-256 per file recorded |
+| S0-D4-ENG01 | 4 | ENG | Clone OTEL Demo at fixed Git tag; record tag+SHA in dev log | §3.7 | Demonstrate | infra | AA | - | IN_PROGRESS | 2026-05-14 | - | - | LEDGER_ENTRY | deviation_log:NNN | EG2 | - | Tag=2.2.0 SHA=b74a7bc pinned in external/; awaiting commit |
+| S0-D4-ENG02 | 4 | ENG | docker compose up -d; verify all services healthy | §3.7 | Demonstrate | infra | AA | S0-D4-ENG01 | IN_PROGRESS | 2026-05-14 | - | - | ARTEFACT_HASH | docker-compose.yml | EG2 | - | Evidenced by 5 successful captures; awaiting commit |
+| S0-D4-ENG03 | 4 | ENG | Identify fault-injection mechanism (featureflagservice) | §3.7 | Demonstrate | infra | AA | S0-D4-ENG02 | IN_PROGRESS | 2026-05-14 | - | - | DOC | docs/fault_catalogue_v0.md | EG2 | - | fault_catalogue_v0.md written with 5 incidents + naming convention; awaiting commit |
+| S0-D4-ENG04 | 4 | ENG | telemetry/otel_demo_capture.py: 5min window → Parquet | §3.7 | Design | infra | AA | S0-D3-ENG03 | IN_PROGRESS | 2026-05-14 | - | - | TEST | tests/test_capture.py::test_window | - | - | 25 tests green; helios/telemetry/otel_demo_capture.py implemented; awaiting commit |
+| S0-D4-ENG05 | 4 | ENG | Capture 5 Parquet recordings, ≥3 fault classes | §3.7 | Demonstrate | infra | AA | S0-D4-ENG04 | IN_PROGRESS | 2026-05-14 | - | - | ARTEFACT_HASH | data/captures/*.parquet | EG2 | - | 5 directories recorded: adhc/cart/imgsl/pcat/rcf; awaiting commit |
+| S0-D4-ENG06 | 4 | ENG | telemetry/parquet_reader.py: read + validate against schema | §3.7 | Design | infra | AA | S0-D4-ENG04 | IN_PROGRESS | 2026-05-14 | - | - | TEST | tests/test_capture.py::test_validate | EG2 | - | helios/telemetry/reader.py; 8 reader tests green; bin/verify_captures.py added; awaiting commit |
+| S0-D4-EVAL01 | 4 | EVAL | Verify 5 Parquets: schema-valid, non-empty, fault-active | §3.7 | Evaluate | infra | AA | S0-D4-ENG05 | IN_PROGRESS | 2026-05-14 | - | - | DOC | data/captures/data-capture-steps.md | EG2 | - | verify_captures.py all-OK; hash round-trip confirmed; awaiting D4 code commit |
 
 ---
 
@@ -130,14 +130,14 @@ PLANNED → IN_PROGRESS → DONE  (terminal)
 | S0-D5-ENG02 | 5 | ENG | pipelines/{g,l}_pipe/stub.py: gated null stubs | §3.6.7 | Design | infra | AA | S0-D1-ENG05 | DONE | 2026-05-13 | 2026-05-13 | f628102 | TEST | tests/test_pipelines.py::test_gated | - | - | 7 tests; g_pipe + l_pipe stubs |
 | S0-D5-ENG03 | 5 | ENG | store/result_store.py: DuckDB insert + inclusion-rate helper | §3.7 | Design | infra | AA | S0-D3-ENG05 | DONE | 2026-05-13 | 2026-05-13 | f628102 | TEST | tests/test_result_store.py | EG4 | - | 11 tests; DuckDB insert + inclusion_rate() |
 | S0-D5-ENG04 | 5 | ENG | tests/test_e2e_smoke.py: full pipeline (Parquet → DuckDB row) | §6.1-§6.4 | Evaluate | C1 | AA | S0-D5-ENG01,S0-D5-ENG03 | DONE | 2026-05-13 | 2026-05-13 | f628102 | TEST | tests/test_e2e_smoke.py::test_full_pipeline_exploratory_row_inserted | EG4 | - | 4 tests; EG4 binding integration test |
-| S0-D5-RES01 | 5 | RES | ablation_architecture.md §3 (snapshot registry, stubs, flow) | §6.2 | Communicate | C1 | AA | S0-D5-ENG01 | PLANNED | - | - | - | DOC | docs/ablation_architecture.md | EG6 | - | Final completion of doc |
-| S0-D5-RES02 | 5 | RES | osf_protocol_v0.8.md: full structure populated | §3 (all) | Communicate | methodology | AA | S0-D2-RES01 | PLANNED | - | - | - | DOC | docs/osf_protocol_v0.8.md | EG6 | - | Mark deferred sections [STAGE-N] |
-| S0-D5-GATE01 | 5 | GATE | EG1: VCL hash-consistency check (100%) | §6.1 | Evaluate | C1 | AA | S0-D2-ENG05 | PLANNED | - | - | - | TEST | pytest -k test_vcl | EG1 | - | 3 mutations + 1 valid manifest |
-| S0-D5-GATE02 | 5 | GATE | EG2: 5 Parquet recordings valid | §3.7 | Evaluate | infra | AA | S0-D4-EVAL01 | PLANNED | - | - | - | DOC | docs/fault_catalogue_v0.md | EG2 | - | SHA-256s recorded |
-| S0-D5-GATE03 | 5 | GATE | EG3: Schema stability round-trip GREEN | §6.2 | Evaluate | C1 | AA | S0-D3-ENG04 | PLANNED | - | - | - | TEST | pytest tests/test_schema_stability.py | EG3 | - | Identical SHA-256 |
-| S0-D5-GATE04 | 5 | GATE | EG4: E2E smoke result row in DuckDB | §6.1-§6.4 | Evaluate | C1 | AA | S0-D5-ENG04 | PLANNED | - | - | - | TEST | tests/test_e2e_smoke.py | EG4 | - | evaluation_phase=exploratory |
-| S0-D5-GATE05 | 5 | GATE | EG5: Deviation log ≥1 signed entry (target 3+) | §B.12 | Evaluate | C1 | AA | S0-D2-EVAL01 | PLANNED | - | - | - | LEDGER_ENTRY | deviation_log.jsonl | EG5 | - | Genesis + HMAC + tag entries |
-| S0-D5-GATE06 | 5 | GATE | EG6: Spine memo + ablation arch + OSF v0.8 committed | §6.1 | Evaluate | methodology | AA | S0-D5-RES02 | PLANNED | - | - | - | DOC | docs/*.md (3 files) | EG6 | - | All three docs in main |
+| S0-D5-RES01 | 5 | RES | ablation_architecture.md §3 (snapshot registry, stubs, flow) | §6.2 | Communicate | C1 | AA | S0-D5-ENG01 | IN_PROGRESS | 2026-05-14 | - | - | DOC | docs/tracking/ablation_architecture.md | EG6 | - | §3.0 written (frozen); §3.1-3.3 sub-stubs added; v0.3 |
+| S0-D5-RES02 | 5 | RES | osf_protocol_v0.8.md: full structure populated | §3 (all) | Communicate | methodology | AA | S0-D2-RES01 | IN_PROGRESS | 2026-05-14 | - | - | DOC | docs/osf_protocol_v0.md | EG6 | - | D2-RES01 delivered full structure ahead of schedule; v0.md has all 7 sections + deferred stubs marked [STAGE-N]; v0.8 naming was a planning artifact |
+| S0-D5-GATE01 | 5 | GATE | EG1: VCL hash-consistency check (100%) | §6.1 | Evaluate | C1 | AA | S0-D2-ENG05 | IN_PROGRESS | 2026-05-14 | - | - | TEST | pytest -k test_vcl | EG1 | - | 3 mutations + 1 valid manifest |
+| S0-D5-GATE02 | 5 | GATE | EG2: 5 Parquet recordings valid | §3.7 | Evaluate | infra | AA | S0-D4-EVAL01 | IN_PROGRESS | 2026-05-14 | - | - | DOC | docs/fault_catalogue_v0.md | EG2 | - | Recordings done; blocked on D4 code commit for SHA |
+| S0-D5-GATE03 | 5 | GATE | EG3: Schema stability round-trip GREEN | §6.2 | Evaluate | C1 | AA | S0-D3-ENG04 | IN_PROGRESS | 2026-05-14 | - | - | TEST | pytest tests/test_schema_stability.py | EG3 | - | Identical SHA-256 |
+| S0-D5-GATE04 | 5 | GATE | EG4: E2E smoke result row in DuckDB | §6.1-§6.4 | Evaluate | C1 | AA | S0-D5-ENG04 | IN_PROGRESS | 2026-05-14 | - | - | TEST | tests/test_e2e_smoke.py | EG4 | - | evaluation_phase=exploratory |
+| S0-D5-GATE05 | 5 | GATE | EG5: Deviation log ≥1 signed entry (target 3+) | §B.12 | Evaluate | C1 | AA | S0-D2-EVAL01 | IN_PROGRESS | 2026-05-14 | - | - | LEDGER_ENTRY | deviation_log.jsonl | EG5 | - | Genesis + HMAC + tag entries |
+| S0-D5-GATE06 | 5 | GATE | EG6: Spine memo + ablation arch + OSF v0.8 committed | §6.1 | Evaluate | methodology | AA | S0-D5-RES02 | PLANNED | - | - | - | DOC | docs/*.md (3 files) | EG6 | - | Blocked: osf_protocol_v0.8.md missing; ablation_architecture.md §3 is a stub |
 | S0-D5-EVAL01 | 5 | EVAL | Stage 0 W1 exit gate sign-off entry | §B.12 | Evaluate | C1 | AA | S0-D5-GATE01..06 | PLANNED | - | - | - | LEDGER_ENTRY | deviation_log:NNN | EG5 | - | PASS or CARRY_OVER decision |
 
 ---
