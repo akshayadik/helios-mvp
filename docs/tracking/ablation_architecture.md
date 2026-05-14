@@ -1,8 +1,8 @@
 # HELIOS Ablation Architecture — Living ADR
 
-**Document Version:** v0.3
+**Document Version:** v0.4
 **Date:** 2026-05-14
-**Status:** §1 frozen at Stage 0. §2 schemas frozen at Stage 0 (builder sub-sections remain stubs until Stage 3). §3.0 frozen at Stage 0 (registry + stubs). §3.1–§3.3 stubs. §4–§6 stubs.
+**Status:** §1 frozen at Stage 0. §2 schemas frozen at Stage 0 (builder sub-sections remain stubs until Stage 3). §3.0 frozen at Stage 0 (registry + stubs). §3.1–§3.3 stubs. §4 frozen at Milestone 1. §5–§7 stubs.
 **Canonical Reference:** `docs/memos/spine_freeze_memo_v0.md`
 **Update Cadence:** After every pipeline-stage change.
 
@@ -97,10 +97,10 @@ def run_lpipe(...):
 
 ### 1.6 Integration Points
 
-- **Orchestrator** *(Stage 1+)*: `variant = get_variant(name); set_current_manifest(variant)` — not yet implemented.
+- **Orchestrator** *(Milestone 1)*: `variant = get_variant(name); set_current_manifest(variant)` — `RunOrchestrator` in `helios/orchestrator/runner.py` (see §4).
 - **Telemetry & Pipelines**: Every consumer calls `get_current_manifest()` and records consumed `snapshot_hash`.
-- **Metric Integrity Gate** *(Stage 1+)*: Verifies matching `variant_config_hash` + `snapshot_hash` across all active pipelines.
-- **Disjointness Audit** *(Stage 7)*: Static (CI) + dynamic (`coverage.py` ON/OFF diffs) — both driven by decorator registration.
+- **Metric Integrity Gate** *(Milestone 1)*: Verifies matching `variant_config_hash` + `snapshot_hash` across all active pipelines.
+- **Disjointness Audit** *(Milestone 1)*: Static (CI) + dynamic (`coverage.py` ON/OFF diffs) — both driven by decorator registration (see §4, §7).
 
 ---
 
@@ -306,7 +306,47 @@ synthetic snapshot registered, both stubs invoked, `PipelineVerdict` row inserte
 
 ---
 
-## 4. Consensus & Routing Layer   [STUB — Stage 6]
+## 4. Orchestration & C1 Enforcement   [FROZEN — Milestone 1]
+
+### 4.0 Orchestrator Flow
+
+`helios run` (`bin/helios_run.py`) is the single entry point for corpus runs.
+It wires the following C1 path for each incident:
+
+```
+CorpusLoader → CaptureReader (L0 hash verify) → SnapshotRegistry (L2 register)
+  → run_dpipe + run_gpipe + run_lpipe (three-pipeline dispatch)
+  → MetricIntegrityGate.check_consistency()
+  → ResultStore.insert() ×3 (PASS) / ExclusionLedger.append() (FAIL)
+  → ReconciliationLedger.record(outcome)
+```
+
+### 4.1 C1 Sub-artefact Status (Milestone 1)
+
+| Sub-artefact | Module | Stage frozen |
+|---|---|---|
+| VCL (variant control layer) | `helios/vcl/` | Stage 0 |
+| Deviation log (HMAC-chained) | `bin/log_deviation.py` | Stage 0 |
+| SnapshotRegistry (L2 guard) | `helios/vcl/snapshot_registry.py` | Stage 0 |
+| MetricIntegrityGate | `helios/integrity_gate.py` | Milestone 1 |
+| ExclusionLedger | `bin/log_exclusion.py` | Milestone 1 |
+| ReconciliationLedger | `helios/orchestrator/ledger.py` | Milestone 1 |
+| DisjointnessAuditor | `helios/vcl/disjointness.py` | Milestone 1 |
+
+### 4.2 Schema Freeze (Milestone 1)
+
+All three schemas tagged `schema-draft-v0.1`. CI round-trip enforcement:
+`tests/test_schema_roundtrip.py` serializes → deserializes → hash-compares
+all three schemas on every push. Any field addition breaks the test.
+
+- `TelemetryWindow` — L0 window with `compute_window_hash()`
+- `UEGCSnapshot` — L1/L2 graph snapshot with `compute_snapshot_hash()`;
+  `UEGCEdge.edge_class` is a computed field auto-derived from `edge_type` (semantic layer)
+- `PipelineVerdict` — L2/L3 result row with `compute_verdict_hash()`
+
+---
+
+## 5. Consensus & Routing Layer   [STUB — Stage 6]
 
 > **Not yet implemented.** This section will be written and frozen at the Stage 6 gate.
 > No implementation claims may be added before that gate passes.
@@ -314,7 +354,7 @@ synthetic snapshot registered, both stubs invoked, `PipelineVerdict` row inserte
 
 ---
 
-## 5. Snapshot Gating, Metric Integrity Gate & Evaluation Plane   [STUB — Stage 1 & 6]
+## 6. Snapshot Gating, Metric Integrity Gate & Evaluation Plane   [STUB — Stage 1 & 6]
 
 > **Not yet implemented.** Snapshot gating scaffolding is targeted for Stage 1; full evaluation plane at Stage 6.
 > No implementation claims may be added before the respective gate passes.
@@ -322,7 +362,7 @@ synthetic snapshot registered, both stubs invoked, `PipelineVerdict` row inserte
 
 ---
 
-## 6. Schema Evolution, Disjointness Audit & C1 Evidence   [STUB — Stage 7]
+## 7. Schema Evolution, Disjointness Audit & C1 Evidence   [STUB — Stage 7]
 
 > **Not yet implemented.** This section will be written and frozen at the Stage 7 gate, consolidating the full C1 audit trail.
 > No implementation claims may be added before that gate passes.
@@ -334,3 +374,4 @@ synthetic snapshot registered, both stubs invoked, `PipelineVerdict` row inserte
 - v0.1 (2026-05-12): §1 (VCL/C1) written and frozen at Stage 0. §2–§6 stubs added.
 - v0.2 (2026-05-13): §2.1–§2.4 schema tables written and frozen (schema-draft-v0.1). Builder stubs remain.
 - v0.3 (2026-05-14): §3.0 written and frozen (Stage 0). SnapshotRegistry, G/L-pipe stubs, ingest-to-analysis flow. §3.1–§3.3 sub-stubs added for D/G/L-pipe.
+- v0.4 (2026-05-14): §4 written and frozen (Milestone 1). Orchestration flow, C1 sub-artefact status table, schema freeze summary. Old §4–§6 renumbered to §5–§7. §1.6 integration points updated.
