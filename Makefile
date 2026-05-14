@@ -15,3 +15,8 @@ install-hooks:
 	@pre-commit install
 	@echo "Pre-commit hooks installed. The tracking validator will run on every commit"
 	@echo "that touches docs/tracking/helios_mvp_tracking.md."
+
+setup-gemini:
+	@echo "Configuring Gemini for HELIOS Stage 0..."
+	@poetry run python -m pip install -U google-generativeai
+	@echo "Gemini SDK installed. Ensure GEMINI_API_KEY is in .env."

@@ -1,0 +1,14 @@
+{
+  "incident_id": "s0-pcat-001",
+  "variant_config_hash": "20ab0977d268d0441364f39380cd62b5de94d030a0a70f3c68ec04eaa27db472",
+  "window_start_iso": "2026-05-14T09:41:44.739839+00:00",
+  "window_end_iso": "2026-05-14T09:46:44.739839+00:00",
+  "evaluation_phase": "exploratory",
+  "p1_metrics_path": "data/captures/s0-pcat-001/p1_metrics.parquet",
+  "p2_traces_path": "data/captures/s0-pcat-001/p2_traces.parquet",
+  "p3_logs_path": "data/captures/s0-pcat-001/p3_logs.parquet",
+  "p4_events_path": null,
+  "p5_profiles_path": null,
+  "schema_version": "schema-draft-v0.1",
+  "window_hash": "6b7125a19dcd75cfe4c390af9ffac909352b36677286322352b6edc66acd9757"
+}
