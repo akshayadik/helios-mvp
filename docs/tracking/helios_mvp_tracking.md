@@ -137,8 +137,8 @@ PLANNED → IN_PROGRESS → DONE  (terminal)
 | S0-D5-GATE03 | 5 | GATE | EG3: Schema stability round-trip GREEN | §6.2 | Evaluate | C1 | AA | S0-D3-ENG04 | DONE | 2026-05-14 | 2026-05-14 | 4dd4f1e | TEST | pytest tests/test_schema_stability.py | EG3 | - | 41 tests; identical SHA-256 round-trip |
 | S0-D5-GATE04 | 5 | GATE | EG4: E2E smoke result row in DuckDB | §6.1-§6.4 | Evaluate | C1 | AA | S0-D5-ENG04 | DONE | 2026-05-14 | 2026-05-14 | f628102 | TEST | tests/test_e2e_smoke.py | EG4 | - | 4 tests; evaluation_phase=exploratory; DuckDB row inserted |
 | S0-D5-GATE05 | 5 | GATE | EG5: Deviation log ≥1 signed entry (target 3+) | §B.12 | Evaluate | C1 | AA | S0-D2-EVAL01 | DONE | 2026-05-14 | 2026-05-14 | 325bf28 | LEDGER_ENTRY | deviation_log.jsonl | EG5 | - | 4 entries; HMAC chain verified |
-| S0-D5-GATE06 | 5 | GATE | EG6: Spine memo + ablation arch + OSF v0.8 committed | §6.1 | Evaluate | methodology | AA | S0-D5-RES02 | IN_PROGRESS | 2026-05-14 | - | - | DOC | docs/*.md (3 files) | EG6 | - | All 3 docs committed (osf_protocol_v0.md satisfies EG6; v0.8 was planning artifact); pending EVAL01 sign-off |
-| S0-D5-EVAL01 | 5 | EVAL | Stage 0 W1 exit gate sign-off entry | §B.12 | Evaluate | C1 | AA | S0-D5-GATE01..06 | IN_PROGRESS | 2026-05-14 | - | - | LEDGER_ENTRY | deviation_log:NNN | EG5 | - | EG1-5 DONE; pending sign-off deviation log entry |
+| S0-D5-GATE06 | 5 | GATE | EG6: Spine memo + ablation arch + OSF v0.8 committed | §6.1 | Evaluate | methodology | AA | S0-D5-RES02 | DONE | 2026-05-14 | 2026-05-14 | cbf6e18 | DOC | docs/*.md (3 files) | EG6 | - | spine_memo=e493e9a, osf_protocol=19d04aa, ablation_arch=cbf6e18; all 3 committed |
+| S0-D5-EVAL01 | 5 | EVAL | Stage 0 W1 exit gate sign-off entry | §B.12 | Evaluate | C1 | AA | S0-D5-GATE01..06 | DONE | 2026-05-14 | 2026-05-14 | 43c3115 | LEDGER_ENTRY | deviation_log:a64c18b7f0b94745 | EG5 | - | EG1-6 all DONE; exit sign-off deviation_id=a64c18b7f0b94745 |
 
 ---
 
