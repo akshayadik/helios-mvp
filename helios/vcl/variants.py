@@ -1,8 +1,12 @@
-"""Confirmatory ablation variants from Table 12 (§3.6.7).
+"""Ablation variants for confirmatory and exploratory evaluation phases.
 
 Maps variant names to fixed VCLManifest instances — version-controlled so
 any change to a variant definition is visible in git diff and requires a
-deviation log entry if it has analytic consequence.
+deviation log entry if it has analytic consequence (§3.6.7).
+
+CONFIRMATORY_VARIANTS: 8 pre-registered variants for the 16k-run ablation.
+EXPLORATORY_VARIANTS:  7 variants for OTEL Demo exploratory runs (OSF §3.2);
+                       excluded from confirmatory analysis by evaluation_phase.
 """
 
 from __future__ import annotations
@@ -143,10 +147,129 @@ CONFIRMATORY_VARIANTS: dict[str, VCLManifest] = {
 }
 
 
+EXPLORATORY_VARIANTS: dict[str, VCLManifest] = {
+    # Each variant is HELIOS-Full with exactly one flag changed, except
+    # HELIOS-noLLM-noGraph (compound) and HELIOS-live (ingest_mode change).
+    "HELIOS-noP4": VCLManifest.from_flags(
+        l2c_llm=True,
+        p4_cognitive=False,
+        mahc=True,
+        cbr=True,
+        l2b_graph=True,
+        acp=True,
+        reconcile=True,
+        ueg_c_structural=True,
+        dpipe=True,
+        dpipe_propagation=True,
+        gpipe=True,
+        lpipe=True,
+        router=True,
+        ingest_mode="recorded",
+    ),
+    "HELIOS-noMAHC": VCLManifest.from_flags(
+        l2c_llm=True,
+        p4_cognitive=True,
+        mahc=False,
+        cbr=True,
+        l2b_graph=True,
+        acp=True,
+        reconcile=True,
+        ueg_c_structural=True,
+        dpipe=True,
+        dpipe_propagation=True,
+        gpipe=True,
+        lpipe=True,
+        router=True,
+        ingest_mode="recorded",
+    ),
+    "HELIOS-noCBR": VCLManifest.from_flags(
+        l2c_llm=True,
+        p4_cognitive=True,
+        mahc=True,
+        cbr=False,
+        l2b_graph=True,
+        acp=True,
+        reconcile=True,
+        ueg_c_structural=True,
+        dpipe=True,
+        dpipe_propagation=True,
+        gpipe=True,
+        lpipe=True,
+        router=True,
+        ingest_mode="recorded",
+    ),
+    "HELIOS-noACP": VCLManifest.from_flags(
+        l2c_llm=True,
+        p4_cognitive=True,
+        mahc=True,
+        cbr=True,
+        l2b_graph=True,
+        acp=False,
+        reconcile=True,
+        ueg_c_structural=True,
+        dpipe=True,
+        dpipe_propagation=True,
+        gpipe=True,
+        lpipe=True,
+        router=True,
+        ingest_mode="recorded",
+    ),
+    "HELIOS-noReconcile": VCLManifest.from_flags(
+        l2c_llm=True,
+        p4_cognitive=True,
+        mahc=True,
+        cbr=True,
+        l2b_graph=True,
+        acp=True,
+        reconcile=False,
+        ueg_c_structural=True,
+        dpipe=True,
+        dpipe_propagation=True,
+        gpipe=True,
+        lpipe=True,
+        router=True,
+        ingest_mode="recorded",
+    ),
+    "HELIOS-live": VCLManifest.from_flags(
+        l2c_llm=True,
+        p4_cognitive=True,
+        mahc=True,
+        cbr=True,
+        l2b_graph=True,
+        acp=True,
+        reconcile=True,
+        ueg_c_structural=True,
+        dpipe=True,
+        dpipe_propagation=True,
+        gpipe=True,
+        lpipe=True,
+        router=True,
+        ingest_mode="live",
+    ),
+    "HELIOS-noLLM-noGraph": VCLManifest.from_flags(
+        l2c_llm=False,
+        p4_cognitive=True,
+        mahc=True,
+        cbr=True,
+        l2b_graph=False,
+        acp=True,
+        reconcile=True,
+        ueg_c_structural=True,
+        dpipe=True,
+        dpipe_propagation=True,
+        gpipe=False,
+        lpipe=False,
+        router=True,
+        ingest_mode="recorded",
+    ),
+}
+
+
 def get_variant(name: str) -> VCLManifest:
-    """Resolve a variant name to its fixed VCLManifest (used by orchestrator)."""
-    if name not in CONFIRMATORY_VARIANTS:
-        raise ValueError(
-            f"Unknown variant: {name!r}. " f"Available: {sorted(CONFIRMATORY_VARIANTS)}"
-        )
-    return CONFIRMATORY_VARIANTS[name]
+    """Resolve a variant name to its VCLManifest (confirmatory first, then exploratory)."""
+    if name in CONFIRMATORY_VARIANTS:
+        return CONFIRMATORY_VARIANTS[name]
+    if name in EXPLORATORY_VARIANTS:
+        return EXPLORATORY_VARIANTS[name]
+    all_names = sorted({*CONFIRMATORY_VARIANTS, *EXPLORATORY_VARIANTS})
+    raise ValueError(f"Unknown variant: {name!r}. Available: {all_names}")
