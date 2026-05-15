@@ -20,4 +20,4 @@ jobs:
         run: |
           poetry run coverage run --context=HELIOS-Full -m pytest tests/ -q
           poetry run coverage run --append --context=HELIOS-noGraph -m pytest tests/ -q
-          poetry run coverage report --show-contexts --include="helios/pipelines/*"
+          poetry run coverage report --contexts="HELIOS-Full|HELIOS-noGraph" --include="helios/pipelines/*"
