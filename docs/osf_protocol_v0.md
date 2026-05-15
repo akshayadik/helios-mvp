@@ -118,6 +118,28 @@ HELIOS target: HR@3 = 0.73 vs AIOpsLab-equivalent CHASE baseline: HR@3 = 0.60.
 | E-H9 | Seed stability (HR@3 variance across seeds) | Reproducibility |
 | E-H10 | Multi-fault exclusion sensitivity | Corpus |
 
+### 2.4 Corpus Inclusion/Exclusion Rules (Milestone 1)   [Milestone 1 extension]
+
+**Inclusion criteria (run must meet ALL):**
+- `evaluation_phase = exploratory` for Milestone 1 corpus (OTEL Demo environment)
+- `capture_hash_matches = True` — CaptureReader hash round-trip passes
+- `gate_result.status = PASS` — MetricIntegrityGate.check_consistency() passes for all three pipelines
+- `variant_config_hash` matches the active VCLManifest hash for the run
+
+**Exclusion criteria (any ONE triggers exclusion):**
+- `capture_hash_matches = False` → outcome = `skipped` (capture tampered or incomplete)
+- `variant_config_hash` mismatch across pipeline verdicts → outcome = `excluded`
+- `snapshot_hash` inconsistency across pipeline verdicts → outcome = `excluded`
+
+**Audit trail:** Every outcome is recorded in `reconciliation_ledger.jsonl` (HMAC-chained).
+Exclusions also appear in `exclusion_ledger.jsonl` with the specific `gate_check` that failed.
+
+**Corpus terminology:**
+- *Attempted*: CaptureReader.read() called; outcome not yet determined
+- *Passed*: all gate checks passed; 3 `result_row` inserts committed to DuckDB
+- *Excluded*: gate check failed; written to `exclusion_ledger.jsonl`
+- *Skipped*: capture hash mismatch; not dispatched to pipelines
+
 ---
 
 ## §3 Variant × Flag Matrix   [FROZEN: Stage 0 | 2026-05-12]

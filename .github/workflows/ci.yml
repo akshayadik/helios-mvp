@@ -223,7 +223,10 @@ jobs:
       # silently dropped test_validate_tracking.py collection.
       - name: Run pytest with coverage
         run: poetry run pytest
- 
+
+      - name: Schema round-trip integrity
+        run: poetry run pytest tests/test_schema_roundtrip.py -v --no-cov
+
       # ADDED: upload coverage for inspection even on failure
       - name: Upload coverage report
         if: always()

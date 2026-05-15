@@ -21,10 +21,25 @@ from helios.vcl.config import VCLManifest  # noqa: F401  # flag-guard compliance
 
 _ALL_INCIDENT_IDS = [
     "s0-adhc-001",
+    "s0-adhc-002",
+    "s0-adhc-003",
     "s0-cart-001",
+    "s0-cart-002",
+    "s0-cart-003",
     "s0-imgsl-001",
+    "s0-imgsl-002",
+    "s0-imgsl-003",
+    "s0-imgsl-004",
     "s0-pcat-001",
+    "s0-pcat-002",
+    "s0-pcat-003",
+    "s0-pcat-004",
+    "s0-pcat-005",
     "s0-rcf-001",
+    "s0-rcf-002",
+    "s0-rcf-003",
+    "s0-rcf-004",
+    "s0-rcf-005",
 ]
 
 

@@ -13,11 +13,11 @@ jobs:
           python-version: "3.11"
       - run: pipx install poetry
       - run: poetry install
-      # TODO: implement static disjointness audit per Execution Plan §6.3.
-      # The audit must verify that toggling each feature flag affects exactly
-      # one well-defined code path with no hidden coupling. Until implemented,
-      # this stub passes; replace before Stage 5 freeze.
-      - name: Disjointness audit (stub)
+      - name: Static disjointness audit
+        run: poetry run python -m helios.vcl.disjointness
+
+      - name: Dynamic disjointness audit (coverage.py contexts)
         run: |
-          echo "STUB: disjointness audit not yet implemented."
-          echo "TODO before Stage 5 freeze: enforce Execution Plan §6.3."
+          poetry run coverage run --context=HELIOS-Full -m pytest tests/ -q
+          poetry run coverage run --append --context=HELIOS-noGraph -m pytest tests/ -q
+          poetry run coverage report --contexts="HELIOS-Full|HELIOS-noGraph" --include="helios/pipelines/*"
