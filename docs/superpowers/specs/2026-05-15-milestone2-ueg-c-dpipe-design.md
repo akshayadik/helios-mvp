@@ -19,6 +19,8 @@ UEG-C (Universal Edge Graph — Calibrated) is shared infrastructure: built **on
 
 Both flags must be enabled for HELIOS-Full. Disabling `HELIOS_ENABLE_GRAPH` ablates the structural graph entirely; the D-pipe still runs but receives no topology boost.
 
+**Module separation (SRP):** `UEGCBuilder`, `DPipe`, and the `Orchestrator` are separate modules. The `Orchestrator` is a thin coordinator only — no UEG-C construction logic lives inside `DPipe`, and no metric-parsing logic lives inside `UEGCBuilder`. Each module has exactly one reason to change.
+
 ---
 
 ## 2. UEG-C Builder
@@ -42,6 +44,8 @@ For each trace, infer structural (parent → child) service relationships via te
 4. The first qualifying P found is S's structural parent; emit `STRUCTURAL` edge: `P.service_name → S.service_name`
 
 **Deviation log entry required** before merge: span-containment is a simplification relative to OpenTelemetry `parent_span_id` linkage; the analytic consequence is potential misattribution of structural edges in deeply nested same-service call stacks.
+
+**Validity threat scope (bounded for Milestone 2):** At this milestone, STRUCTURAL edges feed *only* the PPR pruner's entry-point identification (§2.4). D-pipe propagation (Stage C) uses CALL edges exclusively — misclassified STRUCTURAL edges do not corrupt anomaly scores or ranked candidates. This heuristic becomes a high-priority replacement target when G-pipe (M3+) uses STRUCTURAL edges as its causal backbone, where misclassification directly suppresses non-P1 root causes. Replacing with `parent_span_id` linkage is tracked as a pre-M3 gate.
 
 ### 2.3 CALL Edge Construction
 
@@ -97,6 +101,8 @@ GRPC_ERROR_CODES = {"12", "13", "14"}  # 14 = UNAVAILABLE; present in s0-adhc-00
 1. For each `(timestamp, service, metric_name)` group, **sum `value` across all label combinations** (all status codes, all `le` buckets, all HTTP methods)
 2. Sort the aggregated series by `timestamp` ascending
 3. Difference: `delta[t] = agg[t] − agg[t−1]`; if `delta[t] < 0` (counter reset), set `delta[t] = NaN` for that single interval only and continue
+
+The series of 21 timestamps produces **20 delta steps** — the first timestamp serves as baseline t−1 for δ[1] and does not generate an anomaly signal itself.
 
 Rationale: 21 per-combination counter resets in s0-adhc-001 collapse to zero resets in the aggregated series (verified empirically). NaN propagation is bounded to the single affected step.
 
@@ -226,6 +232,8 @@ Return `PipelineVerdict(hr_at_3=hr_at_3, cpr=cpr, ranked_candidates=ranked[:3], 
 | `TOPOLOGY_BOOST_FACTOR` | 1.00, 1.2, 1.4, 1.6, 1.8, 2.0, 2.2, 2.4, 2.6, 2.8 |
 
 No sequential greedy optimisation — all 250 cells evaluated in a single pass to avoid multi-stage optimisation traps.
+
+**Selection-bias caveat:** evaluating 250 configurations on N=15 incidents carries model-selection noise risk even under LOO-CV. The 5-incident smoke ablation provides a partially-independent generalization check. Thresholds frozen here are used as-is in the confirmatory study (174-fault corpus, fixed seeds, pre-registered) — no re-calibration permitted post-registration.
 
 **Tiebreaker (5-level, evaluated in priority order):**
 
