@@ -66,8 +66,8 @@ class CaptureConfig:
     manifest: VCLManifest
     evaluation_phase: EvaluationPhase
     prometheus_url: str = "http://localhost:9090"
-    jaeger_url: str = "http://localhost:32772"
-    opensearch_url: str = "http://localhost:32773"
+    jaeger_url: str = "http://localhost:32770"
+    opensearch_url: str = "http://localhost:32781"
     output_dir: Path = field(default_factory=lambda: Path("data") / "captures")
 
 
