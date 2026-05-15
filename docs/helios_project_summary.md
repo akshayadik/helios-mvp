@@ -19,6 +19,7 @@
 8. [CI/CD Workflows](#8-cicd-workflows)
 9. [Execution Commands](#9-execution-commands)
 10. [Missing Details & Gaps](#10-missing-details--gaps)
+11. [Milestone 1 — Pending Actions & Production Delta](#11-milestone-1--pending-actions--production-delta)
 
 ---
 
@@ -672,6 +673,78 @@ No analysis notebooks exist yet. DuckDB `result_row` data is written but not yet
 - Reconciliation ledger audit summaries
 
 These are Stage 2+ work (post-corpus collection).
+
+---
+
+---
+
+## 11. Milestone 1 — Pending Actions & Production Delta
+
+### 11.1 Immediate Pending Actions (before Milestone 2)
+
+These are blocking items — Milestone 2 (D-pipe real implementation) must not start until they are resolved.
+
+| # | Action | Command / Location | Blocker for |
+|---|---|---|---|
+| 1 | Push `milestone-1-exit` tag to origin | `git push origin milestone-1-exit` | CI gate evidence |
+| 2 | Push `schema-draft-v0.1` tag to origin | `git push origin schema-draft-v0.1` | Schema freeze proof |
+| 3 | Open PR: `feature/stage1_telemetry_c1_foundation` → `main` | `gh pr create` | Branch merge |
+| 4 | Set `DEVIATION_HMAC_SECRET` in GitHub Secrets | GitHub repo Settings → Secrets | `ledger_verification.yml` CI job |
+| 5 | Update tracking sheet rows to DONE (two-step) | `docs/tracking/helios_mvp_tracking.md` | R4 state machine compliance |
+| 6 | Add 7 missing exploratory variants to `helios/vcl/variants.py` | See §11.2 below | `get_variant()` raises `ValueError` for these |
+
+### 11.2 Missing Exploratory Variants
+
+These 7 variants are referenced in `docs/osf_protocol_v0.md §3.2` but not yet defined in `helios/vcl/variants.py`. `get_variant()` raises `ValueError` for any of these names:
+
+```
+HELIOS-noP4         — p4_cognitive=False
+HELIOS-noMAHC       — mahc=False
+HELIOS-noCBR        — cbr=False
+HELIOS-noACP        — acp=False
+HELIOS-noReconcile  — reconcile=False
+HELIOS-live         — ingest_mode="live"
+HELIOS-noLLM-noGraph — l2c_llm=False, lpipe=False, l2b_graph=False, gpipe=False
+```
+
+These are exploratory variants (not confirmatory). They belong in a separate `EXPLORATORY_VARIANTS` dict in `variants.py`, not in `CONFIRMATORY_VARIANTS`, to maintain the two-environment firewall.
+
+### 11.3 Component Roles Reconciled (Research vs. Production)
+
+This section answers: "what does each component do, and how does it differ between the research harness and a live production deployment?"
+
+| Component | Research harness (current) | Production deployment |
+|---|---|---|
+| **VCL / VCLManifest** | Frozen per-run configuration + SHA-256 hash used as run identity for ablation attribution. 8 confirmatory variants are pre-registered and static. | Runtime feature-flag system (LaunchDarkly, Flagsmith, etc.) — variant hash becomes a deployment fingerprint. Hash stability still matters for audit. |
+| **Deviation log** | Manual HMAC-chained audit trail for protocol changes with analytic consequence. Append via CLI only; chain proves no retroactive deletion. | Change management / git-ops approval record. Same tamper-evidence property is valuable; tooling would integrate with PR/ticket system. |
+| **SnapshotRegistry** | Flat JSONL mapping `snapshot_hash → variant_config_hash`. Guards against processing the same telemetry window twice under different configs (inflated N). | Distributed cache (Redis, DynamoDB). Same hash-based deduplication applies — "did we already RCA this exact telemetry window?" |
+| **CorpusLoader** | Resolves a directory of 20 OTEL Demo incident folders (or a JSON manifest) to an ordered incident ID sequence. | Kafka consumer / alert queue. Live incidents arrive as events, not as a static directory. The JSON manifest format maps to AIOpsLab's fault-injection manifest in Stage 2+. |
+| **MetricIntegrityGate** | Batch post-pipeline check: required fields present, `variant_config_hash` matches active manifest, all three pipeline verdicts agree on `snapshot_hash`. | Streaming, per-alert, real-time check. Catches config drift (e.g., one pipeline running a stale manifest version) before it silently corrupts diagnosis output. |
+| **ResultStore (DuckDB)** | Local columnar store for 16k stub verdicts. `inclusion_rate()` helper for post-run data quality. | ClickHouse / BigQuery cluster. Schema is structurally the same — per-pipeline verdict rows keyed by `run_id`. `narrative` column (LLM CoE text) may move to a document store. |
+| **ReconciliationLedger** | HMAC-chained JSONL, one row per incident per run. Outcomes: `passed / excluded / skipped`. Proves reported N is correct at submission time. | Incident resolution log — "for this alert, did RCA complete, return inconclusive, or fail due to missing telemetry?" Maps directly to MTTR tracking. High `skipped` rate signals observability pipeline problems, not RCA problems. |
+| **RunOrchestrator** | Python class wiring the full C1 dispatch loop over a static corpus. Invoked by `helios run` CLI. | Long-running service (daemon / worker pool) consuming live alert events. `_process_incident()` becomes an async handler. |
+| **DisjointnessAuditor** | CI job ensuring each VCL flag gates exactly one pipeline function — prevents confounded ablation attribution. | Removed or repurposed as a configuration linter. No ablation in production; flag sprawl (one kill-switch silently disabling two unrelated paths) is still a useful thing to detect. |
+| **Pipeline stubs (D/G/L)** | Return fixed placeholder values. No real computation. | D-pipe: statistical anomaly detection (CUSUM, BIRCH, Pearson/Spearman on Parquets). G-pipe: causal graph traversal on UEG-C. L-pipe: Claude API calls for CoE narratives, vLLM serving. |
+
+### 11.4 What Gets Removed vs. Added in Production
+
+**Removed (research-only constructs):**
+- `CONFIRMATORY_VARIANTS` dict and ablation-specific variant definitions
+- `DisjointnessAuditor` (ablation discipline enforcer — not needed without ablation)
+- Pre-registered hypothesis family (A-H1..H8, B-family) — these live in the OSF pre-registration, not the production codebase
+- 16k-run loop structure (`8 variants × 5 benchmarks × 40 faults × 10 seeds`)
+- `evaluation_phase` field (exploratory vs. confirmatory distinction is research-specific)
+- `CorpusLoader` in its current static-directory form
+
+**Added (production requirements):**
+- Real D/G/L pipeline implementations (statistical detector, graph builder, LLM caller)
+- Live telemetry adapters (Prometheus push receiver, Jaeger streaming, OpenSearch scroll)
+- Auto-remediation layer (L4) — currently out of scope
+- P4 cognitive layer — SRE-facing dashboard (`p4_cognitive` flag exists, implementation pending)
+- Consensus layer (Uniform Borda) to fuse D/G/L ranked candidates
+- Horizontal scaling for MetricIntegrityGate (streaming, not batch)
+- Multi-tenancy: one VCLManifest per customer environment, not per ablation variant
+- Proper secrets management (Vault / KMS) replacing the `.env` file HMAC key
 
 ---
 

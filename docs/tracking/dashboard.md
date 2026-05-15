@@ -57,13 +57,17 @@ Legend: ✅ ≥80% complete · 🟡 partial · ⏳ not yet started · ❌ blocke
 
 ## C1 Invariants snapshot (manual)
 
-| Invariant                          | Status     | Evidence link                                  |
-|------------------------------------|------------|------------------------------------------------|
-| Variant manifest hashing           | 🟡 stub    | `helios/vcl/` — to be implemented              |
-| Snapshot hash registry             | ⏳         | `docs/tracking/snapshot_hash_registry.md`      |
-| Metric integrity gate              | ⏳         | Stage 1+                                       |
-| Exclusion ledger (signed)          | ⏳         | `bin/log_exclusion.py` (stub)                  |
-| Deviation log (signed, chained)    | ✅         | `bin/log_deviation.py` + chain integrity tests |
+*Last updated: 2026-05-15 (Milestone 1 exit)*
+
+| Invariant | Status | Evidence link |
+|---|---|---|
+| Variant manifest hashing | ✅ | `helios/vcl/` — 8 confirmatory variants, unique hashes, frozen Stage 0 |
+| Snapshot hash registry | ✅ | `helios/vcl/snapshot_registry.py` + `data/snapshot_registry.jsonl` (20 entries) |
+| Metric integrity gate | ✅ | `helios/integrity_gate.py` — frozen Milestone 1 |
+| Exclusion ledger (signed) | 🟡 partial | `bin/log_exclusion.py` — schema defined; CLI stub; auto-populated via `AppendOnlyLedger` protocol |
+| Deviation log (signed, chained) | ✅ | `bin/log_deviation.py` — 5 entries, chain verified |
+| Reconciliation ledger | ✅ | `helios/orchestrator/ledger.py` — 25 entries, HMAC chain verified |
+| DisjointnessAuditor | ✅ | `helios/vcl/disjointness.py` — static + dynamic PASSED at Milestone 1 |
 
 ## Latest deviation log entries (manual until weekly_dashboard.yml)
 

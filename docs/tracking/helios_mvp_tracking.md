@@ -152,3 +152,29 @@ import pandas as pd
 df = pd.read_markdown('docs/tracking/helios_mvp_tracking.md', header=0)
 print(df.groupby('Day')['Status'].value_counts().unstack(fill_value=0))
 "
+
+---
+
+## MILESTONE 1 — Telemetry + C1 Foundation
+
+**Row ID format:** `S1-M1-{TYPE}{nn}` — Milestone 1 spans multiple sessions, not a 5-day sprint. Day column recorded as `-` for all M1 rows.
+**Coverage at exit:** 94.46% (gate requires 90%)
+**Exit tag:** `milestone-1-exit` @ `f11c529`
+
+| Task_ID | Day | Type | Description | Prop_§ | DSR | Contrib | Own | Deps | Status | Started | Done | SHA | Ev_Type | Ev_Ref | Gate | Dev_Ref | Notes |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| S1-M1-ENG01 | - | ENG | D-pipe null stub gated by VCLFlag.DPIPE | §3.6.7 | Design | C1 | AA | - | DONE | 2026-05-14 | 2026-05-14 | 5f6b402 | TEST | tests/test_pipelines.py | - | - | Completes 3-stub set; HELIOS-Full dispatch testable |
+| S1-M1-ENG02 | - | ENG | CorpusLoader — directory + JSON manifest resolution | §3.6.8 | Design | infra | AA | S1-M1-ENG01 | DONE | 2026-05-14 | 2026-05-14 | 7233116 | TEST | tests/test_corpus_loader.py | - | - | Two formats: directory scan + JSON incidents list |
+| S1-M1-ENG03 | - | ENG | ReconciliationLedger — HMAC-chained per-incident outcome log | §5.1 | Design | C1 | AA | - | DONE | 2026-05-14 | 2026-05-14 | 489f2c7 | TEST | tests/test_reconciliation_ledger.py | - | - | Outcomes: attempted/passed/excluded/skipped |
+| S1-M1-ENG04 | - | ENG | RunOrchestrator — full C1 corpus dispatch loop | §3.6.8, §5.1 | Design | C1 | AA | S1-M1-ENG02,S1-M1-ENG03 | DONE | 2026-05-14 | 2026-05-14 | 98ff02d | TEST | tests/test_orchestrator_runner.py | - | - | Reader→Registry→3-pipe→Gate→Store→Ledger |
+| S1-M1-ENG05 | - | ENG | helios run CLI — corpus orchestration entry point | §3.6.8 | Design | infra | AA | S1-M1-ENG04 | DONE | 2026-05-14 | 2026-05-14 | a39d1df | MANIFEST | bin/helios_run.py | - | - | --variant / --corpus / --db / --registry flags |
+| S1-M1-ENG06 | - | ENG | E2E smoke — three-pipeline dispatch through full C1 path | §6.1–§6.4 | Evaluate | C1 | AA | S1-M1-ENG04 | DONE | 2026-05-14 | 2026-05-14 | c7a4832 | TEST | tests/test_e2e_smoke.py | - | - | Extends Stage 0 smoke with RunOrchestrator path |
+| S1-M1-ENG07 | - | ENG | DisjointnessAuditor — static flag-gating audit | §3.9.1 T2 | Design | C1 | AA | S1-M1-ENG05 | DONE | 2026-05-14 | 2026-05-14 | 05d2cbc | TEST | tests/test_disjointness.py | - | - | Imports pipeline modules; checks __gated_by__ |
+| S1-M1-ENG08 | - | ENG | CI disjointness audit — static scan + coverage.py contexts | §3.9.1 T2 | Design | infra | AA | S1-M1-ENG07 | DONE | 2026-05-14 | 2026-05-14 | 72f0245 | MANIFEST | .github/workflows/disjointness_audit.yml | - | - | Two coverage contexts: HELIOS-Full vs HELIOS-noGraph |
+| S1-M1-ENG09 | - | ENG | UEG-C EdgeClass semantic layer + schema round-trip tests | §3.6.3 | Design | C2 | AA | - | DONE | 2026-05-14 | 2026-05-14 | d58a878 | TEST | tests/test_schema_roundtrip.py | - | - | Computed field edge_class auto-derived from edge_type |
+| S1-M1-ENG10 | - | ENG | CI schema round-trip integrity step | §6.2 | Design | C1 | AA | S1-M1-ENG09 | DONE | 2026-05-14 | 2026-05-14 | a58a5db | MANIFEST | .github/workflows/ci.yml | - | - | Serialise→deserialise→hash-compare on every push |
+| S1-M1-ENG11 | - | ENG | Capture 15 additional incidents + fix Docker port drift | §3.7 | Demonstrate | infra | AA | - | DONE | 2026-05-15 | 2026-05-15 | f11c529 | ARTEFACT_HASH | data/captures/ (20 total) | - | - | Ports: Jaeger=32770, OpenSearch=32781 after container restart |
+| S1-M1-ENG12 | - | ENG | Expand verify_captures.py to all 20 incident IDs | §3.7 | Demonstrate | infra | AA | S1-M1-ENG11 | DONE | 2026-05-15 | 2026-05-15 | f11c529 | ARTEFACT_HASH | bin/verify_captures.py | - | - | Hash round-trip verified 3x for determinism |
+| S1-M1-RES01 | - | RES | OSF §2 inclusion/exclusion rules (osf_protocol_v0.md §2.4) | §3 (OSF) | Communicate | methodology | AA | - | DONE | 2026-05-15 | 2026-05-15 | 5dc5957 | DOC | docs/osf_protocol_v0.md | - | - | §2.4 inserted after existing §2.3; corpus terminology locked |
+| S1-M1-RES02 | - | RES | ablation_architecture.md §4 — Orchestration + C1 Enforcement | §3.6.8 | Communicate | C1 | AA | S1-M1-ENG04 | DONE | 2026-05-15 | 2026-05-15 | 5dc5957 | DOC | docs/tracking/ablation_architecture.md | - | - | §4 frozen at Milestone 1; old §4–§6 renumbered to §5–§7 |
+| S1-M1-GATE01 | - | GATE | Milestone 1 exit gate — all criteria met | §5.1, §6 | Evaluate | C1 | AA | S1-M1-ENG01..RES02 | DONE | 2026-05-15 | 2026-05-15 | f11c529 | ARTEFACT_HASH | milestone-1-exit tag | - | - | 20/20 passed C1 gate; disjointness PASSED; coverage 94.46%; HMAC chain verified |

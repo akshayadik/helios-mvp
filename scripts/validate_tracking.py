@@ -13,8 +13,8 @@ R2  DEFERRED or CARRIED_OVER rows must have a non-empty Deviation_Ref.
 R3  Status must be one of the six legal values.
 R4  State transitions must be legal per the documented state machine.
 R5  Immutable columns (1-9, 16) must not change between commits.
-R6  Task_ID must match the format S0-D{day}-{TYPE}{nn}.
-R7  Day field must be 1-5 for Stage 0 Week 1 rows.
+R6  Task_ID must match S0-D{day}-{TYPE}{nn} (sprint rows) or S{n}-M{m}-{TYPE}{nn} (milestone rows).
+R7  Day field must be 1-5 for sprint rows; '-' is valid for milestone rows.
 R8  Type field must be one of ENG / RES / EVAL / GATE.
 
 Exit codes
@@ -102,8 +102,13 @@ LEGAL_TRANSITIONS: dict[str, frozenset[str]] = {
     "CARRIED_OVER": frozenset(),  # terminal
 }
 
-# Task_ID format: S0-D{1-5}-{ENG|RES|EVAL|GATE}{2-digit number}
-TASK_ID_REGEX = re.compile(r"^S0-D[1-5]-(ENG|RES|EVAL|GATE)\d{2}$")
+# Task_ID formats:
+#   Sprint rows:    S0-D{1-5}-{ENG|RES|EVAL|GATE}{2-digit number}
+#   Milestone rows: S{n}-M{m}-{ENG|RES|EVAL|GATE}{2-digit number}
+TASK_ID_REGEX = re.compile(r"^(S0-D[1-5]|S[1-9]-M\d+)-(ENG|RES|EVAL|GATE)\d{2}$")
+
+# Milestone-format prefix — Day '-' is valid for these rows
+_MILESTONE_PREFIX_RE = re.compile(r"^S[1-9]-M\d+-")
 
 
 # --------------------------------------------------------------------------- #
@@ -217,7 +222,7 @@ def validate_row_shape(row: list[str], row_num: int) -> Violation | None:
 
 
 def validate_task_id(row: list[str]) -> Violation | None:
-    """R6: Task_ID must match S0-D{1-5}-{TYPE}{nn}."""
+    """R6: Task_ID must match sprint (S0-D{1-5}) or milestone (S{n}-M{m}) format."""
     tid = row[COL_TASK_ID]
     if not TASK_ID_REGEX.match(tid):
         return Violation(
@@ -229,11 +234,17 @@ def validate_task_id(row: list[str]) -> Violation | None:
 
 
 def validate_day_and_type(row: list[str]) -> list[Violation]:
-    """R7 + R8: Day in 1-5; Type in legal set."""
+    """R7 + R8: Day in 1-5 (sprint rows) or '-' (milestone rows); Type in legal set."""
     out: list[Violation] = []
     tid = row[COL_TASK_ID]
     day = row[COL_DAY]
-    if day not in {"1", "2", "3", "4", "5"}:
+    is_milestone = bool(_MILESTONE_PREFIX_RE.match(tid))
+    if is_milestone:
+        if day != "-":
+            out.append(
+                Violation(tid, "R7", f"Milestone rows must have Day='-', got '{day}'")
+            )
+    elif day not in {"1", "2", "3", "4", "5"}:
         out.append(Violation(tid, "R7", f"Day must be 1-5, got '{day}'"))
     typ = row[COL_TYPE]
     if typ not in LEGAL_TYPES:
