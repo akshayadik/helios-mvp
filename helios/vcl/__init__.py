@@ -10,10 +10,11 @@ from .decorators import (
 from .registry import VCLFlag
 from .snapshot_registry import DuplicateSnapshotError, SnapshotRegistry
 from .utils import canonical_json
-from .variants import CONFIRMATORY_VARIANTS, get_variant
+from .variants import CONFIRMATORY_VARIANTS, EXPLORATORY_VARIANTS, get_variant
 
 __all__ = [
     "CONFIRMATORY_VARIANTS",
+    "EXPLORATORY_VARIANTS",
     "DuplicateSnapshotError",
     "GatedComponentInactiveError",
     "SnapshotRegistry",
