@@ -152,6 +152,7 @@ import pandas as pd
 df = pd.read_markdown('docs/tracking/helios_mvp_tracking.md', header=0)
 print(df.groupby('Day')['Status'].value_counts().unstack(fill_value=0))
 "
+```
 
 ---
 
@@ -160,6 +161,7 @@ print(df.groupby('Day')['Status'].value_counts().unstack(fill_value=0))
 **Row ID format:** `S1-M1-{TYPE}{nn}` — Milestone 1 spans multiple sessions, not a 5-day sprint. Day column recorded as `-` for all M1 rows.
 **Coverage at exit:** 94.46% (gate requires 90%)
 **Exit tag:** `milestone-1-exit` @ `f11c529`
+
 
 | Task_ID | Day | Type | Description | Prop_§ | DSR | Contrib | Own | Deps | Status | Started | Done | SHA | Ev_Type | Ev_Ref | Gate | Dev_Ref | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
