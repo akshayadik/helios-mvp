@@ -236,3 +236,10 @@
 2026-05-14T12:10:50Z,0e9aa5a,/home/akshay/.claude/projects/-home-akshay-workspace-helios-mvp/memory/project_vcl_stage0_complete.md,Write,42
 2026-05-14T12:11:04Z,0e9aa5a,/home/akshay/.claude/projects/-home-akshay-workspace-helios-mvp/memory/project_stage1_next.md,Write,42
 2026-05-14T12:11:14Z,0e9aa5a,/home/akshay/.claude/projects/-home-akshay-workspace-helios-mvp/memory/MEMORY.md,Edit,42
+2026-05-15T08:20:27Z,d5c2695,/home/akshay/workspace/helios-mvp/.github/workflows/ci.yml,Edit,42
+2026-05-15T08:30:16Z,ec253fd,/home/akshay/workspace/helios-mvp/.github/workflows/disjointness_audit.yml,Edit,42
+2026-05-15T08:41:42Z,6b87e69,/home/akshay/workspace/helios-mvp/helios/vcl/variants.py,Edit,42
+2026-05-15T08:42:01Z,6b87e69,/home/akshay/workspace/helios-mvp/helios/vcl/variants.py,Edit,42
+2026-05-15T08:42:50Z,6b87e69,/home/akshay/workspace/helios-mvp/helios/vcl/__init__.py,Edit,42
+2026-05-15T08:44:07Z,6b87e69,/home/akshay/workspace/helios-mvp/tests/test_vcl.py,Edit,42
+2026-05-15T08:44:23Z,6b87e69,/home/akshay/workspace/helios-mvp/tests/test_vcl.py,Edit,42
