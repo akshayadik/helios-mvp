@@ -180,3 +180,24 @@ print(df.groupby('Day')['Status'].value_counts().unstack(fill_value=0))
 | S1-M1-RES01 | - | RES | OSF §2 inclusion/exclusion rules (osf_protocol_v0.md §2.4) | §3 (OSF) | Communicate | methodology | AA | - | DONE | 2026-05-15 | 2026-05-15 | 5dc5957 | DOC | docs/osf_protocol_v0.md | - | - | §2.4 inserted after existing §2.3; corpus terminology locked |
 | S1-M1-RES02 | - | RES | ablation_architecture.md §4 — Orchestration + C1 Enforcement | §3.6.8 | Communicate | C1 | AA | S1-M1-ENG04 | DONE | 2026-05-15 | 2026-05-15 | 5dc5957 | DOC | docs/tracking/ablation_architecture.md | - | - | §4 frozen at Milestone 1; old §4–§6 renumbered to §5–§7 |
 | S1-M1-GATE01 | - | GATE | Milestone 1 exit gate — all criteria met | §5.1, §6 | Evaluate | C1 | AA | S1-M1-ENG01..RES02 | DONE | 2026-05-15 | 2026-05-15 | f11c529 | ARTEFACT_HASH | milestone-1-exit tag | - | - | 20/20 passed C1 gate; disjointness PASSED; coverage 94.46%; HMAC chain verified |
+
+---
+
+## MILESTONE 2 — UEG-C Builder + D-pipe
+
+**Row ID format:** `S1-M2-{TYPE}{nn}` — spans multiple sessions; Day recorded as `-` for all M2 rows.
+
+| Task_ID | Day | Type | Description | Prop_§ | DSR | Contrib | Own | Deps | Status | Started | Done | SHA | Ev_Type | Ev_Ref | Gate | Dev_Ref | Notes |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| S1-M2-ENG01 | - | ENG | dpipe_config.py typed constants (LE_BOUNDARIES, grids, gates) | §3.3, §3.6.5 | Design | C2 | AA | - | PLANNED | | | | | | | | |
+| S1-M2-ENG02 | - | ENG | UEGCBuilder structural + call edges | §3.6.4 | Design | C2 | AA | S1-M2-ENG01 | PLANNED | | | | | | | | |
+| S1-M2-ENG03 | - | ENG | PPR pruner + build_ueg_c() factory | §3.6.4 | Design | C2 | AA | S1-M2-ENG02 | PLANNED | | | | | | | | |
+| S1-M2-GATE01 | - | GATE | Hash stability + canonical round-trip exit gate | §6.2 | Evaluate | C2 | AA | S1-M2-ENG03 | PLANNED | | | | | | | | |
+| S1-M2-ENG04 | - | ENG | Stage A MetricsParser | §3.3 | Design | C2 | AA | S1-M2-ENG01 | PLANNED | | | | | | | | |
+| S1-M2-ENG05 | - | ENG | Stage B wm90 + AnomalyScorer | §3.3 | Design | C2 | AA | S1-M2-ENG04 | PLANNED | | | | | | | | |
+| S1-M2-ENG06 | - | ENG | Stage C PropagationEngine | §3.3 | Design | C2 | AA | S1-M2-ENG05 | PLANNED | | | | | | | | |
+| S1-M2-ENG07 | - | ENG | Stage D DVerdict | §3.3 | Design | C2 | AA | S1-M2-ENG06 | PLANNED | | | | | | | | |
+| S1-M2-ENG08 | - | ENG | pipeline.py + runner.py integration | §3.6.8 | Design | C2 | AA | S1-M2-ENG07,S1-M2-ENG03 | PLANNED | | | | | | | | |
+| S1-M2-ENG09 | - | ENG | LOO-CV calibration script (250-cell joint grid) | §4.1 | Demonstrate | C2 | AA | S1-M2-ENG08 | PLANNED | | | | | | | | |
+| S1-M2-EVAL01 | - | EVAL | Smoke ablation (HELIOS-D vs random + in-degree baselines) | §4.2 | Evaluate | C2 | AA | S1-M2-ENG09 | PLANNED | | | | | | | | |
+| S1-M2-GATE02 | - | GATE | Milestone 2 exit gate — all criteria met | §5.2 | Evaluate | C2 | AA | S1-M2-EVAL01 | PLANNED | | | | | | | | |
