@@ -194,7 +194,7 @@ print(df.groupby('Day')['Status'].value_counts().unstack(fill_value=0))
 | S1-M2-ENG03 | - | ENG | PPR pruner + build_ueg_c() factory | §3.6.4 | Design | C2 | AA | S1-M2-ENG02 | DONE | 2026-05-16 | 2026-05-16 | 1b5fd30 | IMPL | helios/graph/ppr_pruner.py | | | |
 | S1-M2-GATE01 | - | GATE | Hash stability + canonical round-trip exit gate | §6.2 | Evaluate | C2 | AA | S1-M2-ENG03 | DONE | 2026-05-16 | 2026-05-16 | f8a6fab | TEST | tests/graph/test_hash_stability.py | | | |
 | S1-M2-ENG04 | - | ENG | Stage A MetricsParser | §3.3 | Design | C2 | AA | S1-M2-ENG01 | DONE | 2026-05-16 | 2026-05-16 | c648a64 | IMPL | helios/pipelines/d_pipe/stages/a_metrics_parser.py | | | |
-| S1-M2-ENG05 | - | ENG | Stage B wm90 + AnomalyScorer | §3.3 | Design | C2 | AA | S1-M2-ENG04 | IN_PROGRESS | | | | | | | | |
+| S1-M2-ENG05 | - | ENG | Stage B wm90 + AnomalyScorer | §3.3 | Design | C2 | AA | S1-M2-ENG04 | DONE | 2026-05-16 | 2026-05-16 | 7e8719b | IMPL | helios/pipelines/d_pipe/stages/b_anomaly_scorer.py | | | |
 | S1-M2-ENG06 | - | ENG | Stage C PropagationEngine | §3.3 | Design | C2 | AA | S1-M2-ENG05 | IN_PROGRESS | | | | | | | | |
 | S1-M2-ENG07 | - | ENG | Stage D DVerdict | §3.3 | Design | C2 | AA | S1-M2-ENG06 | IN_PROGRESS | | | | | | | | |
 | S1-M2-ENG08 | - | ENG | pipeline.py + runner.py integration | §3.6.8 | Design | C2 | AA | S1-M2-ENG07,S1-M2-ENG03 | IN_PROGRESS | | | | | | | | |
