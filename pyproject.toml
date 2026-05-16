@@ -185,6 +185,13 @@ branch         = true           # branch coverage catches partial conditionals
 relative_files = true           # normalise all paths so subprocess measurements
                                 # (/tmp/.../scripts/foo.py) merge with the main
                                 # process measurements (scripts/foo.py)
+omit           = [
+    # Data-driven research scripts — executed against live Parquet recordings;
+    # not unit-testable in isolation. Coverage tracked via integration smoke
+    # tests in tests/test_e2e_smoke.py and tests/graph/test_hash_stability.py.
+    "scripts/calibrate_dpipe.py",
+    "scripts/smoke_ablation.py",
+]
  
 [tool.coverage.report]
 # Add legitimate dead-code patterns here rather than # pragma: no cover inline

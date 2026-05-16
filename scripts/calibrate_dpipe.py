@@ -63,7 +63,7 @@ def _evaluate_params(
     w_error: float,
     rho_threshold: float,
     topology_boost_factor: float,
-) -> dict[str, object]:
+) -> dict[str, float]:
     hr_vals: list[float] = []
     cpr_vals: list[float] = []
 
@@ -123,7 +123,7 @@ def main() -> None:
         f"Evaluating {len(grid)} parameter combinations x {len(CALIBRATION_SET)} LOO folds ..."
     )
 
-    results: list[tuple[dict[str, object], float, float, float]] = []
+    results: list[tuple[dict[str, float], float, float, float]] = []
     for w_err, rho, boost in grid:
         metrics = _evaluate_params(args.captures, ground_truth, w_err, rho, boost)
         results.append((metrics, w_err, rho, boost))
@@ -131,10 +131,10 @@ def main() -> None:
     # 5-level tiebreaker: max mean_hr, max mean_cpr, min std_hr, max min_cpr, min boost
     results.sort(
         key=lambda x: (
-            -x[0]["mean_hr"],  # type: ignore[operator]
-            -x[0]["mean_cpr"],  # type: ignore[operator]
+            -x[0]["mean_hr"],
+            -x[0]["mean_cpr"],
             x[0]["std_hr"],
-            -x[0]["min_cpr"],  # type: ignore[operator]
+            -x[0]["min_cpr"],
             x[3],
         )
     )
