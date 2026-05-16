@@ -50,3 +50,42 @@ def test_run_dpipe_with_no_p1_metrics_returns_verdict(manifest, tmp_path: Path) 
     assert "cpr" in result
     assert "ranked_candidates" in result
     assert isinstance(result["hr_at_3"], int | float)
+
+
+def test_run_dpipe_deterministic(manifest) -> None:
+    """Calling run_dpipe twice with identical inputs must return identical outputs."""
+    window = TelemetryWindow(
+        incident_id="det-001",
+        variant_config_hash="y" * 64,
+        window_start_iso=dt.datetime(2026, 1, 1, tzinfo=dt.UTC).isoformat(),
+        window_end_iso=dt.datetime(2026, 1, 1, 0, 5, tzinfo=dt.UTC).isoformat(),
+        evaluation_phase=EvaluationPhase.EXPLORATORY,
+        p1_metrics_path=None,
+        p2_traces_path=None,
+        p3_logs_path=None,
+    )
+
+    result1 = run_dpipe(
+        window=window,
+        ueg_c=None,
+        incident_id="det-001",
+        snapshot_hash="x" * 64,
+        variant_config_hash="y" * 64,
+        evaluation_phase=EvaluationPhase.EXPLORATORY,
+        run_id="run-1",
+        ground_truth_service=None,
+    )
+    result2 = run_dpipe(
+        window=window,
+        ueg_c=None,
+        incident_id="det-001",
+        snapshot_hash="x" * 64,
+        variant_config_hash="y" * 64,
+        evaluation_phase=EvaluationPhase.EXPLORATORY,
+        run_id="run-2",
+        ground_truth_service=None,
+    )
+
+    assert result1["ranked_candidates"] == result2["ranked_candidates"]
+    assert result1["hr_at_3"] == result2["hr_at_3"]
+    assert result1["cpr"] == result2["cpr"]

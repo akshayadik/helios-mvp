@@ -16,7 +16,11 @@ import json
 import statistics
 from pathlib import Path
 
+from helios.graph.ppr_pruner import prune_graph
+from helios.graph.ueg_c_builder import build_ueg_c
 from helios.pipelines.d_pipe.dpipe_config import (
+    INTEGRITY_RATE_GATE,
+    PRUNER_EFFICACY_GATE,
     RHO_THRESHOLD_GRID,
     TOPOLOGY_BOOST_GRID,
     W_ERROR_GRID,
@@ -100,6 +104,58 @@ def _evaluate_params(
     }
 
 
+def _check_graph_gates(captures: Path, calibration_set: list[str]) -> None:
+    """Check pruner efficacy and structural integrity gates for each calibration incident."""
+    efficacy_pass = 0
+    efficacy_fail = 0
+    efficacy_skip = 0
+    integrity_pass = 0
+    integrity_fail = 0
+    integrity_skip = 0
+
+    for incident_id in calibration_set:
+        window = _load_window(captures, incident_id)
+        if window.p2_traces_path is None:
+            efficacy_skip += 1
+            integrity_skip += 1
+            continue
+        ueg_c = build_ueg_c(window, "calib")
+        if ueg_c is None:
+            efficacy_skip += 1
+            integrity_skip += 1
+            continue
+        _pruned, prune_result = prune_graph(ueg_c)
+        if prune_result.nodes_before == 0:
+            efficacy_skip += 1
+            integrity_skip += 1
+            continue
+        reduction = (
+            prune_result.nodes_before - prune_result.nodes_after
+        ) / prune_result.nodes_before
+        if reduction >= PRUNER_EFFICACY_GATE:
+            efficacy_pass += 1
+        else:
+            efficacy_fail += 1
+            print(
+                f"WARNING [{incident_id}]: pruner efficacy {reduction:.3f}"
+                f" < gate {PRUNER_EFFICACY_GATE} -- deviation log entry may be required"
+            )
+        if prune_result.integrity_rate >= INTEGRITY_RATE_GATE:
+            integrity_pass += 1
+        else:
+            integrity_fail += 1
+            print(
+                f"WARNING [{incident_id}]: integrity_rate {prune_result.integrity_rate:.3f}"
+                f" < gate {INTEGRITY_RATE_GATE} -- deviation log entry may be required"
+            )
+
+    print(
+        f"Graph gates summary — "
+        f"efficacy: {efficacy_pass} PASS / {efficacy_fail} FAIL / {efficacy_skip} SKIP; "
+        f"integrity: {integrity_pass} PASS / {integrity_fail} FAIL / {integrity_skip} SKIP"
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--captures", type=Path, default=Path("data/captures"))
@@ -115,6 +171,8 @@ def main() -> None:
 
     manifest = get_variant("HELIOS-Full")
     set_current_manifest(manifest)
+
+    _check_graph_gates(args.captures, CALIBRATION_SET)
 
     grid = list(
         itertools.product(W_ERROR_GRID, RHO_THRESHOLD_GRID, TOPOLOGY_BOOST_GRID)
