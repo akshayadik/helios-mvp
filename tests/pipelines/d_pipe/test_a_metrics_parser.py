@@ -75,8 +75,5 @@ def test_non_error_status_not_counted() -> None:
     ]
     df = _make_df(rows)
     result = MetricsParser().parse(df)
-    # No error status codes -> error_deltas should be zero or absent
-    if "svc-a" in result.error_deltas:
-        assert all(
-            d == pytest.approx(0) or math.isnan(d) for d in result.error_deltas["svc-a"]
-        )
+    # No error status codes -> error_deltas should not include svc-a
+    assert "svc-a" not in result.error_deltas

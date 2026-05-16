@@ -10,8 +10,8 @@ import pandas as pd
 from helios.pipelines.d_pipe.dpipe_config import INF_MIDPOINT, LE_BOUNDARIES
 from helios.vcl import VCLFlag  # noqa: F401 -- flag-guard compliance
 
-HTTP_METRIC = "http_server_duration_milliseconds_bucket"
-GRPC_METRIC = "rpc_server_duration_milliseconds_bucket"
+HTTP_METRIC: str = "http_server_duration_milliseconds_bucket"
+GRPC_METRIC: str = "rpc_server_duration_milliseconds_bucket"
 HTTP_ERROR_CODES: frozenset[str] = frozenset({"500", "503"})
 GRPC_ERROR_CODES: frozenset[str] = frozenset({"12", "13", "14"})
 
