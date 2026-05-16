@@ -11,10 +11,12 @@ import contextlib
 import uuid
 from typing import TYPE_CHECKING, Any
 
+from helios.graph.ppr_pruner import prune_graph
+from helios.graph.ueg_c_builder import build_ueg_c
 from helios.integrity_gate import AppendOnlyLedger, MetricIntegrityGate
 from helios.orchestrator.corpus import CorpusLoader
 from helios.orchestrator.ledger import ReconciliationLedger
-from helios.pipelines.d_pipe.stub import run_dpipe
+from helios.pipelines.d_pipe.pipeline import run_dpipe
 from helios.pipelines.g_pipe.stub import run_gpipe
 from helios.pipelines.l_pipe.stub import run_lpipe
 from helios.schemas.telemetry import EvaluationPhase
@@ -90,7 +92,26 @@ class RunOrchestrator:
             with contextlib.suppress(DuplicateSnapshotError):
                 self._registry.register(snapshot_hash, self._config_hash)
 
-        d_out = run_dpipe(incident_id=incident_id, snapshot_hash=snapshot_hash)
+        # Build UEG-C once per incident
+        ueg_c = None
+        if self._manifest.l2b_graph and window.p2_traces_path is not None:
+            ueg_c = build_ueg_c(
+                window,
+                self._config_hash,
+                enable_structural=self._manifest.ueg_c_structural,
+            )
+            if ueg_c is not None:
+                ueg_c, _prune_result = prune_graph(ueg_c)
+
+        d_out = run_dpipe(
+            window=window,
+            ueg_c=ueg_c,
+            incident_id=incident_id,
+            snapshot_hash=snapshot_hash,
+            variant_config_hash=self._config_hash,
+            evaluation_phase=window.evaluation_phase,
+            run_id=run_id,
+        )
         g_out = run_gpipe(incident_id=incident_id, snapshot_hash=snapshot_hash)
         l_out = run_lpipe(incident_id=incident_id, snapshot_hash=snapshot_hash)
 

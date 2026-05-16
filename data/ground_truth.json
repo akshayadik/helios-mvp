@@ -1,0 +1,22 @@
+{
+    "s0-adhc-001": "ad",
+    "s0-adhc-002": "ad",
+    "s0-adhc-003": "ad",
+    "s0-cart-001": "cart",
+    "s0-cart-002": "cart",
+    "s0-cart-003": "cart",
+    "s0-imgsl-001": "frontend",
+    "s0-imgsl-002": "frontend",
+    "s0-imgsl-003": "frontend",
+    "s0-imgsl-004": "frontend",
+    "s0-pcat-001": "product-catalog",
+    "s0-pcat-002": "product-catalog",
+    "s0-pcat-003": "product-catalog",
+    "s0-pcat-004": "product-catalog",
+    "s0-pcat-005": "product-catalog",
+    "s0-rcf-001": "recommendation",
+    "s0-rcf-002": "recommendation",
+    "s0-rcf-003": "recommendation",
+    "s0-rcf-004": "recommendation",
+    "s0-rcf-005": "recommendation"
+}

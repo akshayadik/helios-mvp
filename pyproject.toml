@@ -107,10 +107,13 @@ python   = ">=3.11,<3.12"   # CHANGED: strict upper bound (was ^3.11)
 pydantic = ">=2.9,<2.10"    # CHANGED from ^2.0; schema determinism (§6.2)
 pyarrow  = ">=18.0,<19.0"   # ADDED; Parquet capture (Day 4, §3.7)
 duckdb   = ">=1.1,<1.2"     # ADDED; result store (Day 3, store/schema.sql)
+pandas   = ">=2.2,<3.0"     # ADDED; D-pipe MetricsParser Parquet → DataFrame (M2)
  
 # ─────────────────────────────────────────────────────────────────────────────
 # Development / CI dependencies (TIER 2)
 # ─────────────────────────────────────────────────────────────────────────────
+networkx = "^3.6.1"
+scipy = "^1.17.1"
  
 [tool.poetry.group.dev.dependencies]
 # PRESERVED — versions tightened to match actual current releases
@@ -183,6 +186,13 @@ branch         = true           # branch coverage catches partial conditionals
 relative_files = true           # normalise all paths so subprocess measurements
                                 # (/tmp/.../scripts/foo.py) merge with the main
                                 # process measurements (scripts/foo.py)
+omit           = [
+    # Data-driven research scripts — executed against live Parquet recordings;
+    # not unit-testable in isolation. Coverage tracked via integration smoke
+    # tests in tests/test_e2e_smoke.py and tests/graph/test_hash_stability.py.
+    "scripts/calibrate_dpipe.py",
+    "scripts/smoke_ablation.py",
+]
  
 [tool.coverage.report]
 # Add legitimate dead-code patterns here rather than # pragma: no cover inline

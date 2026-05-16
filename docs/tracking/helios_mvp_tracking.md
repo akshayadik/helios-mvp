@@ -180,3 +180,24 @@ print(df.groupby('Day')['Status'].value_counts().unstack(fill_value=0))
 | S1-M1-RES01 | - | RES | OSF §2 inclusion/exclusion rules (osf_protocol_v0.md §2.4) | §3 (OSF) | Communicate | methodology | AA | - | DONE | 2026-05-15 | 2026-05-15 | 5dc5957 | DOC | docs/osf_protocol_v0.md | - | - | §2.4 inserted after existing §2.3; corpus terminology locked |
 | S1-M1-RES02 | - | RES | ablation_architecture.md §4 — Orchestration + C1 Enforcement | §3.6.8 | Communicate | C1 | AA | S1-M1-ENG04 | DONE | 2026-05-15 | 2026-05-15 | 5dc5957 | DOC | docs/tracking/ablation_architecture.md | - | - | §4 frozen at Milestone 1; old §4–§6 renumbered to §5–§7 |
 | S1-M1-GATE01 | - | GATE | Milestone 1 exit gate — all criteria met | §5.1, §6 | Evaluate | C1 | AA | S1-M1-ENG01..RES02 | DONE | 2026-05-15 | 2026-05-15 | f11c529 | ARTEFACT_HASH | milestone-1-exit tag | - | - | 20/20 passed C1 gate; disjointness PASSED; coverage 94.46%; HMAC chain verified |
+
+---
+
+## MILESTONE 2 — UEG-C Builder + D-pipe
+
+**Row ID format:** `S1-M2-{TYPE}{nn}` — spans multiple sessions; Day recorded as `-` for all M2 rows.
+
+| Task_ID | Day | Type | Description | Prop_§ | DSR | Contrib | Own | Deps | Status | Started | Done | SHA | Ev_Type | Ev_Ref | Gate | Dev_Ref | Notes |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| S1-M2-ENG01 | - | ENG | dpipe_config.py typed constants (LE_BOUNDARIES, grids, gates) | §3.3, §3.6.5 | Design | C2 | AA | - | DONE | 2026-05-16 | 2026-05-16 | 3d7937f | IMPL | helios/pipelines/d_pipe/dpipe_config.py | | | |
+| S1-M2-ENG02 | - | ENG | UEGCBuilder structural + call edges | §3.6.4 | Design | C2 | AA | S1-M2-ENG01 | DONE | 2026-05-16 | 2026-05-16 | f9c85b8 | IMPL | helios/graph/ueg_c_builder.py | | | |
+| S1-M2-ENG03 | - | ENG | PPR pruner + build_ueg_c() factory | §3.6.4 | Design | C2 | AA | S1-M2-ENG02 | DONE | 2026-05-16 | 2026-05-16 | 1b5fd30 | IMPL | helios/graph/ppr_pruner.py | | | |
+| S1-M2-GATE01 | - | GATE | Hash stability + canonical round-trip exit gate | §6.2 | Evaluate | C2 | AA | S1-M2-ENG03 | DONE | 2026-05-16 | 2026-05-16 | f8a6fab | TEST | tests/graph/test_hash_stability.py | | | |
+| S1-M2-ENG04 | - | ENG | Stage A MetricsParser | §3.3 | Design | C2 | AA | S1-M2-ENG01 | DONE | 2026-05-16 | 2026-05-16 | c648a64 | IMPL | helios/pipelines/d_pipe/stages/a_metrics_parser.py | | | |
+| S1-M2-ENG05 | - | ENG | Stage B wm90 + AnomalyScorer | §3.3 | Design | C2 | AA | S1-M2-ENG04 | DONE | 2026-05-16 | 2026-05-16 | 7e8719b | IMPL | helios/pipelines/d_pipe/stages/b_anomaly_scorer.py | | | |
+| S1-M2-ENG06 | - | ENG | Stage C PropagationEngine | §3.3 | Design | C2 | AA | S1-M2-ENG05 | DONE | 2026-05-16 | 2026-05-16 | d68403b | IMPL | helios/pipelines/d_pipe/stages/c_propagation_engine.py | | | |
+| S1-M2-ENG07 | - | ENG | Stage D DVerdict | §3.3 | Design | C2 | AA | S1-M2-ENG06 | DONE | 2026-05-16 | 2026-05-16 | 3162df4 | IMPL | helios/pipelines/d_pipe/stages/d_verdict.py | | | |
+| S1-M2-ENG08 | - | ENG | pipeline.py + runner.py integration | §3.6.8 | Design | C2 | AA | S1-M2-ENG07,S1-M2-ENG03 | DONE | 2026-05-16 | 2026-05-16 | 1457d23 | IMPL | helios/pipelines/d_pipe/pipeline.py | | | |
+| S1-M2-ENG09 | - | ENG | LOO-CV calibration script (250-cell joint grid) | §4.1 | Demonstrate | C2 | AA | S1-M2-ENG08 | DONE | 2026-05-16 | 2026-05-16 | 8d11801 | IMPL | scripts/calibrate_dpipe.py | | | |
+| S1-M2-EVAL01 | - | EVAL | Smoke ablation (HELIOS-D vs random + in-degree baselines) | §4.2 | Evaluate | C2 | AA | S1-M2-ENG09 | DONE | 2026-05-16 | 2026-05-16 | 65dcf51 | EVAL | scripts/smoke_ablation.py | | | |
+| S1-M2-GATE02 | - | GATE | Milestone 2 exit gate — all criteria met | §5.2 | Evaluate | C2 | AA | S1-M2-EVAL01 | DONE | 2026-05-16 | 2026-05-16 | d78d29e | LEDGER_ENTRY | deviation_log.jsonl | | | LOO-CV HR@3=0.5333 gate PASSED; pruner efficacy + smoke gate deviations logged (§2.4, §4.2); true LOO-CV + PPR entry-point fix committed |
