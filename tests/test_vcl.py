@@ -8,6 +8,7 @@ from pydantic import ValidationError
 from helios.integrity_gate import MetricIntegrityGate
 from helios.vcl import (
     CONFIRMATORY_VARIANTS,
+    EXPLORATORY_VARIANTS,
     GatedComponentInactiveError,
     VCLFlag,
     VCLManifest,
@@ -288,3 +289,52 @@ class TestVariants:
     def test_get_variant_unknown_raises_value_error(self) -> None:
         with pytest.raises(ValueError, match="Unknown variant"):
             get_variant("HELIOS-Unknown")
+
+
+class TestExploratoryVariants:
+    def test_seven_exploratory_variants_defined(self) -> None:
+        assert len(EXPLORATORY_VARIANTS) == 7
+
+    def test_exploratory_hashes_unique_within_dict(self) -> None:
+        hashes = [
+            m.compute_variant_config_hash() for m in EXPLORATORY_VARIANTS.values()
+        ]
+        assert len(hashes) == len(
+            set(hashes)
+        ), "Two exploratory variants share the same hash"
+
+    def test_get_variant_resolves_exploratory_by_name(self) -> None:
+        for name in EXPLORATORY_VARIANTS:
+            assert get_variant(name) is EXPLORATORY_VARIANTS[name]
+
+    def test_live_variant_uses_live_ingest_mode(self) -> None:
+        assert EXPLORATORY_VARIANTS["HELIOS-live"].ingest_mode == "live"
+
+    def test_all_non_live_exploratory_variants_use_recorded(self) -> None:
+        for name, manifest in EXPLORATORY_VARIANTS.items():
+            if name == "HELIOS-live":
+                continue
+            assert (
+                manifest.ingest_mode == "recorded"
+            ), f"{name} should use recorded ingest_mode"
+
+    def test_each_single_flag_variant_differs_from_full_by_one_flag(self) -> None:
+        full = CONFIRMATORY_VARIANTS["HELIOS-Full"]
+        single_flag_variants = {
+            "HELIOS-noP4": "p4_cognitive",
+            "HELIOS-noMAHC": "mahc",
+            "HELIOS-noCBR": "cbr",
+            "HELIOS-noACP": "acp",
+            "HELIOS-noReconcile": "reconcile",
+        }
+        for variant_name, disabled_flag in single_flag_variants.items():
+            manifest = EXPLORATORY_VARIANTS[variant_name]
+            assert (
+                getattr(manifest, disabled_flag) is False
+            ), f"{variant_name}: expected {disabled_flag}=False"
+            for flag in VCLFlag.bool_flags():
+                if flag.value == disabled_flag:
+                    continue
+                assert getattr(manifest, flag.value) == getattr(
+                    full, flag.value
+                ), f"{variant_name}: {flag.value} should match HELIOS-Full"
