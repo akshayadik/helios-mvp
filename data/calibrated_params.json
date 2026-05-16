@@ -4,6 +4,8 @@
   "topology_boost_factor": 1.0,
   "loo_cv_mean_hr_at_3": 0.5333333333333333,
   "loo_cv_mean_cpr": 0.4422222222222222,
+  "in_sample_mean_hr_at_3": 0.5333333333333333,
+  "in_sample_mean_cpr": 0.4422222222222222,
   "grid_cells_evaluated": 250,
   "n_calibration_incidents": 15
 }
