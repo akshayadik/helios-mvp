@@ -35,24 +35,33 @@ def prune_graph(
     for edge in snapshot.edges:
         graph.add_edge(edge.source, edge.target, weight=edge.weight)
 
-    # Entry points: services with structural in-degree == 0 AND structural out-degree > 0.
-    # Purely isolated nodes (no structural edges) are orphans, not roots.
+    # Entry points: services with structural in-degree == 0 (spec §2.4).
     structural_in: dict[str, int] = dict.fromkeys(graph.nodes, 0)
-    structural_out: dict[str, int] = dict.fromkeys(graph.nodes, 0)
     for edge in snapshot.edges:
         if edge.edge_type == EdgeType.STRUCTURAL:
             structural_in[edge.target] = structural_in.get(edge.target, 0) + 1
-            structural_out[edge.source] = structural_out.get(edge.source, 0) + 1
-    entry_points = [
-        n for n in graph.nodes if structural_in[n] == 0 and structural_out[n] > 0
-    ]
-    if not entry_points:
-        entry_points = list(graph.nodes)
+    entry_points = [n for n in graph.nodes if structural_in[n] == 0]
 
-    n_entry = len(entry_points)
-    personalization = {
-        n: (1 / n_entry if n in entry_points else 0.00) for n in graph.nodes
-    }
+    if entry_points:
+        # If all entry points are isolated in the full graph (no outgoing edges of any type),
+        # PPR seeded from them cannot propagate — fall back to uniform PageRank.
+        all_isolated = all(graph.out_degree(ep) == 0 for ep in entry_points)
+        if all_isolated:
+            print(
+                f"WARNING: all {len(entry_points)} structural entry point(s) are isolated "
+                "(no outgoing edges) — falling back to uniform PageRank"
+            )
+            personalization = None
+        else:
+            # Only seed from entry points that have outgoing edges; isolated structural
+            # roots cannot drive PPR propagation and would dilute scores unfairly.
+            seeded = [ep for ep in entry_points if graph.out_degree(ep) > 0]
+            n_seed = len(seeded)
+            personalization = {
+                n: (1 / n_seed if n in seeded else 0) for n in graph.nodes
+            }
+    else:
+        personalization = None
 
     # alpha=0.85 → restart_probability=0.15 (spec §2.4)
     ppr: dict[str, float] = nx.pagerank(
