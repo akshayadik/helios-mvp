@@ -48,12 +48,14 @@ def _histogram_mean(bucket_counts: list[float]) -> float:
     if total == 0:
         return float("nan")
     weighted = 0.00
-    prev: float = 0
+    prev_count: float = 0
+    prev_le: float = 0
     for i, le in enumerate(LE_BOUNDARIES):
-        count_in_bin = bucket_counts[i] - prev
-        midpoint = (prev + le) / 2
+        count_in_bin = bucket_counts[i] - prev_count
+        midpoint = (prev_le + le) / 2
         weighted += count_in_bin * midpoint
-        prev = le
+        prev_count = bucket_counts[i]
+        prev_le = le
     inf_count = total - bucket_counts[len(LE_BOUNDARIES) - 1]
     weighted += inf_count * INF_MIDPOINT
     return weighted / total
