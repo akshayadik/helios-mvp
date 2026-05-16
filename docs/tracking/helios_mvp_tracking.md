@@ -189,15 +189,15 @@ print(df.groupby('Day')['Status'].value_counts().unstack(fill_value=0))
 
 | Task_ID | Day | Type | Description | Prop_§ | DSR | Contrib | Own | Deps | Status | Started | Done | SHA | Ev_Type | Ev_Ref | Gate | Dev_Ref | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| S1-M2-ENG01 | - | ENG | dpipe_config.py typed constants (LE_BOUNDARIES, grids, gates) | §3.3, §3.6.5 | Design | C2 | AA | - | PLANNED | | | | | | | | |
-| S1-M2-ENG02 | - | ENG | UEGCBuilder structural + call edges | §3.6.4 | Design | C2 | AA | S1-M2-ENG01 | PLANNED | | | | | | | | |
-| S1-M2-ENG03 | - | ENG | PPR pruner + build_ueg_c() factory | §3.6.4 | Design | C2 | AA | S1-M2-ENG02 | PLANNED | | | | | | | | |
-| S1-M2-GATE01 | - | GATE | Hash stability + canonical round-trip exit gate | §6.2 | Evaluate | C2 | AA | S1-M2-ENG03 | PLANNED | | | | | | | | |
-| S1-M2-ENG04 | - | ENG | Stage A MetricsParser | §3.3 | Design | C2 | AA | S1-M2-ENG01 | PLANNED | | | | | | | | |
-| S1-M2-ENG05 | - | ENG | Stage B wm90 + AnomalyScorer | §3.3 | Design | C2 | AA | S1-M2-ENG04 | PLANNED | | | | | | | | |
-| S1-M2-ENG06 | - | ENG | Stage C PropagationEngine | §3.3 | Design | C2 | AA | S1-M2-ENG05 | PLANNED | | | | | | | | |
-| S1-M2-ENG07 | - | ENG | Stage D DVerdict | §3.3 | Design | C2 | AA | S1-M2-ENG06 | PLANNED | | | | | | | | |
-| S1-M2-ENG08 | - | ENG | pipeline.py + runner.py integration | §3.6.8 | Design | C2 | AA | S1-M2-ENG07,S1-M2-ENG03 | PLANNED | | | | | | | | |
-| S1-M2-ENG09 | - | ENG | LOO-CV calibration script (250-cell joint grid) | §4.1 | Demonstrate | C2 | AA | S1-M2-ENG08 | PLANNED | | | | | | | | |
-| S1-M2-EVAL01 | - | EVAL | Smoke ablation (HELIOS-D vs random + in-degree baselines) | §4.2 | Evaluate | C2 | AA | S1-M2-ENG09 | PLANNED | | | | | | | | |
-| S1-M2-GATE02 | - | GATE | Milestone 2 exit gate — all criteria met | §5.2 | Evaluate | C2 | AA | S1-M2-EVAL01 | PLANNED | | | | | | | | |
+| S1-M2-ENG01 | - | ENG | dpipe_config.py typed constants (LE_BOUNDARIES, grids, gates) | §3.3, §3.6.5 | Design | C2 | AA | - | IN_PROGRESS | | | | | | | | |
+| S1-M2-ENG02 | - | ENG | UEGCBuilder structural + call edges | §3.6.4 | Design | C2 | AA | S1-M2-ENG01 | IN_PROGRESS | | | | | | | | |
+| S1-M2-ENG03 | - | ENG | PPR pruner + build_ueg_c() factory | §3.6.4 | Design | C2 | AA | S1-M2-ENG02 | IN_PROGRESS | | | | | | | | |
+| S1-M2-GATE01 | - | GATE | Hash stability + canonical round-trip exit gate | §6.2 | Evaluate | C2 | AA | S1-M2-ENG03 | IN_PROGRESS | | | | | | | | |
+| S1-M2-ENG04 | - | ENG | Stage A MetricsParser | §3.3 | Design | C2 | AA | S1-M2-ENG01 | IN_PROGRESS | | | | | | | | |
+| S1-M2-ENG05 | - | ENG | Stage B wm90 + AnomalyScorer | §3.3 | Design | C2 | AA | S1-M2-ENG04 | IN_PROGRESS | | | | | | | | |
+| S1-M2-ENG06 | - | ENG | Stage C PropagationEngine | §3.3 | Design | C2 | AA | S1-M2-ENG05 | IN_PROGRESS | | | | | | | | |
+| S1-M2-ENG07 | - | ENG | Stage D DVerdict | §3.3 | Design | C2 | AA | S1-M2-ENG06 | IN_PROGRESS | | | | | | | | |
+| S1-M2-ENG08 | - | ENG | pipeline.py + runner.py integration | §3.6.8 | Design | C2 | AA | S1-M2-ENG07,S1-M2-ENG03 | IN_PROGRESS | | | | | | | | |
+| S1-M2-ENG09 | - | ENG | LOO-CV calibration script (250-cell joint grid) | §4.1 | Demonstrate | C2 | AA | S1-M2-ENG08 | IN_PROGRESS | | | | | | | | |
+| S1-M2-EVAL01 | - | EVAL | Smoke ablation (HELIOS-D vs random + in-degree baselines) | §4.2 | Evaluate | C2 | AA | S1-M2-ENG09 | IN_PROGRESS | | | | | | | | |
+| S1-M2-GATE02 | - | GATE | Milestone 2 exit gate — all criteria met | §5.2 | Evaluate | C2 | AA | S1-M2-EVAL01 | IN_PROGRESS | | | | | | | | |
