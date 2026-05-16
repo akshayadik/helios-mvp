@@ -105,6 +105,8 @@ def _evaluate_params(
 def _fold_metrics(
     hr_vals: list[float], cpr_vals: list[float], indices: list[int]
 ) -> dict[str, float]:
+    if not indices:
+        raise ValueError("_fold_metrics: indices must be non-empty")
     hr = [hr_vals[i] for i in indices]
     cpr = [cpr_vals[i] for i in indices]
     n = len(hr)
@@ -215,7 +217,7 @@ def main() -> None:
         all_results,
         key=lambda e: _tiebreak_key(_fold_metrics(e[0], e[1], all_indices), e[4]),
     )
-    best_hr_per, _, best_w, best_rho, best_boost = best_entry
+    best_hr_per, best_cpr_per, best_w, best_rho, best_boost = best_entry
 
     print(
         f"Best params: w_error={best_w}, rho_threshold={best_rho}, topology_boost={best_boost}"
@@ -226,13 +228,12 @@ def main() -> None:
     loo_cpr_vals: list[float] = []
     for k in all_indices:
         train_idx = [j for j in all_indices if j != k]
-
-        def _train_key(
-            e: ResultEntry, ti: list[int] = train_idx
-        ) -> tuple[float, float, float, float, float]:
-            return _tiebreak_key(_fold_metrics(e[0], e[1], ti), e[4])
-
-        best_train = min(all_results, key=_train_key)
+        best_train = min(
+            all_results,
+            key=lambda e, ti=train_idx: _tiebreak_key(  # type: ignore[misc]
+                _fold_metrics(e[0], e[1], ti), e[4]
+            ),
+        )
         loo_hr_vals.append(best_train[0][k])
         loo_cpr_vals.append(best_train[1][k])
 
@@ -257,6 +258,7 @@ def main() -> None:
         "loo_cv_mean_hr_at_3": loo_mean_hr,
         "loo_cv_mean_cpr": loo_mean_cpr,
         "in_sample_mean_hr_at_3": sum(best_hr_per) / n_folds,
+        "in_sample_mean_cpr": sum(best_cpr_per) / n_folds,
         "grid_cells_evaluated": len(grid),
         "n_calibration_incidents": n_folds,
     }
