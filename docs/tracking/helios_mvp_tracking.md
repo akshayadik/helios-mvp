@@ -199,5 +199,5 @@ print(df.groupby('Day')['Status'].value_counts().unstack(fill_value=0))
 | S1-M2-ENG07 | - | ENG | Stage D DVerdict | §3.3 | Design | C2 | AA | S1-M2-ENG06 | DONE | 2026-05-16 | 2026-05-16 | 3162df4 | IMPL | helios/pipelines/d_pipe/stages/d_verdict.py | | | |
 | S1-M2-ENG08 | - | ENG | pipeline.py + runner.py integration | §3.6.8 | Design | C2 | AA | S1-M2-ENG07,S1-M2-ENG03 | DONE | 2026-05-16 | 2026-05-16 | 1457d23 | IMPL | helios/pipelines/d_pipe/pipeline.py | | | |
 | S1-M2-ENG09 | - | ENG | LOO-CV calibration script (250-cell joint grid) | §4.1 | Demonstrate | C2 | AA | S1-M2-ENG08 | DONE | 2026-05-16 | 2026-05-16 | 8d11801 | IMPL | scripts/calibrate_dpipe.py | | | |
-| S1-M2-EVAL01 | - | EVAL | Smoke ablation (HELIOS-D vs random + in-degree baselines) | §4.2 | Evaluate | C2 | AA | S1-M2-ENG09 | IN_PROGRESS | | | | | | | | |
+| S1-M2-EVAL01 | - | EVAL | Smoke ablation (HELIOS-D vs random + in-degree baselines) | §4.2 | Evaluate | C2 | AA | S1-M2-ENG09 | DONE | 2026-05-16 | 2026-05-16 | 65dcf51 | EVAL | scripts/smoke_ablation.py | | | |
 | S1-M2-GATE02 | - | GATE | Milestone 2 exit gate — all criteria met | §5.2 | Evaluate | C2 | AA | S1-M2-EVAL01 | IN_PROGRESS | | | | | | | | |
