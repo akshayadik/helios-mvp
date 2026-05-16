@@ -16,7 +16,9 @@ def wm90(series: np.ndarray) -> float:
     if len(valid) == 0:
         return float("nan")
     n = len(valid)
-    winsorized = scipy.stats.mstats.winsorize(valid, limits=[0, 2 / n])
+    # 2/n would exceed 1.0 for n < 3; clamp to keep winsorize's limit in [0, 1).
+    upper_limit = min(2 / n, 1.0 - 1e-9)
+    winsorized = scipy.stats.mstats.winsorize(valid, limits=[0, upper_limit])
     return float(np.mean(winsorized))
 
 

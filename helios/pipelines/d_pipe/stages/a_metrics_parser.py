@@ -75,7 +75,7 @@ class MetricsParser:
         df = df.copy()
         df["labels_dict"] = df["labels"].apply(json.loads)
         df["service"] = df["labels_dict"].apply(
-            lambda d: str(d.get(_SVC_LABEL_KEY, ""))
+            lambda d: str(d.get(_SVC_LABEL_KEY, "")).split("/")[-1]
         )
         df["le"] = df["labels_dict"].apply(lambda d: str(d.get("le", "")))
         df["http_status"] = df["labels_dict"].apply(_extract_http_status)
