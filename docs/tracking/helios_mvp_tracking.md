@@ -192,7 +192,7 @@ print(df.groupby('Day')['Status'].value_counts().unstack(fill_value=0))
 | S1-M2-ENG01 | - | ENG | dpipe_config.py typed constants (LE_BOUNDARIES, grids, gates) | §3.3, §3.6.5 | Design | C2 | AA | - | IN_PROGRESS | | | | | | | | |
 | S1-M2-ENG02 | - | ENG | UEGCBuilder structural + call edges | §3.6.4 | Design | C2 | AA | S1-M2-ENG01 | DONE | 2026-05-16 | 2026-05-16 | f9c85b8 | IMPL | helios/graph/ueg_c_builder.py | | | |
 | S1-M2-ENG03 | - | ENG | PPR pruner + build_ueg_c() factory | §3.6.4 | Design | C2 | AA | S1-M2-ENG02 | DONE | 2026-05-16 | 2026-05-16 | 1b5fd30 | IMPL | helios/graph/ppr_pruner.py | | | |
-| S1-M2-GATE01 | - | GATE | Hash stability + canonical round-trip exit gate | §6.2 | Evaluate | C2 | AA | S1-M2-ENG03 | IN_PROGRESS | | | | | | | | |
+| S1-M2-GATE01 | - | GATE | Hash stability + canonical round-trip exit gate | §6.2 | Evaluate | C2 | AA | S1-M2-ENG03 | DONE | 2026-05-16 | 2026-05-16 | 0746ca1 | TEST | tests/graph/test_hash_stability.py | | | |
 | S1-M2-ENG04 | - | ENG | Stage A MetricsParser | §3.3 | Design | C2 | AA | S1-M2-ENG01 | IN_PROGRESS | | | | | | | | |
 | S1-M2-ENG05 | - | ENG | Stage B wm90 + AnomalyScorer | §3.3 | Design | C2 | AA | S1-M2-ENG04 | IN_PROGRESS | | | | | | | | |
 | S1-M2-ENG06 | - | ENG | Stage C PropagationEngine | §3.3 | Design | C2 | AA | S1-M2-ENG05 | IN_PROGRESS | | | | | | | | |
