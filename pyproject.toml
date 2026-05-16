@@ -111,6 +111,8 @@ duckdb   = ">=1.1,<1.2"     # ADDED; result store (Day 3, store/schema.sql)
 # ─────────────────────────────────────────────────────────────────────────────
 # Development / CI dependencies (TIER 2)
 # ─────────────────────────────────────────────────────────────────────────────
+networkx = "^3.6.1"
+scipy = "^1.17.1"
  
 [tool.poetry.group.dev.dependencies]
 # PRESERVED — versions tightened to match actual current releases
