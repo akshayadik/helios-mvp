@@ -1,7 +1,7 @@
 # HELIOS Project — Architecture, Design & Execution Reference
 
-**Version:** Milestone 1 (2026-05-14)
-**Stage:** Stage 0 spine + harness complete. Pipeline modules are stubs.
+**Version:** Milestone 2 (2026-05-16)
+**Stage:** D-pipe + UEG-C skeleton complete. G/L pipelines remain stubs.
 **Python:** `>=3.11,<3.12` (strict upper bound — reproducibility commitment)
 **Repo:** `helios-mvp` · Primary branch: `main`
 
@@ -19,7 +19,7 @@
 8. [CI/CD Workflows](#8-cicd-workflows)
 9. [Execution Commands](#9-execution-commands)
 10. [Missing Details & Gaps](#10-missing-details--gaps)
-11. [Milestone 1 — Pending Actions & Production Delta](#11-milestone-1--pending-actions--production-delta)
+11. [Milestone Tracking & Production Delta](#11-milestone-tracking--production-delta)
 
 ---
 
@@ -101,8 +101,8 @@ L0  CaptureReader          helios/telemetry/reader.py
       │  TelemetryWindow (5-min multi-modal window — metrics, traces, logs, events, profiles)
       │  Hash verified on read (SHA-256 round-trip guard)
       │
-      ▼  [D-pipe — Stage 1]
-      ·  Statistical anomaly detection → UEGCSnapshot construction  (NOT YET BUILT)
+      ▼  [D-pipe — Milestone 2]
+      ·  Statistical anomaly detection → UEGCSnapshot construction
       │
       ▼
 L2  SnapshotRegistry       helios/vcl/snapshot_registry.py
@@ -110,7 +110,7 @@ L2  SnapshotRegistry       helios/vcl/snapshot_registry.py
       │  Pre-condition gate: every pipeline run must pass a registered snapshot_hash
       │
       ▼
-L2  Pipeline Dispatch       helios/pipelines/{d,g,l}_pipe/stub.py
+L2  Pipeline Dispatch       helios/pipelines/{d,g,l}_pipe/pipeline.py
       │  Three peer pipelines dispatch concurrently per incident
       │  Each gated by @gated_by(VCLFlag.X)
       │
@@ -142,7 +142,11 @@ helios/
 │   ├── disjointness.py     DisjointnessAuditor (static + coverage.py audit)
 │   └── utils.py            canonical_json (sorted keys, 6-decimal floats)
 │
-├── schemas/                Frozen at schema-draft-v0.1
+├── graph/                  Milestone 2 — FULLY IMPLEMENTED
+│   ├── ueg_c_builder.py    UEGCBuilder (structural + call edges)
+│   └── ppr_pruner.py       PPR Pruner (noise reduction gate)
+│
+├── schemas/                Frozen at schema-draft-v0.2
 │   ├── telemetry.py        TelemetryWindow (L0), EvaluationPhase
 │   ├── ueg_c.py            UEGCNode, UEGCEdge, UEGCSnapshot, EdgeClass (computed)
 │   └── verdict.py          PipelineVerdict (result row)
@@ -152,8 +156,8 @@ helios/
 │   ├── ledger.py           ReconciliationLedger
 │   └── runner.py           RunOrchestrator (full C1 dispatch loop)
 │
-├── pipelines/              NULL STUBS — real implementations Stage 1–5
-│   ├── d_pipe/stub.py      @gated_by(VCLFlag.DPIPE) — returns sentinel dict
+├── pipelines/              D-pipe (M2) complete; G/L remain stubs
+│   ├── d_pipe/             Stages A–D: Metrics, Anomaly, Propagation, Verdict
 │   ├── g_pipe/stub.py      @gated_by(VCLFlag.GPIPE) — returns sentinel dict
 │   └── l_pipe/stub.py      @gated_by(VCLFlag.LPIPE) — returns sentinel dict
 │
@@ -215,7 +219,7 @@ config_hash = manifest.compute_variant_config_hash()
 
 ```python
 @gated_by(VCLFlag.DPIPE)
-def run_dpipe(incident_id: str, snapshot_hash: str) -> dict[str, Any]: ...
+def run_dpipe(window: TelemetryWindow, ...) -> dict[str, Any]: ...
 ```
 
 - Raises `TypeError` at decoration time if the flag is not boolean.
@@ -253,7 +257,7 @@ Run manually: `poetry run python -m helios.vcl.disjointness`
 
 ## 5. Data Schemas
 
-All schemas frozen at tag `schema-draft-v0.1`. All use Pydantic v2 `frozen=True`, `extra="forbid"`.
+All schemas frozen at tag `schema-draft-v0.2`. All use Pydantic v2 `frozen=True`, `extra="forbid"`.
 
 ### 5.1 TelemetryWindow (`helios/schemas/telemetry.py`)
 
@@ -329,8 +333,9 @@ Full C1 dispatch loop for a corpus. Per incident:
 ```
 CorpusLoader.incident_ids()
   → CaptureReader.read(incident_id)       — L0 hash guard; outcome=skipped on mismatch
+  → build_ueg_c() + prune_graph()         — Milestone 2 graph construction
   → SnapshotRegistry.register(hash)       — L2 identity guard
-  → run_dpipe + run_gpipe + run_lpipe     — 3 pipeline stubs (each @gated_by)
+  → run_dpipe + run_gpipe + run_lpipe     — 3 pipeline dispatch (each @gated_by)
   → MetricIntegrityGate.check_consistency(rows)
       FAIL → ExclusionLedger.append() + ReconciliationLedger.record("excluded")
       PASS → ResultStore.insert() ×3 + ReconciliationLedger.record("passed")
@@ -548,10 +553,6 @@ poetry run python bin/helios_run.py \
   --db data/results.duckdb \
   --registry data/snapshot_registry.jsonl \
   --reconciliation reconciliation_ledger.jsonl
-
-# Available variants:
-# HELIOS-Full | HELIOS-noLLM | HELIOS-noGraph | HELIOS-D
-# HELIOS-G | HELIOS-noConsensus | HELIOS-noRouter | HELIOS-noStructural
 ```
 
 ### Deviation log
@@ -569,9 +570,6 @@ poetry run python bin/log_deviation.py \
 
 # Verify full chain
 poetry run python bin/log_deviation.py verify
-
-# Verify test suite
-poetry run pytest tests/test_deviation_log.py -v
 ```
 
 ### Disjointness audit (manual)
@@ -601,151 +599,72 @@ git tag stage-N-exit
 git push origin stage-N-exit
 ```
 
-### Push schema freeze tag
-
-```bash
-git push origin schema-draft-v0.1   # tag exists locally, not yet pushed
-```
-
 ---
 
 ## 10. Missing Details & Gaps
 
-The following are known gaps as of Milestone 1. Each is intentional (staged implementation) unless marked ⚠️.
+The following are known gaps as of Milestone 2. Each is intentional (staged implementation) unless marked ⚠️.
 
 ### Stubs not yet implemented
 
 | Component | Module | Target stage | Notes |
 |---|---|---|---|
-| D-pipe real implementation | `helios/pipelines/d_pipe/` | Stage 1 / Milestone 2 | Pearson/Spearman anomaly detection on Parquet streams |
 | G-pipe real implementation | `helios/pipelines/g_pipe/` | Stage 4 | Graph causal traversal on UEG-C |
 | L-pipe real implementation | `helios/pipelines/l_pipe/` | Stage 5 | Llama-3.1-70B, Protocol A, vLLM serving |
-| UEG-C graph builder | `helios/schemas/ueg_c.py` | Stage 3 | Alg 5 from proposal: incremental update, subgraph extraction |
 | Consensus layer (Uniform Borda) | not yet created | Stage 6 | Fuses D/G/L ranked lists |
 | Auto-remediation (L4) | not yet created | Stage 4+ | Out of MVP scope |
 | P4 cognitive layer | no module yet | Stage 5 | `p4_cognitive` flag exists; implementation pending |
 | MAHC, CBR, ACP | no modules yet | Stage 3+ | Flags exist in VCL; no implementations |
-| ExclusionLedger CLI | `bin/log_exclusion.py` | Stage 1 | Stub; real population via MetricIntegrityGate |
 
 ### Data & corpus gaps
 
 | Item | Status | Notes |
 |---|---|---|
-| Task 12 — 20-incident calibration corpus | **Blocked** | Requires OTEL Demo backends live (Prometheus + Jaeger + Elasticsearch); 15 additional captures needed |
 | AIOpsLab confirmatory corpus (174 incidents) | **Not started** | Stage 2+; requires AIOpsLab access and fault injection |
-| `data/corpus.json` sample manifest | Not confirmed created | Plan specified creation; directory mode works without it |
-
-### Exploratory variants not in `variants.py`
-
-The 7 exploratory variants listed in `docs/osf_protocol_v0.md §3.2` are not yet defined in `helios/vcl/variants.py`:
-
-```
-HELIOS-noP4 | HELIOS-noMAHC | HELIOS-noCBR | HELIOS-noACP
-HELIOS-noReconcile | HELIOS-live | HELIOS-noLLM-noGraph
-```
-
-`get_variant()` will raise `ValueError` for these names until they are added.
-
-### OSF Stage 5 deferred items
-
-All deferred to the Stage 5 OSF full freeze — must not be committed earlier (corpus selection bias risk):
-
-- Corpus manifest SHA-256 (174 AIOpsLab incidents)
-- BCa bootstrap seed (10,000 resamples, Family E)
-- L-pipe prompt SHA (frozen Protocol A template)
-- Container image digests (vLLM version, Ollama version)
-- AIOpsLab incident selection seed
-
-### Infrastructure & secrets
-
-| Item | Status |
-|---|---|
-| `schema-draft-v0.1` tag | Created locally; **not yet pushed** to `origin` |
-| `DEVIATION_HMAC_SECRET` in GitHub Secrets | Required for `ledger_verification.yml` — confirm it is set |
-| IRB approval for E-H7 (human-in-loop study) | Pending — hypothesis deferred until approval |
-
-### Analysis notebooks / reporting
-
-No analysis notebooks exist yet. DuckDB `result_row` data is written but not yet queried for:
-- HR@3 aggregation per variant
-- CpR per variant
-- Inclusion rate monitoring
-- Reconciliation ledger audit summaries
-
-These are Stage 2+ work (post-corpus collection).
 
 ---
 
----
+## 11. Milestone Tracking & Production Delta
 
-## 11. Milestone 1 — Pending Actions & Production Delta
-
-### 11.1 Immediate Pending Actions (before Milestone 2)
-
-These are blocking items — Milestone 2 (D-pipe real implementation) must not start until they are resolved.
+### 11.1 Immediate Pending Actions (Milestone 2 Exit)
 
 | # | Action | Command / Location | Blocker for |
 |---|---|---|---|
-| 1 | Push `milestone-1-exit` tag to origin | `git push origin milestone-1-exit` | CI gate evidence |
-| 2 | Push `schema-draft-v0.1` tag to origin | `git push origin schema-draft-v0.1` | Schema freeze proof |
-| 3 | Open PR: `feature/stage1_telemetry_c1_foundation` → `main` | `gh pr create` | Branch merge |
-| 4 | Set `DEVIATION_HMAC_SECRET` in GitHub Secrets | GitHub repo Settings → Secrets | `ledger_verification.yml` CI job |
-| 5 | Update tracking sheet rows to DONE (two-step) | `docs/tracking/helios_mvp_tracking.md` | R4 state machine compliance |
-| 6 | Add 7 missing exploratory variants to `helios/vcl/variants.py` | See §11.2 below | `get_variant()` raises `ValueError` for these |
+| 1 | Push `milestone-2-exit` tag to origin | `git push origin milestone-2-exit` | Milestone 2 sign-off |
+| 2 | Push `schema-draft-v0.2` tag to origin | `git push origin schema-draft-v0.2` | Schema freeze proof |
+| 3 | Finalize deviation log entries for M2 | `bin/log_deviation.py verify` | Audit compliance |
 
-### 11.2 Missing Exploratory Variants
+### 11.2 Missing Details with respect to C1
 
-These 7 variants are referenced in `docs/osf_protocol_v0.md §3.2` but not yet defined in `helios/vcl/variants.py`. `get_variant()` raises `ValueError` for any of these names:
-
-```
-HELIOS-noP4         — p4_cognitive=False
-HELIOS-noMAHC       — mahc=False
-HELIOS-noCBR        — cbr=False
-HELIOS-noACP        — acp=False
-HELIOS-noReconcile  — reconcile=False
-HELIOS-live         — ingest_mode="live"
-HELIOS-noLLM-noGraph — l2c_llm=False, lpipe=False, l2b_graph=False, gpipe=False
-```
-
-These are exploratory variants (not confirmatory). They belong in a separate `EXPLORATORY_VARIANTS` dict in `variants.py`, not in `CONFIRMATORY_VARIANTS`, to maintain the two-environment firewall.
+*   **PPR Determinism:** The current `ppr_pruner.py` relies on `networkx.pagerank`. While mathematically deterministic, subtle floating-point drift across different CPU architectures (x86 vs ARM) could violate C1 snapshot-hash stability in distributed environments. A pre-M4 gate requires a fixed-point or rounded implementation.
+*   **Ablation Disjointness (G-pipe/L-pipe):** While D-pipe is now fully implemented and gated, G-pipe and L-pipe remain null stubs. The `DisjointnessAuditor` currently only proves that the *entry points* are disjoint. Full path-disjointness proof is deferred to Stage 7.
+*   **Integrity Gate (P4/P5):** The `MetricIntegrityGate` currently ignores P4 (events) and P5 (profiles) because they are `None` in the OTEL Demo. The logic must be extended in Milestone 6 to fail if these are missing during AIOpsLab confirmatory runs.
 
 ### 11.3 Component Roles Reconciled (Research vs. Production)
 
-This section answers: "what does each component do, and how does it differ between the research harness and a live production deployment?"
-
 | Component | Research harness (current) | Production deployment |
 |---|---|---|
-| **VCL / VCLManifest** | Frozen per-run configuration + SHA-256 hash used as run identity for ablation attribution. 8 confirmatory variants are pre-registered and static. | Runtime feature-flag system (LaunchDarkly, Flagsmith, etc.) — variant hash becomes a deployment fingerprint. Hash stability still matters for audit. |
-| **Deviation log** | Manual HMAC-chained audit trail for protocol changes with analytic consequence. Append via CLI only; chain proves no retroactive deletion. | Change management / git-ops approval record. Same tamper-evidence property is valuable; tooling would integrate with PR/ticket system. |
-| **SnapshotRegistry** | Flat JSONL mapping `snapshot_hash → variant_config_hash`. Guards against processing the same telemetry window twice under different configs (inflated N). | Distributed cache (Redis, DynamoDB). Same hash-based deduplication applies — "did we already RCA this exact telemetry window?" |
-| **CorpusLoader** | Resolves a directory of 20 OTEL Demo incident folders (or a JSON manifest) to an ordered incident ID sequence. | Kafka consumer / alert queue. Live incidents arrive as events, not as a static directory. The JSON manifest format maps to AIOpsLab's fault-injection manifest in Stage 2+. |
-| **MetricIntegrityGate** | Batch post-pipeline check: required fields present, `variant_config_hash` matches active manifest, all three pipeline verdicts agree on `snapshot_hash`. | Streaming, per-alert, real-time check. Catches config drift (e.g., one pipeline running a stale manifest version) before it silently corrupts diagnosis output. |
-| **ResultStore (DuckDB)** | Local columnar store for 16k stub verdicts. `inclusion_rate()` helper for post-run data quality. | ClickHouse / BigQuery cluster. Schema is structurally the same — per-pipeline verdict rows keyed by `run_id`. `narrative` column (LLM CoE text) may move to a document store. |
-| **ReconciliationLedger** | HMAC-chained JSONL, one row per incident per run. Outcomes: `passed / excluded / skipped`. Proves reported N is correct at submission time. | Incident resolution log — "for this alert, did RCA complete, return inconclusive, or fail due to missing telemetry?" Maps directly to MTTR tracking. High `skipped` rate signals observability pipeline problems, not RCA problems. |
-| **RunOrchestrator** | Python class wiring the full C1 dispatch loop over a static corpus. Invoked by `helios run` CLI. | Long-running service (daemon / worker pool) consuming live alert events. `_process_incident()` becomes an async handler. |
-| **DisjointnessAuditor** | CI job ensuring each VCL flag gates exactly one pipeline function — prevents confounded ablation attribution. | Removed or repurposed as a configuration linter. No ablation in production; flag sprawl (one kill-switch silently disabling two unrelated paths) is still a useful thing to detect. |
-| **Pipeline stubs (D/G/L)** | Return fixed placeholder values. No real computation. | D-pipe: statistical anomaly detection (CUSUM, BIRCH, Pearson/Spearman on Parquets). G-pipe: causal graph traversal on UEG-C. L-pipe: Claude API calls for CoE narratives, vLLM serving. |
+| **VCL / VCLManifest** | Frozen per-run config for ablation attribution. | Runtime feature-flag fingerprint for deployment audit. |
+| **UEG-C Builder** | Batch extractor using temporal span-containment heuristic. | Live graph builder using deterministic `parent_span_id` linkage. |
+| **PPR Pruner** | Static noise-reduction gate for small demo clusters. | Dynamic graph sharding / pruning for 1000+ service meshes. |
+| **D-pipe Stages** | Sequential batch stages (`A` -> `B` -> `C` -> `D`). | Parallel stream-processing pipelines (Kafka/Flink). |
+| **Calibration Set** | 15 incidents used for offline threshold tuning. | "Golden Signal" baseline used for online drift detection. |
 
 ### 11.4 What Gets Removed vs. Added in Production
 
 **Removed (research-only constructs):**
-- `CONFIRMATORY_VARIANTS` dict and ablation-specific variant definitions
-- `DisjointnessAuditor` (ablation discipline enforcer — not needed without ablation)
-- Pre-registered hypothesis family (A-H1..H8, B-family) — these live in the OSF pre-registration, not the production codebase
-- 16k-run loop structure (`8 variants × 5 benchmarks × 40 faults × 10 seeds`)
-- `evaluation_phase` field (exploratory vs. confirmatory distinction is research-specific)
-- `CorpusLoader` in its current static-directory form
+- **Span-Containment Heuristic:** Replaced by strict OTEL parent-child causality.
+- **`calibrate_dpipe.py`:** Replaced by an automated online "Baseline Watcher" service.
+- **Ablation-specific variants:** `HELIOS-noLLM`, `HELIOS-noGraph`, etc., are archived; only `HELIOS-Full` remains active.
+- **Static Disjointness Audit:** Replaced by standard unit/integration testing for the single production path.
 
 **Added (production requirements):**
-- Real D/G/L pipeline implementations (statistical detector, graph builder, LLM caller)
-- Live telemetry adapters (Prometheus push receiver, Jaeger streaming, OpenSearch scroll)
-- Auto-remediation layer (L4) — currently out of scope
-- P4 cognitive layer — SRE-facing dashboard (`p4_cognitive` flag exists, implementation pending)
-- Consensus layer (Uniform Borda) to fuse D/G/L ranked candidates
-- Horizontal scaling for MetricIntegrityGate (streaming, not batch)
-- Multi-tenancy: one VCLManifest per customer environment, not per ablation variant
-- Proper secrets management (Vault / KMS) replacing the `.env` file HMAC key
+- **Live Ingestion Bridge:** Prometheus remote-write / Jaeger stream-tailer.
+- **Graph Database:** Transition from in-memory NetworkX to Neo4j or Memgraph for scalability.
+- **Consensus Microservice:** The Uniform Borda layer implemented as a stand-alone, low-latency scoring service.
+- **Alertmanager Integration:** Webhook receiver to trigger the `RunOrchestrator` on active alerts.
+- **L4 Auto-remediation:** Integration with Kubernetes operators to apply "healing" actions (e.g., vertical scaling) based on D-pipe/G-pipe verdicts.
 
 ---
 
-*Generated from Milestone 1 codebase state at commit `5dc5957`. Update this file after each stage gate.*
+*Generated from Milestone 2 codebase state at commit `d78d29e`. Update this file after each stage gate.*
