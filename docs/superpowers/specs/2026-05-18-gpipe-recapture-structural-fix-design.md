@@ -168,11 +168,14 @@ def _structural_edges_temporal(self, spans: list[SpanRecord]) -> list[UEGCEdge]:
 And the dispatch in `_structural_edges()`:
 ```python
 def _structural_edges(self, spans: list[SpanRecord]) -> list[UEGCEdge]:
-    # Universal absence check: build_ueg_c() sets parent_span_id=None for every span
-    # when the column is missing from Parquet. span_id is always populated in both
-    # schema versions, so checking span_id=="" would never fire. Instead, detect the
-    # schema v1 case by verifying that NO span carries a non-None parent_span_id.
-    if not spans or all(s.parent_span_id is None for s in spans):
+    # Universal-absence check: schema v1 files set every span's parent_span_id=None
+    # (column absent → build_ueg_c() writes None). Schema v2 root spans get "" after
+    # str() conversion of the Parquet null value. Both None and "" signal "no parent";
+    # use a falsy test so that the fallback triggers when every span is parentless —
+    # regardless of whether the column was absent (v1) or present-but-empty (v2 root-only).
+    # A mixed v2 file always has at least one child span with a real span_id value,
+    # so all(not ...) correctly evaluates to False and the fast path runs normally.
+    if not spans or all(not s.parent_span_id for s in spans):
         import warnings
         warnings.warn("parent_span_id absent — falling back to temporal containment", stacklevel=3)
         return self._structural_edges_temporal(spans)
@@ -239,8 +242,8 @@ class PipelineVerdict(BaseModel):
     pipeline: str                   # dpipe | gpipe | lpipe
     evaluation_phase: EvaluationPhase
     ranked_candidates: list[str]
-    hr_at_3: float = Field(ge=0, le=1)
-    cpr: float = Field(ge=0, le=1)
+    hr_at_3: float = Field(default=0.0, ge=0, le=1)   # populated by eval harness; pipelines omit
+    cpr: float = Field(default=0.0, ge=0, le=1)         # populated by eval harness; pipelines omit
     latency_ms: float = Field(ge=0)
     token_count: int = Field(ge=0)
     narrative: str
@@ -334,18 +337,19 @@ def run_gpipe(
     snapshot: UEGCSnapshot,
     snapshot_hash: str,
     dpipe_scores: dict[str, float],
+    evaluation_phase: str,   # passed from orchestrator; never hardcoded here
 ) -> dict[str, Any]:
     manifest = get_current_manifest()
     disagreement = compute_ppr_disagreement(dpipe_scores)
     if disagreement < DISAGREEMENT_THRESHOLD:
-        return _sentinel_verdict(incident_id, snapshot_hash, manifest)
+        return _sentinel_verdict(incident_id, snapshot_hash, manifest, evaluation_phase)
     ranked, ppr_out = _ppr_traverse(snapshot, seed_weights=dpipe_scores)
-    return _build_verdict(incident_id, snapshot_hash, manifest, ranked, ppr_out)
+    return _build_verdict(incident_id, snapshot_hash, manifest, ranked, ppr_out, evaluation_phase)
 ```
 
 **Sentinel verdict** (gate below threshold or `GPIPE` flag off):
 ```python
-def _sentinel_verdict(incident_id, snapshot_hash, manifest):
+def _sentinel_verdict(incident_id, snapshot_hash, manifest, evaluation_phase: str):
     return {
         "pipeline": "gpipe",
         "incident_id": incident_id,
@@ -358,9 +362,19 @@ def _sentinel_verdict(incident_id, snapshot_hash, manifest):
         "latency_ms": 0.00,
         "token_count": 0,
         "narrative": "gpipe-gated-or-skipped",
-        "evaluation_phase": "exploratory",
+        "evaluation_phase": evaluation_phase,   # propagated from caller — never hardcoded
         "schema_version": "schema-draft-v0.2",
     }
+```
+
+**Two-environment firewall:** `evaluation_phase` is never hardcoded inside `run_gpipe` or `_sentinel_verdict`. The orchestrator supplies it based on the run context (`"exploratory"` during OTEL Demo calibration, `"confirmatory"` during AIOpsLab runs). Hardcoding `"exploratory"` would silently tag confirmatory sentinel rows as exploratory, violating the OSF §1.4 firewall and making confirmatory result store queries return false results. The orchestrator snippet in §3.5 must pass this parameter explicitly:
+
+```python
+gpipe_verdict = run_gpipe(
+    incident_id, snapshot, snapshot_hash,
+    dpipe_scores=dpipe_verdict.get("ppr_scores", {}),
+    evaluation_phase=evaluation_phase,   # from orchestrator run context
+)
 ```
 
 **PPR traversal — personalization filter:** Before calling `networkx.pagerank`, filter `dpipe_scores` to only nodes present in the graph. If a D-pipe score refers to a service that was pruned out by the K-hop pruner or is absent from the structural graph, passing it to NetworkX raises `KeyError`. Always filter:

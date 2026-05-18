@@ -145,28 +145,28 @@ Source: `docs/tracking/prompt_version_registry.md` + `lpipe_config.py`
 
 Sources: `data/calibrated_params.json`, `helios/pipelines/d_pipe/dpipe_config.py`, `helios/pipelines/g_pipe/gpipe_config.py`
 
-All float values serialised using `canonical_json` rules (sorted keys, 6-decimal precision with trailing zeros preserved).
+All float values serialised via `canonical_json` (sorted keys; floats pre-rounded to 6 significant decimal places via `round(o, 6)` before `json.dumps`). **Trailing zeros are NOT preserved** — Python's `json.dumps` serialises `0.3` as `"0.3"`, not `"0.300000"`. Both `--generate` and `--verify` use the same `canonical_json` path, so the on-disk and in-memory representations are always identical. The schema examples below show actual output format (no trailing zeros):
 
 ```json
 {
   "schema_version": "v1",
   "generated_at_iso": "<ISO timestamp>",
   "dpipe": {
-    "w_error": 0.300000,
-    "rho_threshold": 0.200000,
-    "topology_boost_factor": 1.000000,
-    "pruner_threshold": 0.020000,
-    "pruner_efficacy_gate": 0.200000,
-    "integrity_rate_gate": 0.400000,
-    "ppr_alpha": 0.850000,
+    "calibration_incidents": 15,
     "frozen_at_milestone": "Milestone 2",
-    "loo_cv_hr_at_3": 0.533333,
+    "integrity_rate_gate": 0.4,
     "loo_cv_cpr": 0.442222,
-    "calibration_incidents": 15
+    "loo_cv_hr_at_3": 0.533333,
+    "ppr_alpha": 0.85,
+    "pruner_efficacy_gate": 0.2,
+    "pruner_threshold": 0.02,
+    "rho_threshold": 0.2,
+    "topology_boost_factor": 1.0,
+    "w_error": 0.3
   },
   "gpipe": {
     "disagreement_threshold": "<value frozen after Spec 1 calibration>",
-    "ppr_alpha": 0.850000,
+    "ppr_alpha": 0.85,
     "frozen_at_milestone": "Milestone 3",
     "gpipe_hr_at_3_held_out": "<LOO-CV HR@3 for G-pipe on held-out incidents where gate fired>",
     "dpipe_hr_at_3_held_out": "<LOO-CV HR@3 for D-pipe on the same held-out incident set>",
@@ -214,18 +214,18 @@ Source: `docs/tracking/hypothesis_variant_metric_mapping.md`
   "generated_at_iso": "<ISO timestamp>",
   "statistical_test": "Wilcoxon signed-rank (one-sided)",
   "correction": "Holm-Bonferroni",
-  "family_alpha": 0.050000,
-  "alpha_at_rank_1": 0.006250,
+  "family_alpha": 0.05,
+  "alpha_at_rank_1": 0.00625,
   "effect_size_commitment": "Cohen h >= 0.276",
-  "target_hr_at_3": 0.730000,
-  "baseline_hr_at_3": 0.600000,
+  "target_hr_at_3": 0.73,
+  "baseline_hr_at_3": 0.6,
   "hypotheses": [
     {
       "id": "A-H3",
       "rank": 1,
       "comparison": "HELIOS-Full vs HELIOS-D",
       "primary_metric": "HR@3",
-      "alpha": 0.006250,
+      "alpha": 0.00625,
       "status": "confirmatory"
     }
   ]

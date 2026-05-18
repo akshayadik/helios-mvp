@@ -279,6 +279,7 @@ def run_lpipe(
     incident_id: str,
     snapshot: UEGCSnapshot,
     snapshot_hash: str,
+    evaluation_phase: str,   # passed from orchestrator; never hardcoded
 ) -> dict[str, Any]:
     t0 = time.monotonic()
     manifest = get_current_manifest()
@@ -293,6 +294,10 @@ def run_lpipe(
     )
     response, ollama_result = handler.handle(prompt, timeout_s=TIMEOUT_S)
     latency_ms = (time.monotonic() - t0) * 1000.0
+    token_count = (
+        ollama_result.prompt_tokens + ollama_result.completion_tokens
+        if ollama_result is not None else 0
+    )
     return {
         "pipeline": "lpipe",
         "incident_id": incident_id,
@@ -301,17 +306,36 @@ def run_lpipe(
         "ranked_candidates": response.ranked_candidates,
         "ppr_scores": {},             # L-pipe does not produce PPR scores
         "prompt_version": registry.prompt_version,
-        "token_count": ollama_result.prompt_tokens + ollama_result.completion_tokens,
+        "token_count": token_count,
         "narrative": response.narrative,
         "latency_ms": latency_ms,
-        "evaluation_phase": "exploratory",
+        "evaluation_phase": evaluation_phase,   # passed from orchestrator; never hardcoded
         "schema_version": "schema-draft-v0.2",
     }
 ```
 
-**`hr_at_3` and `cpr` are not computed inside `run_lpipe`** — pipelines output raw `ranked_candidates` and `narrative` only. Metric computation (`hr_at_3`, `cpr`) belongs in the evaluation harness (`scripts/evaluate_ablation.py`) which has access to ground truth. This matches D-pipe and G-pipe behavior and keeps pipeline code free of ground truth dependencies.
+**`hr_at_3` and `cpr` are not computed inside `run_lpipe`** — pipelines output raw `ranked_candidates` and `narrative` only. Metric computation (`hr_at_3`, `cpr`) belongs in the evaluation harness (`scripts/evaluate_ablation.py`) which has access to ground truth.
 
-**`token_count`** is derived from `OllamaGenerateResult.prompt_tokens + completion_tokens` (returned by `handler.handle()` alongside the `LPipeResponse`). `ResponseHandler.handle()` must be updated to return `tuple[LPipeResponse, OllamaGenerateResult]`.
+**Schema consequence:** `PipelineVerdict` v0.2 must give `hr_at_3` and `cpr` default values so that pipeline-returned dicts (which omit them) are accepted by Pydantic without a `ValidationError`:
+
+```python
+hr_at_3: float = Field(default=0.0, ge=0, le=1)   # populated by eval harness
+cpr: float = Field(default=0.0, ge=0, le=1)         # populated by eval harness
+```
+
+Without defaults, `PipelineVerdict(**run_lpipe(...))` raises immediately because both fields are required but absent from the dict. This change is part of the v0.2 schema definition in Spec 1 (§3.1) and must be included in the `PipelineVerdict` update there. The evaluation harness computes real values from `ranked_candidates` + ground truth and either patches the stored row or records metrics in a separate aggregation table.
+
+**`token_count`** is derived from `OllamaGenerateResult.prompt_tokens + completion_tokens`. `ResponseHandler.handle()` must return `tuple[LPipeResponse, OllamaGenerateResult | None]` in **all cases** — including retry exhaustion fallback. On fallback, the second element is `None` (no Ollama round-trip succeeded). The pipeline unpacks safely:
+
+```python
+response, ollama_result = handler.handle(prompt, timeout_s=TIMEOUT_S)
+token_count = (
+    ollama_result.prompt_tokens + ollama_result.completion_tokens
+    if ollama_result is not None else 0
+)
+```
+
+Returning a bare `LPipeResponse` on fallback (as a single object, not a tuple) causes `ValueError: not enough values to unpack` at the call site. The `handle()` return type must be `tuple[LPipeResponse, OllamaGenerateResult | None]` unconditionally — the two-element tuple invariant never breaks regardless of path taken through the error-handling logic.
 
 **`prompt_version`** in the verdict dict provides a persistent record binding each verdict row to the exact prompt template used. This enables post-hoc audit: if `rca_v1.txt` ever changes, old rows are provably tagged with the old version.
 
