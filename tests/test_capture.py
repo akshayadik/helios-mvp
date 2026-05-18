@@ -93,6 +93,7 @@ def _traces_table() -> pa.Table:
         {
             "trace_id": pa.array(["abc123"], type=pa.string()),
             "span_id": pa.array(["def456"], type=pa.string()),
+            "parent_span_id": pa.array([""], type=pa.string()),
             "operation_name": pa.array(["/GetProduct"], type=pa.string()),
             "service_name": pa.array(["productcatalogservice"], type=pa.string()),
             "start_time_us": pa.array([1715000000000000], type=pa.int64()),
@@ -222,7 +223,7 @@ def test_validate(tmp_path):
 
 
 def test_validate_traces_round_trip(tmp_path):
-    """Traces Parquet preserves all seven expected columns."""
+    """Traces Parquet preserves all eight expected columns."""
     table = _traces_table()
     ParquetWriter().write(table, tmp_path / "p2_traces.parquet")
 
@@ -230,6 +231,7 @@ def test_validate_traces_round_trip(tmp_path):
     expected = {
         "trace_id",
         "span_id",
+        "parent_span_id",
         "operation_name",
         "service_name",
         "start_time_us",
@@ -312,7 +314,7 @@ class TestPrometheusMetricsFetcher:
 
 class TestJaegerTracesFetcher:
     def test_fetch_returns_expected_columns(self, window_bounds):
-        """Parses Jaeger traces response into a seven-column table."""
+        """Parses Jaeger traces response into an eight-column table."""
         start, end = window_bounds
         payload = {
             "data": [
@@ -336,6 +338,7 @@ class TestJaegerTracesFetcher:
         expected = {
             "trace_id",
             "span_id",
+            "parent_span_id",
             "operation_name",
             "service_name",
             "start_time_us",
@@ -363,6 +366,63 @@ class TestJaegerTracesFetcher:
             pytest.raises(urllib.error.HTTPError),
         ):
             JaegerTracesFetcher("http://jaeger:16686").fetch(start, end)
+
+    def test_fetch_includes_parent_span_id_column(self, window_bounds):
+        """JaegerTracesFetcher produces an 8-column table including parent_span_id."""
+        start, end = window_bounds
+        payload = {
+            "data": [
+                {
+                    "traceID": "abc123",
+                    "spans": [
+                        {
+                            "spanID": "def456",
+                            "operationName": "/GetProduct",
+                            "startTime": 1715000000000000,
+                            "duration": 1500,
+                            "tags": [{"key": "otel.status_code", "value": "OK"}],
+                            "references": [
+                                {
+                                    "refType": "CHILD_OF",
+                                    "traceID": "abc123",
+                                    "spanID": "aaa111",
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ]
+        }
+        with patch("urllib.request.urlopen", return_value=_http_mock(payload)):
+            table = JaegerTracesFetcher("http://jaeger:16686").fetch(start, end)
+
+        assert "parent_span_id" in table.column_names
+        assert table.column("parent_span_id")[0].as_py() == "aaa111"
+
+    def test_fetch_root_span_has_empty_parent_span_id(self, window_bounds):
+        """A span with no CHILD_OF reference gets parent_span_id='' (root span)."""
+        start, end = window_bounds
+        payload = {
+            "data": [
+                {
+                    "traceID": "abc123",
+                    "spans": [
+                        {
+                            "spanID": "root001",
+                            "operationName": "/root",
+                            "startTime": 1715000000000000,
+                            "duration": 500,
+                            "tags": [],
+                            "references": [],
+                        }
+                    ],
+                }
+            ]
+        }
+        with patch("urllib.request.urlopen", return_value=_http_mock(payload)):
+            table = JaegerTracesFetcher("http://jaeger:16686").fetch(start, end)
+
+        assert table.column("parent_span_id")[0].as_py() == ""
 
 
 class TestOpenSearchLogsFetcher:
