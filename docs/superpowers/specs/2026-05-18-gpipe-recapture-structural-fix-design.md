@@ -404,23 +404,45 @@ Returns `(ranked_candidates: list[str], ppr_scores: dict[str, float])`. Same det
 
 ### 3.5 Orchestrator update (`helios/orchestrator/runner.py`)
 
-Replace concurrent dispatch with sequential D→G(conditional)→L:
+Replace concurrent dispatch with sequential D→G(conditional)→L. The sentinel is **always emitted at the orchestrator level** — `run_gpipe()` is only called when the gate fires. This ensures `gpipe_verdict` is always a dict (never `None`) so that MetricIntegrityGate consistency checks always receive a G-pipe row:
 
 ```python
 # Sequential dispatch — see deviation log and ablation_architecture.md §3.2
-dpipe_verdict = run_dpipe(incident_id, snapshot_hash)
+dpipe_verdict = run_dpipe(incident_id, snapshot, snapshot_hash, evaluation_phase=evaluation_phase)
 
-gpipe_verdict: dict | None = None
 if should_run_gpipe(dpipe_verdict, manifest):
     gpipe_verdict = run_gpipe(
         incident_id, snapshot, snapshot_hash,
         dpipe_scores=dpipe_verdict.get("ppr_scores", {}),
+        evaluation_phase=evaluation_phase,
     )
+else:
+    # Gate did not fire (or GPIPE/L2B_GRAPH flag off) — emit sentinel here, not inside
+    # run_gpipe. This guarantees a G-pipe dict is always present for MetricIntegrityGate.
+    gpipe_verdict = {
+        "pipeline": "gpipe",
+        "incident_id": incident_id,
+        "variant_config_hash": manifest.compute_variant_config_hash(),
+        "snapshot_hash": snapshot_hash,
+        "ranked_candidates": [],
+        "ppr_scores": {},
+        "hr_at_3": 0.0,
+        "cpr": 0.0,
+        "latency_ms": 0.0,
+        "token_count": 0,
+        "narrative": "gpipe-gated-or-skipped",
+        "evaluation_phase": evaluation_phase,
+        "schema_version": "schema-draft-v0.2",
+    }
 
-lpipe_verdict = run_lpipe(incident_id, snapshot, snapshot_hash)   # independent of G-pipe
+lpipe_verdict = run_lpipe(
+    incident_id, snapshot, snapshot_hash, evaluation_phase=evaluation_phase
+)   # independent of G-pipe
 ```
 
-**Note on `.get()` call:** `run_dpipe()` returns `dict[str, Any]` (a plain dict, not a `PipelineVerdict` object). `.get("ppr_scores", {})` is therefore valid Python — no `AttributeError`. Do not call `.get()` on a `PipelineVerdict` instance; Pydantic v2 frozen models do not have a `.get()` method. Access those fields as attributes (`verdict.ppr_scores`) or call `verdict.model_dump()` first.
+**Consequence for `run_gpipe()`:** The sentinel block in §3.4 (`_sentinel_verdict`) acts as a second-level safety net for unexpected sub-threshold cases that reach `run_gpipe()` (e.g., race conditions or direct test calls). The authoritative sentinel path is the orchestrator `else` branch above. Both paths must produce structurally identical dicts.
+
+**Note on `.get()` call:** `run_dpipe()` returns `dict[str, Any]` (a plain dict, not a `PipelineVerdict` object). `.get("ppr_scores", {})` is therefore valid Python — no `AttributeError`. Do not call `.get()` on a `PipelineVerdict` instance; Pydantic v2 frozen models do not have a `.get()` method.
 
 `should_run_gpipe()`: checks `VCLFlag.GPIPE` **and** `VCLFlag.L2B_GRAPH` active in manifest, AND `compute_ppr_disagreement(dpipe_scores) >= DISAGREEMENT_THRESHOLD`. See §3.4 for dual-flag rationale.
 

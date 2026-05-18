@@ -56,7 +56,7 @@ Reads from live sources and writes all six JSON files, then computes `manifest_s
 | `data/calibrated_params.json` + `dpipe_config.py` + `gpipe_config.py` | `research/osf/thresholds.json` |
 | `docs/tracking/vcl_manifest_tracking.md` | `research/osf/variant_hashes.json` |
 | `docs/tracking/hypothesis_variant_metric_mapping.md` | `research/osf/analysis_plan.json` |
-| `data/snapshot_registry.jsonl` | `research/osf/corpus_manifest.json` |
+| `data/snapshot_registry.jsonl` + `data/captures/` directory listing | `research/osf/corpus_manifest.json` |
 | SHA-256 of concatenated artefacts (alphabetical) | `research/osf/manifest_sig.txt` |
 
 Concatenation order for `manifest_sig.txt` is deterministic: alphabetical by filename.
@@ -265,7 +265,38 @@ Exploratory corpus only. The two-environment firewall (§1.4) prohibits mixing e
 }
 ```
 
-All 20 incidents sourced from `data/snapshot_registry.jsonl` post-re-capture.
+**Source data for `incidents` list:** `data/snapshot_registry.jsonl` stores `snapshot_hash` keyed by `incident_id`, but does not record `fault_class`. `incident_id` and `fault_class` must be resolved from the `data/captures/` directory structure, where each subdirectory name IS the `incident_id` (e.g., `s0-adhc-001`). The `fault_class` is parsed from the incident_id name using the middle segment of the dash-delimited format (`s0-{fault_class}-{seq}`):
+
+```python
+from pathlib import Path
+import json, re
+
+CAPTURES_DIR = Path("data/captures")
+REGISTRY_PATH = Path("data/snapshot_registry.jsonl")
+
+# Build snapshot_hash lookup: incident_id → hash (from registry)
+registry: dict[str, str] = {}
+with open(REGISTRY_PATH) as f:
+    for line in f:
+        entry = json.loads(line)
+        registry[entry["incident_id"]] = entry["snapshot_hash"]
+
+def _fault_class(incident_id: str) -> str:
+    parts = incident_id.split("-")
+    return parts[1] if len(parts) >= 3 else "unknown"
+
+incidents = [
+    {
+        "incident_id": d.name,
+        "snapshot_hash": registry[d.name],
+        "fault_class": _fault_class(d.name),
+    }
+    for d in sorted(CAPTURES_DIR.iterdir())
+    if d.is_dir() and d.name in registry
+]
+```
+
+This combines both sources: `captures/` for `incident_id` enumeration and `fault_class` parsing; `snapshot_registry.jsonl` for `snapshot_hash` lookup. `--verify` must use the same join logic, not only the registry.
 
 ### `manifest_sig.txt`
 
