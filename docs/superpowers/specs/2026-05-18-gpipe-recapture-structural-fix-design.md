@@ -62,18 +62,50 @@ P2_TRACES_SCHEMA_VERSION = "v2"
 MANIFEST_SCHEMA_VERSION = "schema-draft-v0.2"
 ```
 
-**`snapshot_hash` write (Spec 3 pre-condition):** After building the `UEGCSnapshot` from captured Parquet data, compute and write `snapshot_hash` to the capture manifest JSON. `corpus_manifest.json` generation (Spec 3) reads `cap["snapshot_hash"]` from each capture manifest — if this key is absent, `--generate` raises `KeyError`. Existing manifests at `schema-draft-v0.1` lack this field; the re-capture produces updated manifests at `schema-draft-v0.2`:
+**`snapshot_hash` write (Spec 3 pre-condition):** After building the `UEGCSnapshot` from captured Parquet data, compute and write `snapshot_hash` to the capture manifest JSON. `corpus_manifest.json` generation (Spec 3) reads `cap["snapshot_hash"]` from each capture manifest — if this key is absent, `--generate` raises `KeyError`. Existing manifests at `schema-draft-v0.1` lack this field; the re-capture produces updated manifests at `schema-draft-v0.2`.
+
+`UEGCSnapshot.compute_snapshot_hash()` already exists in `helios/schemas/ueg_c.py`. The complete `bin/run_capture.py` function body (showing all relevant fields):
 
 ```python
-# After snapshot = build_ueg_c(parquet_paths) inside bin/run_capture.py
-snapshot_hash = snapshot.compute_snapshot_hash()
-manifest["snapshot_hash"] = snapshot_hash        # UEGCSnapshot SHA-256 (graph topology)
-manifest["schema_version"] = MANIFEST_SCHEMA_VERSION
-# Write manifest back to data/captures/{incident_id}/manifest.json
-manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+import json
+from pathlib import Path
+
+def capture_incident(incident_id: str, captures_dir: Path) -> None:
+    incident_dir = captures_dir / incident_id
+    manifest_path = incident_dir / "manifest.json"
+
+    # Load existing manifest (written by OTEL capture step)
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+    # window_hash is already written by the OTEL ingest step (SHA-256 of TelemetryWindow)
+    # It is NOT the same as snapshot_hash — do not overwrite it.
+    window_hash = manifest["window_hash"]
+
+    parquet_paths = {
+        "p2_traces": str(incident_dir / "p2_traces.parquet"),
+        # ... other paths
+    }
+
+    # Build UEGCSnapshot (the compiled graph from all Parquet layers)
+    from helios.schemas.telemetry import TelemetryWindow
+    from helios.graph.ueg_c_builder import build_ueg_c
+    window = TelemetryWindow(
+        p1_metrics_path=...,
+        p2_traces_path=str(incident_dir / "p2_traces.parquet"),
+        ...
+    )
+    snapshot = build_ueg_c(window)
+
+    # Compute and write snapshot_hash — required by Spec 3 corpus_manifest generation
+    snapshot_hash = snapshot.compute_snapshot_hash()   # SHA-256 of graph topology
+    manifest["snapshot_hash"] = snapshot_hash
+    manifest["schema_version"] = MANIFEST_SCHEMA_VERSION   # "schema-draft-v0.2"
+
+    # Write updated manifest atomically
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 ```
 
-`window_hash` (SHA-256 of the raw `TelemetryWindow` L0 data) remains a separate field — it is NOT the same as `snapshot_hash`. Both must be present in `schema-draft-v0.2` manifests.
+`window_hash` (SHA-256 of the raw `TelemetryWindow` L0 data) is preserved — it is NOT the same as `snapshot_hash`. Both must be present and distinct in `schema-draft-v0.2` manifests. Re-capture loop (§1.2) must be re-run AFTER this code change is applied — not before.
 
 Test: `tests/test_capture.py` — assert `parent_span_id` column present in written Parquet; assert `snapshot_hash` key present in manifest with a 64-char hex value; assert `window_hash` and `snapshot_hash` are distinct; assert `schema_version` is `"schema-draft-v0.2"`.
 
@@ -262,7 +294,7 @@ With this normalization, root spans always receive `parent_span_id=""` (falsy), 
 | `test_structural_multi_level_chain` | A→B→C chain produces A→B and B→C structural edges |
 | `test_structural_fallback_on_missing_column` | Missing column → warning raised + temporal containment used |
 | `test_structural_empty_spans` | Empty span list → empty edge list |
-| `test_structural_parquet_null_variants` | `pd.NA`, `float('nan')`, `None` in `parent_span_id` all normalise to `""` via `_psid()` → no phantom edges produced |
+| `test_structural_parquet_null_variants` | `pd.NA`, `float('nan')`, `None`, `pd.NaT` in `parent_span_id` all normalise to `""` via `_psid()` → no phantom edges produced. Explicit assertions: `_psid(None) == ""`, `_psid(float("nan")) == ""`, `_psid(pd.NA) == ""`, `_psid(pd.NaT) == ""`, `_psid("abc123") == "abc123"` |
 
 ---
 
@@ -550,11 +582,36 @@ After structural edge fix, run two calibration scripts in order:
 
 1. **D-pipe stability check:** `poetry run python scripts/calibrate_dpipe.py` — verify LOO-CV HR@3 within ±0.01 of M2 value (0.5333). This script already exists from Milestone 2; it re-uses the existing 20-incident corpus without changes.
 
-2. **G-pipe calibration (new script):** `poetry run python scripts/calibrate_gpipe.py` — see Files Modified. This script:
-   - Runs PPR traversal LOO-CV over the 20-incident corpus
-   - Sweeps `DISAGREEMENT_THRESHOLD` over `DISAGREEMENT_SWEEP` values
-   - Picks the threshold value maximising G-pipe HR@3 on the held-out set
-   - Writes G-pipe LOO-CV fields (`gpipe_hr_at_3_held_out`, `dpipe_hr_at_3_held_out`, `gate_passed`, `n_incidents_triggered`) to `data/calibrated_params.json`
+2. **G-pipe calibration (new script):** `poetry run python scripts/calibrate_gpipe.py` — see Files Modified. Skeleton:
+
+```python
+"""scripts/calibrate_gpipe.py — LOO-CV threshold sweep for G-pipe entry gate."""
+import json
+from pathlib import Path
+
+from helios.pipelines.g_pipe.gpipe_config import DISAGREEMENT_SWEEP, GPIPE_PPR_ALPHA
+from helios.pipelines.g_pipe.pipeline import _ppr_traverse, compute_ppr_disagreement
+from helios.schemas.ueg_c import UEGCSnapshot
+
+CALIBRATED_PATH = Path("data/calibrated_params.json")
+CAPTURES_DIR = Path("data/captures")
+# Load corpus ...
+# For each threshold in DISAGREEMENT_SWEEP:
+#   LOO-CV: for each incident i, train on {all}\{i}, evaluate on {i}
+#   Compute g_hr_at_3 and d_hr_at_3 on held-out set
+# Pick threshold maximising g_hr_at_3
+# Write to calibrated_params.json:
+params = json.loads(CALIBRATED_PATH.read_text())
+params.update({
+    "gpipe_hr_at_3_held_out": best_g_hr,
+    "dpipe_hr_at_3_held_out": held_out_d_hr,
+    "gate_passed": best_g_hr >= held_out_d_hr,
+    "n_incidents_triggered": n_triggered,
+})
+CALIBRATED_PATH.write_text(json.dumps(params, indent=2))
+```
+
+The sweep logic mirrors `scripts/calibrate_dpipe.py` (LOO-CV pattern). Implement incrementally: start with a single threshold pass, then add the sweep loop.
 
 3. If G-pipe HR@3 ≥ D-pipe HR@3 on held-out: A-H6 entry gate PASSES → freeze value in `gpipe_config.py`.
 4. If G-pipe HR@3 < D-pipe HR@3: file deviation with power analysis note (corpus too small).

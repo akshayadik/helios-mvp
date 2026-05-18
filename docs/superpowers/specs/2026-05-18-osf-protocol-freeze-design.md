@@ -104,8 +104,20 @@ CI step added to `ci.yml`:
 
 ### `--populate-prereg` mode
 
-`preregistration.md` must contain the SHA fingerprints of all 6 JSON artefacts and `manifest_sig.txt`. These cannot be placeholders — the exit gate (G3-5) checks the file manually. Computing SHAs by hand is error-prone; `--populate-prereg` reads the generated artefacts, computes their SHA-256, and injects them into the Markdown template using regex replacement:
+`preregistration.md` must contain the SHA fingerprints of all 6 JSON artefacts and `manifest_sig.txt`. These cannot be placeholders — the exit gate (G3-5) checks the file manually. Computing SHAs by hand is error-prone; `--populate-prereg` reads the generated artefacts and injects their SHA-256 values into `preregistration.md` using structured **HTML comment markers** (not free-form regex). This approach is robust to any table formatting change:
 
+**Marker convention in `preregistration.md`:**
+```markdown
+| `analysis_plan.json` | <!-- SHA:analysis_plan.json --> |
+| `corpus_manifest.json` | <!-- SHA:corpus_manifest.json --> |
+| `prompt_sha.json` | <!-- SHA:prompt_sha.json --> |
+| `seeds.json` | <!-- SHA:seeds.json --> |
+| `thresholds.json` | <!-- SHA:thresholds.json --> |
+| `variant_hashes.json` | <!-- SHA:variant_hashes.json --> |
+| `manifest_sig.txt` | <!-- SHA:manifest_sig.txt --> |
+```
+
+**`--populate-prereg` implementation:**
 ```python
 # verify_osf_freeze.py --populate-prereg
 import hashlib, re
@@ -114,7 +126,7 @@ from pathlib import Path
 OSF_DIR = Path("research/osf")
 PREREG_PATH = Path("research/osf/preregistration.md")
 
-sha_table = {}
+sha_table: dict[str, str] = {}
 for f in sorted(OSF_DIR.glob("*.json")):
     sha_table[f.name] = hashlib.sha256(f.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
 sha_table["manifest_sig.txt"] = hashlib.sha256(
@@ -123,17 +135,16 @@ sha_table["manifest_sig.txt"] = hashlib.sha256(
 
 content = PREREG_PATH.read_text(encoding="utf-8")
 for filename, sha in sha_table.items():
-    # Replace placeholder pattern: | filename | [placeholder or old sha] |
-    content = re.sub(
-        rf"(\|\s*`?{re.escape(filename)}`?\s*\|)[^\|]+(\|)",
-        rf"\1 `{sha}` \2",
-        content,
+    # Replace: <!-- SHA:filename --> with the 64-char hex sha
+    content = content.replace(
+        f"<!-- SHA:{filename} -->",
+        f"`{sha}`",
     )
 PREREG_PATH.write_text(content, encoding="utf-8")
-print(f"preregistration.md updated with {len(sha_table)} SHA entries")
+print(f"preregistration.md: {len(sha_table)} SHA markers populated")
 ```
 
-Run `--populate-prereg` after `--generate` completes, then commit both the JSONs and the updated `preregistration.md` in a single commit. `--populate-prereg` is idempotent — running it again on an already-populated file produces no change.
+The `<!-- SHA:filename -->` markers are plain HTML comments rendered invisibly in GitHub Markdown; after `--populate-prereg` they are replaced by the literal SHA hex. Because the replacement is exact string matching (not regex), it is immune to table formatting changes. Run `--populate-prereg` after `--generate` completes, then commit both JSONs and `preregistration.md` in a single commit. `--populate-prereg` is idempotent — re-running after population replaces the same SHA with itself, no change.
 
 ### Line-ending and serialisation discipline
 
@@ -161,7 +172,50 @@ content = canonical_json(data_dict) + "\n"  # single trailing newline
 
 ### `seeds.json`
 
-**Source: Python constants only (code-first principle).** Seeds are declared as named constants in `helios.vcl.config` (e.g., `GLOBAL_SEED`) and `lpipe_config.LLAMA_SEED`. `docs/tracking/seed_register.md` is a human-readable Markdown table that is auto-generated FROM `seeds.json` by `scripts/regen_tracking_tables.py` — it is never an input to `--generate`. Parsing `seed_register.md` would create a Markdown-scraping dependency that is fragile and inconsistent with the code-first principle established for all other artefacts.
+**Source: Python constants only (code-first principle).** `docs/tracking/seed_register.md` is a human-readable Markdown table that is auto-generated FROM `seeds.json` by `scripts/regen_tracking_tables.py` — it is never an input to `--generate`. Parsing `seed_register.md` would create a Markdown-scraping dependency that is fragile and inconsistent with the code-first principle established for all other artefacts.
+
+Seeds are declared in a new file **`helios/research/seeds.py`** (new file — add to Files Modified):
+
+```python
+"""Research seed registry — single source of truth for all reproducibility seeds.
+
+All seeds are declared here as named constants. verify_osf_freeze.py --generate
+reads this module to produce seeds.json. Any new seed (e.g., Stage 5 confirmatory)
+must be added here with a deviation log entry.
+"""
+from helios.vcl import VCLFlag  # noqa: F401 — satisfies flag-guard
+
+GLOBAL_SEED: int = 42        # numpy.random.seed / random.seed — all stages
+LLAMA_SEED: int = 42         # re-exported from lpipe_config for centralised access
+
+SEED_REGISTRY: list[dict] = [
+    {
+        "seed_id": "SEED-001",
+        "value": GLOBAL_SEED,
+        "stage": "Stage 0",
+        "algorithm": "global",
+        "context": "numpy.random.seed / random.seed",
+        "source_constant": "helios.research.seeds.GLOBAL_SEED",
+    },
+    {
+        "seed_id": "SEED-002",
+        "value": LLAMA_SEED,
+        "stage": "Stage 1",
+        "algorithm": "llama3.1:8b inference",
+        "context": "Ollama Protocol A seed",
+        "source_constant": "helios.pipelines.l_pipe.lpipe_config.LLAMA_SEED",
+    },
+]
+```
+
+`verify_osf_freeze.py --generate` imports `helios.research.seeds.SEED_REGISTRY` directly. `LLAMA_SEED` in `helios/research/seeds.py` must always equal `lpipe_config.LLAMA_SEED` — a divergence test should assert this:
+
+```python
+def test_seed_registry_llama_seed_matches_lpipe_config():
+    from helios.research.seeds import LLAMA_SEED as REG_SEED
+    from helios.pipelines.l_pipe.lpipe_config import LLAMA_SEED as LPIPE_SEED
+    assert REG_SEED == LPIPE_SEED
+```
 
 ```json
 {
@@ -251,16 +305,20 @@ Source: `helios.vcl.variants.CONFIRMATORY_VARIANTS` — a list of `(name, VCLMan
 **`_hypothesis_for_variant()` and `_status_for_variant()` — required exports:** The generation pattern calls these helpers. They must be defined in `helios/research/analysis_plan.py` and exported, not left as undefined references. Add to that module:
 
 ```python
-# Mapping locked at Milestone 3; changes require deviation log entry.
+# Mapping sourced from docs/tracking/hypothesis_variant_metric_mapping.md.
+# Locked at Milestone 3; changes require deviation log entry.
+# Keys are the exact names from helios.vcl.variants.CONFIRMATORY_VARIANTS.
 _VARIANT_HYPOTHESIS_MAP: dict[str, str] = {
-    "HELIOS-Full":        "A-H1, A-H3",
-    "HELIOS-noLLM":       "A-H2, A-H5",
-    "HELIOS-noPeer":      "A-H4, A-H6",
-    "HELIOS-noGraph":     "A-H7",
-    "HELIOS-noAdaptive":  "A-H8",
-    "HELIOS-Baseline":    "B-H1, B-H2",
-    "HELIOS-Control":     "B-H3",
-    "HELIOS-noRouter":    "",
+    "HELIOS-Full":        "A-H1, A-H2, A-H3, A-H4, A-H5, A-H7, A-H8",  # treatment in all A-family
+    "HELIOS-noLLM":       "A-H7",        # comparison: Full outperforms noLLM on HR@3
+    "HELIOS-noGraph":     "A-H2",        # comparison: Full outperforms noGraph on CpR
+    "HELIOS-D":           "A-H3, A-H6",  # comparison: Full vs D (A-H3); G vs D (A-H6)
+    "HELIOS-G":           "A-H6",        # treatment: G outperforms D on HR@3 (gate-conditional)
+    "HELIOS-noConsensus": "A-H4",        # comparison: Full outperforms noConsensus on HR@3
+    "HELIOS-noRouter":    "A-H5",        # comparison: Full outperforms noRouter on HR@3
+    "HELIOS-noStructural":"A-H8",        # comparison: Full outperforms noStructural on HR@3
+    # B-family (baseline comparisons vs CHASE/RCACopilot) deferred to post-M4
+    # when AIOpsLab corpus is collected; add here when registered.
 }
 
 def _hypothesis_for_variant(name: str) -> str:
@@ -272,18 +330,30 @@ def _status_for_variant(name: str) -> str:
 
 Both functions must be importable from `helios.research.analysis_plan` for use by `verify_osf_freeze.py`.
 
-**`vcl_freeze_sha` — git SHA via subprocess (not platform-dependent shell):** Hard-coding the SHA is fragile; using a shell command that requires bash is CI-unsafe. Use Python `subprocess`:
+**`vcl_freeze_sha` — git SHA via subprocess (not platform-dependent shell):** Hard-coding the SHA is fragile; using a shell command that requires bash is CI-unsafe. Use Python `subprocess` with an explicit fallback:
 
 ```python
+import logging
 import subprocess
 
-vcl_freeze_sha = subprocess.check_output(
-    ["git", "rev-parse", "HEAD:helios/vcl/variants.py"],
-    text=True,
-).strip()
-```
+def _vcl_freeze_sha() -> str:
+    """Return git object SHA for helios/vcl/variants.py at HEAD.
 
-`subprocess.check_output` raises `subprocess.CalledProcessError` if git is not available — catch and substitute `"git-unavailable"` with a logged warning rather than crashing `--generate` in environments without git (e.g., some CI images unpack source without `.git/`).
+    Returns 'git-unavailable' (with a warning) if git is not reachable or
+    .git/ directory is absent (e.g., source-only CI images, zip extracts).
+    """
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "HEAD:helios/vcl/variants.py"],
+            text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        logging.warning(
+            "vcl_freeze_sha: git not available — using 'git-unavailable' sentinel"
+        )
+        return "git-unavailable"
+```
 
 **Flag matrix requirement:** The ablation notebook renders an 8 variants × 14 flags matrix from this file without importing `helios.vcl.*`. This is only possible if the flag configuration is embedded in the JSON. The `flags` field must contain every boolean flag value for the variant:
 
@@ -506,6 +576,24 @@ Human-authored document summarising the frozen artefacts for examiner and OSF de
 | Deviation Summary | Narrative of all deviation log entries at freeze time, sourced from `deviation_log.md` |
 | OSF Deposit DOI | `[to be added post-upload]` placeholder |
 
+**Frozen Artefacts table template (use exactly this format — markers consumed by `--populate-prereg`):**
+
+```markdown
+## Frozen Artefacts
+
+| File | SHA-256 |
+|---|---|
+| `analysis_plan.json` | <!-- SHA:analysis_plan.json --> |
+| `corpus_manifest.json` | <!-- SHA:corpus_manifest.json --> |
+| `prompt_sha.json` | <!-- SHA:prompt_sha.json --> |
+| `seeds.json` | <!-- SHA:seeds.json --> |
+| `thresholds.json` | <!-- SHA:thresholds.json --> |
+| `variant_hashes.json` | <!-- SHA:variant_hashes.json --> |
+| `manifest_sig.txt` | <!-- SHA:manifest_sig.txt --> |
+```
+
+Start `preregistration.md` with this exact table skeleton. `--populate-prereg` replaces each `<!-- SHA:filename -->` token with the 64-char hex. The file is committed after `--populate-prereg` runs — **never populate SHAs by hand**.
+
 **No TBD sections permitted at exit.** The Deviation Summary must reference every entry in the deviation log at the time of freeze. The frozen artefact SHA table must be populated from actual computed values (generated by `--generate`, not placeholders).
 
 ---
@@ -561,7 +649,7 @@ df[bool_cols] = df[bool_cols].map(lambda x: "Y" if x else "N")
 df   # renders as table in Jupyter
 ```
 
-This cell must not raise when executed without `helios` installed. `pandas` is already a project dependency (`pyproject.toml`).
+This cell must not raise when executed without `helios` installed. `pandas` is a project dependency (`pyproject.toml`). Verify it is in the dev dependency group used by the CI `nbconvert` step: `poetry add --group dev pandas` if not present (it was added as a D-pipe dependency in M2; confirm it's accessible in the CI notebook job).
 
 **Render requirement:** `jupyter nbconvert --execute research/ablation_notebook.ipynb` must complete without error and without requiring Ollama to be running. L3 section displays config values only — no live inference.
 
@@ -598,6 +686,7 @@ Add this step to `ci.yml` after the `osf-freeze-verify` job. The `--timeout=120`
 | File | Action |
 |---|---|
 | `helios/research/__init__.py` | **New** — package marker |
+| `helios/research/seeds.py` | **New** — `GLOBAL_SEED`, `LLAMA_SEED`, `SEED_REGISTRY`; single source of truth for all reproducibility seeds; `verify_osf_freeze.py` imports `SEED_REGISTRY` |
 | `helios/research/analysis_plan.py` | **New** — `FAMILY_A_HYPOTHESES`, `FAMILY_B_HYPOTHESES` constants; `_hypothesis_for_variant()`, `_status_for_variant()` exports; `_VARIANT_HYPOTHESIS_MAP` lookup dict; frozen research commitment |
 | `bin/verify_osf_freeze.py` | **New** — `--generate` + `--verify` modes; code-first sources only |
 | `scripts/regen_tracking_tables.py` | **New** — auto-generates Markdown tables in tracking docs from frozen JSON artefacts |

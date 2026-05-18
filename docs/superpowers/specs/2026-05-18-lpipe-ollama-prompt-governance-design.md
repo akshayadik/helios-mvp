@@ -380,6 +380,10 @@ cpr: float = Field(default=0.0, ge=0, le=1)         # populated by eval harness
 
 Without defaults, `PipelineVerdict(**run_lpipe(...))` raises immediately because both fields are required but absent from the dict. This change is part of the v0.2 schema definition in Spec 1 (§3.1) and must be included in the `PipelineVerdict` update there. The evaluation harness computes real values from `ranked_candidates` + ground truth and either patches the stored row or records metrics in a separate aggregation table.
 
+**Return type contract — `run_lpipe()` always returns `dict[str, Any]`.** The `handler.handle()` returns `tuple[LPipeResponse, OllamaGenerateResult | None]` — but `run_lpipe()` is a pipeline entry-point that always returns a plain dict, never a tuple. The three paths are: (a) success — unpack handler tuple, build dict; (b) retry-exhaustion fallback — handler returns `(sentinel_response, None)` tuple, pipeline builds dict from it; (c) connectivity error — exception propagates from `handler.handle()` to `run_lpipe()`'s `try/except`, which builds and returns a dict. None of these paths produce a tuple at the `run_lpipe()` level. The orchestrator unpacks `run_lpipe()` as a dict — a tuple return would crash `dpipe_verdict.get(...)` upstream.
+
+Add `from helios.schemas.verdict import VERDICT_SCHEMA_VERSION` at the top of `pipeline.py` — both the connectivity error path and the success path use this constant in their return dicts.
+
 **`token_count`** is derived from `OllamaGenerateResult.prompt_tokens + completion_tokens`. `ResponseHandler.handle()` must return `tuple[LPipeResponse, OllamaGenerateResult | None]` in **all cases** — including retry exhaustion fallback. On fallback, the second element is `None` (no Ollama round-trip succeeded). The pipeline unpacks safely:
 
 ```python
@@ -414,6 +418,59 @@ def _anomaly_summary(snapshot: UEGCSnapshot) -> str:
 ```
 
 These helpers contain no inference logic and require no external imports beyond `UEGCSnapshot`. The `_anomaly_summary` stub is intentionally minimal for M3 — it documents the production upgrade path without blocking the protocol freeze.
+
+**Test for `EXPECTED_PROMPT_SHA` runtime match (mandatory tamper-guard verification):**
+
+```python
+def test_expected_prompt_sha_matches_registry():
+    """EXPECTED_PROMPT_SHA in lpipe_config.py must match the live file SHA.
+
+    If this test fails: the prompt file changed without updating the constant,
+    OR the constant was changed without updating the file. Either requires a
+    deviation log entry before the test can be updated.
+    """
+    from helios.pipelines.l_pipe.lpipe_config import EXPECTED_PROMPT_SHA
+    from helios.pipelines.l_pipe.prompt_registry import PromptRegistry, PROMPT_PATH
+
+    registry = PromptRegistry(PROMPT_PATH)
+    assert registry.prompt_sha == EXPECTED_PROMPT_SHA, (
+        f"Prompt SHA mismatch: live={registry.prompt_sha!r} "
+        f"frozen={EXPECTED_PROMPT_SHA!r}"
+    )
+```
+
+**Compute `EXPECTED_PROMPT_SHA` on first commit of `rca_v1.txt`:**
+```bash
+sha256sum helios/pipelines/l_pipe/prompts/rca_v1.txt | cut -d' ' -f1
+```
+Paste the 64-char hex into `lpipe_config.py`. Run `poetry run pytest tests/pipelines/test_lpipe_pipeline.py::test_expected_prompt_sha_matches_registry -v` to confirm.
+
+**Prompt rendering SHA stability test (integration):** The rendered prompt feeds into SHA computation — a format change to `_anomaly_summary()` or `PromptRegistry.render()` will change the rendered string and thus the post-render SHA. Pin this with an integration test:
+
+```python
+def test_prompt_rendering_sha_is_stable():
+    """Rendered prompt SHA must match expected value.
+
+    Protects against: rca_v1.txt edits, _anomaly_summary() format changes,
+    service_list ordering changes. All three alter the final rendered string
+    and would invalidate the OSF freeze if undetected.
+    """
+    from helios.pipelines.l_pipe.prompt_registry import PromptRegistry, PROMPT_PATH
+    from helios.pipelines.l_pipe.pipeline import _anomaly_summary, _service_list_from_snapshot
+    import hashlib
+
+    snapshot = _make_test_snapshot(["svcA", "svcB"])  # fixture: 2-node UEGCSnapshot
+    registry = PromptRegistry(PROMPT_PATH)
+    rendered = registry.render(
+        incident_id="test-001",
+        service_list=_service_list_from_snapshot(snapshot),
+        anomaly_summary=_anomaly_summary(snapshot),
+    )
+    rendered_sha = hashlib.sha256(rendered.encode()).hexdigest()
+    # Compute expected once; freeze it. Any change → deviation log first.
+    EXPECTED_RENDERED_SHA = "<compute on first test run>"
+    assert rendered_sha == EXPECTED_RENDERED_SHA
+```
 
 **Test for `_anomaly_summary` string stability (mandatory for prompt SHA):** The prompt SHA is computed from the rendered prompt, which includes `_anomaly_summary()` output. If the output format changes, the rendered prompt changes, and the SHA diverges from the frozen registry value — triggering `PromptTamperError`. Pin the expected output format with an explicit test:
 
