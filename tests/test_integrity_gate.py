@@ -247,3 +247,35 @@ def test_check_consistency_per_row_failure_propagated() -> None:
     result = gate.check_consistency([row_a, row_b], incident_id=_INCIDENT)
     assert result.status == "FAIL"
     assert result.gate_check == "required_field_present"
+
+
+def test_check_consistency_passes_gpipe_sentinel_row() -> None:
+    """Sentinel verdict (narrative='gpipe-gated-or-skipped') must pass the gate."""
+    manifest = _make_manifest()
+    gate, _ = _make_gate(manifest=manifest)
+    cfg_hash = manifest.compute_variant_config_hash()
+    snap_hash = _SNAP_HASH
+    rows = [
+        {
+            "pipeline": "dpipe",
+            "variant_config_hash": cfg_hash,
+            "snapshot_hash": snap_hash,
+            "run_id": "run-001",
+        },
+        {
+            "pipeline": "gpipe",
+            "variant_config_hash": cfg_hash,
+            "snapshot_hash": snap_hash,
+            "run_id": "run-001",
+            "narrative": "gpipe-gated-or-skipped",
+            "ranked_candidates": [],
+        },
+        {
+            "pipeline": "lpipe",
+            "variant_config_hash": cfg_hash,
+            "snapshot_hash": snap_hash,
+            "run_id": "run-001",
+        },
+    ]
+    result = gate.check_consistency(rows, incident_id=_INCIDENT)
+    assert result.status == "PASS"
