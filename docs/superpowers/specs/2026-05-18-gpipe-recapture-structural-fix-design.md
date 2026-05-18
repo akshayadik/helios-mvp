@@ -111,6 +111,8 @@ Test: `tests/test_capture.py` — assert `parent_span_id` column present in writ
 
 ### 1.2 Re-capture all 20 incidents
 
+**Pre-requisite:** §1.1 code change must be applied and committed before running this loop. Running the loop with the old `bin/run_capture.py` (without the `snapshot_hash` write) produces `schema-draft-v0.1` manifests that lack `snapshot_hash` — `corpus_manifest.json` generation (Spec 3) then raises `KeyError` on every incident. Verify `MANIFEST_SCHEMA_VERSION` constant exists in `bin/run_capture.py` before proceeding.
+
 Re-run all 20 incidents in `data/captures/`. Existing `p2_traces.parquet` files are replaced. Incident IDs and fault classes remain unchanged.
 
 ```bash
@@ -243,7 +245,9 @@ def _structural_edges(self, spans: list[SpanRecord]) -> list[UEGCEdge]:
 
 Read both `span_id` and `parent_span_id` from Parquet (`span_id` already exists in schema v1). When `parent_span_id` column is absent, set `parent_span_id=None` for every span — `_structural_edges()` detects this and delegates to `_structural_edges_temporal()`.
 
-**Null normalization — mandatory:** Parquet nullable columns surface as Python `None`, `float('nan')`, `pd.NA` (nullable integer/string dtypes), or `pd.NaT` (timestamp dtypes) when the cell is empty. A bare `str(None)` produces `"None"` and `str(float('nan'))` produces `"nan"` — both are truthy non-empty strings that cause phantom structural edges. `isinstance + math.isnan` only catches `float('nan')`; `pd.isna()` is required to cover `pd.NA`, `pd.NaT`, and other pandas null sentinels that appear in real Parquet data with nullable extension dtypes. Normalise via a helper before constructing `SpanRecord`:
+**Null normalization — mandatory:** Parquet nullable columns surface as Python `None`, `float('nan')`, `pd.NA` (nullable integer/string dtypes), or `pd.NaT` (timestamp dtypes) when the cell is empty. A bare `str(None)` produces `"None"` and `str(float('nan'))` produces `"nan"` — both are truthy non-empty strings that cause phantom structural edges. `isinstance + math.isnan` only catches `float('nan')`; `pd.isna()` is required to cover `pd.NA`, `pd.NaT`, and other pandas null sentinels that appear in real Parquet data with nullable extension dtypes. Normalise via a helper before constructing `SpanRecord`.
+
+**Module-level import (mandatory):** Add `import pandas as pd` to the module-level imports at the top of `helios/graph/ueg_c_builder.py`, alongside any existing `import math`. Do not use a lazy inline import inside `_psid()` — import-once at module load time is correct. `_psid()` must be defined at module level (not nested inside a class or method) so that `tests/graph/test_ueg_c_builder.py` can import and test it directly.
 
 ```python
 import math
@@ -582,7 +586,7 @@ After structural edge fix, run two calibration scripts in order:
 
 1. **D-pipe stability check:** `poetry run python scripts/calibrate_dpipe.py` — verify LOO-CV HR@3 within ±0.01 of M2 value (0.5333). This script already exists from Milestone 2; it re-uses the existing 20-incident corpus without changes.
 
-2. **G-pipe calibration (new script):** `poetry run python scripts/calibrate_gpipe.py` — see Files Modified. Skeleton:
+2. **G-pipe calibration (new script):** `poetry run python scripts/calibrate_gpipe.py` — see Files Modified. Full LOO-CV skeleton (mirrors `scripts/calibrate_dpipe.py` pattern):
 
 ```python
 """scripts/calibrate_gpipe.py — LOO-CV threshold sweep for G-pipe entry gate."""
@@ -591,27 +595,61 @@ from pathlib import Path
 
 from helios.pipelines.g_pipe.gpipe_config import DISAGREEMENT_SWEEP, GPIPE_PPR_ALPHA
 from helios.pipelines.g_pipe.pipeline import _ppr_traverse, compute_ppr_disagreement
-from helios.schemas.ueg_c import UEGCSnapshot
 
 CALIBRATED_PATH = Path("data/calibrated_params.json")
 CAPTURES_DIR = Path("data/captures")
-# Load corpus ...
-# For each threshold in DISAGREEMENT_SWEEP:
-#   LOO-CV: for each incident i, train on {all}\{i}, evaluate on {i}
-#   Compute g_hr_at_3 and d_hr_at_3 on held-out set
-# Pick threshold maximising g_hr_at_3
-# Write to calibrated_params.json:
+
+def _load_corpus() -> list[dict]:
+    """Load all 20 incidents: snapshot + ground_truth_service."""
+    corpus = []
+    for d in sorted(CAPTURES_DIR.iterdir()):
+        if not (d / "manifest.json").exists():
+            continue
+        cap = json.loads((d / "manifest.json").read_text())
+        # load UEGCSnapshot from parquet, load dpipe_scores from result store
+        corpus.append({"incident_id": cap["incident_id"], "snapshot": ..., "dpipe_scores": ..., "ground_truth": ...})
+    return corpus
+
+def _loo_cv_for_threshold(corpus: list[dict], threshold: float) -> tuple[float, float, int]:
+    """LOO-CV: leave one out, evaluate on held-out.
+    Returns (g_hr_at_3, d_hr_at_3_held_out, n_triggered).
+    """
+    g_hits, d_hits, n_triggered = 0, 0, 0
+    for i, held_out in enumerate(corpus):
+        dpipe_scores = held_out["dpipe_scores"]
+        disagreement = compute_ppr_disagreement(dpipe_scores)
+        if disagreement >= threshold:
+            n_triggered += 1
+            ranked, _ = _ppr_traverse(held_out["snapshot"], dpipe_scores)
+            gt = held_out["ground_truth"]
+            g_hits += int(gt in ranked[:3])
+        # D-pipe HR@3 on same held-out incident (from pre-computed scores)
+        d_ranked = sorted(dpipe_scores, key=dpipe_scores.get, reverse=True)
+        d_hits += int(held_out["ground_truth"] in d_ranked[:3])
+    n = len(corpus)
+    return g_hits / max(n_triggered, 1), d_hits / n, n_triggered
+
+corpus = _load_corpus()
+best_threshold, best_g_hr, best_n = DISAGREEMENT_SWEEP[0], 0.0, 0
+for threshold in DISAGREEMENT_SWEEP:
+    g_hr, d_hr, n = _loo_cv_for_threshold(corpus, threshold)
+    if g_hr > best_g_hr:
+        best_threshold, best_g_hr, best_n = threshold, g_hr, n
+_, held_out_d_hr, _ = _loo_cv_for_threshold(corpus, best_threshold)
+
 params = json.loads(CALIBRATED_PATH.read_text())
 params.update({
     "gpipe_hr_at_3_held_out": best_g_hr,
     "dpipe_hr_at_3_held_out": held_out_d_hr,
     "gate_passed": best_g_hr >= held_out_d_hr,
-    "n_incidents_triggered": n_triggered,
+    "n_incidents_triggered": best_n,
+    "gpipe_disagreement_threshold_calibrated": best_threshold,
 })
 CALIBRATED_PATH.write_text(json.dumps(params, indent=2))
+print(f"Calibrated threshold={best_threshold}, G-pipe HR@3={best_g_hr:.4f}, D-pipe HR@3={held_out_d_hr:.4f}")
 ```
 
-The sweep logic mirrors `scripts/calibrate_dpipe.py` (LOO-CV pattern). Implement incrementally: start with a single threshold pass, then add the sweep loop.
+After calibration, update `DISAGREEMENT_THRESHOLD` in `gpipe_config.py` to the calibrated value and commit.
 
 3. If G-pipe HR@3 ≥ D-pipe HR@3 on held-out: A-H6 entry gate PASSES → freeze value in `gpipe_config.py`.
 4. If G-pipe HR@3 < D-pipe HR@3: file deviation with power analysis note (corpus too small).

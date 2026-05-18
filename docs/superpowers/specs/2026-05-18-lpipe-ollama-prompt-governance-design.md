@@ -258,6 +258,25 @@ Connectivity errors (`OllamaTimeoutError`, `OllamaConnectionError`, `OllamaRespo
 - Retry exhaustion: fallback returned, not raised
 - Timeout / connection error: re-raised (not swallowed) — caller decides
 
+**Evaluation sentinel filtering:** Evaluation scripts must filter sentinel rows before computing metrics. Both L-pipe sentinel values are detectable via `ranked_candidates[0]`:
+
+```python
+# Filter sentinel rows in evaluate_ablation.py
+LPIPE_SENTINEL_VALUES = {"l-pipe-connectivity-error", "l-pipe-fallback"}
+
+def is_lpipe_sentinel(result: dict) -> bool:
+    candidates = result.get("ranked_candidates", [])
+    return bool(candidates) and candidates[0] in LPIPE_SENTINEL_VALUES
+```
+
+This is analogous to the G-pipe sentinel filter (`narrative == "gpipe-gated-or-skipped"`). A-H7 (Full vs noLLM) and A-H6 (G vs D, gate-conditional) both require sentinel rows excluded from metric aggregation — sentinel rows are structural artefacts, not predictions, and including them deflates HR@3 and CpR.
+
+The two sentinel values map to distinct failure modes:
+- `"l-pipe-fallback"` — response handler: schema validation failed after retry exhaustion (model returned unparseable or invalid JSON)
+- `"l-pipe-connectivity-error"` — pipeline: Ollama unreachable or returned non-2xx (network/container failure)
+
+Both must be excluded from HR@3 and CpR computation. Neither should be counted as an incorrect prediction.
+
 ### Tests (`tests/pipelines/test_lpipe_response_handler.py`)
 
 | Test | Scenario |
@@ -293,6 +312,17 @@ LLAMA_SEED: int = 42   # locked in seed_register.md; do not change
 # Changing this constant requires a deviation log entry (Protocol A violation).
 EXPECTED_PROMPT_SHA: str = "<64-char hex — compute with: sha256sum helios/pipelines/l_pipe/prompts/rca_v1.txt>"
 ```
+
+**CRITICAL — replace placeholder before first test run:** The `<64-char hex>` value in `EXPECTED_PROMPT_SHA` is a placeholder, not a valid SHA-256 hex string. Running `test_expected_prompt_sha_matches_registry` with this placeholder in place will always fail with `AssertionError: Prompt SHA mismatch` — this is intentional, preventing accidental shipping with an unset constant.
+
+**Workflow (one-time, on first commit of `rca_v1.txt`):**
+1. Write and commit `helios/pipelines/l_pipe/prompts/rca_v1.txt`
+2. Compute the SHA: `sha256sum helios/pipelines/l_pipe/prompts/rca_v1.txt | cut -d' ' -f1`
+3. Paste the 64-char hex into `EXPECTED_PROMPT_SHA` in `lpipe_config.py`
+4. Verify: `poetry run pytest tests/pipelines/test_lpipe_pipeline.py::test_expected_prompt_sha_matches_registry -v` — must pass
+5. Commit `lpipe_config.py` and `rca_v1.txt` together in the same commit
+
+Any subsequent change to `rca_v1.txt` requires a deviation log entry before `EXPECTED_PROMPT_SHA` can be updated. The test failure is the enforcement mechanism — there is no override.
 
 ---
 

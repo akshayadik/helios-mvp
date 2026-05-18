@@ -19,6 +19,7 @@
 - [ ] `data/snapshot_registry.jsonl` rebuilt with 20 post-re-capture entries
 - [ ] Deviation log chain verified: `python bin/log_deviation.py verify`
 - [ ] `poetry run python scripts/calibrate_gpipe.py` completed — G-pipe LOO-CV fields (`gpipe_hr_at_3_held_out`, `dpipe_hr_at_3_held_out`, `gate_passed`, `n_incidents_triggered`) present in `data/calibrated_params.json`; absent fields cause `--generate` to fail with an explicit error
+- [ ] All deviation log entries from Spec 1 (re-capture, schema v0.2, sequential dispatch) and Spec 2 (model downgrade, Ollama vs vLLM) appended and chain verified: `poetry run python bin/log_deviation.py verify` — entries 11-12 from Spec 2 must exist
 - [ ] `poetry run pytest` green
 
 ---
@@ -54,7 +55,7 @@ Reads from programmatic sources and writes all six JSON files, then computes `ma
 
 | Source | Output file |
 |---|---|
-| `helios.vcl.config` seed constants + `lpipe_config.LLAMA_SEED` | `research/osf/seeds.json` |
+| `helios.research.seeds.SEED_REGISTRY` (Python list; `seed_register.md` is auto-generated output, never an input) | `research/osf/seeds.json` |
 | `docs/tracking/prompt_version_registry.md` (structured YAML front-matter) + `lpipe_config.py` | `research/osf/prompt_sha.json` |
 | `data/calibrated_params.json` (D-pipe + G-pipe eval metrics) + `dpipe_config.py` + `gpipe_config.py` (static hyperparams only) | `research/osf/thresholds.json` |
 | `helios.vcl.variants.CONFIRMATORY_VARIANTS` (all 8 `VCLManifest` objects) | `research/osf/variant_hashes.json` |
@@ -366,7 +367,7 @@ def _vcl_freeze_sha() -> str:
     {
       "name": "HELIOS-Full",
       "variant_config_hash": "<64-char hex>",
-      "hypothesis": "A-H1, A-H3",
+      "hypothesis": "A-H1, A-H2, A-H3, A-H4, A-H5, A-H7, A-H8",
       "status": "confirmatory",
       "flags": {
         "acp": true,
@@ -446,19 +447,19 @@ Source: `docs/tracking/hypothesis_variant_metric_mapping.md`
     }
   ],
   "family_b_hypotheses": [
-    {
-      "id": "B-H1",
-      "rank": 1,
-      "comparison": "HELIOS-Full vs CHASE",
-      "primary_metric": "HR@3",
-      "status": "confirmatory",
-      "baseline": "CHASE"
-    }
+    {"id": "B-H1", "rank": 1, "comparison": "HELIOS-Full vs CHASE",       "primary_metric": "HR@3", "status": "deferred", "baseline": "CHASE",       "note": "AIOpsLab corpus pending"},
+    {"id": "B-H2", "rank": 2, "comparison": "HELIOS-Full vs CHASE",       "primary_metric": "CpR",  "status": "deferred", "baseline": "CHASE",       "note": "AIOpsLab corpus pending"},
+    {"id": "B-H3", "rank": 3, "comparison": "HELIOS-Full vs RCACopilot",  "primary_metric": "HR@3", "status": "deferred", "baseline": "RCACopilot",  "note": "AIOpsLab corpus pending"},
+    {"id": "B-H4", "rank": 4, "comparison": "HELIOS-Full vs RCACopilot",  "primary_metric": "CpR",  "status": "deferred", "baseline": "RCACopilot",  "note": "AIOpsLab corpus pending"},
+    {"id": "B-H5", "rank": 5, "comparison": "HELIOS-D vs CHASE",          "primary_metric": "HR@3", "status": "deferred", "baseline": "CHASE",       "note": "Statistical ablation baseline; AIOpsLab corpus pending"},
+    {"id": "B-H6", "rank": 6, "comparison": "HELIOS-D vs RCACopilot",     "primary_metric": "HR@3", "status": "deferred", "baseline": "RCACopilot",  "note": "Statistical ablation baseline; AIOpsLab corpus pending"},
+    {"id": "B-H7", "rank": 7, "comparison": "HELIOS-G vs CHASE",          "primary_metric": "HR@3", "status": "deferred", "baseline": "CHASE",       "note": "Graph pipeline baseline; gate-conditional; AIOpsLab corpus pending"},
+    {"id": "B-H8", "rank": 8, "comparison": "HELIOS-noLLM vs CHASE",      "primary_metric": "HR@3", "status": "deferred", "baseline": "CHASE",       "note": "LLM ablation baseline; AIOpsLab corpus pending"}
   ]
 }
 ```
 
-All eight A-H hypotheses included under `family_a_hypotheses`, ordered by Holm rank. All eight B-H hypotheses (baseline comparisons against CHASE and RCACopilot) included under `family_b_hypotheses`. Both families are pre-registered commitments and must appear in `analysis_plan.json` and `HYPOTHESIS_TABLE`.
+All eight A-H hypotheses included under `family_a_hypotheses`, ordered by Holm rank. All eight B-H hypotheses (baseline comparisons against CHASE and RCACopilot) included under `family_b_hypotheses` with `"status": "deferred"` — this satisfies the OSF pre-registration commitment by locking the comparison structure and baselines now, while deferring data collection to post-M4. **Do not omit B-H entries.** An incomplete `family_b_hypotheses` array violates the pre-registration and makes `--verify` fail if `HYPOTHESIS_TABLE` has 8 A-H + 0 B-H entries.
 
 **`helios/research/analysis_plan.py`** must export two constants: `FAMILY_A_HYPOTHESES` and `FAMILY_B_HYPOTHESES`, each a list of dicts matching the JSON schema above. `verify_osf_freeze.py` combines both families into the `analysis_plan.json` structure. Omitting Family B produces an incomplete pre-registration archive that violates the OSF freeze commitment.
 
