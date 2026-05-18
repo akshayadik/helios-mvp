@@ -275,9 +275,6 @@ def test_structural_no_cross_trace_contamination() -> None:
     assert len(pairs) == 2
 
 
-@pytest.mark.xfail(
-    reason="_psid() not yet defined — implemented in Task 4", strict=True
-)
 def test_structural_parquet_null_variants() -> None:
     import math
 
