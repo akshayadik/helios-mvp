@@ -18,6 +18,7 @@
 - [ ] `data/calibrated_params.json` present (frozen at Milestone 2)
 - [ ] `data/snapshot_registry.jsonl` rebuilt with 20 post-re-capture entries
 - [ ] Deviation log chain verified: `python bin/log_deviation.py verify`
+- [ ] `poetry run python scripts/calibrate_gpipe.py` completed — G-pipe LOO-CV fields (`gpipe_hr_at_3_held_out`, `dpipe_hr_at_3_held_out`, `gate_passed`, `n_incidents_triggered`) present in `data/calibrated_params.json`; absent fields cause `--generate` to fail with an explicit error
 - [ ] `poetry run pytest` green
 
 ---
@@ -58,7 +59,7 @@ Reads from programmatic sources and writes all six JSON files, then computes `ma
 | `data/calibrated_params.json` (D-pipe + G-pipe eval metrics) + `dpipe_config.py` + `gpipe_config.py` (static hyperparams only) | `research/osf/thresholds.json` |
 | `helios.vcl.variants.CONFIRMATORY_VARIANTS` (all 8 `VCLManifest` objects) | `research/osf/variant_hashes.json` |
 | `helios.research.analysis_plan.HYPOTHESIS_TABLE` (Python constant) | `research/osf/analysis_plan.json` |
-| `data/snapshot_registry.jsonl` + `data/captures/` directory listing | `research/osf/corpus_manifest.json` |
+| `data/captures/` directory listing (each `manifest.json` must have `snapshot_hash` — Spec 1 pre-condition) | `research/osf/corpus_manifest.json` |
 | SHA-256 of concatenated artefacts (alphabetical) | `research/osf/manifest_sig.txt` |
 
 Concatenation order for `manifest_sig.txt` is deterministic: alphabetical by filename.
@@ -101,6 +102,39 @@ CI step added to `ci.yml`:
 
 **Zero hand-written JSONs rule:** `--verify` will detect any JSON that was edited by hand rather than generated. No manual edits to any file under `research/osf/`.
 
+### `--populate-prereg` mode
+
+`preregistration.md` must contain the SHA fingerprints of all 6 JSON artefacts and `manifest_sig.txt`. These cannot be placeholders — the exit gate (G3-5) checks the file manually. Computing SHAs by hand is error-prone; `--populate-prereg` reads the generated artefacts, computes their SHA-256, and injects them into the Markdown template using regex replacement:
+
+```python
+# verify_osf_freeze.py --populate-prereg
+import hashlib, re
+from pathlib import Path
+
+OSF_DIR = Path("research/osf")
+PREREG_PATH = Path("research/osf/preregistration.md")
+
+sha_table = {}
+for f in sorted(OSF_DIR.glob("*.json")):
+    sha_table[f.name] = hashlib.sha256(f.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+sha_table["manifest_sig.txt"] = hashlib.sha256(
+    (OSF_DIR / "manifest_sig.txt").read_bytes().replace(b"\r\n", b"\n")
+).hexdigest()
+
+content = PREREG_PATH.read_text(encoding="utf-8")
+for filename, sha in sha_table.items():
+    # Replace placeholder pattern: | filename | [placeholder or old sha] |
+    content = re.sub(
+        rf"(\|\s*`?{re.escape(filename)}`?\s*\|)[^\|]+(\|)",
+        rf"\1 `{sha}` \2",
+        content,
+    )
+PREREG_PATH.write_text(content, encoding="utf-8")
+print(f"preregistration.md updated with {len(sha_table)} SHA entries")
+```
+
+Run `--populate-prereg` after `--generate` completes, then commit both the JSONs and the updated `preregistration.md` in a single commit. `--populate-prereg` is idempotent — running it again on an already-populated file produces no change.
+
 ### Line-ending and serialisation discipline
 
 **LF normalization (CRLF safety):** All file I/O in `verify_osf_freeze.py` must use binary mode with explicit LF normalisation. Using text mode (`open(..., "r")`) on Windows produces CRLF line endings that change the SHA-256 hash relative to the ubuntu-22.04 CI runner. Use binary mode throughout:
@@ -127,7 +161,7 @@ content = canonical_json(data_dict) + "\n"  # single trailing newline
 
 ### `seeds.json`
 
-Source: `docs/tracking/seed_register.md`
+**Source: Python constants only (code-first principle).** Seeds are declared as named constants in `helios.vcl.config` (e.g., `GLOBAL_SEED`) and `lpipe_config.LLAMA_SEED`. `docs/tracking/seed_register.md` is a human-readable Markdown table that is auto-generated FROM `seeds.json` by `scripts/regen_tracking_tables.py` — it is never an input to `--generate`. Parsing `seed_register.md` would create a Markdown-scraping dependency that is fragile and inconsistent with the code-first principle established for all other artefacts.
 
 ```json
 {
@@ -139,13 +173,22 @@ Source: `docs/tracking/seed_register.md`
       "value": 42,
       "stage": "Stage 0",
       "algorithm": "global",
-      "context": "numpy.random.seed / random.seed"
+      "context": "numpy.random.seed / random.seed",
+      "source_constant": "helios.vcl.config.GLOBAL_SEED"
+    },
+    {
+      "seed_id": "SEED-002",
+      "value": 42,
+      "stage": "Stage 1",
+      "algorithm": "llama3.1:8b inference",
+      "context": "Ollama Protocol A seed",
+      "source_constant": "helios.pipelines.l_pipe.lpipe_config.LLAMA_SEED"
     }
   ]
 }
 ```
 
-All seed entries from the register are included. The confirmatory Stage 5 seed block remains a placeholder.
+All seed constants from Python modules are included. The confirmatory Stage 5 seed block is a placeholder entry with `"value": null` until that seed is locked. `--verify` reads the same Python constants and diffs; if a seed value changes without a deviation log entry, verify fails.
 
 ### `prompt_sha.json`
 
@@ -205,6 +248,43 @@ All float values serialised via `canonical_json` (sorted keys; floats pre-rounde
 
 Source: `helios.vcl.variants.CONFIRMATORY_VARIANTS` — a list of `(name, VCLManifest)` pairs. Each `VCLManifest` object carries all 14 flag values; `model_dump()` produces the complete flag configuration dict.
 
+**`_hypothesis_for_variant()` and `_status_for_variant()` — required exports:** The generation pattern calls these helpers. They must be defined in `helios/research/analysis_plan.py` and exported, not left as undefined references. Add to that module:
+
+```python
+# Mapping locked at Milestone 3; changes require deviation log entry.
+_VARIANT_HYPOTHESIS_MAP: dict[str, str] = {
+    "HELIOS-Full":        "A-H1, A-H3",
+    "HELIOS-noLLM":       "A-H2, A-H5",
+    "HELIOS-noPeer":      "A-H4, A-H6",
+    "HELIOS-noGraph":     "A-H7",
+    "HELIOS-noAdaptive":  "A-H8",
+    "HELIOS-Baseline":    "B-H1, B-H2",
+    "HELIOS-Control":     "B-H3",
+    "HELIOS-noRouter":    "",
+}
+
+def _hypothesis_for_variant(name: str) -> str:
+    return _VARIANT_HYPOTHESIS_MAP.get(name, "")
+
+def _status_for_variant(name: str) -> str:
+    return "confirmatory"  # all 8 confirmatory variants have this status
+```
+
+Both functions must be importable from `helios.research.analysis_plan` for use by `verify_osf_freeze.py`.
+
+**`vcl_freeze_sha` — git SHA via subprocess (not platform-dependent shell):** Hard-coding the SHA is fragile; using a shell command that requires bash is CI-unsafe. Use Python `subprocess`:
+
+```python
+import subprocess
+
+vcl_freeze_sha = subprocess.check_output(
+    ["git", "rev-parse", "HEAD:helios/vcl/variants.py"],
+    text=True,
+).strip()
+```
+
+`subprocess.check_output` raises `subprocess.CalledProcessError` if git is not available — catch and substitute `"git-unavailable"` with a logged warning rather than crashing `--generate` in environments without git (e.g., some CI images unpack source without `.git/`).
+
 **Flag matrix requirement:** The ablation notebook renders an 8 variants × 14 flags matrix from this file without importing `helios.vcl.*`. This is only possible if the flag configuration is embedded in the JSON. The `flags` field must contain every boolean flag value for the variant:
 
 ```json
@@ -249,7 +329,7 @@ _VCL_FLAG_KEYS = {f.value for f in VCLFlag}   # exactly 14 keys
 flags = {k: v for k, v in manifest.model_dump().items() if k in _VCL_FLAG_KEYS}
 ```
 
-The `flags` dict in the JSON has keys sorted by `canonical_json`; never hand-edit it.
+The `flags` dict in the JSON has keys sorted by `canonical_json` (which calls `json.dumps(sort_keys=True)` internally). The dict comprehension `{k: v for k, v in manifest.model_dump().items() if k in _VCL_FLAG_KEYS}` retains Python insertion order, which may not be alphabetical — but `canonical_json` re-sorts all keys before serialising, so the on-disk JSON is always alphabetically ordered regardless of the dict's insertion order. Never hand-edit the JSON; `--verify` will detect any out-of-order key.
 
 **Generation pattern:** iterate `CONFIRMATORY_VARIANTS`, call `manifest.model_dump()` to extract all flags, filter to the 13 boolean flags (using `VCLFlag.bool_flags()`) plus `ingest_mode`:
 
@@ -460,7 +540,41 @@ with open(OSF_DIR / "variant_hashes.json") as f:
 
 Importing from `helios.pipelines` or `helios.orchestrator` would introduce a runtime dependency on the installed HELIOS package — making the notebook non-executable in environments where the package is not installed (e.g., OSF reviewer machines, Binder). The notebook must be fully self-contained given only the `research/osf/*.json` files and standard library plus `pandas`/`json`.
 
+**L0 flag matrix cell (pandas example):** The variants × flags matrix is the primary artefact of the L0 section. Load `variant_hashes.json` and render via `pandas.DataFrame`:
+
+```python
+import pandas as pd
+import json
+from pathlib import Path
+
+vh = json.loads(Path("research/osf/variant_hashes.json").read_text())
+rows = []
+for v in vh["variants"]:
+    row = {"variant": v["name"]}
+    row.update(v["flags"])   # inlines all 14 flag keys as columns
+    rows.append(row)
+
+df = pd.DataFrame(rows).set_index("variant")
+# Boolean columns: True → "Y", False → "N" for readability
+bool_cols = [c for c in df.columns if c != "ingest_mode"]
+df[bool_cols] = df[bool_cols].map(lambda x: "Y" if x else "N")
+df   # renders as table in Jupyter
+```
+
+This cell must not raise when executed without `helios` installed. `pandas` is already a project dependency (`pyproject.toml`).
+
 **Render requirement:** `jupyter nbconvert --execute research/ablation_notebook.ipynb` must complete without error and without requiring Ollama to be running. L3 section displays config values only — no live inference.
+
+**CI step for notebook execution:**
+```yaml
+- name: Execute ablation notebook
+  run: |
+    poetry run jupyter nbconvert --to notebook --execute \
+      --ExecutePreprocessor.timeout=120 \
+      research/ablation_notebook.ipynb
+```
+
+Add this step to `ci.yml` after the `osf-freeze-verify` job. The `--timeout=120` guard prevents a hung kernel from stalling CI indefinitely.
 
 ---
 
@@ -484,7 +598,7 @@ Importing from `helios.pipelines` or `helios.orchestrator` would introduce a run
 | File | Action |
 |---|---|
 | `helios/research/__init__.py` | **New** — package marker |
-| `helios/research/analysis_plan.py` | **New** — `HYPOTHESIS_TABLE` constant (Holm-ordered A-H1..A-H8); frozen research commitment |
+| `helios/research/analysis_plan.py` | **New** — `FAMILY_A_HYPOTHESES`, `FAMILY_B_HYPOTHESES` constants; `_hypothesis_for_variant()`, `_status_for_variant()` exports; `_VARIANT_HYPOTHESIS_MAP` lookup dict; frozen research commitment |
 | `bin/verify_osf_freeze.py` | **New** — `--generate` + `--verify` modes; code-first sources only |
 | `scripts/regen_tracking_tables.py` | **New** — auto-generates Markdown tables in tracking docs from frozen JSON artefacts |
 | `research/__init__.py` | **New** — package marker |

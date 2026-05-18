@@ -161,7 +161,25 @@ class PromptRegistry:
 
 **Tamper-guard:** `verify_sha()` is called on every pipeline instantiation. If the SHA diverges from the value recorded in `docs/tracking/prompt_version_registry.md`, the pipeline raises `PromptTamperError` and halts. This prevents silent prompt drift.
 
-**`docs/tracking/prompt_version_registry.md` population:** This document (tracking doc #11, currently schema-only) is populated with the v1 entry on first commit of `rca_v1.txt`. Fields: `prompt_version`, `prompt_sha`, `model_name`, `created_at_iso`, `frozen_at_milestone`.
+**`docs/tracking/prompt_version_registry.md` population:** This document (tracking doc #11, currently schema-only) is populated with the v1 entry on first commit of `rca_v1.txt`. It must use **YAML front-matter** (the structured block before the first `---` separator) because `verify_osf_freeze.py` parses it with `yaml.safe_load()` — free-form Markdown table rows are not acceptable. Required structure:
+
+```markdown
+---
+entries:
+  rca_v1:
+    prompt_version: "rca_v1"
+    prompt_sha256: "<64-char hex of rca_v1.txt>"
+    model_name: "llama3.1:8b"
+    created_at_iso: "<ISO 8601 timestamp>"
+    frozen_at_milestone: "Milestone 3"
+---
+
+# Prompt Version Registry
+
+Human-readable notes below the separator are ignored by the parser.
+```
+
+The `prompt_sha256` field must match the SHA256 computed by `PromptRegistry` on `rca_v1.txt`. After populating this file, verify: `poetry run python -c "import yaml; print(yaml.safe_load(open('docs/tracking/prompt_version_registry.md').read().split('---')[1])['entries']['rca_v1'])"` — this must not raise.
 
 ### Tests (`tests/pipelines/test_lpipe_prompt_registry.py`)
 
@@ -217,14 +235,18 @@ result = ollama_client.generate(prompt)   # OllamaGenerateResult
        return fallback sentinel
 ```
 
-**Fallback sentinel:**
+**Fallback sentinel:** `handle()` always returns a two-element tuple `(LPipeResponse, OllamaGenerateResult | None)`. On retry exhaustion fallback, the second element is `None` (no successful Ollama round-trip):
+
 ```python
-LPipeResponse(
+fallback_response = LPipeResponse(
     ranked_candidates=["l-pipe-fallback"],   # non-empty — PipelineVerdict min_length safe
     narrative="l-pipe-fallback-schema-error",
     confidence=0.00,
 )
+return (fallback_response, None)   # ← always a tuple; second element None on fallback
 ```
+
+Connectivity errors (`OllamaTimeoutError`, `OllamaConnectionError`, `OllamaResponseError`) are **not caught inside `handle()`** — they propagate to `run_lpipe()`'s `try/except` block, which produces a structured failure dict. The `handle()` → `run_lpipe()` interface is therefore: `handle()` returns a tuple on success OR fallback; connectivity errors propagate as exceptions. This split avoids merging two fundamentally different failure modes (schema/validation failure vs. network failure) into a single return path.
 
 `ranked_candidates=["l-pipe-fallback"]` is used instead of an empty list because `PipelineVerdict` (and any downstream metric validation) may enforce `min_length=1` on `ranked_candidates`. The sentinel string is recognisable and can be filtered in evaluation scripts analogously to the G-pipe sentinel.
 
@@ -265,6 +287,11 @@ PROTOCOL_A_TEMPERATURE: float = 0.00
 PROTOCOL_A_TOP_P: float = 1.00
 PROTOCOL_A_TOP_K: int = 1
 LLAMA_SEED: int = 42   # locked in seed_register.md; do not change
+
+# SHA-256 of prompts/rca_v1.txt — computed on first commit and frozen.
+# run_lpipe() calls registry.verify_sha(EXPECTED_PROMPT_SHA) on every invocation.
+# Changing this constant requires a deviation log entry (Protocol A violation).
+EXPECTED_PROMPT_SHA: str = "<64-char hex — compute with: sha256sum helios/pipelines/l_pipe/prompts/rca_v1.txt>"
 ```
 
 ---
@@ -319,7 +346,7 @@ def run_lpipe(
             "narrative": f"l-pipe-connectivity-error: {type(exc).__name__}",
             "latency_ms": latency_ms,
             "evaluation_phase": evaluation_phase,
-            "schema_version": "schema-draft-v0.2",
+            "schema_version": VERDICT_SCHEMA_VERSION,  # imported from helios.schemas.verdict
         }
     latency_ms = (time.monotonic() - t0) * 1000.0
     token_count = (
@@ -338,7 +365,7 @@ def run_lpipe(
         "narrative": response.narrative,
         "latency_ms": latency_ms,
         "evaluation_phase": evaluation_phase,   # passed from orchestrator; never hardcoded
-        "schema_version": "schema-draft-v0.2",
+        "schema_version": VERDICT_SCHEMA_VERSION,  # imported from helios.schemas.verdict
     }
 ```
 
@@ -388,6 +415,20 @@ def _anomaly_summary(snapshot: UEGCSnapshot) -> str:
 
 These helpers contain no inference logic and require no external imports beyond `UEGCSnapshot`. The `_anomaly_summary` stub is intentionally minimal for M3 — it documents the production upgrade path without blocking the protocol freeze.
 
+**Test for `_anomaly_summary` string stability (mandatory for prompt SHA):** The prompt SHA is computed from the rendered prompt, which includes `_anomaly_summary()` output. If the output format changes, the rendered prompt changes, and the SHA diverges from the frozen registry value — triggering `PromptTamperError`. Pin the expected output format with an explicit test:
+
+```python
+def test_anomaly_summary_format():
+    snapshot = UEGCSnapshot(nodes=[
+        UEGCNode(service_name="svcA", ...),
+        UEGCNode(service_name="svcB", ...),
+    ], edges=[])
+    result = _anomaly_summary(snapshot)
+    assert result == "Anomalies detected across 2 services: svcA, svcB"
+```
+
+This test must live in `tests/pipelines/test_lpipe_pipeline.py` and import `_anomaly_summary` from `helios.pipelines.l_pipe.pipeline`. Any change to the format string in `_anomaly_summary` requires a deviation log entry (prompt governance violation) before the test can be updated.
+
 ---
 
 ## Exit Gates (Spec 2)
@@ -401,6 +442,7 @@ These helpers contain no inference logic and require no external imports beyond 
 | G2-5 | `prompt_version_registry.md` populated with `rca_v1` entry (SHA, model, date) | Manual review of file |
 | G2-6 | Full pipeline: `run_lpipe()` returns valid `PipelineVerdict`-compatible dict with `prompt_version` set | `pytest tests/pipelines/test_lpipe_pipeline.py -v` |
 | G2-9 | Transient error path: `OllamaConnectionError` returns structured failure dict (does not propagate) | `pytest tests/pipelines/test_lpipe_pipeline.py::test_connectivity_error_returns_failure_dict` |
+| G2-10 | `_anomaly_summary()` produces expected string format for prompt rendering | `pytest tests/pipelines/test_lpipe_pipeline.py::test_anomaly_summary_format` |
 | G2-7 | E2E smoke: HELIOS-Full variant (D + G + L all active) | `pytest tests/test_e2e_smoke.py -k helios_full` |
 | G2-8 | Deviation log: model downgrade + Ollama vs vLLM entries added and chain verified | `bin/log_deviation.py verify` |
 

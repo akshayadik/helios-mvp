@@ -56,12 +56,26 @@ trace_id, span_id, parent_span_id, operation_name, service_name,
 start_time_us, duration_us, status_code
 ```
 
-Add schema version constant in `bin/run_capture.py`:
+Add schema version constants in `bin/run_capture.py`:
 ```python
 P2_TRACES_SCHEMA_VERSION = "v2"
+MANIFEST_SCHEMA_VERSION = "schema-draft-v0.2"
 ```
 
-Test: `tests/test_capture.py` — assert `parent_span_id` column present in written Parquet; assert schema version recorded in manifest.
+**`snapshot_hash` write (Spec 3 pre-condition):** After building the `UEGCSnapshot` from captured Parquet data, compute and write `snapshot_hash` to the capture manifest JSON. `corpus_manifest.json` generation (Spec 3) reads `cap["snapshot_hash"]` from each capture manifest — if this key is absent, `--generate` raises `KeyError`. Existing manifests at `schema-draft-v0.1` lack this field; the re-capture produces updated manifests at `schema-draft-v0.2`:
+
+```python
+# After snapshot = build_ueg_c(parquet_paths) inside bin/run_capture.py
+snapshot_hash = snapshot.compute_snapshot_hash()
+manifest["snapshot_hash"] = snapshot_hash        # UEGCSnapshot SHA-256 (graph topology)
+manifest["schema_version"] = MANIFEST_SCHEMA_VERSION
+# Write manifest back to data/captures/{incident_id}/manifest.json
+manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+```
+
+`window_hash` (SHA-256 of the raw `TelemetryWindow` L0 data) remains a separate field — it is NOT the same as `snapshot_hash`. Both must be present in `schema-draft-v0.2` manifests.
+
+Test: `tests/test_capture.py` — assert `parent_span_id` column present in written Parquet; assert `snapshot_hash` key present in manifest with a 64-char hex value; assert `window_hash` and `snapshot_hash` are distinct; assert `schema_version` is `"schema-draft-v0.2"`.
 
 ### 1.2 Re-capture all 20 incidents
 
@@ -197,17 +211,28 @@ def _structural_edges(self, spans: list[SpanRecord]) -> list[UEGCEdge]:
 
 Read both `span_id` and `parent_span_id` from Parquet (`span_id` already exists in schema v1). When `parent_span_id` column is absent, set `parent_span_id=None` for every span — `_structural_edges()` detects this and delegates to `_structural_edges_temporal()`.
 
-**Null normalization — mandatory:** Parquet nullable columns surface as Python `None` or `float('nan')` when the cell is empty. A bare `str(None)` produces the literal string `"None"`, and `str(float('nan'))` produces `"nan"` — both are truthy non-empty strings. Downstream, `if not child.parent_span_id: continue` would silently treat root spans as having a parent node named `"None"`, producing phantom structural edges. Normalise via a helper before constructing `SpanRecord`:
+**Null normalization — mandatory:** Parquet nullable columns surface as Python `None`, `float('nan')`, `pd.NA` (nullable integer/string dtypes), or `pd.NaT` (timestamp dtypes) when the cell is empty. A bare `str(None)` produces `"None"` and `str(float('nan'))` produces `"nan"` — both are truthy non-empty strings that cause phantom structural edges. `isinstance + math.isnan` only catches `float('nan')`; `pd.isna()` is required to cover `pd.NA`, `pd.NaT`, and other pandas null sentinels that appear in real Parquet data with nullable extension dtypes. Normalise via a helper before constructing `SpanRecord`:
 
 ```python
 import math
 
+import pandas as pd
+
 def _psid(val: object) -> str:
-    """Normalise a Parquet nullable parent_span_id cell to str or ''."""
+    """Normalise a Parquet nullable parent_span_id cell to str or ''.
+
+    Handles: None, float('nan'), pd.NA, pd.NaT, and other pandas nulls.
+    The try/except guards against pd.isna raising TypeError on array inputs.
+    """
     if val is None:
         return ""
     if isinstance(val, float) and math.isnan(val):
         return ""
+    try:
+        if pd.isna(val):  # handles pd.NA, pd.NaT and other pandas null variants
+            return ""
+    except (TypeError, ValueError):
+        pass  # pd.isna raises on array inputs — treat as non-null
     return str(val)
 
 has_psid = "parent_span_id" in cols
@@ -237,6 +262,7 @@ With this normalization, root spans always receive `parent_span_id=""` (falsy), 
 | `test_structural_multi_level_chain` | A→B→C chain produces A→B and B→C structural edges |
 | `test_structural_fallback_on_missing_column` | Missing column → warning raised + temporal containment used |
 | `test_structural_empty_spans` | Empty span list → empty edge list |
+| `test_structural_parquet_null_variants` | `pd.NA`, `float('nan')`, `None` in `parent_span_id` all normalise to `""` via `_psid()` → no phantom edges produced |
 
 ---
 
@@ -244,9 +270,11 @@ With this normalization, root spans always receive `parent_span_id=""` (falsy), 
 
 ### 3.1 PipelineVerdict schema v0.2 (`helios/schemas/verdict.py`)
 
-Two optional pipeline-specific fields added; schema version bumped:
+Two optional pipeline-specific fields added; schema version bumped. A module-level constant is the single source of truth for the schema version string — all pipeline sentinel dicts import it rather than hard-coding the string, so a future schema bump updates in one place:
 
 ```python
+VERDICT_SCHEMA_VERSION: str = "schema-draft-v0.2"
+
 class PipelineVerdict(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -265,7 +293,7 @@ class PipelineVerdict(BaseModel):
     # v0.2 additions
     ppr_scores: dict[str, float] = Field(default_factory=dict)   # G-pipe: PPR score per service
     prompt_version: str | None = None                             # L-pipe: frozen prompt version
-    schema_version: str = "schema-draft-v0.2"
+    schema_version: str = VERDICT_SCHEMA_VERSION
 
     def compute_verdict_hash(self) -> str:
         return hashlib.sha256(canonical_json(self.model_dump()).encode()).hexdigest()
@@ -364,6 +392,8 @@ def run_gpipe(
 
 **Sentinel verdict** (gate below threshold or `GPIPE` flag off):
 ```python
+from helios.schemas.verdict import VERDICT_SCHEMA_VERSION
+
 def _sentinel_verdict(incident_id, snapshot_hash, manifest, evaluation_phase: str):
     return {
         "pipeline": "gpipe",
@@ -378,7 +408,7 @@ def _sentinel_verdict(incident_id, snapshot_hash, manifest, evaluation_phase: st
         "token_count": 0,
         "narrative": "gpipe-gated-or-skipped",
         "evaluation_phase": evaluation_phase,   # propagated from caller — never hardcoded
-        "schema_version": "schema-draft-v0.2",
+        "schema_version": VERDICT_SCHEMA_VERSION,  # single source of truth from verdict.py
     }
 ```
 
@@ -462,7 +492,7 @@ else:
         "token_count": 0,
         "narrative": "gpipe-gated-or-skipped",
         "evaluation_phase": evaluation_phase,
-        "schema_version": "schema-draft-v0.2",
+        "schema_version": VERDICT_SCHEMA_VERSION,  # imported from helios.schemas.verdict
     }
 
 lpipe_verdict = run_lpipe(
@@ -516,10 +546,16 @@ This filter must appear in: (1) `scripts/evaluate_ablation.py`, (2) the ablation
 
 ## Calibration Rerun
 
-After structural edge fix, re-run `scripts/calibrate_dpipe.py`:
+After structural edge fix, run two calibration scripts in order:
 
-1. Verify LOO-CV HR@3 stability (tolerance ±0.01 vs 0.5333).
-2. Sweep `DISAGREEMENT_THRESHOLD` over `DISAGREEMENT_SWEEP` — pick value maximising G-pipe HR@3 on held-out set.
+1. **D-pipe stability check:** `poetry run python scripts/calibrate_dpipe.py` — verify LOO-CV HR@3 within ±0.01 of M2 value (0.5333). This script already exists from Milestone 2; it re-uses the existing 20-incident corpus without changes.
+
+2. **G-pipe calibration (new script):** `poetry run python scripts/calibrate_gpipe.py` — see Files Modified. This script:
+   - Runs PPR traversal LOO-CV over the 20-incident corpus
+   - Sweeps `DISAGREEMENT_THRESHOLD` over `DISAGREEMENT_SWEEP` values
+   - Picks the threshold value maximising G-pipe HR@3 on the held-out set
+   - Writes G-pipe LOO-CV fields (`gpipe_hr_at_3_held_out`, `dpipe_hr_at_3_held_out`, `gate_passed`, `n_incidents_triggered`) to `data/calibrated_params.json`
+
 3. If G-pipe HR@3 ≥ D-pipe HR@3 on held-out: A-H6 entry gate PASSES → freeze value in `gpipe_config.py`.
 4. If G-pipe HR@3 < D-pipe HR@3: file deviation with power analysis note (corpus too small).
 
@@ -533,7 +569,7 @@ After structural edge fix, re-run `scripts/calibrate_dpipe.py`:
 | G1-2 | Schema roundtrip green at v0.2 | `pytest tests/test_schema_stability.py -v` |
 | G1-3 | Snapshot registry rebuilt — 20 entries, HMAC chain verified | `python bin/log_deviation.py verify` |
 | G1-4 | Deviation log: re-capture + schema v0.2 + sequential dispatch (≥3 new entries) | `bin/log_deviation.py verify` |
-| G1-5 | LOO-CV HR@3 stability ±0.01 post-recalibration | `scripts/calibrate_dpipe.py` output |
+| G1-5 | LOO-CV HR@3 stability ±0.01 post-recalibration; G-pipe fields written to `calibrated_params.json` | `scripts/calibrate_gpipe.py` output |
 | G1-6 | A-H6: G-pipe HR@3 ≥ D-pipe on held-out OR deviation + power analysis | Calibration output |
 | G1-7 | Disjointness audit green | `python -m helios.vcl.disjointness` |
 | G1-8 | Dynamic coverage: zero line overlap between HELIOS-G and HELIOS-noGraph paths | CI disjointness workflow |
@@ -561,4 +597,5 @@ After structural edge fix, re-run `scripts/calibrate_dpipe.py`:
 | `tests/test_schema_stability.py` | Update for v0.2 fields |
 | `docs/tracking/ablation_architecture.md` | §3.2 written |
 | `docs/tracking/helios_mvp_tracking.md` | M3 ENG/GATE rows added |
+| `scripts/calibrate_gpipe.py` | **New** — G-pipe LOO-CV threshold sweep; writes `gpipe_hr_at_3_held_out`, `dpipe_hr_at_3_held_out`, `gate_passed`, `n_incidents_triggered` to `data/calibrated_params.json` |
 | `data/snapshot_registry.jsonl` | Purge + rebuild after re-capture |
