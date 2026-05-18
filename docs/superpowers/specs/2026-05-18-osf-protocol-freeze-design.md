@@ -229,7 +229,7 @@ def test_seed_registry_llama_seed_matches_lpipe_config():
       "stage": "Stage 0",
       "algorithm": "global",
       "context": "numpy.random.seed / random.seed",
-      "source_constant": "helios.vcl.config.GLOBAL_SEED"
+      "source_constant": "helios.research.seeds.GLOBAL_SEED"
     },
     {
       "seed_id": "SEED-002",
@@ -462,6 +462,38 @@ Source: `docs/tracking/hypothesis_variant_metric_mapping.md`
 All eight A-H hypotheses included under `family_a_hypotheses`, ordered by Holm rank. All eight B-H hypotheses (baseline comparisons against CHASE and RCACopilot) included under `family_b_hypotheses` with `"status": "deferred"` — this satisfies the OSF pre-registration commitment by locking the comparison structure and baselines now, while deferring data collection to post-M4. **Do not omit B-H entries.** An incomplete `family_b_hypotheses` array violates the pre-registration and makes `--verify` fail if `HYPOTHESIS_TABLE` has 8 A-H + 0 B-H entries.
 
 **`helios/research/analysis_plan.py`** must export two constants: `FAMILY_A_HYPOTHESES` and `FAMILY_B_HYPOTHESES`, each a list of dicts matching the JSON schema above. `verify_osf_freeze.py` combines both families into the `analysis_plan.json` structure. Omitting Family B produces an incomplete pre-registration archive that violates the OSF freeze commitment.
+
+`FAMILY_B_HYPOTHESES` is a **static list constant** in `analysis_plan.py` — it is NOT derived from `_VARIANT_HYPOTHESIS_MAP`. That map is used exclusively for `_hypothesis_for_variant()` lookups in `variant_hashes.json` generation (A-family only). The B-family entries live in their own constant because they reference external baselines (CHASE, RCACopilot) that have no corresponding `CONFIRMATORY_VARIANTS` entry:
+
+```python
+# FAMILY_B_HYPOTHESES — statically defined; not derived from _VARIANT_HYPOTHESIS_MAP.
+# _VARIANT_HYPOTHESIS_MAP covers A-family variants only; B-family uses external baselines.
+# verify_osf_freeze.py imports this constant directly and writes it to analysis_plan.json.
+FAMILY_B_HYPOTHESES: list[dict] = [
+    {"id": "B-H1", "rank": 1, "comparison": "HELIOS-Full vs CHASE",       "primary_metric": "HR@3", "status": "deferred", "baseline": "CHASE",       "note": "AIOpsLab corpus pending"},
+    {"id": "B-H2", "rank": 2, "comparison": "HELIOS-Full vs CHASE",       "primary_metric": "CpR",  "status": "deferred", "baseline": "CHASE",       "note": "AIOpsLab corpus pending"},
+    {"id": "B-H3", "rank": 3, "comparison": "HELIOS-Full vs RCACopilot",  "primary_metric": "HR@3", "status": "deferred", "baseline": "RCACopilot",  "note": "AIOpsLab corpus pending"},
+    {"id": "B-H4", "rank": 4, "comparison": "HELIOS-Full vs RCACopilot",  "primary_metric": "CpR",  "status": "deferred", "baseline": "RCACopilot",  "note": "AIOpsLab corpus pending"},
+    {"id": "B-H5", "rank": 5, "comparison": "HELIOS-D vs CHASE",          "primary_metric": "HR@3", "status": "deferred", "baseline": "CHASE",       "note": "Statistical ablation baseline; AIOpsLab corpus pending"},
+    {"id": "B-H6", "rank": 6, "comparison": "HELIOS-D vs RCACopilot",     "primary_metric": "HR@3", "status": "deferred", "baseline": "RCACopilot",  "note": "Statistical ablation baseline; AIOpsLab corpus pending"},
+    {"id": "B-H7", "rank": 7, "comparison": "HELIOS-G vs CHASE",          "primary_metric": "HR@3", "status": "deferred", "baseline": "CHASE",       "note": "Graph pipeline baseline; gate-conditional; AIOpsLab corpus pending"},
+    {"id": "B-H8", "rank": 8, "comparison": "HELIOS-noLLM vs CHASE",      "primary_metric": "HR@3", "status": "deferred", "baseline": "CHASE",       "note": "LLM ablation baseline; AIOpsLab corpus pending"},
+]
+```
+
+`verify_osf_freeze.py --generate` uses both constants directly:
+
+```python
+from helios.research.analysis_plan import FAMILY_A_HYPOTHESES, FAMILY_B_HYPOTHESES
+
+plan = {
+    # ... static fields (statistical_test, correction, alpha values) ...
+    "family_a_hypotheses": FAMILY_A_HYPOTHESES,
+    "family_b_hypotheses": FAMILY_B_HYPOTHESES,   # always 8 entries; deferred status is not empty
+}
+```
+
+The strict separation means the deferred-B-family comment in `_VARIANT_HYPOTHESIS_MAP` has no effect on whether B-H entries appear in `analysis_plan.json` — they come from a different constant. `--verify` checks that `len(plan["family_b_hypotheses"]) == 8`; a missing or incomplete `FAMILY_B_HYPOTHESES` constant causes an immediate assertion failure.
 
 ### `corpus_manifest.json`
 

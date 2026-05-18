@@ -417,23 +417,25 @@ def run_gpipe(
     snapshot_hash: str,
     dpipe_scores: dict[str, float],
     evaluation_phase: str,   # passed from orchestrator; never hardcoded here
+    run_id: str,             # PipelineVerdict primary key; threads through all verdict dicts
 ) -> dict[str, Any]:
     manifest = get_current_manifest()
     disagreement = compute_ppr_disagreement(dpipe_scores)
     if disagreement < DISAGREEMENT_THRESHOLD:
-        return _sentinel_verdict(incident_id, snapshot_hash, manifest, evaluation_phase)
+        return _sentinel_verdict(incident_id, snapshot_hash, manifest, evaluation_phase, run_id)
     ranked, ppr_out = _ppr_traverse(snapshot, seed_weights=dpipe_scores)
-    return _build_verdict(incident_id, snapshot_hash, manifest, ranked, ppr_out, evaluation_phase)
+    return _build_verdict(incident_id, snapshot_hash, manifest, ranked, ppr_out, evaluation_phase, run_id)
 ```
 
 **Sentinel verdict** (gate below threshold or `GPIPE` flag off):
 ```python
 from helios.schemas.verdict import VERDICT_SCHEMA_VERSION
 
-def _sentinel_verdict(incident_id, snapshot_hash, manifest, evaluation_phase: str):
+def _sentinel_verdict(incident_id, snapshot_hash, manifest, evaluation_phase: str, run_id: str):
     return {
         "pipeline": "gpipe",
         "incident_id": incident_id,
+        "run_id": run_id,
         "variant_config_hash": manifest.compute_variant_config_hash(),
         "snapshot_hash": snapshot_hash,
         "ranked_candidates": [],
@@ -511,6 +513,7 @@ if should_run_gpipe(dpipe_verdict, manifest):
         incident_id, snapshot, snapshot_hash,
         dpipe_scores=dpipe_verdict.get("ppr_scores", {}),
         evaluation_phase=evaluation_phase,
+        run_id=run_id,
     )
 else:
     # Gate did not fire (or GPIPE/L2B_GRAPH flag off) — emit sentinel here, not inside
@@ -518,6 +521,7 @@ else:
     gpipe_verdict = {
         "pipeline": "gpipe",
         "incident_id": incident_id,
+        "run_id": run_id,
         "variant_config_hash": manifest.compute_variant_config_hash(),
         "snapshot_hash": snapshot_hash,
         "ranked_candidates": [],
@@ -532,7 +536,9 @@ else:
     }
 
 lpipe_verdict = run_lpipe(
-    incident_id, snapshot, snapshot_hash, evaluation_phase=evaluation_phase
+    incident_id, snapshot, snapshot_hash,
+    evaluation_phase=evaluation_phase,
+    run_id=run_id,
 )   # independent of G-pipe
 ```
 

@@ -337,6 +337,7 @@ def run_lpipe(
     snapshot: UEGCSnapshot,
     snapshot_hash: str,
     evaluation_phase: str,   # passed from orchestrator; never hardcoded
+    run_id: str,             # PipelineVerdict primary key; threads through all verdict dicts
 ) -> dict[str, Any]:
     t0 = time.monotonic()
     manifest = get_current_manifest()
@@ -367,6 +368,7 @@ def run_lpipe(
         return {
             "pipeline": "lpipe",
             "incident_id": incident_id,
+            "run_id": run_id,
             "variant_config_hash": manifest.compute_variant_config_hash(),
             "snapshot_hash": snapshot_hash,
             "ranked_candidates": ["l-pipe-connectivity-error"],
@@ -386,6 +388,7 @@ def run_lpipe(
     return {
         "pipeline": "lpipe",
         "incident_id": incident_id,
+        "run_id": run_id,
         "variant_config_hash": manifest.compute_variant_config_hash(),
         "snapshot_hash": snapshot_hash,
         "ranked_candidates": response.ranked_candidates,
