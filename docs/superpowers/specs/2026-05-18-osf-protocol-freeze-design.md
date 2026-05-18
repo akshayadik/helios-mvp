@@ -78,6 +78,26 @@ CI step added to `ci.yml`:
 
 **Zero hand-written JSONs rule:** `--verify` will detect any JSON that was edited by hand rather than generated. No manual edits to any file under `research/osf/`.
 
+### Line-ending and serialisation discipline
+
+**LF normalization (CRLF safety):** All file I/O in `verify_osf_freeze.py` must use binary mode with explicit LF normalisation. Using text mode (`open(..., "r")`) on Windows produces CRLF line endings that change the SHA-256 hash relative to the ubuntu-22.04 CI runner. Use binary mode throughout:
+
+```python
+# Write
+path.write_bytes(content.encode("utf-8").replace(b"\r\n", b"\n"))
+
+# Read for hashing and diffing
+raw = path.read_bytes().replace(b"\r\n", b"\n")
+```
+
+**JSON serialisation via `canonical_json`:** All JSON output must be produced by `helios.vcl.utils.canonical_json`, never raw `json.dumps()`. This ensures sorted keys, deterministic float precision (`round(o, 6)`), and no unexpected whitespace variance across platforms. The canonical serialisation is the source of truth for the manifest hash:
+
+```python
+from helios.vcl.utils import canonical_json
+
+content = canonical_json(data_dict) + "\n"  # single trailing newline
+```
+
 ---
 
 ## Artefact Specifications
@@ -147,7 +167,11 @@ All float values serialised using `canonical_json` rules (sorted keys, 6-decimal
   "gpipe": {
     "disagreement_threshold": "<value frozen after Spec 1 calibration>",
     "ppr_alpha": 0.850000,
-    "frozen_at_milestone": "Milestone 3"
+    "frozen_at_milestone": "Milestone 3",
+    "gpipe_hr_at_3_held_out": "<LOO-CV HR@3 for G-pipe on held-out incidents where gate fired>",
+    "dpipe_hr_at_3_held_out": "<LOO-CV HR@3 for D-pipe on the same held-out incident set>",
+    "gate_passed": "<true if gpipe_hr_at_3_held_out >= dpipe_hr_at_3_held_out, else false>",
+    "n_incidents_triggered": "<count of incidents where disagreement >= threshold in calibration>"
   }
 }
 ```
@@ -291,8 +315,25 @@ Required cells:
 |---|---|
 | L0 — VCL | Flag matrix table (all 8 variants × 14 flags), loaded from `variant_hashes.json` |
 | L1 — D-pipe Calibration | LOO-CV results table, calibration parameter table, loaded from `thresholds.json` |
-| L2 — G-pipe | PPR disagreement threshold, entry gate calibration results, loaded from `thresholds.json` |
+| L2 — G-pipe | PPR disagreement threshold, entry gate calibration results, loaded from `thresholds.json`; note A-H6 sentinel filter requirement |
 | L3 — L-pipe | Prompt version, model, Protocol A settings, loaded from `prompt_sha.json` |
+
+**Import constraint — mandatory:** Notebook code cells must **not** import from `helios.pipelines.*` or `helios.orchestrator.*`. All data must be loaded from the frozen JSON artefacts under `research/osf/` using standard file reads only:
+
+```python
+import json
+from pathlib import Path
+
+OSF_DIR = Path("research/osf")
+
+with open(OSF_DIR / "thresholds.json") as f:
+    thresholds = json.load(f)
+
+with open(OSF_DIR / "variant_hashes.json") as f:
+    variant_hashes = json.load(f)
+```
+
+Importing from `helios.pipelines` or `helios.orchestrator` would introduce a runtime dependency on the installed HELIOS package — making the notebook non-executable in environments where the package is not installed (e.g., OSF reviewer machines, Binder). The notebook must be fully self-contained given only the `research/osf/*.json` files and standard library plus `pandas`/`json`.
 
 **Render requirement:** `jupyter nbconvert --execute research/ablation_notebook.ipynb` must complete without error and without requiring Ollama to be running. L3 section displays config values only — no live inference.
 

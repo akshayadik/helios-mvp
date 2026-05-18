@@ -42,10 +42,18 @@ helios/pipelines/l_pipe/
 
 ### Interface
 
+`generate()` returns a structured result, not a bare string. The Ollama API response body includes `prompt_eval_count` (tokens in prompt) and `eval_count` (tokens generated) — these are required for the verdict `token_count` field and for latency auditing:
+
 ```python
+@dataclass(frozen=True)
+class OllamaGenerateResult:
+    text: str
+    prompt_tokens: int       # from Ollama response["prompt_eval_count"]
+    completion_tokens: int   # from Ollama response["eval_count"]
+
 class OllamaClient:
     def __init__(self, base_url: str, model_name: str) -> None: ...
-    def generate(self, prompt: str, timeout_s: float) -> str: ...
+    def generate(self, prompt: str, timeout_s: float) -> OllamaGenerateResult: ...
 ```
 
 `generate()` raises:
@@ -55,13 +63,14 @@ class OllamaClient:
 
 ### Protocol A enforcement
 
-Every request includes fixed inference options that enforce deterministic greedy decoding:
+Every request includes fixed inference options that enforce deterministic greedy decoding. The `"format": "json"` key instructs Ollama to enforce JSON-only output mode at the server level — this reduces (but does not eliminate) markdown-wrapping of responses:
 
 ```python
 payload = {
     "model": self._model_name,
     "prompt": prompt,
     "stream": False,
+    "format": "json",          # server-side JSON enforcement
     "options": {
         "temperature": 0.00,   # greedy — no sampling randomness
         "top_p": 1.00,         # full distribution (temperature=0 makes this irrelevant)
@@ -69,6 +78,16 @@ payload = {
         "seed": LLAMA_SEED,    # from lpipe_config.py; locked in seed_register.md
     },
 }
+```
+
+The response body carries token counts:
+```python
+body = response.json()
+return OllamaGenerateResult(
+    text=body["response"],
+    prompt_tokens=body.get("prompt_eval_count", 0),
+    completion_tokens=body.get("eval_count", 0),
+)
 ```
 
 These options are not configurable at call time. Any change to these values requires a deviation log entry (Protocol A violation). Record in `lpipe_config.py` as named constants so the deviation log can cite exact values.
@@ -168,10 +187,28 @@ class LPipeResponse(BaseModel):
     confidence: float = Field(ge=0, le=1)
 ```
 
+### Sanitization utility
+
+Even with `"format": "json"` set on the Ollama request, some models wrap the JSON in markdown fences. `sanitize_llm_output()` must be called before any JSON parsing attempt:
+
+```python
+import re
+
+_MD_FENCE_RE = re.compile(r"```(?:json)?\s*([\s\S]*?)```", re.IGNORECASE)
+
+def sanitize_llm_output(raw: str) -> str:
+    """Strip markdown code-block wrappers if present; return raw unchanged otherwise."""
+    m = _MD_FENCE_RE.search(raw)
+    if m:
+        return m.group(1).strip()
+    return raw.strip()
+```
+
 ### Handling logic
 
 ```
-raw_text = ollama_client.generate(prompt)
+result = ollama_client.generate(prompt)   # OllamaGenerateResult
+  → sanitize_llm_output(result.text)
   → parse JSON
   → validate against LPipeResponse
   → if validation fails AND retries_remaining > 0:
@@ -183,14 +220,17 @@ raw_text = ollama_client.generate(prompt)
 **Fallback sentinel:**
 ```python
 LPipeResponse(
-    ranked_candidates=[],
+    ranked_candidates=["l-pipe-fallback"],   # non-empty — PipelineVerdict min_length safe
     narrative="l-pipe-fallback-schema-error",
     confidence=0.00,
 )
 ```
 
+`ranked_candidates=["l-pipe-fallback"]` is used instead of an empty list because `PipelineVerdict` (and any downstream metric validation) may enforce `min_length=1` on `ranked_candidates`. The sentinel string is recognisable and can be filtered in evaluation scripts analogously to the G-pipe sentinel.
+
 **Error cases handled:**
-- Malformed JSON (not parseable): logged, retry triggered
+- Malformed JSON (not parseable): sanitize then retry; log original text on failure
+- Markdown-wrapped JSON: sanitized by `sanitize_llm_output()` before parsing
 - Missing required field: Pydantic ValidationError, retry triggered
 - Schema mismatch (extra field blocked by `extra="forbid"`): retry triggered
 - Retry exhaustion: fallback returned, not raised
@@ -231,21 +271,28 @@ LLAMA_SEED: int = 42   # locked in seed_register.md; do not change
 
 ## Pipeline Entry-point (`helios/pipelines/l_pipe/pipeline.py`)
 
+**Signature:** `run_lpipe` accepts the full `UEGCSnapshot` object — not just `snapshot_hash` — so that `_service_list_from_snapshot()` and `_anomaly_summary()` can read service names and anomaly data directly from the in-memory snapshot rather than re-loading from disk via hash lookup:
+
 ```python
 @gated_by(VCLFlag.L2C_LLM)
-def run_lpipe(incident_id: str, snapshot_hash: str) -> dict[str, Any]:
+def run_lpipe(
+    incident_id: str,
+    snapshot: UEGCSnapshot,
+    snapshot_hash: str,
+) -> dict[str, Any]:
+    t0 = time.monotonic()
     manifest = get_current_manifest()
     registry = PromptRegistry(PROMPT_PATH)
     registry.verify_sha(EXPECTED_PROMPT_SHA)   # tamper-guard; raises if mismatch
     client = OllamaClient(OLLAMA_BASE_URL, MODEL_NAME)
     handler = ResponseHandler(client, max_retries=LPIPE_MAX_RETRIES)
-    # Anomaly summary derived from snapshot (service list + narrative stub for M3)
     prompt = registry.render(
         incident_id=incident_id,
-        service_list=_service_list_from_snapshot(snapshot_hash),
-        anomaly_summary=_anomaly_summary(snapshot_hash),
+        service_list=_service_list_from_snapshot(snapshot),
+        anomaly_summary=_anomaly_summary(snapshot),
     )
-    response = handler.handle(prompt, timeout_s=TIMEOUT_S)
+    response, ollama_result = handler.handle(prompt, timeout_s=TIMEOUT_S)
+    latency_ms = (time.monotonic() - t0) * 1000.0
     return {
         "pipeline": "lpipe",
         "incident_id": incident_id,
@@ -254,15 +301,17 @@ def run_lpipe(incident_id: str, snapshot_hash: str) -> dict[str, Any]:
         "ranked_candidates": response.ranked_candidates,
         "ppr_scores": {},             # L-pipe does not produce PPR scores
         "prompt_version": registry.prompt_version,
-        "hr_at_3": compute_hr_at_3(response.ranked_candidates, incident_id),
-        "cpr": compute_cpr(response.ranked_candidates, incident_id),
-        "token_count": _count_tokens(prompt, response),
+        "token_count": ollama_result.prompt_tokens + ollama_result.completion_tokens,
         "narrative": response.narrative,
-        "latency_ms": ...,
+        "latency_ms": latency_ms,
         "evaluation_phase": "exploratory",
         "schema_version": "schema-draft-v0.2",
     }
 ```
+
+**`hr_at_3` and `cpr` are not computed inside `run_lpipe`** — pipelines output raw `ranked_candidates` and `narrative` only. Metric computation (`hr_at_3`, `cpr`) belongs in the evaluation harness (`scripts/evaluate_ablation.py`) which has access to ground truth. This matches D-pipe and G-pipe behavior and keeps pipeline code free of ground truth dependencies.
+
+**`token_count`** is derived from `OllamaGenerateResult.prompt_tokens + completion_tokens` (returned by `handler.handle()` alongside the `LPipeResponse`). `ResponseHandler.handle()` must be updated to return `tuple[LPipeResponse, OllamaGenerateResult]`.
 
 **`prompt_version`** in the verdict dict provides a persistent record binding each verdict row to the exact prompt template used. This enables post-hoc audit: if `rca_v1.txt` ever changes, old rows are provably tagged with the old version.
 

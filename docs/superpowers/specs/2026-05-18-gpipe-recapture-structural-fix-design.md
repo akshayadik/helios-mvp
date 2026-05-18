@@ -142,11 +142,55 @@ def _structural_edges(self, spans: list[SpanRecord]) -> list[UEGCEdge]:
             for src, tgt in sorted(pairs)]
 ```
 
-**Fallback:** If `parent_span_id` column is missing from the Parquet table (unexpected regression), `build_ueg_c()` logs `warnings.warn` and falls back to temporal containment. Never returns an empty graph silently.
+**Fallback:** If `parent_span_id` column is missing from the Parquet table (unexpected regression), `_structural_edges()` calls `_structural_edges_temporal()` and logs a `warnings.warn`. Never returns an empty graph silently.
+
+`_structural_edges_temporal()` retains the original temporal containment logic verbatim — it must not be deleted when `_structural_edges()` is rewritten. It is a named, independently testable method on `UEGCBuilder`:
+
+```python
+def _structural_edges_temporal(self, spans: list[SpanRecord]) -> list[UEGCEdge]:
+    """Original temporal-containment structural edge derivation (pre-parent_span_id).
+    Kept as a named fallback; called by _structural_edges() when parent_span_id absent.
+    """
+    pairs: set[tuple[str, str]] = set()
+    for i, outer in enumerate(spans):
+        for inner in spans[i + 1:]:
+            if outer.trace_id != inner.trace_id:
+                continue
+            if outer.service_name == inner.service_name:
+                continue
+            # containment: inner fully within outer
+            if outer.start_us <= inner.start_us and inner.end_us <= outer.end_us:
+                pairs.add((outer.service_name, inner.service_name))
+    return [UEGCEdge(source=src, target=tgt, edge_type=EdgeType.STRUCTURAL, weight=1)
+            for src, tgt in sorted(pairs)]
+```
+
+And the dispatch in `_structural_edges()`:
+```python
+def _structural_edges(self, spans: list[SpanRecord]) -> list[UEGCEdge]:
+    if any(s.parent_span_id is None and s.span_id == "" for s in spans):
+        # parent_span_id not loaded (schema v1 fallback)
+        import warnings
+        warnings.warn("parent_span_id absent — falling back to temporal containment", stacklevel=3)
+        return self._structural_edges_temporal(spans)
+    span_svc: dict[tuple[str, str], str] = {
+        (s.trace_id, s.span_id): s.service_name for s in spans
+    }
+    pairs: set[tuple[str, str]] = set()
+    for child in spans:
+        if not child.parent_span_id:
+            continue
+        parent_svc = span_svc.get((child.trace_id, child.parent_span_id))
+        if parent_svc and parent_svc != child.service_name:
+            pairs.add((parent_svc, child.service_name))
+    return [UEGCEdge(source=src, target=tgt, edge_type=EdgeType.STRUCTURAL, weight=1)
+            for src, tgt in sorted(pairs)]
+```
 
 ### 2.3 `build_ueg_c()` factory update
 
-Read both `span_id` and `parent_span_id` from Parquet (`span_id` already exists in schema v1):
+Read both `span_id` and `parent_span_id` from Parquet (`span_id` already exists in schema v1). When `parent_span_id` column is absent, set `parent_span_id=None` for every span — `_structural_edges()` detects this and delegates to `_structural_edges_temporal()`:
+
 ```python
 has_psid = "parent_span_id" in cols
 spans = [
@@ -160,9 +204,6 @@ spans = [
     )
     for i in range(n)
 ]
-if not has_psid:
-    import warnings
-    warnings.warn("parent_span_id column absent — falling back to temporal containment")
 ```
 
 ### 2.4 Test coverage (`tests/graph/test_ueg_c_builder.py`)
@@ -246,8 +287,10 @@ def compute_ppr_disagreement(ppr_scores: dict[str, float]) -> float:
 
     Returns 0.00 when fewer than 3 candidates or top score is non-positive.
     Bounded [0.00, 1.00]: 1.00 means completely flat scores (maximum uncertainty).
-    All input scores must be non-negative (assertion in tests).
+    Raises ValueError on any negative score — D-pipe PPR scores must be non-negative.
     """
+    if any(v < 0.00 for v in ppr_scores.values()):
+        raise ValueError(f"ppr_scores contains negative values: {ppr_scores}")
     if len(ppr_scores) < 3:
         return 0.00
     sorted_scores = sorted(ppr_scores.values(), reverse=True)
@@ -258,12 +301,28 @@ def compute_ppr_disagreement(ppr_scores: dict[str, float]) -> float:
 ```
 
 **Test requirements:**
-- Non-negative scores validated: test that negative scores raise `ValueError`
+- Negative score input raises `ValueError` — explicitly tested
 - Boundary tests: disagreement at 0.29 (gate does not trigger), 0.30 (gate triggers), 0.31 (gate triggers)
 - Uniform scores (e.g. all 0.33): disagreement ≈ 1.00 — triggers gate
 - Two-service graph (fewer than 3 candidates): returns 0.00 — gate does not trigger
 
 ### 3.4 G-pipe pipeline (`helios/pipelines/g_pipe/pipeline.py`)
+
+**VCL flag model — dual dependency:**
+
+`@gated_by(VCLFlag.GPIPE)` is the **primary pipeline gate** that the disjointness auditor and VCL decorator system recognise. A second flag, `VCLFlag.L2B_GRAPH`, controls whether behavioral/call edges are compiled into the `UEGCSnapshot` during capture. Without `L2B_GRAPH` active, the snapshot contains structural edges only — G-pipe will execute but with a structurally sparse graph. `should_run_gpipe()` therefore checks both:
+
+```python
+def should_run_gpipe(dpipe_verdict: dict[str, Any], manifest: VCLManifest) -> bool:
+    if not manifest.gpipe:          # VCLFlag.GPIPE — primary gate; audited by disjointness
+        return False
+    if not manifest.l2b_graph:      # VCLFlag.L2B_GRAPH — no behavioral edges = sparse traversal
+        return False
+    dpipe_scores = dpipe_verdict.get("ppr_scores", {})
+    return compute_ppr_disagreement(dpipe_scores) >= DISAGREEMENT_THRESHOLD
+```
+
+**Why not gate on `L2B_GRAPH` at the decorator level:** `@gated_by` registers the primary flag for static disjointness analysis. Changing the decorator to `L2B_GRAPH` would cause the disjointness auditor to attribute G-pipe lines to the behavioral-edge compilation path rather than the peer pipeline path — incorrect. `GPIPE` stays on the decorator; `L2B_GRAPH` is a soft guard inside `should_run_gpipe()`. Update `docs/tracking/vcl_manifest_tracking.md` to note this dual dependency.
 
 ```python
 @gated_by(VCLFlag.GPIPE)
@@ -301,7 +360,23 @@ def _sentinel_verdict(incident_id, snapshot_hash, manifest):
     }
 ```
 
-**PPR traversal:** `networkx.pagerank(graph, alpha=GPIPE_PPR_ALPHA, personalization=dpipe_scores)`. Returns `(ranked_candidates: list[str], ppr_scores: dict[str, float])`. Same determinism caveat as D-pipe pruner.
+**PPR traversal — personalization filter:** Before calling `networkx.pagerank`, filter `dpipe_scores` to only nodes present in the graph. If a D-pipe score refers to a service that was pruned out by the K-hop pruner or is absent from the structural graph, passing it to NetworkX raises `KeyError`. Always filter:
+
+```python
+def _ppr_traverse(
+    snapshot: UEGCSnapshot,
+    seed_weights: dict[str, float],
+) -> tuple[list[str], dict[str, float]]:
+    graph = _build_nx_graph(snapshot)
+    personalization = {k: v for k, v in seed_weights.items() if k in graph.nodes}
+    if not personalization:
+        personalization = None  # NetworkX default: uniform over all nodes
+    raw_scores = networkx.pagerank(graph, alpha=GPIPE_PPR_ALPHA, personalization=personalization)
+    ranked = sorted(raw_scores, key=raw_scores.__getitem__, reverse=True)
+    return ranked, raw_scores
+```
+
+Returns `(ranked_candidates: list[str], ppr_scores: dict[str, float])`. Same determinism caveat as D-pipe pruner.
 
 **Determinism test:** same `(snapshot, dpipe_scores)` input → identical `ranked_candidates` and `ppr_scores` on two sequential calls.
 
@@ -323,7 +398,9 @@ if should_run_gpipe(dpipe_verdict, manifest):
 lpipe_verdict = run_lpipe(incident_id, snapshot_hash)   # independent of G-pipe
 ```
 
-`should_run_gpipe()`: `VCLFlag.GPIPE` active in manifest AND `compute_ppr_disagreement(dpipe_scores) >= DISAGREEMENT_THRESHOLD`.
+**Note on `.get()` call:** `run_dpipe()` returns `dict[str, Any]` (a plain dict, not a `PipelineVerdict` object). `.get("ppr_scores", {})` is therefore valid Python — no `AttributeError`. Do not call `.get()` on a `PipelineVerdict` instance; Pydantic v2 frozen models do not have a `.get()` method. Access those fields as attributes (`verdict.ppr_scores`) or call `verdict.model_dump()` first.
+
+`should_run_gpipe()`: checks `VCLFlag.GPIPE` **and** `VCLFlag.L2B_GRAPH` active in manifest, AND `compute_ppr_disagreement(dpipe_scores) >= DISAGREEMENT_THRESHOLD`. See §3.4 for dual-flag rationale.
 
 **Deviation entry (sequential dispatch):**
 ```bash
@@ -346,6 +423,20 @@ Handle conditional G-pipe row:
 ### 3.7 `ablation_architecture.md §3.2`
 
 Write §3.2 covering: G-pipe architecture, PPR traversal algorithm, entry gate formula, sequential dispatch rationale, deviation entries. Cross-reference §2.6 (UEG-C Builder) and §4 (Orchestration).
+
+**A-H6 sentinel filtering warning (mandatory — include verbatim in §3.2 and §3.7):**
+
+Hypothesis A-H6 evaluates "G-pipe HR@3 ≥ D-pipe HR@3 on incidents where the entry gate fires." When the gate does not fire, `run_gpipe()` returns a sentinel with `hr_at_3=0.00` and `narrative="gpipe-gated-or-skipped"` — this row is written to the result store. Evaluation scripts that naively aggregate G-pipe metrics will contaminate A-H6 with sentinel zeros, making G-pipe appear worse than it is.
+
+**Mandatory evaluation filter for all A-family metric queries on G-pipe results:**
+```sql
+SELECT AVG(hr_at_3)
+FROM result_store
+WHERE pipeline = 'gpipe'
+  AND narrative != 'gpipe-gated-or-skipped'
+```
+
+This filter must appear in: (1) `scripts/evaluate_ablation.py`, (2) the ablation notebook's L2 section, (3) any analysis script that computes G-pipe HR@3 or CpR. Failure to filter produces a methodologically invalid A-H6 result. Document this in `ablation_architecture.md §3.7` and in `hypothesis_variant_metric_mapping.md` next to the A-H6 row.
 
 ---
 
