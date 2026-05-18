@@ -229,7 +229,7 @@ Source: `helios.vcl.variants.CONFIRMATORY_VARIANTS` — a list of `(name, VCLMan
         "l2c_llm": true,
         "lpipe": true,
         "mahc": true,
-        "p4_cognitive": false,
+        "p4_cognitive": true,
         "reconcile": true,
         "router": true,
         "ueg_c_structural": true
@@ -258,7 +258,7 @@ from helios.vcl.variants import CONFIRMATORY_VARIANTS
 
 variants_out = []
 for name, manifest in CONFIRMATORY_VARIANTS:
-    flags = manifest.model_dump()  # all 14 fields including ingest_mode
+    flags = {k: v for k, v in manifest.model_dump().items() if k in _VCL_FLAG_KEYS}
     variants_out.append({
         "name": name,
         "variant_config_hash": manifest.compute_variant_config_hash(),
@@ -328,7 +328,7 @@ Exploratory corpus only. The two-environment firewall (§1.4) prohibits mixing e
     "incidents": [
       {
         "incident_id": "s0-adhc-001",
-        "snapshot_hash": "<64-char hex from snapshot_registry.jsonl>",
+        "snapshot_hash": "<64-char hex — UEGCSnapshot SHA-256, written by run_capture.py>",
         "fault_class": "adhc"
       }
     ]
@@ -343,7 +343,7 @@ Exploratory corpus only. The two-environment firewall (§1.4) prohibits mixing e
 }
 ```
 
-**Source data for `incidents` list:** `data/snapshot_registry.jsonl` records `{"snapshot_hash": "...", "variant_config_hash": "...", "registered_at": "..."}` — it does NOT store `incident_id`. Reading `entry["incident_id"]` from the registry raises `KeyError`. The authoritative per-incident record is `data/captures/{incident_id}/manifest.json`, which contains `incident_id`, `variant_config_hash`, and `window_hash` (= `snapshot_hash`). Use the capture `manifest.json` as the primary source; `fault_class` is parsed from `incident_id` as before:
+**Source data for `incidents` list:** `data/snapshot_registry.jsonl` records `{"snapshot_hash": "...", "variant_config_hash": "...", "registered_at": "..."}` — it does NOT store `incident_id`. Reading `entry["incident_id"]` from the registry raises `KeyError`. The authoritative per-incident record is `data/captures/{incident_id}/manifest.json`. That file currently stores `incident_id`, `variant_config_hash`, `window_hash` (SHA-256 of the raw `TelemetryWindow` L0 data — **not** the `snapshot_hash`), and parquet paths. `snapshot_hash` (SHA-256 of the compiled `UEGCSnapshot` graph) is a distinct value that must be written to `manifest.json` by `bin/run_capture.py` after it builds the UEGCSnapshot — it is not derivable from `window_hash`. Use `cap["snapshot_hash"]` from the updated capture manifest; `fault_class` is parsed from `incident_id` as before:
 
 ```python
 from pathlib import Path
@@ -365,12 +365,12 @@ for d in sorted(CAPTURES_DIR.iterdir()):
     cap = json.loads(manifest_path.read_text())
     incidents.append({
         "incident_id": cap["incident_id"],
-        "snapshot_hash": cap["window_hash"],   # window_hash IS the snapshot hash
+        "snapshot_hash": cap["snapshot_hash"],  # UEGCSnapshot SHA-256, written by run_capture.py
         "fault_class": _fault_class(cap["incident_id"]),
     })
 ```
 
-`data/captures/{id}/manifest.json` is written by `bin/run_capture.py` and contains `incident_id`, `window_hash`, `variant_config_hash`, and parquet paths. `snapshot_registry.jsonl` is not used for this lookup. `--verify` uses the same pattern.
+`data/captures/{id}/manifest.json` is written by `bin/run_capture.py` and must contain `incident_id`, `window_hash` (TelemetryWindow SHA-256), `snapshot_hash` (UEGCSnapshot SHA-256), `variant_config_hash`, and parquet paths. Writing `snapshot_hash` to the capture manifest is a **Spec 1 pre-condition** — the Task 0 re-capture step in Spec 1 must add this field. Existing manifests under `schema-draft-v0.1` lack it; the re-capture produces `schema-draft-v0.2` manifests with `snapshot_hash` populated. `snapshot_registry.jsonl` is not used for this lookup. `--verify` uses the same pattern.
 
 ### `manifest_sig.txt`
 
