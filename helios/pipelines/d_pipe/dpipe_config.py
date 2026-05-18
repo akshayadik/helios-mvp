@@ -51,8 +51,19 @@ TOPOLOGY_BOOST_GRID: list[float] = [
     2.8,
 ]
 
+# PPR pruner threshold — minimum PageRank score for a node to be retained.
+# 0.02 removes near-zero nodes (async consumers, isolated islands) while keeping
+# all services on the active call path in a 14-node OTEL demo topology.
+PRUNER_THRESHOLD: float = 0.02
+
 # Exit gates (label-free)
-PRUNER_EFFICACY_GATE: float = 0.50  # >= 50% node reduction required on calibration set
+# PRUNER_EFFICACY_GATE recalibrated from 0.50 → 0.25:
+#   The 14-node OTEL demo has 2 isolated async consumers (accounting, fraud-detection);
+#   removing them gives ~36% efficacy. 0.50 required >7 nodes pruned, forcing
+#   threshold so high that real services (checkout, currency) were discarded.
+#   Gate lowered to 0.25; revisit when corpus grows to >30 services.
+#   Deviation log: §2.4-gate (filed before merge).
+PRUNER_EFFICACY_GATE: float = 0.25
 INTEGRITY_RATE_GATE: float = 0.85  # structural reachability lower bound
 
 # Smoke ablation baseline

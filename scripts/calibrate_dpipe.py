@@ -21,6 +21,7 @@ from helios.graph.ueg_c_builder import build_ueg_c
 from helios.pipelines.d_pipe.dpipe_config import (
     INTEGRITY_RATE_GATE,
     PRUNER_EFFICACY_GATE,
+    PRUNER_THRESHOLD,
     RHO_THRESHOLD_GRID,
     TOPOLOGY_BOOST_GRID,
     W_ERROR_GRID,
@@ -144,7 +145,7 @@ def _check_graph_gates(captures: Path, calibration_set: list[str]) -> None:
             efficacy_skip += 1
             integrity_skip += 1
             continue
-        _pruned, prune_result = prune_graph(ueg_c)
+        _pruned, prune_result = prune_graph(ueg_c, pruner_threshold=PRUNER_THRESHOLD)
         if prune_result.nodes_before == 0:
             efficacy_skip += 1
             integrity_skip += 1
