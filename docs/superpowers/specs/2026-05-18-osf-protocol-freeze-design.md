@@ -55,7 +55,7 @@ Reads from programmatic sources and writes all six JSON files, then computes `ma
 |---|---|
 | `helios.vcl.config` seed constants + `lpipe_config.LLAMA_SEED` | `research/osf/seeds.json` |
 | `docs/tracking/prompt_version_registry.md` (structured YAML front-matter) + `lpipe_config.py` | `research/osf/prompt_sha.json` |
-| `data/calibrated_params.json` + `dpipe_config.py` + `gpipe_config.py` | `research/osf/thresholds.json` |
+| `data/calibrated_params.json` (D-pipe + G-pipe eval metrics) + `dpipe_config.py` + `gpipe_config.py` (static hyperparams only) | `research/osf/thresholds.json` |
 | `helios.vcl.variants.CONFIRMATORY_VARIANTS` (all 8 `VCLManifest` objects) | `research/osf/variant_hashes.json` |
 | `helios.research.analysis_plan.HYPOTHESIS_TABLE` (Python constant) | `research/osf/analysis_plan.json` |
 | `data/snapshot_registry.jsonl` + `data/captures/` directory listing | `research/osf/corpus_manifest.json` |
@@ -166,7 +166,9 @@ Source: `docs/tracking/prompt_version_registry.md` + `lpipe_config.py`
 
 ### `thresholds.json`
 
-Sources: `data/calibrated_params.json`, `helios/pipelines/d_pipe/dpipe_config.py`, `helios/pipelines/g_pipe/gpipe_config.py`
+Sources — **data lineage is critical**:
+- `dpipe_config.py` / `gpipe_config.py`: static hyperparameters only (thresholds, alpha values, gates). These config files do NOT store evaluation-level results.
+- `data/calibrated_params.json`: LOO-CV evaluation metrics for both D-pipe (populated at M2) and G-pipe (populated by the G-pipe calibration rerun in Spec 1). The G-pipe fields (`gpipe_hr_at_3_held_out`, `dpipe_hr_at_3_held_out`, `gate_passed`, `n_incidents_triggered`) are written here by `scripts/calibrate_gpipe.py` after the threshold sweep. `verify_osf_freeze.py --generate` must fail with a clear error if these keys are absent from `calibrated_params.json` (i.e., calibration has not yet run).
 
 All float values serialised via `canonical_json` (sorted keys; floats pre-rounded to 6 significant decimal places via `round(o, 6)` before `json.dumps`). **Trailing zeros are NOT preserved** — Python's `json.dumps` serialises `0.3` as `"0.3"`, not `"0.300000"`. Both `--generate` and `--verify` use the same `canonical_json` path, so the on-disk and in-memory representations are always identical. The schema examples below show actual output format (no trailing zeros):
 
@@ -188,13 +190,13 @@ All float values serialised via `canonical_json` (sorted keys; floats pre-rounde
     "w_error": 0.3
   },
   "gpipe": {
-    "disagreement_threshold": "<value frozen after Spec 1 calibration>",
+    "disagreement_threshold": "<value frozen after Spec 1 calibration — from gpipe_config.py>",
     "ppr_alpha": 0.85,
     "frozen_at_milestone": "Milestone 3",
-    "gpipe_hr_at_3_held_out": "<LOO-CV HR@3 for G-pipe on held-out incidents where gate fired>",
-    "dpipe_hr_at_3_held_out": "<LOO-CV HR@3 for D-pipe on the same held-out incident set>",
-    "gate_passed": "<true if gpipe_hr_at_3_held_out >= dpipe_hr_at_3_held_out, else false>",
-    "n_incidents_triggered": "<count of incidents where disagreement >= threshold in calibration>"
+    "gpipe_hr_at_3_held_out": "<from data/calibrated_params.json after G-pipe LOO-CV>",
+    "dpipe_hr_at_3_held_out": "<from data/calibrated_params.json after G-pipe LOO-CV>",
+    "gate_passed": "<true if gpipe_hr_at_3_held_out >= dpipe_hr_at_3_held_out>",
+    "n_incidents_triggered": "<from data/calibrated_params.json after G-pipe LOO-CV>"
   }
 }
 ```
@@ -283,7 +285,7 @@ Source: `docs/tracking/hypothesis_variant_metric_mapping.md`
   "effect_size_commitment": "Cohen h >= 0.276",
   "target_hr_at_3": 0.73,
   "baseline_hr_at_3": 0.6,
-  "hypotheses": [
+  "family_a_hypotheses": [
     {
       "id": "A-H3",
       "rank": 1,
@@ -292,11 +294,23 @@ Source: `docs/tracking/hypothesis_variant_metric_mapping.md`
       "alpha": 0.00625,
       "status": "confirmatory"
     }
+  ],
+  "family_b_hypotheses": [
+    {
+      "id": "B-H1",
+      "rank": 1,
+      "comparison": "HELIOS-Full vs CHASE",
+      "primary_metric": "HR@3",
+      "status": "confirmatory",
+      "baseline": "CHASE"
+    }
   ]
 }
 ```
 
-All eight A-H hypotheses included, ordered by Holm rank.
+All eight A-H hypotheses included under `family_a_hypotheses`, ordered by Holm rank. All eight B-H hypotheses (baseline comparisons against CHASE and RCACopilot) included under `family_b_hypotheses`. Both families are pre-registered commitments and must appear in `analysis_plan.json` and `HYPOTHESIS_TABLE`.
+
+**`helios/research/analysis_plan.py`** must export two constants: `FAMILY_A_HYPOTHESES` and `FAMILY_B_HYPOTHESES`, each a list of dicts matching the JSON schema above. `verify_osf_freeze.py` combines both families into the `analysis_plan.json` structure. Omitting Family B produces an incomplete pre-registration archive that violates the OSF freeze commitment.
 
 ### `corpus_manifest.json`
 
@@ -329,38 +343,34 @@ Exploratory corpus only. The two-environment firewall (§1.4) prohibits mixing e
 }
 ```
 
-**Source data for `incidents` list:** `data/snapshot_registry.jsonl` stores `snapshot_hash` keyed by `incident_id`, but does not record `fault_class`. `incident_id` and `fault_class` must be resolved from the `data/captures/` directory structure, where each subdirectory name IS the `incident_id` (e.g., `s0-adhc-001`). The `fault_class` is parsed from the incident_id name using the middle segment of the dash-delimited format (`s0-{fault_class}-{seq}`):
+**Source data for `incidents` list:** `data/snapshot_registry.jsonl` records `{"snapshot_hash": "...", "variant_config_hash": "...", "registered_at": "..."}` — it does NOT store `incident_id`. Reading `entry["incident_id"]` from the registry raises `KeyError`. The authoritative per-incident record is `data/captures/{incident_id}/manifest.json`, which contains `incident_id`, `variant_config_hash`, and `window_hash` (= `snapshot_hash`). Use the capture `manifest.json` as the primary source; `fault_class` is parsed from `incident_id` as before:
 
 ```python
 from pathlib import Path
-import json, re
+import json
 
 CAPTURES_DIR = Path("data/captures")
-REGISTRY_PATH = Path("data/snapshot_registry.jsonl")
-
-# Build snapshot_hash lookup: incident_id → hash (from registry)
-registry: dict[str, str] = {}
-with open(REGISTRY_PATH) as f:
-    for line in f:
-        entry = json.loads(line)
-        registry[entry["incident_id"]] = entry["snapshot_hash"]
 
 def _fault_class(incident_id: str) -> str:
     parts = incident_id.split("-")
     return parts[1] if len(parts) >= 3 else "unknown"
 
-incidents = [
-    {
-        "incident_id": d.name,
-        "snapshot_hash": registry[d.name],
-        "fault_class": _fault_class(d.name),
-    }
-    for d in sorted(CAPTURES_DIR.iterdir())
-    if d.is_dir() and d.name in registry
-]
+incidents = []
+for d in sorted(CAPTURES_DIR.iterdir()):
+    if not d.is_dir():
+        continue
+    manifest_path = d / "manifest.json"
+    if not manifest_path.exists():
+        continue
+    cap = json.loads(manifest_path.read_text())
+    incidents.append({
+        "incident_id": cap["incident_id"],
+        "snapshot_hash": cap["window_hash"],   # window_hash IS the snapshot hash
+        "fault_class": _fault_class(cap["incident_id"]),
+    })
 ```
 
-This combines both sources: `captures/` for `incident_id` enumeration and `fault_class` parsing; `snapshot_registry.jsonl` for `snapshot_hash` lookup. `--verify` must use the same join logic, not only the registry.
+`data/captures/{id}/manifest.json` is written by `bin/run_capture.py` and contains `incident_id`, `window_hash`, `variant_config_hash`, and parquet paths. `snapshot_registry.jsonl` is not used for this lookup. `--verify` uses the same pattern.
 
 ### `manifest_sig.txt`
 

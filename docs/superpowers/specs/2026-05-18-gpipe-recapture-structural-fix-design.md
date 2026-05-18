@@ -434,6 +434,11 @@ dpipe_verdict = run_dpipe(
     evaluation_phase=evaluation_phase,
     run_id=run_id,
 )
+# D-pipe is frozen at M2 and emits "schema-draft-v0.1". Normalize to v0.2 here
+# so all pipeline rows for the same incident share a single schema_version tag
+# in DuckDB. Pydantic would accept the mismatch silently; this explicit overwrite
+# prevents version skew in downstream aggregation and preregistration audit queries.
+dpipe_verdict["schema_version"] = "schema-draft-v0.2"
 
 if should_run_gpipe(dpipe_verdict, manifest):
     gpipe_verdict = run_gpipe(
