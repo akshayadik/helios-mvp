@@ -238,7 +238,9 @@ class TestPipelineVerdict:
         )
 
     def test_schema_version_is_draft(self) -> None:
-        assert _make_verdict().schema_version == "schema-draft-v0.1"
+        from helios.schemas.verdict import VERDICT_SCHEMA_VERSION
+
+        assert _make_verdict().schema_version == VERDICT_SCHEMA_VERSION
 
     def test_all_fields_required_missing_raises(self) -> None:
         with pytest.raises((ValidationError, TypeError)):
@@ -501,10 +503,64 @@ class TestHashCollisions:
 
 class TestSchemaVersion:
     def test_all_schemas_tagged_draft_v01(self) -> None:
+        from helios.schemas.verdict import VERDICT_SCHEMA_VERSION
+
         assert _make_snapshot().schema_version == "schema-draft-v0.1"
-        assert _make_verdict().schema_version == "schema-draft-v0.1"
+        assert _make_verdict().schema_version == VERDICT_SCHEMA_VERSION
         assert _make_window().schema_version == "schema-draft-v0.1"
 
     def test_vclflag_is_importable(self) -> None:
         # Satisfies flag-guard: schemas feed into VCLManifest hash pipeline (§6.2).
         assert VCLFlag.DPIPE is not None
+
+
+# ---------------------------------------------------------------------------
+# PipelineVerdict v0.2 — new fields and schema version constant
+# ---------------------------------------------------------------------------
+
+
+def test_verdict_v0_2_has_ppr_scores_and_prompt_version() -> None:
+    from helios.schemas.verdict import VERDICT_SCHEMA_VERSION
+
+    v = PipelineVerdict(
+        run_id="run-001",
+        incident_id="inc-001",
+        variant_config_hash=_FAKE_HASH,
+        snapshot_hash=_FAKE_SNAP_HASH,
+        pipeline="gpipe",
+        evaluation_phase=EvaluationPhase.EXPLORATORY,
+        ranked_candidates=["svc-A"],
+        latency_ms=12.5,
+        token_count=0,
+        narrative="test",
+        ppr_scores={"svc-A": 0.75, "svc-B": 0.25},
+        prompt_version=None,
+    )
+    assert v.ppr_scores == {"svc-A": 0.75, "svc-B": 0.25}
+    assert v.prompt_version is None
+    assert v.schema_version == VERDICT_SCHEMA_VERSION
+    assert VERDICT_SCHEMA_VERSION == "schema-draft-v0.2"
+
+
+def test_verdict_v0_2_hr_at_3_defaults_to_zero() -> None:
+    v = PipelineVerdict(
+        run_id="run-001",
+        incident_id="inc-001",
+        variant_config_hash=_FAKE_HASH,
+        snapshot_hash=_FAKE_SNAP_HASH,
+        pipeline="gpipe",
+        evaluation_phase=EvaluationPhase.EXPLORATORY,
+        ranked_candidates=[],
+        latency_ms=0.00,
+        token_count=0,
+        narrative="gpipe-gated-or-skipped",
+    )
+    assert v.hr_at_3 == 0.00
+    assert v.cpr == 0.00
+
+
+def test_verdict_schema_version_constant_matches_default() -> None:
+    from helios.schemas.verdict import VERDICT_SCHEMA_VERSION
+
+    v = _make_verdict()
+    assert v.schema_version == VERDICT_SCHEMA_VERSION
