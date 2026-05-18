@@ -15,7 +15,7 @@
 
 - [ ] Spec 1 merged: `gpipe_config.py` exists with `DISAGREEMENT_THRESHOLD` calibrated and frozen
 - [ ] Spec 2 merged: `prompt_version_registry.md` has `rca_v1` entry with SHA256
-- [ ] `EXPECTED_PROMPT_SHA` in `helios/pipelines/l_pipe/lpipe_config.py` is set to a 64-char hex value (not `None`) — `prompt_sha.json` is generated from `prompt_version_registry.md` regardless of this constant, so `--generate` and `--verify` both succeed while `EXPECTED_PROMPT_SHA=None`. However, `--verify` emits a WARNING when the constant is `None` (tamper-guard not active), and G3-7 requires the constant to be frozen before OSF deposit. Complete the Spec 2 bootstrap before running `--generate` to avoid depositing an archive where the production tamper-guard is disabled.
+- [ ] `EXPECTED_PROMPT_SHA` in `helios/pipelines/l_pipe/lpipe_config.py` is set to a 64-char hex value (not `None`) — `--generate` fails hard (non-zero exit, writes nothing) when this is `None` (see `_preflight_generate()`). `--verify` emits a WARNING (not failure) for `None` so CI is not blocked, but G3-7 requires the constant to be frozen before OSF deposit.
 - [ ] `data/calibrated_params.json` present (frozen at Milestone 2)
 - [ ] `data/snapshot_registry.jsonl` rebuilt with 20 post-re-capture entries
 - [ ] Deviation log chain verified: `python bin/log_deviation.py verify`
@@ -67,6 +67,74 @@ Reads from programmatic sources and writes all six JSON files, then computes `ma
 Concatenation order for `manifest_sig.txt` is deterministic: alphabetical by filename.
 
 **New file required:** `helios/research/analysis_plan.py` — contains `HYPOTHESIS_TABLE` as a Python list of dicts with the Holm-ordered A-H1..A-H8 hypotheses, their ranks, primary metrics, alpha values, and comparison pairs. This is a frozen research commitment and must not be edited without a deviation log entry. `verify_osf_freeze.py` imports from here; the Markdown table in `hypothesis_variant_metric_mapping.md` is re-generated from this source by a separate script (`scripts/regen_tracking_tables.py`).
+
+**`--generate` pre-validation (fail-fast before writing any artefact):** `--generate` must not write a single file until all preconditions are programmatically verified. A partial or stale archive is worse than no archive — it passes the CI hash check while representing an incomplete freeze. Call `_preflight_generate()` as the very first statement in `--generate` mode:
+
+```python
+import json, subprocess, sys
+from pathlib import Path
+from helios.pipelines.l_pipe.lpipe_config import EXPECTED_PROMPT_SHA
+from helios.pipelines.l_pipe.prompt_registry import PROMPT_PATH
+
+def _preflight_generate(captures_dir: Path, calibrated_params_path: Path) -> None:
+    """Fail fast before writing any OSF artefact. All checks must pass."""
+    errors: list[str] = []
+
+    # 1. Prompt bootstrap must be complete — tamper-guard must be active
+    if EXPECTED_PROMPT_SHA is None:
+        errors.append(
+            "EXPECTED_PROMPT_SHA is None — complete Spec 2 bootstrap: commit rca_v1.txt, "
+            "compute SHA, set constant in lpipe_config.py, then re-run --generate"
+        )
+    if not PROMPT_PATH.exists():
+        errors.append(f"rca_v1.txt not found at {PROMPT_PATH}")
+
+    # 2. All capture manifests must be schema-draft-v0.2 with snapshot_hash
+    missing_snapshot_hash: list[str] = []
+    wrong_schema: list[str] = []
+    for d in sorted(captures_dir.iterdir()):
+        mp = d / "manifest.json"
+        if not d.is_dir() or not mp.exists():
+            continue
+        cap = json.loads(mp.read_bytes())
+        if cap.get("schema_version") != "schema-draft-v0.2":
+            wrong_schema.append(d.name)
+        if not cap.get("snapshot_hash"):
+            missing_snapshot_hash.append(d.name)
+    if wrong_schema:
+        errors.append(f"Captures not on schema-draft-v0.2 (re-run bin/run_capture.py): {wrong_schema}")
+    if missing_snapshot_hash:
+        errors.append(f"Captures missing snapshot_hash (re-run bin/run_capture.py): {missing_snapshot_hash}")
+
+    # 3. calibrated_params.json must have G-pipe LOO-CV fields
+    if calibrated_params_path.exists():
+        params = json.loads(calibrated_params_path.read_bytes())
+        required = {"gpipe_hr_at_3_held_out", "dpipe_hr_at_3_held_out", "gate_passed", "n_incidents_triggered"}
+        missing = required - params.keys()
+        if missing:
+            errors.append(
+                f"calibrated_params.json missing G-pipe fields {missing} — "
+                "run scripts/calibrate_gpipe.py first"
+            )
+    else:
+        errors.append(f"calibrated_params.json not found at {calibrated_params_path}")
+
+    # 4. Deviation log chain must be clean
+    result = subprocess.run(
+        ["poetry", "run", "python", "bin/log_deviation.py", "verify"],
+        capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        errors.append(f"Deviation log chain failed: {result.stdout.strip()}")
+
+    if errors:
+        print("--generate PREFLIGHT FAILED — fix all errors before re-running:\n")
+        for e in errors:
+            print(f"  • {e}")
+        sys.exit(1)
+```
+
+If ANY check fails, `--generate` exits non-zero and writes nothing. This converts the checklist items in Pre-conditions into a runtime guarantee — a researcher cannot accidentally generate an incomplete or tampered archive by skipping a step. The `_preflight_generate()` function must be the FIRST call in the `--generate` branch, before any artefact generation begins.
 
 **`prompt_version_registry.md` exception:** This file uses YAML front-matter for the version entry (structured, not free-form Markdown), which is safely parseable. It is the only Markdown file read directly by `verify_osf_freeze.py`.
 
@@ -500,7 +568,23 @@ Source: `docs/tracking/hypothesis_variant_metric_mapping.md`
 }
 ```
 
-All eight A-H hypotheses included under `family_a_hypotheses`, ordered by Holm rank. All eight B-H hypotheses (baseline comparisons against CHASE and RCACopilot) included under `family_b_hypotheses` with `"status": "deferred"` — this satisfies the OSF pre-registration commitment by locking the comparison structure and baselines now, while deferring data collection to post-M4. **Do not omit B-H entries.** An incomplete `family_b_hypotheses` array violates the pre-registration and makes `--verify` fail if `HYPOTHESIS_TABLE` has 8 A-H + 0 B-H entries.
+All eight A-H hypotheses included under `family_a_hypotheses`, ordered by Holm rank. All eight B-H hypotheses (baseline comparisons against CHASE and RCACopilot) included under `family_b_hypotheses` with `"status": "deferred"` — this satisfies the OSF pre-registration commitment by locking the comparison structure and baselines now, while deferring data collection to post-M4. **Do not omit B-H entries.**
+
+**A-H6 sentinel filtering note (mandatory — baked into `analysis_plan.json`):** A-H6 is gate-conditional: when the PPR disagreement gate does not fire, `run_gpipe()` emits a sentinel row with `narrative = "gpipe-gated-or-skipped"`. These rows must be excluded before computing the A-H6 metric. `analysis_plan.json` records this requirement as a `"filter"` field on the A-H6 entry so evaluation scripts cannot silently omit it:
+
+```json
+{
+  "id": "A-H6",
+  "rank": 5,
+  "comparison": "HELIOS-G vs HELIOS-D (gate-conditional)",
+  "primary_metric": "HR@3",
+  "alpha": 0.0125,
+  "status": "confirmatory",
+  "filter": "narrative != 'gpipe-gated-or-skipped'"
+}
+```
+
+`verify_osf_freeze.py --verify` checks that the A-H6 entry in the on-disk `analysis_plan.json` has this `"filter"` field present and non-empty. Missing filter → non-zero exit. All other A-H entries have `"filter": null` (no sentinel rows to exclude). An incomplete `family_b_hypotheses` array violates the pre-registration and makes `--verify` fail if `HYPOTHESIS_TABLE` has 8 A-H + 0 B-H entries.
 
 **`helios/research/analysis_plan.py`** must export two constants: `FAMILY_A_HYPOTHESES` and `FAMILY_B_HYPOTHESES`, each a list of dicts matching the JSON schema above. `verify_osf_freeze.py` combines both families into the `analysis_plan.json` structure. Omitting Family B produces an incomplete pre-registration archive that violates the OSF freeze commitment.
 
