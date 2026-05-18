@@ -294,10 +294,14 @@ def run_lpipe(
     )
     try:
         response, ollama_result = handler.handle(prompt, timeout_s=TIMEOUT_S)
-    except (OllamaTimeoutError, OllamaConnectionError) as exc:
-        # Transient connectivity failure — log to ReconciliationLedger and return a
-        # structured failure payload so the orchestrator thread keeps running.
-        # DO NOT propagate: an uncaught exception here terminates the entire E2E run.
+    except (OllamaTimeoutError, OllamaConnectionError, OllamaResponseError) as exc:
+        # Catches all three Ollama failure modes:
+        #   OllamaTimeoutError    — request exceeded timeout_s
+        #   OllamaConnectionError — Ollama not reachable (network/container)
+        #   OllamaResponseError   — non-2xx HTTP (5xx gateway error, model load failure)
+        # All three must be caught here. OllamaResponseError propagating to the
+        # orchestrator would crash the E2E run for a server-side failure that is no
+        # more fatal than a timeout. Log and return structured failure payload.
         latency_ms = (time.monotonic() - t0) * 1000.0
         import logging
         logging.getLogger(__name__).error(

@@ -74,6 +74,23 @@ Re-reads live sources, regenerates in memory, diffs against files on disk:
 - `manifest_sig.txt` mismatch → non-zero exit
 - All match → exit 0
 
+**`generated_at_iso` — timestamp injection rule:** Every JSON artefact contains a `"generated_at_iso"` field. `--verify` regenerates each artefact in memory at a different clock millisecond than `--generate` did. If the in-memory dict uses the current timestamp, the content diff will always fail on this field alone, regardless of whether the frozen data is actually correct. `--verify` must read the existing `generated_at_iso` from each on-disk file and inject it into the in-memory reconstruction before serialisation and comparison:
+
+```python
+import json
+from pathlib import Path
+
+def _verify_artefact(path: Path, regenerated: dict) -> bool:
+    on_disk_raw = path.read_bytes().replace(b"\r\n", b"\n")
+    on_disk = json.loads(on_disk_raw)
+    # Inject the frozen timestamp — verify content, not the clock
+    regenerated["generated_at_iso"] = on_disk["generated_at_iso"]
+    regenerated_bytes = (canonical_json(regenerated) + "\n").encode("utf-8")
+    return on_disk_raw == regenerated_bytes
+```
+
+`manifest_sig.txt` verification always uses the on-disk JSON files (never the in-memory dicts) to recompute the concatenated hash, so the timestamp injection does not affect sig verification.
+
 CI step added to `ci.yml`:
 ```yaml
 - name: Verify OSF freeze
@@ -200,25 +217,29 @@ Source: `helios.vcl.variants.CONFIRMATORY_VARIANTS` — a list of `(name, VCLMan
       "hypothesis": "A-H1, A-H3",
       "status": "confirmatory",
       "flags": {
+        "acp": true,
+        "cbr": true,
+        "dpipe": true,
+        "dpipe_propagation": true,
+        "gpipe": true,
         "ingest_mode": "recorded",
-        "l1a_metrics": true,
-        "l1b_logs": true,
-        "l1c_traces": true,
-        "l2a_stats": true,
         "l2b_graph": true,
         "l2c_llm": true,
-        "l3a_feedback": true,
-        "l3b_cognitive": true,
-        "l4_remediation": false,
+        "lpipe": true,
+        "mahc": true,
+        "model_version": "helios-llm-baseline",
+        "p4_cognitive": false,
+        "prompt_template_id": "baseline-v1",
+        "reconcile": true,
         "router": true,
-        "gpipe": true,
-        "adaptive_threshold": true,
-        "dpipe": true
+        "ueg_c_structural": true
       }
     }
   ]
 }
 ```
+
+**Flag names are the exact `VCLManifest` field names** as defined in `helios/vcl/config.py`: `l2c_llm`, `p4_cognitive`, `mahc`, `cbr`, `l2b_graph`, `acp`, `reconcile`, `ueg_c_structural`, `dpipe`, `dpipe_propagation`, `gpipe`, `lpipe`, `router` (13 boolean flags) + `ingest_mode` (string). `model_version` and `prompt_template_id` are also present in `model_dump()` output and must be included since `VCLManifest` has `extra="forbid"` — any mismatch between the dumped dict and the expected schema will be caught by the Pydantic model. The `flags` dict in the JSON is the verbatim output of `manifest.model_dump()` with keys sorted (by `canonical_json`); never hand-edit it.
 
 **Generation pattern:** iterate `CONFIRMATORY_VARIANTS`, call `manifest.model_dump()` to extract all flags, filter to the 13 boolean flags (using `VCLFlag.bool_flags()`) plus `ingest_mode`:
 

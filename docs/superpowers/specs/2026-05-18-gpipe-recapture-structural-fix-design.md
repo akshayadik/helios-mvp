@@ -195,21 +195,36 @@ def _structural_edges(self, spans: list[SpanRecord]) -> list[UEGCEdge]:
 
 ### 2.3 `build_ueg_c()` factory update
 
-Read both `span_id` and `parent_span_id` from Parquet (`span_id` already exists in schema v1). When `parent_span_id` column is absent, set `parent_span_id=None` for every span — `_structural_edges()` detects this and delegates to `_structural_edges_temporal()`:
+Read both `span_id` and `parent_span_id` from Parquet (`span_id` already exists in schema v1). When `parent_span_id` column is absent, set `parent_span_id=None` for every span — `_structural_edges()` detects this and delegates to `_structural_edges_temporal()`.
+
+**Null normalization — mandatory:** Parquet nullable columns surface as Python `None` or `float('nan')` when the cell is empty. A bare `str(None)` produces the literal string `"None"`, and `str(float('nan'))` produces `"nan"` — both are truthy non-empty strings. Downstream, `if not child.parent_span_id: continue` would silently treat root spans as having a parent node named `"None"`, producing phantom structural edges. Normalise via a helper before constructing `SpanRecord`:
 
 ```python
+import math
+
+def _psid(val: object) -> str:
+    """Normalise a Parquet nullable parent_span_id cell to str or ''."""
+    if val is None:
+        return ""
+    if isinstance(val, float) and math.isnan(val):
+        return ""
+    return str(val)
+
 has_psid = "parent_span_id" in cols
 spans = [
     SpanRecord(
         trace_id=str(cols["trace_id"][i]),
         span_id=str(cols["span_id"][i]),
         service_name=str(cols["service_name"][i]),
-        parent_span_id=str(cols["parent_span_id"][i]) if has_psid else None,
+        parent_span_id=_psid(cols["parent_span_id"][i]) if has_psid else None,
         start_us=int(cols["start_time_us"][i]),
         end_us=int(cols["start_time_us"][i]) + int(cols["duration_us"][i]),
     )
     for i in range(n)
 ]
+```
+
+With this normalization, root spans always receive `parent_span_id=""` (falsy), and the schema-v1 fallback path (`parent_span_id=None`) is preserved only when the column is structurally absent.
 ```
 
 ### 2.4 Test coverage (`tests/graph/test_ueg_c_builder.py`)
