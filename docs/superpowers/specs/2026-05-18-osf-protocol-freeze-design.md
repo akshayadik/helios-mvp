@@ -447,14 +447,14 @@ Source: `docs/tracking/hypothesis_variant_metric_mapping.md`
     }
   ],
   "family_b_hypotheses": [
-    {"id": "B-H1", "rank": 1, "comparison": "HELIOS-Full vs CHASE",       "primary_metric": "HR@3", "status": "deferred", "baseline": "CHASE",       "note": "AIOpsLab corpus pending"},
-    {"id": "B-H2", "rank": 2, "comparison": "HELIOS-Full vs CHASE",       "primary_metric": "CpR",  "status": "deferred", "baseline": "CHASE",       "note": "AIOpsLab corpus pending"},
-    {"id": "B-H3", "rank": 3, "comparison": "HELIOS-Full vs RCACopilot",  "primary_metric": "HR@3", "status": "deferred", "baseline": "RCACopilot",  "note": "AIOpsLab corpus pending"},
-    {"id": "B-H4", "rank": 4, "comparison": "HELIOS-Full vs RCACopilot",  "primary_metric": "CpR",  "status": "deferred", "baseline": "RCACopilot",  "note": "AIOpsLab corpus pending"},
-    {"id": "B-H5", "rank": 5, "comparison": "HELIOS-D vs CHASE",          "primary_metric": "HR@3", "status": "deferred", "baseline": "CHASE",       "note": "Statistical ablation baseline; AIOpsLab corpus pending"},
-    {"id": "B-H6", "rank": 6, "comparison": "HELIOS-D vs RCACopilot",     "primary_metric": "HR@3", "status": "deferred", "baseline": "RCACopilot",  "note": "Statistical ablation baseline; AIOpsLab corpus pending"},
-    {"id": "B-H7", "rank": 7, "comparison": "HELIOS-G vs CHASE",          "primary_metric": "HR@3", "status": "deferred", "baseline": "CHASE",       "note": "Graph pipeline baseline; gate-conditional; AIOpsLab corpus pending"},
-    {"id": "B-H8", "rank": 8, "comparison": "HELIOS-noLLM vs CHASE",      "primary_metric": "HR@3", "status": "deferred", "baseline": "CHASE",       "note": "LLM ablation baseline; AIOpsLab corpus pending"}
+    {"id": "B-H1", "rank": 1, "comparison": "HELIOS-Full vs CHASE",          "primary_metric": "HR@3",     "status": "deferred", "baseline": "CHASE",                           "note": "McNemar exact; AIOpsLab corpus pending"},
+    {"id": "B-H2", "rank": 2, "comparison": "HELIOS-Full vs RCACopilot",     "primary_metric": "HR@3",     "status": "deferred", "baseline": "RCACopilot",                      "note": "McNemar exact; AIOpsLab corpus pending"},
+    {"id": "B-H3", "rank": 3, "comparison": "HELIOS-Full vs mABC",           "primary_metric": "HR@3",     "status": "deferred", "baseline": "mABC",                            "note": "McNemar exact; AIOpsLab corpus pending"},
+    {"id": "B-H4", "rank": 4, "comparison": "HELIOS-Full vs TAMO",           "primary_metric": "HR@3",     "status": "deferred", "baseline": "TAMO",                            "note": "McNemar exact; AIOpsLab corpus pending"},
+    {"id": "B-H5", "rank": 5, "comparison": "HELIOS-Full vs Flow-of-Action", "primary_metric": "HR@3",     "status": "deferred", "baseline": "Flow-of-Action",                  "note": "McNemar exact; AIOpsLab corpus pending"},
+    {"id": "B-H6", "rank": 7, "comparison": "HELIOS-Full vs Best Baseline",  "primary_metric": "log-MTTR", "status": "deferred", "baseline": "Best Baseline (TBD at analysis)", "note": "Wilcoxon; Holm rank 7 (expected delta=0.60); AIOpsLab corpus pending"},
+    {"id": "B-H7", "rank": 6, "comparison": "HELIOS-Full vs Best Baseline",  "primary_metric": "log-Cost", "status": "deferred", "baseline": "Best Baseline (TBD at analysis)", "note": "Wilcoxon; Holm rank 6 (expected delta=0.80, highest of B-H6/7/8); AIOpsLab corpus pending"},
+    {"id": "B-H8", "rank": 8, "comparison": "HELIOS-Full vs Best Baseline",  "primary_metric": "Avg@5",    "status": "deferred", "baseline": "Best Baseline (TBD at analysis)", "note": "Wilcoxon; Holm rank 8 (expected delta-Avg5 >=0.10); AIOpsLab corpus pending"}
   ]
 }
 ```
@@ -469,15 +469,18 @@ All eight A-H hypotheses included under `family_a_hypotheses`, ordered by Holm r
 # FAMILY_B_HYPOTHESES — statically defined; not derived from _VARIANT_HYPOTHESIS_MAP.
 # _VARIANT_HYPOTHESIS_MAP covers A-family variants only; B-family uses external baselines.
 # verify_osf_freeze.py imports this constant directly and writes it to analysis_plan.json.
+# B-H1/B-H2 baseline IDs confirmed from pre-registration. B-H3–B-H5 (mABC, TAMO,
+# Flow-of-Action) are ranked by expected discordance per Section 3.8.1 — verify order
+# against the pre-registration appendix before OSF freeze.
 FAMILY_B_HYPOTHESES: list[dict] = [
-    {"id": "B-H1", "rank": 1, "comparison": "HELIOS-Full vs CHASE",       "primary_metric": "HR@3", "status": "deferred", "baseline": "CHASE",       "note": "AIOpsLab corpus pending"},
-    {"id": "B-H2", "rank": 2, "comparison": "HELIOS-Full vs CHASE",       "primary_metric": "CpR",  "status": "deferred", "baseline": "CHASE",       "note": "AIOpsLab corpus pending"},
-    {"id": "B-H3", "rank": 3, "comparison": "HELIOS-Full vs RCACopilot",  "primary_metric": "HR@3", "status": "deferred", "baseline": "RCACopilot",  "note": "AIOpsLab corpus pending"},
-    {"id": "B-H4", "rank": 4, "comparison": "HELIOS-Full vs RCACopilot",  "primary_metric": "CpR",  "status": "deferred", "baseline": "RCACopilot",  "note": "AIOpsLab corpus pending"},
-    {"id": "B-H5", "rank": 5, "comparison": "HELIOS-D vs CHASE",          "primary_metric": "HR@3", "status": "deferred", "baseline": "CHASE",       "note": "Statistical ablation baseline; AIOpsLab corpus pending"},
-    {"id": "B-H6", "rank": 6, "comparison": "HELIOS-D vs RCACopilot",     "primary_metric": "HR@3", "status": "deferred", "baseline": "RCACopilot",  "note": "Statistical ablation baseline; AIOpsLab corpus pending"},
-    {"id": "B-H7", "rank": 7, "comparison": "HELIOS-G vs CHASE",          "primary_metric": "HR@3", "status": "deferred", "baseline": "CHASE",       "note": "Graph pipeline baseline; gate-conditional; AIOpsLab corpus pending"},
-    {"id": "B-H8", "rank": 8, "comparison": "HELIOS-noLLM vs CHASE",      "primary_metric": "HR@3", "status": "deferred", "baseline": "CHASE",       "note": "LLM ablation baseline; AIOpsLab corpus pending"},
+    {"id": "B-H1", "rank": 1, "comparison": "HELIOS-Full vs CHASE",          "primary_metric": "HR@3",     "status": "deferred", "baseline": "CHASE",                           "note": "McNemar exact; AIOpsLab corpus pending"},
+    {"id": "B-H2", "rank": 2, "comparison": "HELIOS-Full vs RCACopilot",     "primary_metric": "HR@3",     "status": "deferred", "baseline": "RCACopilot",                      "note": "McNemar exact; AIOpsLab corpus pending"},
+    {"id": "B-H3", "rank": 3, "comparison": "HELIOS-Full vs mABC",           "primary_metric": "HR@3",     "status": "deferred", "baseline": "mABC",                            "note": "McNemar exact; AIOpsLab corpus pending"},
+    {"id": "B-H4", "rank": 4, "comparison": "HELIOS-Full vs TAMO",           "primary_metric": "HR@3",     "status": "deferred", "baseline": "TAMO",                            "note": "McNemar exact; AIOpsLab corpus pending"},
+    {"id": "B-H5", "rank": 5, "comparison": "HELIOS-Full vs Flow-of-Action", "primary_metric": "HR@3",     "status": "deferred", "baseline": "Flow-of-Action",                  "note": "McNemar exact; AIOpsLab corpus pending"},
+    {"id": "B-H6", "rank": 7, "comparison": "HELIOS-Full vs Best Baseline",  "primary_metric": "log-MTTR", "status": "deferred", "baseline": "Best Baseline (TBD at analysis)", "note": "Wilcoxon; Holm rank 7 (expected delta=0.60); AIOpsLab corpus pending"},
+    {"id": "B-H7", "rank": 6, "comparison": "HELIOS-Full vs Best Baseline",  "primary_metric": "log-Cost", "status": "deferred", "baseline": "Best Baseline (TBD at analysis)", "note": "Wilcoxon; Holm rank 6 (expected delta=0.80, highest of B-H6/7/8); AIOpsLab corpus pending"},
+    {"id": "B-H8", "rank": 8, "comparison": "HELIOS-Full vs Best Baseline",  "primary_metric": "Avg@5",    "status": "deferred", "baseline": "Best Baseline (TBD at analysis)", "note": "Wilcoxon; Holm rank 8 (expected delta-Avg5 >=0.10); AIOpsLab corpus pending"},
 ]
 ```
 
