@@ -529,8 +529,8 @@ def test_manifest_has_snapshot_hash_after_write(config, window_bounds):
 
 
 def test_manifest_schema_version_updated_to_v0_2(config, window_bounds):
-    """_write_snapshot_hash() sets schema_version to 'schema-draft-v0.2'."""
-    from bin.run_capture import _write_snapshot_hash
+    """_write_snapshot_hash() sets schema_version to MANIFEST_SCHEMA_VERSION."""
+    from bin.run_capture import MANIFEST_SCHEMA_VERSION, _write_snapshot_hash
     from helios.vcl import set_current_manifest
 
     start, end = window_bounds
@@ -542,7 +542,7 @@ def test_manifest_schema_version_updated_to_v0_2(config, window_bounds):
     manifest_path = config.output_dir / config.incident_id / "manifest.json"
     _write_snapshot_hash(window, manifest_path)
     data = json.loads(manifest_path.read_text())
-    assert data.get("schema_version") == "schema-draft-v0.2"
+    assert data.get("schema_version") == MANIFEST_SCHEMA_VERSION
 
 
 def test_manifest_window_hash_and_snapshot_hash_are_distinct(config, window_bounds):
@@ -635,3 +635,34 @@ class TestCaptureReader:
         """Reading a non-existent incident_id raises FileNotFoundError."""
         with pytest.raises(FileNotFoundError):
             CaptureReader(tmp_path).read("s0-nonexistent-001")
+
+
+def test_manifest_snapshot_hash_absent_when_graph_disabled(config, window_bounds):
+    """When l2b_graph=False, snapshot_hash is NOT written but schema_version is."""
+    from bin.run_capture import MANIFEST_SCHEMA_VERSION, _write_snapshot_hash
+    from helios.vcl import set_current_manifest
+    from helios.vcl.variants import CONFIRMATORY_VARIANTS
+
+    no_graph_manifest = CONFIRMATORY_VARIANTS["HELIOS-noGraph"]
+    set_current_manifest(no_graph_manifest)
+
+    no_graph_config = CaptureConfig(
+        incident_id="s0-cart-001",
+        manifest=no_graph_manifest,
+        evaluation_phase=EvaluationPhase.EXPLORATORY,
+        output_dir=config.output_dir,
+    )
+
+    start, end = window_bounds
+    window = TelemetryCapture(
+        config=no_graph_config, fetchers=_three_stubs(), writer=ParquetWriter()
+    ).run(start, end)
+
+    manifest_path = (
+        no_graph_config.output_dir / no_graph_config.incident_id / "manifest.json"
+    )
+    _write_snapshot_hash(window, manifest_path)
+    data = json.loads(manifest_path.read_text())
+
+    assert "snapshot_hash" not in data
+    assert data.get("schema_version") == MANIFEST_SCHEMA_VERSION
