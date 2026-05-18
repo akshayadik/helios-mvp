@@ -172,7 +172,9 @@ def build_ueg_c(
         for i in range(n)
     ]
     captured_at = dt.datetime.now(dt.UTC).isoformat()
-    return UEGCBuilder(enable_structural=enable_structural).build(
+    return UEGCBuilder(
+        enable_structural=enable_structural
+    ).build(  # parent_span_id_col_present wired in Task 4
         spans,
         incident_id=window.incident_id,
         variant_config_hash=variant_config_hash,

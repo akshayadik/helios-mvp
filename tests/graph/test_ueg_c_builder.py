@@ -253,6 +253,28 @@ def test_structural_empty_spans_returns_empty_edges() -> None:
     assert not any(e.edge_type == EdgeType.STRUCTURAL for e in snap.edges)
 
 
+def test_structural_no_cross_trace_contamination() -> None:
+    # Traces t1 and t2 both use span IDs "s1"/"s2" — structural edges must not bleed.
+    spans = [
+        _span("t1", "frontend", 0, 1000, span_id="s1", parent_span_id=None),
+        _span("t1", "checkout", 100, 800, span_id="s2", parent_span_id="s1"),
+        _span("t2", "payment", 0, 1000, span_id="s1", parent_span_id=None),
+        _span("t2", "fraud", 100, 800, span_id="s2", parent_span_id="s1"),
+    ]
+    snap = UEGCBuilder(enable_structural=True).build(
+        spans,
+        incident_id="inc",
+        variant_config_hash=_HASH,
+        captured_at_iso=_AT,
+        parent_span_id_col_present=True,
+    )
+    s_edges = [e for e in snap.edges if e.edge_type == EdgeType.STRUCTURAL]
+    pairs = {(e.source, e.target) for e in s_edges}
+    assert ("frontend", "checkout") in pairs
+    assert ("payment", "fraud") in pairs
+    assert len(pairs) == 2
+
+
 @pytest.mark.xfail(
     reason="_psid() not yet defined — implemented in Task 4", strict=True
 )
