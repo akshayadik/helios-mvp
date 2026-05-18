@@ -424,6 +424,37 @@ class TestJaegerTracesFetcher:
 
         assert table.column("parent_span_id")[0].as_py() == ""
 
+    def test_fetch_cross_trace_child_of_reference_ignored(self, window_bounds):
+        """A CHILD_OF reference to a different traceID must not be used as parent_span_id."""
+        start, end = window_bounds
+        payload = {
+            "data": [
+                {
+                    "traceID": "trace001",
+                    "spans": [
+                        {
+                            "spanID": "span001",
+                            "operationName": "/op",
+                            "startTime": 1715000000000000,
+                            "duration": 500,
+                            "tags": [],
+                            "references": [
+                                {
+                                    "refType": "CHILD_OF",
+                                    "traceID": "other_trace_xyz",
+                                    "spanID": "parent_in_other_trace",
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ]
+        }
+        with patch("urllib.request.urlopen", return_value=_http_mock(payload)):
+            table = JaegerTracesFetcher("http://jaeger:16686").fetch(start, end)
+
+        assert table.column("parent_span_id")[0].as_py() == ""
+
 
 class TestOpenSearchLogsFetcher:
     def test_fetch_returns_expected_columns(self, window_bounds):
