@@ -15,7 +15,7 @@
 
 - [ ] Spec 1 merged: `gpipe_config.py` exists with `DISAGREEMENT_THRESHOLD` calibrated and frozen
 - [ ] Spec 2 merged: `prompt_version_registry.md` has `rca_v1` entry with SHA256
-- [ ] `EXPECTED_PROMPT_SHA` in `helios/pipelines/l_pipe/lpipe_config.py` is set to a 64-char hex value (not `None`) — `--generate` reads `prompt_version_registry.md` to build `prompt_sha.json`; that file is only populated after `rca_v1.txt` is committed and the constant is frozen. Running `--generate` while `EXPECTED_PROMPT_SHA=None` produces a config/registry inconsistency that `--verify` will flag on every CI run.
+- [ ] `EXPECTED_PROMPT_SHA` in `helios/pipelines/l_pipe/lpipe_config.py` is set to a 64-char hex value (not `None`) — `prompt_sha.json` is generated from `prompt_version_registry.md` regardless of this constant, so `--generate` and `--verify` both succeed while `EXPECTED_PROMPT_SHA=None`. However, `--verify` emits a WARNING when the constant is `None` (tamper-guard not active), and G3-7 requires the constant to be frozen before OSF deposit. Complete the Spec 2 bootstrap before running `--generate` to avoid depositing an archive where the production tamper-guard is disabled.
 - [ ] `data/calibrated_params.json` present (frozen at Milestone 2)
 - [ ] `data/snapshot_registry.jsonl` rebuilt with 20 post-re-capture entries
 - [ ] Deviation log chain verified: `python bin/log_deviation.py verify`
@@ -93,6 +93,30 @@ def _verify_artefact(path: Path, regenerated: dict) -> bool:
 ```
 
 `manifest_sig.txt` verification always uses the on-disk JSON files (never the in-memory dicts) to recompute the concatenated hash, so the timestamp injection does not affect sig verification.
+
+**`EXPECTED_PROMPT_SHA` cross-check in `--verify`:** After all artefact hash checks, `--verify` must cross-check whether the runtime tamper-guard is active and consistent with the frozen archive:
+
+```python
+import sys, json, warnings
+from helios.pipelines.l_pipe.lpipe_config import EXPECTED_PROMPT_SHA
+
+frozen_sha = json.loads((OSF_DIR / "prompt_sha.json").read_bytes())["prompt_sha256"]
+
+if EXPECTED_PROMPT_SHA is None:
+    warnings.warn(
+        "--verify: EXPECTED_PROMPT_SHA in lpipe_config.py is None — "
+        "tamper-guard not active; complete Spec 2 bootstrap before OSF deposit (G3-7)"
+    )
+    # WARNING only — exit 0 so CI is not blocked during the bootstrap window
+elif EXPECTED_PROMPT_SHA != frozen_sha:
+    print(
+        f"--verify FAIL: EXPECTED_PROMPT_SHA={EXPECTED_PROMPT_SHA!r} "
+        f"!= prompt_sha.json.prompt_sha256={frozen_sha!r}"
+    )
+    sys.exit(1)
+```
+
+This produces a WARNING (not failure) when `EXPECTED_PROMPT_SHA=None`, allowing CI to run during the bootstrap window without blocking. Once frozen, any mismatch between the constant and the archive fails CI. The tamper-guard consistency check is a mandatory step for G3-7 (OSF deposit readiness) even though it does not gate the `--verify` exit code during bootstrap.
 
 CI step added to `ci.yml`:
 ```yaml
@@ -715,7 +739,7 @@ Add this step to `ci.yml` after the `osf-freeze-verify` job. The `--timeout=120`
 | G3-4 | CI `osf-freeze-verify` job passes on PR | `.github/workflows/ci.yml` |
 | G3-5 | `preregistration.md` complete — no TBD sections; Deviation Summary populated | Manual review |
 | G3-6 | `ablation_notebook.ipynb` renders cleanly without Ollama | `jupyter nbconvert --execute research/ablation_notebook.ipynb` |
-| G3-7 | Prompt SHA in `prompt_sha.json` matches live registry value | `--verify` output |
+| G3-7 | `EXPECTED_PROMPT_SHA` in `lpipe_config.py` frozen (non-None) AND matches `prompt_sha.json["prompt_sha256"]` — `--verify` emits WARNING (not failure) while None; mismatch fails CI | `--verify` output; no WARNING line present |
 | G3-8 | Tracking docs updated: `tracking_documents_register.md` + `reproducibility_manifest.md` | Manual review |
 
 ---
