@@ -354,8 +354,20 @@ _VARIANT_HYPOTHESIS_MAP: dict[str, str] = {
 def _hypothesis_for_variant(name: str) -> str:
     return _VARIANT_HYPOTHESIS_MAP.get(name, "")
 
+_VARIANT_STATUS_MAP: dict[str, str] = {
+    # Per osf_protocol_v0.md §3.1 Status column — do NOT change without updating that doc.
+    "HELIOS-Full":         "confirmatory",
+    "HELIOS-noLLM":        "confirmatory",
+    "HELIOS-noGraph":      "confirmatory",
+    "HELIOS-D":            "confirmatory",
+    "HELIOS-G":            "cond. confirmatory",   # gate-conditional; §3.1 "Cond. Confirmatory"
+    "HELIOS-noConsensus":  "exploratory",           # underpowered-disclosed; §3.1 "Exploratory"
+    "HELIOS-noRouter":     "exploratory",           # underpowered-disclosed; §3.1 "Exploratory"
+    "HELIOS-noStructural": "exploratory",           # underpowered-disclosed; §3.1 "Exploratory"
+}
+
 def _status_for_variant(name: str) -> str:
-    return "confirmatory"  # all 8 confirmatory variants have this status
+    return _VARIANT_STATUS_MAP.get(name, "exploratory")  # unknown variants default to exploratory
 ```
 
 Both functions must be importable from `helios.research.analysis_plan` for use by `verify_osf_freeze.py`.
@@ -499,6 +511,10 @@ All eight A-H hypotheses included under `family_a_hypotheses`, ordered by Holm r
 # _VARIANT_HYPOTHESIS_MAP covers A-family variants only; B-family uses external baselines.
 # Frozen per osf_protocol_v0.md §2.2. Holm ranks are sequential (rank matches hypothesis ID).
 # B-H2 and B-H4 use RCACopilot as baseline; all others use CHASE.
+# NOTE B-H7: primary_metric is "CoE score" (the §2.2 Primary metric column value).
+# The §2.2 null hypothesis text says "CoE quality" — that is English prose, not the metric name.
+# Using "CoE quality" here would produce a mismatch between analysis_plan.json and
+# hypothesis_variant_metric_mapping.md and make result-store queries inconsistent.
 FAMILY_B_HYPOTHESES: list[dict] = [
     {"id": "B-H1", "rank": 1, "comparison": "HELIOS-Full vs CHASE",      "primary_metric": "HR@3",               "status": "deferred", "baseline": "CHASE",      "note": "AIOpsLab corpus pending"},
     {"id": "B-H2", "rank": 2, "comparison": "HELIOS-Full vs RCACopilot", "primary_metric": "HR@3",               "status": "deferred", "baseline": "RCACopilot", "note": "AIOpsLab corpus pending"},
