@@ -292,7 +292,31 @@ def run_lpipe(
         service_list=_service_list_from_snapshot(snapshot),
         anomaly_summary=_anomaly_summary(snapshot),
     )
-    response, ollama_result = handler.handle(prompt, timeout_s=TIMEOUT_S)
+    try:
+        response, ollama_result = handler.handle(prompt, timeout_s=TIMEOUT_S)
+    except (OllamaTimeoutError, OllamaConnectionError) as exc:
+        # Transient connectivity failure — log to ReconciliationLedger and return a
+        # structured failure payload so the orchestrator thread keeps running.
+        # DO NOT propagate: an uncaught exception here terminates the entire E2E run.
+        latency_ms = (time.monotonic() - t0) * 1000.0
+        import logging
+        logging.getLogger(__name__).error(
+            "lpipe transient error for %s: %s", incident_id, exc
+        )
+        return {
+            "pipeline": "lpipe",
+            "incident_id": incident_id,
+            "variant_config_hash": manifest.compute_variant_config_hash(),
+            "snapshot_hash": snapshot_hash,
+            "ranked_candidates": ["l-pipe-connectivity-error"],
+            "ppr_scores": {},
+            "prompt_version": registry.prompt_version,
+            "token_count": 0,
+            "narrative": f"l-pipe-connectivity-error: {type(exc).__name__}",
+            "latency_ms": latency_ms,
+            "evaluation_phase": evaluation_phase,
+            "schema_version": "schema-draft-v0.2",
+        }
     latency_ms = (time.monotonic() - t0) * 1000.0
     token_count = (
         ollama_result.prompt_tokens + ollama_result.completion_tokens
@@ -351,6 +375,7 @@ Returning a bare `LPipeResponse` on fallback (as a single object, not a tuple) c
 | G2-4 | Response handler: all error paths handled (malformed, missing, retry exhaustion, timeout re-raised) | `pytest tests/pipelines/test_lpipe_response_handler.py -v` |
 | G2-5 | `prompt_version_registry.md` populated with `rca_v1` entry (SHA, model, date) | Manual review of file |
 | G2-6 | Full pipeline: `run_lpipe()` returns valid `PipelineVerdict`-compatible dict with `prompt_version` set | `pytest tests/pipelines/test_lpipe_pipeline.py -v` |
+| G2-9 | Transient error path: `OllamaConnectionError` returns structured failure dict (does not propagate) | `pytest tests/pipelines/test_lpipe_pipeline.py::test_connectivity_error_returns_failure_dict` |
 | G2-7 | E2E smoke: HELIOS-Full variant (D + G + L all active) | `pytest tests/test_e2e_smoke.py -k helios_full` |
 | G2-8 | Deviation log: model downgrade + Ollama vs vLLM entries added and chain verified | `bin/log_deviation.py verify` |
 
