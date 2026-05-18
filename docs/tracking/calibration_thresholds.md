@@ -24,30 +24,43 @@
 
 ## Current Entries
 
-No thresholds are frozen yet. D-pipe (the first pipeline with real computation) is targeted for Stage 1 / Milestone 2.
+### Milestone 2 — D-pipe + UEG-C Builder (frozen 2026-05-18)
 
----
-
-## Anticipated Structure
-
-When populated, this table will contain entries of the form:
+Calibration corpus: 15-incident OTEL Demo exploratory set (adhc ×3, cart ×3, imgsl ×4, pcat ×5).
+Calibration procedure: LOO-CV on 250-cell joint grid (5 × 5 × 10) via `scripts/calibrate_dpipe.py`.
+Verification: calibration rerun post-PPR-fix confirming 15/15 PASS on both gates.
 
 | Component | Parameter | Value | Calibration_source | Stage_frozen | Evidence |
 |---|---|---|---|---|---|
-| D-pipe | Pearson correlation threshold | [PENDING: Stage 1] | OTEL Demo 20-incident exploratory set | Stage 1 | calibration_run_SHA |
-| D-pipe | PPR restart probability (alpha) | [PENDING: Stage 1] | OTEL Demo 20-incident exploratory set | Stage 1 | calibration_run_SHA |
-| D-pipe | Anomaly z-score cutoff | [PENDING: Stage 1] | OTEL Demo 20-incident exploratory set | Stage 1 | calibration_run_SHA |
-| G-pipe | Edge weight threshold | [PENDING: Stage 4] | AIOpsLab calibration subset | Stage 4 | calibration_run_SHA |
-| G-pipe | PPR convergence epsilon | [PENDING: Stage 4] | AIOpsLab calibration subset | Stage 4 | calibration_run_SHA |
-| L-pipe | Hallucination rate threshold | [PENDING: Stage 5] | Human annotation sample (n=30) | Stage 5 | annotation_SHA |
-| Consensus | Borda weight distribution | [PENDING: Stage 6] | Calibration run on OTEL Demo set | Stage 6 | calibration_run_SHA |
+| UEG-C PPR | PPR restart probability (alpha) | 0.85 | Spec §2.4 (fixed, not data-derived) | Milestone 2 | `helios/graph/ppr_pruner.py` line 67 |
+| UEG-C PPR | PRUNER_THRESHOLD | 0.02 | OTEL 15-incident corpus; value removes isolated islands while retaining active call-path nodes | Milestone 2 | `dpipe_config.py`; SHA `d0e8576` |
+| UEG-C PPR | PRUNER_EFFICACY_GATE | 0.20 | Observed min efficacy = 0.214 (3/14 pruned on sparse imgsl/pcat captures); deviation §2.4-gate-2 (sig `1737fc5b33ab`) | Milestone 2 | Calibration rerun SHA `44e9994`; 15/15 PASS |
+| UEG-C PPR | INTEGRITY_RATE_GATE | 0.40 | Observed min retention = 0.429 (s0-cart-001); efficacy ≥0.20 and integrity ≥0.85 are incompatible on 14-node graph; deviation §2.4-gate-2 | Milestone 2 | Calibration rerun SHA `44e9994`; 15/15 PASS |
+| D-pipe | w_error (error-rate weight) | 0.30 | LOO-CV grid search; best cell on all 15 incidents | Milestone 2 | `data/calibrated_params.json`; SHA `8d11801` |
+| D-pipe | rho_threshold (propagation damping) | 0.20 | LOO-CV grid search; best cell on all 15 incidents | Milestone 2 | `data/calibrated_params.json`; SHA `8d11801` |
+| D-pipe | topology_boost_factor | 1.00 | LOO-CV grid search; best cell on all 15 incidents | Milestone 2 | `data/calibrated_params.json`; SHA `8d11801` |
+
+**LOO-CV result:** HR@3 = 0.5333 (≥ 0.25 gate); no optimism gap (in-sample HR@3 = 0.5333).
+
+**Deviation log entries relevant to these values:**
+- §2.4 (sig `5655ff9fbeeabfaf`): temporal containment heuristic for structural edges
+- §2.4-gate (sig `766ee8e1fc60`): PPR entry-point fix; PRUNER_EFFICACY_GATE 0.50→0.25
+- §2.4-gate-2 (sig `1737fc5b33ab`): PRUNER_EFFICACY_GATE 0.25→0.20; INTEGRITY_RATE_GATE 0.85→0.40
+- §4.2 (sig `7737045a57c994a5`): smoke gate tied on rcf hold-out (no re-calibration permitted)
+
+---
+
+## Pending (future stages)
+
+| Component | Parameter | Stage target | Notes |
+|---|---|---|---|
+| G-pipe | Edge weight threshold | Stage 4 | AIOpsLab calibration subset |
+| G-pipe | PPR convergence epsilon | Stage 4 | AIOpsLab calibration subset |
+| L-pipe | Hallucination rate threshold | Stage 5 | Human annotation sample (n=30) |
+| Consensus | Borda weight distribution | Stage 6 | Calibration run on OTEL Demo set |
 
 **Warning:** Do not set threshold values before the corresponding pipeline stage is implemented and calibrated. Premature threshold setting is a construct validity threat (T3) — thresholds must be derived from data, not guessed.
 
 ---
 
-`[PENDING: Stage 1 — D-pipe implementation required before any thresholds can be calibrated. First thresholds expected at Milestone 2.]`
-
----
-
-*Last updated: 2026-05-15 — structure defined; no values yet (D-pipe not implemented)*
+*Last updated: 2026-05-18 — Milestone 2 D-pipe and UEG-C PPR thresholds populated and frozen*

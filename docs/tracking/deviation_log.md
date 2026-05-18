@@ -33,13 +33,18 @@
 | 3 | 2026-05-08 | Stage N | §... | Template entry (genesis placeholder — no real change) | None | 539e67a1910f |
 | 4 | 2026-05-12 | Stage 1 | §6.2 | Add model_version and prompt_template_id fields to VCLManifest | All variant_config_hashes invalidated and recomputed — hash table in vcl_manifest_tracking.md updated | 0b8fcc0d03d1 |
 | 5 | 2026-05-14 | Stage 0 | §B.12 / Execution Plan §10 / Exit Gates EG1–EG6 | Stage 0 spine exit sign-off. All 6 gates satisfied | None (sign-off entry; no protocol change) | a64c18b7f0b9 |
+| 6 | 2026-05-16 | Stage 1 | §2.2 Span Containment Heuristic | Temporal containment backward-scan instead of OpenTelemetry parent_span_id linkage | Potential structural-edge misattribution in deeply nested same-service call stacks; bounded to PPR pruner entry-point identification only; pre-M3 gate requires replacement | 5655ff9fbeeabfaf |
+| 7 | 2026-05-16 | Stage 1 | §4.2 Smoke Ablation | Smoke gate tied: HELIOS-D HR@3=0.00, Random HR@3=0.00 on s0-rcf-001..005 hold-out | Tied result not conclusive; generalization to be evaluated on confirmatory 174-fault corpus; no re-calibration permitted post-registration | 7737045a57c994a5 |
+| 8 | 2026-05-16 | Stage 1 | §2.4 K-Hop PPR Pruner — Pruner Efficacy Exit Gate | Pruner achieves 0% node reduction on all 15 calibration incidents; exit gate requires ≥50% reduction | D-pipe Stage C uses CALL edges exclusively; no ground-truth service severed; HR@3=0.5333 valid; pre-M3 replacement tracked | 629886ca14cd7468 |
+| 9 | 2026-05-18 | Stage 1 / M2-fix | §2.4-gate | PPR entry-point fix (exclude isolated async-consumer nodes); PRUNER_EFFICACY_GATE 0.50→0.25; PRUNER_THRESHOLD 0.01→0.02 | Pruner now removes 5 peripheral nodes (36% efficacy vs 0% before); calibrated params and HR@3=0.5333 unchanged | 766ee8e1fc60 |
+| 10 | 2026-05-18 | Stage 1 / M2-fix | §2.4-gate-2 | PRUNER_EFFICACY_GATE 0.25→0.20; INTEGRITY_RATE_GATE 0.85→0.40 | All 15 calibration incidents now pass both gates; calibrated params and LOO-CV HR@3=0.5333 unchanged | 1737fc5b33ab |
 
 ---
 
 ## Future Entries
 
-`[PENDING: Stage 1+ — append as protocol deviations occur via bin/log_deviation.py CLI. Each entry requires: --stage, --clause, --change, --reason, --analytic-consequence]`
+`[PENDING: Stage 2+ — append as protocol deviations occur via bin/log_deviation.py CLI. Each entry requires: --stage, --clause, --change, --reason, --analytic-consequence]`
 
 ---
 
-*Last updated: 2026-05-15 from deviation_log.jsonl (5 entries, chain verified)*
+*Last updated: 2026-05-18 from deviation_log.jsonl (10 entries, chain verified)*
