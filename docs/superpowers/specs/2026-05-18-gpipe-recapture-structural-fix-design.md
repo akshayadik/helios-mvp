@@ -168,8 +168,11 @@ def _structural_edges_temporal(self, spans: list[SpanRecord]) -> list[UEGCEdge]:
 And the dispatch in `_structural_edges()`:
 ```python
 def _structural_edges(self, spans: list[SpanRecord]) -> list[UEGCEdge]:
-    if any(s.parent_span_id is None and s.span_id == "" for s in spans):
-        # parent_span_id not loaded (schema v1 fallback)
+    # Universal absence check: build_ueg_c() sets parent_span_id=None for every span
+    # when the column is missing from Parquet. span_id is always populated in both
+    # schema versions, so checking span_id=="" would never fire. Instead, detect the
+    # schema v1 case by verifying that NO span carries a non-None parent_span_id.
+    if not spans or all(s.parent_span_id is None for s in spans):
         import warnings
         warnings.warn("parent_span_id absent — falling back to temporal containment", stacklevel=3)
         return self._structural_edges_temporal(spans)
@@ -369,7 +372,10 @@ def _ppr_traverse(
 ) -> tuple[list[str], dict[str, float]]:
     graph = _build_nx_graph(snapshot)
     personalization = {k: v for k, v in seed_weights.items() if k in graph.nodes}
-    if not personalization:
+    # Zero-sum guard: if all matched nodes have D-pipe score == 0, the personalization
+    # vector sums to zero. NetworkX pagerank normalises by dividing by the vector sum
+    # and raises ZeroDivisionError. Fall back to uniform (None) in this case.
+    if not personalization or sum(personalization.values()) <= 0:
         personalization = None  # NetworkX default: uniform over all nodes
     raw_scores = networkx.pagerank(graph, alpha=GPIPE_PPR_ALPHA, personalization=personalization)
     ranked = sorted(raw_scores, key=raw_scores.__getitem__, reverse=True)
@@ -377,6 +383,8 @@ def _ppr_traverse(
 ```
 
 Returns `(ranked_candidates: list[str], ppr_scores: dict[str, float])`. Same determinism caveat as D-pipe pruner.
+
+**Test requirement:** `test_ppr_traverse_zero_sum_personalization` — all filtered node scores equal 0.00 → falls back to uniform personalization, no exception raised.
 
 **Determinism test:** same `(snapshot, dpipe_scores)` input → identical `ranked_candidates` and `ppr_scores` on two sequential calls.
 
@@ -395,7 +403,7 @@ if should_run_gpipe(dpipe_verdict, manifest):
         dpipe_scores=dpipe_verdict.get("ppr_scores", {}),
     )
 
-lpipe_verdict = run_lpipe(incident_id, snapshot_hash)   # independent of G-pipe
+lpipe_verdict = run_lpipe(incident_id, snapshot, snapshot_hash)   # independent of G-pipe
 ```
 
 **Note on `.get()` call:** `run_dpipe()` returns `dict[str, Any]` (a plain dict, not a `PipelineVerdict` object). `.get("ppr_scores", {})` is therefore valid Python — no `AttributeError`. Do not call `.get()` on a `PipelineVerdict` instance; Pydantic v2 frozen models do not have a `.get()` method. Access those fields as attributes (`verdict.ppr_scores`) or call `verdict.model_dump()` first.

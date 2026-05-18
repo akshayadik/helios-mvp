@@ -269,7 +269,27 @@ All 20 incidents sourced from `data/snapshot_registry.jsonl` post-re-capture.
 
 ### `manifest_sig.txt`
 
-SHA-256 of concatenated JSON file contents in alphabetical filename order:
+SHA-256 of concatenated JSON file contents in alphabetical filename order. **`manifest_sig.txt` is explicitly excluded from the iteration** — including it would create a circular dependency (the sig file's own content would be part of its own hash computation, making verification impossible).
+
+File gathering must be restricted to `.json` files only:
+
+```python
+import hashlib
+from pathlib import Path
+
+OSF_DIR = Path("research/osf")
+
+# Gather strictly .json files — manifest_sig.txt is never included
+json_files = sorted(f for f in OSF_DIR.glob("*.json"))
+
+concatenated = b"".join(
+    f.read_bytes().replace(b"\r\n", b"\n")   # LF-normalised (see §LF discipline)
+    for f in json_files
+)
+sig = hashlib.sha256(concatenated).hexdigest()
+```
+
+This produces a stable, alphabetically ordered concatenation of the six JSON artefacts. Written as a single 64-char hex string. `--verify` recomputes and asserts equality.
 
 ```
 SHA-256(
@@ -282,7 +302,7 @@ SHA-256(
 )
 ```
 
-Written as a single 64-char hex string. `--verify` recomputes and asserts equality.
+**Never use `OSF_DIR.iterdir()`** or glob patterns broader than `*.json` — they will capture `manifest_sig.txt` and produce a circular failure that passes on first `--generate` but fails on every subsequent `--verify`.
 
 ---
 
