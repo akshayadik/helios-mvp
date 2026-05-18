@@ -17,7 +17,7 @@ from helios.integrity_gate import AppendOnlyLedger, MetricIntegrityGate
 from helios.orchestrator.corpus import CorpusLoader
 from helios.orchestrator.ledger import ReconciliationLedger
 from helios.pipelines.d_pipe.pipeline import run_dpipe
-from helios.pipelines.g_pipe.stub import run_gpipe
+from helios.pipelines.g_pipe.pipeline import run_gpipe
 from helios.pipelines.l_pipe.stub import run_lpipe
 from helios.schemas.telemetry import EvaluationPhase
 from helios.schemas.verdict import PipelineVerdict
@@ -112,7 +112,27 @@ class RunOrchestrator:
             evaluation_phase=window.evaluation_phase,
             run_id=run_id,
         )
-        g_out = run_gpipe(incident_id=incident_id, snapshot_hash=snapshot_hash)
+        dpipe_scores: dict[str, float] = d_out.get("ppr_scores", {})
+        g_out: dict[str, Any]
+        if ueg_c is not None:
+            g_out = run_gpipe(
+                incident_id=incident_id,
+                snapshot=ueg_c,
+                snapshot_hash=snapshot_hash,
+                dpipe_scores=dpipe_scores,
+                evaluation_phase=str(window.evaluation_phase),
+                run_id=run_id,
+            )
+        else:
+            from helios.pipelines.g_pipe.pipeline import _sentinel_verdict
+
+            g_out = _sentinel_verdict(
+                incident_id,
+                snapshot_hash,
+                self._manifest,
+                str(window.evaluation_phase),
+                run_id,
+            )
         l_out = run_lpipe(incident_id=incident_id, snapshot_hash=snapshot_hash)
 
         verdicts = [

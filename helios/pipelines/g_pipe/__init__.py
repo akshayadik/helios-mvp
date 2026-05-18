@@ -1,4 +1,5 @@
-"""helios.pipelines.g_pipe — graph-based causal inference pipeline (Stage 4+).
+"""helios.pipelines.g_pipe — PPR-traversal causal peer pipeline (Milestone 3).
 
-Null stub at Stage 0 — gated by VCLFlag.L2B_GRAPH.
+Entry gate: D-pipe PPR disagreement >= DISAGREEMENT_THRESHOLD.
+Gated by VCLFlag.GPIPE.
 """

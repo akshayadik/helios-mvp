@@ -19,9 +19,10 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from helios.pipelines.g_pipe.stub import run_gpipe
+from helios.pipelines.g_pipe.pipeline import run_gpipe
 from helios.pipelines.l_pipe.stub import run_lpipe
 from helios.schemas import EvaluationPhase, PipelineVerdict
+from helios.schemas.ueg_c import EdgeType, NodeType, UEGCEdge, UEGCNode, UEGCSnapshot
 from helios.store.result_store import ResultStore
 from helios.vcl import VCLFlag, get_variant, set_current_manifest
 from helios.vcl.snapshot_registry import SnapshotRegistry
@@ -35,6 +36,25 @@ if TYPE_CHECKING:
 
 _INCIDENT = "inc-smoke-001"
 _SNAP_HASH = "a" * 64
+
+# Minimal snapshot for smoke tests — no real Parquet ingestion at Stage 0
+_SMOKE_SNAPSHOT = UEGCSnapshot(
+    incident_id=_INCIDENT,
+    variant_config_hash="a" * 64,
+    nodes=[
+        UEGCNode(node_id="A", node_type=NodeType.SERVICE, service_name="A"),
+        UEGCNode(node_id="B", node_type=NodeType.SERVICE, service_name="B"),
+        UEGCNode(node_id="C", node_type=NodeType.SERVICE, service_name="C"),
+    ],
+    edges=[
+        UEGCEdge(source="A", target="B", edge_type=EdgeType.CALL, weight=0.80),
+        UEGCEdge(source="B", target="C", edge_type=EdgeType.CALL, weight=0.60),
+    ],
+    captured_at_iso="2026-01-01T00:00:00+00:00",
+)
+
+# D-pipe scores with disagreement above threshold so gpipe runs
+_SMOKE_DPIPE_SCORES = {"A": 0.90, "B": 0.45, "C": 0.36}
 
 
 @pytest.fixture()
@@ -70,8 +90,15 @@ def test_full_pipeline_exploratory_row_inserted(
     )  # access internal path for fixture reuse
     assert reg2.contains(snap_hash)
 
-    # Run gated stubs (simulating pipeline execution)
-    g_result = run_gpipe(incident_id=_INCIDENT, snapshot_hash=snap_hash)
+    # Run gated pipelines (simulating pipeline execution)
+    g_result = run_gpipe(
+        incident_id=_INCIDENT,
+        snapshot=_SMOKE_SNAPSHOT,
+        snapshot_hash=snap_hash,
+        dpipe_scores=_SMOKE_DPIPE_SCORES,
+        evaluation_phase="exploratory",
+        run_id="smoke-gpipe-001",
+    )
     l_result = run_lpipe(incident_id=_INCIDENT, snapshot_hash=snap_hash)
 
     # Build and insert PipelineVerdict rows
@@ -136,7 +163,28 @@ def test_snapshot_registry_integration(
     reg.register(snap, vch)
     assert reg.contains(snap)
 
-    g_result = run_gpipe(incident_id="inc-reg-test", snapshot_hash=snap)
+    smoke_snap = UEGCSnapshot(
+        incident_id="inc-reg-test",
+        variant_config_hash=vch,
+        nodes=[
+            UEGCNode(node_id="A", node_type=NodeType.SERVICE, service_name="A"),
+            UEGCNode(node_id="B", node_type=NodeType.SERVICE, service_name="B"),
+            UEGCNode(node_id="C", node_type=NodeType.SERVICE, service_name="C"),
+        ],
+        edges=[
+            UEGCEdge(source="A", target="B", edge_type=EdgeType.CALL, weight=0.80),
+            UEGCEdge(source="B", target="C", edge_type=EdgeType.CALL, weight=0.60),
+        ],
+        captured_at_iso="2026-01-01T00:00:00+00:00",
+    )
+    g_result = run_gpipe(
+        incident_id="inc-reg-test",
+        snapshot=smoke_snap,
+        snapshot_hash=snap,
+        dpipe_scores=_SMOKE_DPIPE_SCORES,
+        evaluation_phase="exploratory",
+        run_id="smoke-reg-test-gpipe",
+    )
     verdict = PipelineVerdict(
         run_id="smoke-reg-test",
         incident_id="inc-reg-test",

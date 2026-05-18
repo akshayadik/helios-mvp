@@ -7,10 +7,15 @@ return a minimal PipelineVerdict stub. Uses VCLManifest / VCLFlag per C1 invaria
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 
+if TYPE_CHECKING:
+    from helios.schemas.ueg_c import UEGCSnapshot
+
 from helios.pipelines.d_pipe.stub import run_dpipe
-from helios.pipelines.g_pipe.stub import run_gpipe
+from helios.pipelines.g_pipe.pipeline import run_gpipe
 from helios.pipelines.l_pipe.stub import run_lpipe
 from helios.vcl import (
     GatedComponentInactiveError,
@@ -61,27 +66,66 @@ class TestDPipeStub:
 
 
 # ------------------------------------------------------------------
-# G-pipe stub (gated by l2b_graph)
+# G-pipe pipeline (gated by gpipe)
 # ------------------------------------------------------------------
 
 
-class TestGPipeStub:
+def _make_minimal_snap() -> UEGCSnapshot:
+    from helios.schemas.ueg_c import (
+        EdgeType,
+        NodeType,
+        UEGCEdge,
+        UEGCNode,
+        UEGCSnapshot,
+    )
+
+    return UEGCSnapshot(
+        incident_id="inc-001",
+        variant_config_hash="a" * 64,
+        nodes=[
+            UEGCNode(node_id="A", node_type=NodeType.SERVICE, service_name="A"),
+            UEGCNode(node_id="B", node_type=NodeType.SERVICE, service_name="B"),
+            UEGCNode(node_id="C", node_type=NodeType.SERVICE, service_name="C"),
+        ],
+        edges=[
+            UEGCEdge(source="A", target="B", edge_type=EdgeType.CALL, weight=0.80),
+            UEGCEdge(source="B", target="C", edge_type=EdgeType.CALL, weight=0.60),
+        ],
+        captured_at_iso="2026-01-01T00:00:00+00:00",
+    )
+
+
+class TestGPipePipeline:
     def test_gpipe_active_returns_verdict(self) -> None:
-        m = _manifest_with()  # HELIOS-Full has l2b_graph=True
+        m = _manifest_with()  # HELIOS-Full has gpipe=True
         set_current_manifest(m)
-        result = run_gpipe(incident_id="inc-001", snapshot_hash=_FAKE_SNAP)
+        result = run_gpipe(
+            incident_id="inc-001",
+            snapshot=_make_minimal_snap(),
+            snapshot_hash=_FAKE_SNAP,
+            dpipe_scores={"A": 0.90, "B": 0.45, "C": 0.36},
+            evaluation_phase="exploratory",
+            run_id="run-001",
+        )
         assert result["pipeline"] == "gpipe"
         assert result["incident_id"] == "inc-001"
 
     def test_gpipe_inactive_raises(self) -> None:
-        m = _manifest_with(l2b_graph=False)
+        m = _manifest_with(gpipe=False)
         set_current_manifest(m)
         with pytest.raises(GatedComponentInactiveError):
-            run_gpipe(incident_id="inc-001", snapshot_hash=_FAKE_SNAP)
+            run_gpipe(
+                incident_id="inc-001",
+                snapshot=_make_minimal_snap(),
+                snapshot_hash=_FAKE_SNAP,
+                dpipe_scores={"A": 0.90, "B": 0.45, "C": 0.36},
+                evaluation_phase="exploratory",
+                run_id="run-001",
+            )
 
     def test_gpipe_has_gated_by_attribute(self) -> None:
         assert hasattr(run_gpipe, "__gated_by__")
-        assert run_gpipe.__gated_by__ == VCLFlag.L2B_GRAPH
+        assert run_gpipe.__gated_by__ == VCLFlag.GPIPE
 
 
 # ------------------------------------------------------------------

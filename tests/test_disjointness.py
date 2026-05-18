@@ -44,9 +44,8 @@ def _clean_registry() -> Generator[None, Any, None]:
 
 def test_no_helios_paths_registered_at_stage0() -> None:
     registry = DisjointnessRegistry()
-    # Stage 0 has g_pipe and l_pipe null stubs decorated with @gated_by.
-    # Verify known stage-0 pipeline stubs are present.
-    assert "helios.pipelines.g_pipe.stub.run_gpipe" in registry._paths
+    # G-pipe is now the real pipeline (stub deleted at M3); l_pipe stub remains.
+    assert "helios.pipelines.g_pipe.pipeline.run_gpipe" in registry._paths
     assert "helios.pipelines.l_pipe.stub.run_lpipe" in registry._paths
 
 
@@ -147,5 +146,5 @@ class TestDisjointnessAuditor:
         report = auditor.audit()
         covered_flags = {e.flag for e in report.covered}
         assert VCLFlag.DPIPE in covered_flags
-        assert VCLFlag.L2B_GRAPH in covered_flags
+        assert VCLFlag.GPIPE in covered_flags  # g_pipe.pipeline gated by GPIPE (M3)
         assert VCLFlag.L2C_LLM in covered_flags
