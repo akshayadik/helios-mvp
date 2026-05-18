@@ -423,7 +423,17 @@ Replace concurrent dispatch with sequential D→G(conditional)→L. The sentinel
 
 ```python
 # Sequential dispatch — see deviation log and ablation_architecture.md §3.2
-dpipe_verdict = run_dpipe(incident_id, snapshot, snapshot_hash, evaluation_phase=evaluation_phase)
+# run_dpipe is keyword-only (M2 frozen signature); accepts TelemetryWindow for
+# raw metric streams AND UEGCSnapshot (ueg_c) for the graph topology.
+dpipe_verdict = run_dpipe(
+    window=window,                                             # TelemetryWindow from ingestion
+    ueg_c=snapshot,                                           # UEGCSnapshot | None
+    incident_id=incident_id,
+    snapshot_hash=snapshot_hash,
+    variant_config_hash=manifest.compute_variant_config_hash(),
+    evaluation_phase=evaluation_phase,
+    run_id=run_id,
+)
 
 if should_run_gpipe(dpipe_verdict, manifest):
     gpipe_verdict = run_gpipe(

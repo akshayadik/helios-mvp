@@ -367,6 +367,27 @@ Returning a bare `LPipeResponse` on fallback (as a single object, not a tuple) c
 
 **`prompt_version`** in the verdict dict provides a persistent record binding each verdict row to the exact prompt template used. This enables post-hoc audit: if `rca_v1.txt` ever changes, old rows are provably tagged with the old version.
 
+**Snapshot utility helpers — declared in `pipeline.py`:** `_service_list_from_snapshot` and `_anomaly_summary` are not imported from an external module. They are defined locally in `pipeline.py` using only `UEGCSnapshot`'s existing fields (`nodes: list[UEGCNode]`, `edges: list[UEGCEdge]`):
+
+```python
+from helios.schemas.ueg_c import UEGCSnapshot
+
+def _service_list_from_snapshot(snapshot: UEGCSnapshot) -> list[str]:
+    """Sorted unique service names from graph nodes — used as L-pipe prompt input."""
+    return sorted({node.service_name for node in snapshot.nodes})
+
+def _anomaly_summary(snapshot: UEGCSnapshot) -> str:
+    """Stub anomaly summary for M3 — service names only; no live metric inference.
+
+    Production upgrade: derive from D-pipe AnomalyScorer output passed through
+    the orchestrator. Deferred to post-M3.
+    """
+    services = _service_list_from_snapshot(snapshot)
+    return f"Anomalies detected across {len(services)} services: {', '.join(services)}"
+```
+
+These helpers contain no inference logic and require no external imports beyond `UEGCSnapshot`. The `_anomaly_summary` stub is intentionally minimal for M3 — it documents the production upgrade path without blocking the protocol freeze.
+
 ---
 
 ## Exit Gates (Spec 2)

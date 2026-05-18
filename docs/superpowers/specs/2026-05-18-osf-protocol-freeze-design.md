@@ -227,9 +227,7 @@ Source: `helios.vcl.variants.CONFIRMATORY_VARIANTS` — a list of `(name, VCLMan
         "l2c_llm": true,
         "lpipe": true,
         "mahc": true,
-        "model_version": "helios-llm-baseline",
         "p4_cognitive": false,
-        "prompt_template_id": "baseline-v1",
         "reconcile": true,
         "router": true,
         "ueg_c_structural": true
@@ -239,7 +237,17 @@ Source: `helios.vcl.variants.CONFIRMATORY_VARIANTS` — a list of `(name, VCLMan
 }
 ```
 
-**Flag names are the exact `VCLManifest` field names** as defined in `helios/vcl/config.py`: `l2c_llm`, `p4_cognitive`, `mahc`, `cbr`, `l2b_graph`, `acp`, `reconcile`, `ueg_c_structural`, `dpipe`, `dpipe_propagation`, `gpipe`, `lpipe`, `router` (13 boolean flags) + `ingest_mode` (string). `model_version` and `prompt_template_id` are also present in `model_dump()` output and must be included since `VCLManifest` has `extra="forbid"` — any mismatch between the dumped dict and the expected schema will be caught by the Pydantic model. The `flags` dict in the JSON is the verbatim output of `manifest.model_dump()` with keys sorted (by `canonical_json`); never hand-edit it.
+**`flags` contains exactly the 14 VCLFlag keys** — the 13 boolean flags (`l2c_llm`, `p4_cognitive`, `mahc`, `cbr`, `l2b_graph`, `acp`, `reconcile`, `ueg_c_structural`, `dpipe`, `dpipe_propagation`, `gpipe`, `lpipe`, `router`) plus the string flag `ingest_mode`. `model_version` and `prompt_template_id` are also fields on `VCLManifest` (they participate in the variant hash), but they are **not VCLFlag-controlled gates** and must be excluded from the `flags` dict. The generation script filters `model_dump()` to only VCLFlag keys:
+
+```python
+from helios.vcl.registry import VCLFlag
+
+_VCL_FLAG_KEYS = {f.value for f in VCLFlag}   # exactly 14 keys
+
+flags = {k: v for k, v in manifest.model_dump().items() if k in _VCL_FLAG_KEYS}
+```
+
+The `flags` dict in the JSON has keys sorted by `canonical_json`; never hand-edit it.
 
 **Generation pattern:** iterate `CONFIRMATORY_VARIANTS`, call `manifest.model_dump()` to extract all flags, filter to the 13 boolean flags (using `VCLFlag.bool_flags()`) plus `ingest_mode`:
 
