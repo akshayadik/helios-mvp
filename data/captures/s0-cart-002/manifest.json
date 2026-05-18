@@ -1,14 +1,15 @@
 {
   "incident_id": "s0-cart-002",
   "variant_config_hash": "20ab0977d268d0441364f39380cd62b5de94d030a0a70f3c68ec04eaa27db472",
-  "window_start_iso": "2026-05-15T04:09:40.768696+00:00",
-  "window_end_iso": "2026-05-15T04:14:40.768696+00:00",
+  "window_start_iso": "2026-05-18T18:48:57.940942+00:00",
+  "window_end_iso": "2026-05-18T18:53:57.940942+00:00",
   "evaluation_phase": "exploratory",
   "p1_metrics_path": "data/captures/s0-cart-002/p1_metrics.parquet",
   "p2_traces_path": "data/captures/s0-cart-002/p2_traces.parquet",
   "p3_logs_path": "data/captures/s0-cart-002/p3_logs.parquet",
   "p4_events_path": null,
   "p5_profiles_path": null,
-  "schema_version": "schema-draft-v0.1",
-  "window_hash": "51c4f4b4cde7ae3c2765d5b5e1fd3468ac12c18980a9b474f9027b8ebf37ea6d"
+  "schema_version": "schema-draft-v0.2",
+  "window_hash": "788ac00f2997ba021456187fd0430d566ebf1262b604d8641068d6ee48dde8f7",
+  "snapshot_hash": "eb48a4a3e1e3dd6a5ca91766d7ab71fc479b26d651cd26e4d8a637e6bc686044"
 }

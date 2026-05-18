@@ -35,7 +35,12 @@ def _write_snapshot_hash(window: Any, manifest_path: Path) -> None:
 
     build_ueg_c() may return None when l2b_graph flag is off — snapshot_hash is
     omitted in that case. Requires set_current_manifest() to have been called.
+
+    window_hash is recomputed after updating schema_version so that CaptureReader
+    can verify integrity against the final manifest state.
     """
+    from helios.schemas.telemetry import TelemetryWindow
+
     manifest_data = json.loads(manifest_path.read_text(encoding="utf-8"))
     try:
         snapshot = build_ueg_c(window, manifest_data["variant_config_hash"])
@@ -44,6 +49,12 @@ def _write_snapshot_hash(window: Any, manifest_path: Path) -> None:
     if snapshot is not None:
         manifest_data["snapshot_hash"] = snapshot.compute_snapshot_hash()
     manifest_data["schema_version"] = MANIFEST_SCHEMA_VERSION
+    tw_fields = {
+        k: v
+        for k, v in manifest_data.items()
+        if k not in ("window_hash", "snapshot_hash")
+    }
+    manifest_data["window_hash"] = TelemetryWindow(**tw_fields).compute_window_hash()
     manifest_path.write_text(json.dumps(manifest_data, indent=2), encoding="utf-8")
 
 

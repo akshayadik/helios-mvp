@@ -63,6 +63,9 @@ class CaptureReader:
 
         raw: dict[str, object] = json.loads(manifest_path.read_text())
         stored_hash = str(raw.pop("window_hash"))
+        raw.pop(
+            "snapshot_hash", None
+        )  # post-capture annotation; not a TelemetryWindow field
 
         window = TelemetryWindow(**raw)
         computed_hash = window.compute_window_hash()

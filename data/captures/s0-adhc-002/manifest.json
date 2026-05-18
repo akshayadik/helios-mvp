@@ -1,14 +1,15 @@
 {
   "incident_id": "s0-adhc-002",
   "variant_config_hash": "20ab0977d268d0441364f39380cd62b5de94d030a0a70f3c68ec04eaa27db472",
-  "window_start_iso": "2026-05-15T04:09:09.088092+00:00",
-  "window_end_iso": "2026-05-15T04:14:09.088092+00:00",
+  "window_start_iso": "2026-05-18T18:48:51.524565+00:00",
+  "window_end_iso": "2026-05-18T18:53:51.524565+00:00",
   "evaluation_phase": "exploratory",
   "p1_metrics_path": "data/captures/s0-adhc-002/p1_metrics.parquet",
   "p2_traces_path": "data/captures/s0-adhc-002/p2_traces.parquet",
   "p3_logs_path": "data/captures/s0-adhc-002/p3_logs.parquet",
   "p4_events_path": null,
   "p5_profiles_path": null,
-  "schema_version": "schema-draft-v0.1",
-  "window_hash": "91b74695095c132aa29661d6649ec275e1e8bc30785369c7617a0291d51c55ce"
+  "schema_version": "schema-draft-v0.2",
+  "window_hash": "60102eba38ecfc254dabf7757414ebdbaba59071bab33ac398eb575c9205a423",
+  "snapshot_hash": "284880c6e90eca792a5267a2bc228f8880d33e51263f3c07c9a31ae6cbb5d362"
 }
