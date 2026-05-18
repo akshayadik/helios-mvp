@@ -508,6 +508,9 @@ class TestBuildDefaultCapture:
         assert capture._config.manifest is manifest
 
 
+@pytest.mark.filterwarnings(
+    "ignore:parent_span_id absent:UserWarning"
+)  # build_ueg_c uses schema-v1 Parquet path until Task 4 wires parent_span_id
 def test_manifest_has_snapshot_hash_after_write(config, window_bounds):
     """After _write_snapshot_hash(), manifest.json has a 64-char hex snapshot_hash."""
     from bin.run_capture import _write_snapshot_hash
@@ -528,6 +531,9 @@ def test_manifest_has_snapshot_hash_after_write(config, window_bounds):
     assert all(c in "0123456789abcdef" for c in data["snapshot_hash"])
 
 
+@pytest.mark.filterwarnings(
+    "ignore:parent_span_id absent:UserWarning"
+)  # build_ueg_c uses schema-v1 Parquet path until Task 4 wires parent_span_id
 def test_manifest_schema_version_updated_to_v0_2(config, window_bounds):
     """_write_snapshot_hash() sets schema_version to MANIFEST_SCHEMA_VERSION."""
     from bin.run_capture import MANIFEST_SCHEMA_VERSION, _write_snapshot_hash
@@ -545,6 +551,9 @@ def test_manifest_schema_version_updated_to_v0_2(config, window_bounds):
     assert data.get("schema_version") == MANIFEST_SCHEMA_VERSION
 
 
+@pytest.mark.filterwarnings(
+    "ignore:parent_span_id absent:UserWarning"
+)  # build_ueg_c uses schema-v1 Parquet path until Task 4 wires parent_span_id
 def test_manifest_window_hash_and_snapshot_hash_are_distinct(config, window_bounds):
     """window_hash (L0 raw data) and snapshot_hash (graph topology) are distinct."""
     from bin.run_capture import _write_snapshot_hash

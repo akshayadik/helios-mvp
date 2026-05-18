@@ -25,6 +25,10 @@ class SpanRecord:
     service_name: str
     start_us: int
     end_us: int
+    span_id: str = (
+        ""  # required for parent_span_id lookup; "" until Task 4 wires Parquet
+    )
+    parent_span_id: str | None = None  # None or "" for root spans
 
 
 class UEGCBuilder:
@@ -38,6 +42,7 @@ class UEGCBuilder:
         incident_id: str,
         variant_config_hash: str,
         captured_at_iso: str,
+        parent_span_id_col_present: bool = False,
     ) -> UEGCSnapshot:
         service_names = sorted({s.service_name for s in spans})
         nodes = [
@@ -46,7 +51,7 @@ class UEGCBuilder:
         ]
         edges: list[UEGCEdge] = []
         if self._enable_structural:
-            edges.extend(self._structural_edges(spans))
+            edges.extend(self._structural_edges(spans, parent_span_id_col_present))
         edges.extend(self._call_edges(spans))
         return UEGCSnapshot(
             incident_id=incident_id,
@@ -56,7 +61,40 @@ class UEGCBuilder:
             captured_at_iso=captured_at_iso,
         )
 
-    def _structural_edges(self, spans: list[SpanRecord]) -> list[UEGCEdge]:
+    def _structural_edges(
+        self, spans: list[SpanRecord], parent_span_id_col_present: bool
+    ) -> list[UEGCEdge]:
+        # Fallback only when the column was structurally ABSENT from Parquet (schema v1).
+        # A root-only schema v2 trace (all parent_span_id="") is a valid topology and must
+        # return an empty edge list — NOT invoke temporal fallback. The caller-supplied flag
+        # distinguishes absent-column v1 from root-only v2 — span data alone cannot.
+        if not parent_span_id_col_present:
+            import warnings
+
+            warnings.warn(
+                "parent_span_id absent — falling back to temporal containment",
+                stacklevel=3,
+            )
+            return self._structural_edges_temporal(spans)
+        if not spans:
+            return []
+        span_svc: dict[tuple[str, str], str] = {
+            (s.trace_id, s.span_id): s.service_name for s in spans
+        }
+        pairs: set[tuple[str, str]] = set()
+        for child in spans:
+            if not child.parent_span_id:
+                continue
+            parent_svc = span_svc.get((child.trace_id, child.parent_span_id))
+            if parent_svc and parent_svc != child.service_name:
+                pairs.add((parent_svc, child.service_name))
+        return [
+            UEGCEdge(source=src, target=tgt, edge_type=EdgeType.STRUCTURAL, weight=1)
+            for src, tgt in sorted(pairs)
+        ]
+
+    def _structural_edges_temporal(self, spans: list[SpanRecord]) -> list[UEGCEdge]:
+        """Original temporal-containment derivation. Kept as named fallback for schema v1."""
         by_trace: dict[str, list[SpanRecord]] = defaultdict(list)
         for s in spans:
             by_trace[s.trace_id].append(s)
