@@ -89,6 +89,23 @@ def _preflight_generate(captures_dir: Path, calibrated_params_path: Path) -> Non
     if not PROMPT_PATH.exists():
         errors.append(f"rca_v1.txt not found at {PROMPT_PATH}")
 
+    # 1b. prompt_version_registry.md must have rca_v1 YAML entry
+    import yaml as _yaml
+    REGISTRY_PATH = Path("docs/tracking/prompt_version_registry.md")
+    if not REGISTRY_PATH.exists():
+        errors.append(f"prompt_version_registry.md not found at {REGISTRY_PATH}")
+    else:
+        try:
+            front_matter = REGISTRY_PATH.read_text(encoding="utf-8").split("---")[1]
+            reg = _yaml.safe_load(front_matter)
+            if not reg.get("entries", {}).get("rca_v1"):
+                errors.append(
+                    "prompt_version_registry.md missing 'rca_v1' entry — "
+                    "complete Spec 2 bootstrap after committing rca_v1.txt"
+                )
+        except Exception as exc:
+            errors.append(f"prompt_version_registry.md YAML parse failed: {exc}")
+
     # 2. All capture manifests must be schema-draft-v0.2 with snapshot_hash
     missing_snapshot_hash: list[str] = []
     wrong_schema: list[str] = []
@@ -135,6 +152,32 @@ def _preflight_generate(captures_dir: Path, calibrated_params_path: Path) -> Non
 ```
 
 If ANY check fails, `--generate` exits non-zero and writes nothing. This converts the checklist items in Pre-conditions into a runtime guarantee — a researcher cannot accidentally generate an incomplete or tampered archive by skipping a step. The `_preflight_generate()` function must be the FIRST call in the `--generate` branch, before any artefact generation begins.
+
+**Atomic write pattern — mandatory:** `--generate` must not write individual files directly to `research/osf/`. A mid-run crash (disk full, import error on the 4th artefact) leaves a partial archive where some files are new and some are stale. `manifest_sig.txt` would catch this on the next `--verify`, but the corrupted JSON files remain on disk and may be committed accidentally. Generate all artefacts into a temporary directory, then replace `research/osf/` contents atomically only after all six files are successfully written:
+
+```python
+import shutil, tempfile
+
+OSF_DIR = Path("research/osf")
+OSF_DIR.mkdir(parents=True, exist_ok=True)
+
+# Generate into temp dir; replace only if ALL artefacts succeed
+with tempfile.TemporaryDirectory(dir=OSF_DIR.parent) as _tmp:
+    tmp_dir = Path(_tmp)
+    _generate_seeds(tmp_dir)
+    _generate_prompt_sha(tmp_dir)
+    _generate_thresholds(tmp_dir)
+    _generate_variant_hashes(tmp_dir)
+    _generate_analysis_plan(tmp_dir)
+    _generate_corpus_manifest(tmp_dir)
+    _generate_manifest_sig(tmp_dir)   # must be last — hashes the other 6 files
+    # All succeeded — atomically replace each file
+    for fname in sorted(tmp_dir.glob("*")):
+        shutil.move(str(fname), str(OSF_DIR / fname.name))
+print(f"--generate: 7 artefacts written to {OSF_DIR}")
+```
+
+`tempfile.TemporaryDirectory` cleans up on any exception, including `KeyboardInterrupt` and `ImportError`. If any `_generate_*` call fails, `research/osf/` is untouched and the error propagates cleanly.
 
 **`prompt_version_registry.md` exception:** This file uses YAML front-matter for the version entry (structured, not free-form Markdown), which is safely parseable. It is the only Markdown file read directly by `verify_osf_freeze.py`.
 
