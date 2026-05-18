@@ -116,3 +116,17 @@ class TestRunOrchestrator:
             "SELECT pipeline FROM result_row WHERE incident_id='inc-001'"
         ).fetchall()
         assert {r[0] for r in rows} == {"dpipe", "gpipe", "lpipe"}
+
+    def test_all_three_pipeline_verdicts_share_run_id(self, tmp_path: Path) -> None:
+        """D-pipe, G-pipe, and L-pipe verdicts for one incident share the same run_id."""
+        captures = tmp_path / "captures"
+        _make_capture(captures, "inc-runid-001")
+        orch = _make_orchestrator(tmp_path, captures)
+        orch.run(captures)
+
+        from helios.store.result_store import ResultStore
+
+        store = ResultStore(tmp_path / "results.duckdb")
+        rows = store.fetch_all_for_incident("inc-runid-001")
+        run_ids = {r["run_id"] for r in rows}
+        assert len(run_ids) == 1, f"Expected 1 run_id, got: {run_ids}"

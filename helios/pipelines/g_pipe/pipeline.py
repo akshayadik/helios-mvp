@@ -5,6 +5,7 @@ Gated by VCLFlag.GPIPE. Entry gate: PPR disagreement >= DISAGREEMENT_THRESHOLD.
 
 from __future__ import annotations
 
+import time
 from typing import TYPE_CHECKING, Any
 
 import networkx as nx
@@ -108,11 +109,8 @@ def _build_gpipe_verdict(
     ppr_scores: dict[str, float],
     evaluation_phase: str,
     run_id: str,
+    latency_ms: float = 0.00,
 ) -> dict[str, Any]:
-    import time
-
-    start = time.monotonic()
-    latency_ms = (time.monotonic() - start) * 1000
     return {
         "pipeline": "gpipe",
         "incident_id": incident_id,
@@ -147,7 +145,16 @@ def run_gpipe(
         return _sentinel_verdict(
             incident_id, snapshot_hash, manifest, evaluation_phase, run_id
         )
+    _start = time.monotonic()
     ranked, ppr_out = _ppr_traverse(snapshot, seed_weights=dpipe_scores)
+    latency_ms = (time.monotonic() - _start) * 1000
     return _build_gpipe_verdict(
-        incident_id, snapshot_hash, manifest, ranked, ppr_out, evaluation_phase, run_id
+        incident_id,
+        snapshot_hash,
+        manifest,
+        ranked,
+        ppr_out,
+        evaluation_phase,
+        run_id,
+        latency_ms=latency_ms,
     )
