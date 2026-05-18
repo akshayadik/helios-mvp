@@ -123,6 +123,8 @@ done
 poetry run python bin/verify_captures.py
 ```
 
+**Partial failure handling:** If `bin/run_capture.py` fails mid-loop (e.g., Docker container restart, network timeout), the registry is left in an inconsistent state: some incidents have new `schema-draft-v0.2` manifests and new hashes, others retain old `schema-draft-v0.1` manifests. Do not proceed to §1.3 (deviation log) in this state. Re-run the loop from scratch — `run_capture.py` overwrites the manifest on every invocation, so a re-run of all 20 incidents is safe and produces a consistent registry. Verify with `poetry run python bin/verify_captures.py` before continuing.
+
 ### 1.3 Deviation log entry (immediately after re-capture — before any code changes)
 
 ```bash
@@ -270,6 +272,11 @@ def _psid(val: object) -> str:
     except (TypeError, ValueError):
         pass  # pd.isna raises on array inputs — treat as non-null
     return str(val)
+
+# build_ueg_c(window: TelemetryWindow) body — load Parquet first
+df = pd.read_parquet(window.p2_traces_path)
+cols = df.to_dict(orient="list")
+n = len(df)
 
 has_psid = "parent_span_id" in cols
 spans = [
@@ -460,7 +467,8 @@ def _sentinel_verdict(incident_id, snapshot_hash, manifest, evaluation_phase: st
 gpipe_verdict = run_gpipe(
     incident_id, snapshot, snapshot_hash,
     dpipe_scores=dpipe_verdict.get("ppr_scores", {}),
-    evaluation_phase=evaluation_phase,   # from orchestrator run context
+    run_id=run_id,
+    evaluation_phase=evaluation_phase,   # from orchestrator run context; run_id is PipelineVerdict PK
 )
 ```
 
@@ -543,7 +551,7 @@ lpipe_verdict = run_lpipe(
     incident_id, snapshot, snapshot_hash,
     evaluation_phase=evaluation_phase,
     run_id=run_id,
-)   # independent of G-pipe
+)   # independent of G-pipe; always returns dict[str, Any] — Ollama errors caught internally
 ```
 
 **Consequence for `run_gpipe()`:** The sentinel block in §3.4 (`_sentinel_verdict`) acts as a second-level safety net for unexpected sub-threshold cases that reach `run_gpipe()` (e.g., race conditions or direct test calls). The authoritative sentinel path is the orchestrator `else` branch above. Both paths must produce structurally identical dicts.

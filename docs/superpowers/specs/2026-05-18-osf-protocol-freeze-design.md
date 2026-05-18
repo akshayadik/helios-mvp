@@ -15,6 +15,7 @@
 
 - [ ] Spec 1 merged: `gpipe_config.py` exists with `DISAGREEMENT_THRESHOLD` calibrated and frozen
 - [ ] Spec 2 merged: `prompt_version_registry.md` has `rca_v1` entry with SHA256
+- [ ] `EXPECTED_PROMPT_SHA` in `helios/pipelines/l_pipe/lpipe_config.py` is set to a 64-char hex value (not `None`) — `--generate` reads `prompt_version_registry.md` to build `prompt_sha.json`; that file is only populated after `rca_v1.txt` is committed and the constant is frozen. Running `--generate` while `EXPECTED_PROMPT_SHA=None` produces a config/registry inconsistency that `--verify` will flag on every CI run.
 - [ ] `data/calibrated_params.json` present (frozen at Milestone 2)
 - [ ] `data/snapshot_registry.jsonl` rebuilt with 20 post-re-capture entries
 - [ ] Deviation log chain verified: `python bin/log_deviation.py verify`
@@ -136,16 +137,19 @@ sha_table["manifest_sig.txt"] = hashlib.sha256(
 
 content = PREREG_PATH.read_text(encoding="utf-8")
 for filename, sha in sha_table.items():
-    # Replace: <!-- SHA:filename --> with the 64-char hex sha
-    content = content.replace(
-        f"<!-- SHA:{filename} -->",
-        f"`{sha}`",
+    # Idempotent: preserve comment marker so re-runs update the SHA rather than silently no-op.
+    # First run:  <!-- SHA:f --> → <!-- SHA:f -->`sha`
+    # Re-run:     <!-- SHA:f -->`old` → <!-- SHA:f -->`new`
+    content = re.sub(
+        r"(<!-- SHA:" + re.escape(filename) + r" -->)(?:`[0-9a-f]{64}`)?",
+        r"\g<1>`" + sha + "`",
+        content,
     )
 PREREG_PATH.write_text(content, encoding="utf-8")
 print(f"preregistration.md: {len(sha_table)} SHA markers populated")
 ```
 
-The `<!-- SHA:filename -->` markers are plain HTML comments rendered invisibly in GitHub Markdown; after `--populate-prereg` they are replaced by the literal SHA hex. Because the replacement is exact string matching (not regex), it is immune to table formatting changes. Run `--populate-prereg` after `--generate` completes, then commit both JSONs and `preregistration.md` in a single commit. `--populate-prereg` is idempotent — re-running after population replaces the same SHA with itself, no change.
+The `<!-- SHA:filename -->` markers are plain HTML comments rendered invisibly in GitHub Markdown; after `--populate-prereg` the markers are preserved and each is followed by the literal SHA hex. The `re.sub` pattern anchors on the comment marker, making replacement immune to table formatting changes. Run `--populate-prereg` after `--generate` completes, then commit both JSONs and `preregistration.md` in a single commit. `--populate-prereg` is idempotent — re-running after population replaces the existing SHA with itself, no change.
 
 ### Line-ending and serialisation discipline
 
@@ -318,8 +322,9 @@ _VARIANT_HYPOTHESIS_MAP: dict[str, str] = {
     "HELIOS-noConsensus": "A-H4",        # comparison: Full outperforms noConsensus on HR@3
     "HELIOS-noRouter":    "A-H5",        # comparison: Full outperforms noRouter on HR@3
     "HELIOS-noStructural":"A-H8",        # comparison: Full outperforms noStructural on HR@3
-    # B-family (baseline comparisons vs CHASE/RCACopilot) deferred to post-M4
-    # when AIOpsLab corpus is collected; add here when registered.
+    # B-family compares HELIOS-Full vs external baselines (CHASE, RCACopilot) —
+    # not in this map because keys must be CONFIRMATORY_VARIANTS names, not external systems.
+    # See FAMILY_B_HYPOTHESES for the complete pre-registered B-family (osf_protocol_v0.md §2.2).
 }
 
 def _hypothesis_for_variant(name: str) -> str:
@@ -447,14 +452,14 @@ Source: `docs/tracking/hypothesis_variant_metric_mapping.md`
     }
   ],
   "family_b_hypotheses": [
-    {"id": "B-H1", "rank": 1, "comparison": "HELIOS-Full vs CHASE",          "primary_metric": "HR@3",     "status": "deferred", "baseline": "CHASE",                           "note": "McNemar exact; AIOpsLab corpus pending"},
-    {"id": "B-H2", "rank": 2, "comparison": "HELIOS-Full vs RCACopilot",     "primary_metric": "HR@3",     "status": "deferred", "baseline": "RCACopilot",                      "note": "McNemar exact; AIOpsLab corpus pending"},
-    {"id": "B-H3", "rank": 3, "comparison": "HELIOS-Full vs mABC",           "primary_metric": "HR@3",     "status": "deferred", "baseline": "mABC",                            "note": "McNemar exact; AIOpsLab corpus pending"},
-    {"id": "B-H4", "rank": 4, "comparison": "HELIOS-Full vs TAMO",           "primary_metric": "HR@3",     "status": "deferred", "baseline": "TAMO",                            "note": "McNemar exact; AIOpsLab corpus pending"},
-    {"id": "B-H5", "rank": 5, "comparison": "HELIOS-Full vs Flow-of-Action", "primary_metric": "HR@3",     "status": "deferred", "baseline": "Flow-of-Action",                  "note": "McNemar exact; AIOpsLab corpus pending"},
-    {"id": "B-H6", "rank": 7, "comparison": "HELIOS-Full vs Best Baseline",  "primary_metric": "log-MTTR", "status": "deferred", "baseline": "Best Baseline (TBD at analysis)", "note": "Wilcoxon; Holm rank 7 (expected delta=0.60); AIOpsLab corpus pending"},
-    {"id": "B-H7", "rank": 6, "comparison": "HELIOS-Full vs Best Baseline",  "primary_metric": "log-Cost", "status": "deferred", "baseline": "Best Baseline (TBD at analysis)", "note": "Wilcoxon; Holm rank 6 (expected delta=0.80, highest of B-H6/7/8); AIOpsLab corpus pending"},
-    {"id": "B-H8", "rank": 8, "comparison": "HELIOS-Full vs Best Baseline",  "primary_metric": "Avg@5",    "status": "deferred", "baseline": "Best Baseline (TBD at analysis)", "note": "Wilcoxon; Holm rank 8 (expected delta-Avg5 >=0.10); AIOpsLab corpus pending"}
+    {"id": "B-H1", "rank": 1, "comparison": "HELIOS-Full vs CHASE",      "primary_metric": "HR@3",               "status": "deferred", "baseline": "CHASE",      "note": "AIOpsLab corpus pending"},
+    {"id": "B-H2", "rank": 2, "comparison": "HELIOS-Full vs RCACopilot", "primary_metric": "HR@3",               "status": "deferred", "baseline": "RCACopilot", "note": "AIOpsLab corpus pending"},
+    {"id": "B-H3", "rank": 3, "comparison": "HELIOS-Full vs CHASE",      "primary_metric": "CpR",                "status": "deferred", "baseline": "CHASE",      "note": "AIOpsLab corpus pending"},
+    {"id": "B-H4", "rank": 4, "comparison": "HELIOS-Full vs RCACopilot", "primary_metric": "CpR",                "status": "deferred", "baseline": "RCACopilot", "note": "AIOpsLab corpus pending"},
+    {"id": "B-H5", "rank": 5, "comparison": "HELIOS-Full vs CHASE",      "primary_metric": "log-MTTR delta",     "status": "deferred", "baseline": "CHASE",      "note": "AIOpsLab corpus pending"},
+    {"id": "B-H6", "rank": 6, "comparison": "HELIOS-Full vs CHASE",      "primary_metric": "hallucination rate", "status": "deferred", "baseline": "CHASE",      "note": "AIOpsLab corpus pending"},
+    {"id": "B-H7", "rank": 7, "comparison": "HELIOS-Full vs CHASE",      "primary_metric": "CoE score",          "status": "deferred", "baseline": "CHASE",      "note": "AIOpsLab corpus pending"},
+    {"id": "B-H8", "rank": 8, "comparison": "HELIOS-Full vs CHASE",      "primary_metric": "macro-F1",           "status": "deferred", "baseline": "CHASE",      "note": "AIOpsLab corpus pending"}
   ]
 }
 ```
@@ -468,19 +473,17 @@ All eight A-H hypotheses included under `family_a_hypotheses`, ordered by Holm r
 ```python
 # FAMILY_B_HYPOTHESES — statically defined; not derived from _VARIANT_HYPOTHESIS_MAP.
 # _VARIANT_HYPOTHESIS_MAP covers A-family variants only; B-family uses external baselines.
-# verify_osf_freeze.py imports this constant directly and writes it to analysis_plan.json.
-# B-H1/B-H2 baseline IDs confirmed from pre-registration. B-H3–B-H5 (mABC, TAMO,
-# Flow-of-Action) are ranked by expected discordance per Section 3.8.1 — verify order
-# against the pre-registration appendix before OSF freeze.
+# Frozen per osf_protocol_v0.md §2.2. Holm ranks are sequential (rank matches hypothesis ID).
+# B-H2 and B-H4 use RCACopilot as baseline; all others use CHASE.
 FAMILY_B_HYPOTHESES: list[dict] = [
-    {"id": "B-H1", "rank": 1, "comparison": "HELIOS-Full vs CHASE",          "primary_metric": "HR@3",     "status": "deferred", "baseline": "CHASE",                           "note": "McNemar exact; AIOpsLab corpus pending"},
-    {"id": "B-H2", "rank": 2, "comparison": "HELIOS-Full vs RCACopilot",     "primary_metric": "HR@3",     "status": "deferred", "baseline": "RCACopilot",                      "note": "McNemar exact; AIOpsLab corpus pending"},
-    {"id": "B-H3", "rank": 3, "comparison": "HELIOS-Full vs mABC",           "primary_metric": "HR@3",     "status": "deferred", "baseline": "mABC",                            "note": "McNemar exact; AIOpsLab corpus pending"},
-    {"id": "B-H4", "rank": 4, "comparison": "HELIOS-Full vs TAMO",           "primary_metric": "HR@3",     "status": "deferred", "baseline": "TAMO",                            "note": "McNemar exact; AIOpsLab corpus pending"},
-    {"id": "B-H5", "rank": 5, "comparison": "HELIOS-Full vs Flow-of-Action", "primary_metric": "HR@3",     "status": "deferred", "baseline": "Flow-of-Action",                  "note": "McNemar exact; AIOpsLab corpus pending"},
-    {"id": "B-H6", "rank": 7, "comparison": "HELIOS-Full vs Best Baseline",  "primary_metric": "log-MTTR", "status": "deferred", "baseline": "Best Baseline (TBD at analysis)", "note": "Wilcoxon; Holm rank 7 (expected delta=0.60); AIOpsLab corpus pending"},
-    {"id": "B-H7", "rank": 6, "comparison": "HELIOS-Full vs Best Baseline",  "primary_metric": "log-Cost", "status": "deferred", "baseline": "Best Baseline (TBD at analysis)", "note": "Wilcoxon; Holm rank 6 (expected delta=0.80, highest of B-H6/7/8); AIOpsLab corpus pending"},
-    {"id": "B-H8", "rank": 8, "comparison": "HELIOS-Full vs Best Baseline",  "primary_metric": "Avg@5",    "status": "deferred", "baseline": "Best Baseline (TBD at analysis)", "note": "Wilcoxon; Holm rank 8 (expected delta-Avg5 >=0.10); AIOpsLab corpus pending"},
+    {"id": "B-H1", "rank": 1, "comparison": "HELIOS-Full vs CHASE",      "primary_metric": "HR@3",               "status": "deferred", "baseline": "CHASE",      "note": "AIOpsLab corpus pending"},
+    {"id": "B-H2", "rank": 2, "comparison": "HELIOS-Full vs RCACopilot", "primary_metric": "HR@3",               "status": "deferred", "baseline": "RCACopilot", "note": "AIOpsLab corpus pending"},
+    {"id": "B-H3", "rank": 3, "comparison": "HELIOS-Full vs CHASE",      "primary_metric": "CpR",                "status": "deferred", "baseline": "CHASE",      "note": "AIOpsLab corpus pending"},
+    {"id": "B-H4", "rank": 4, "comparison": "HELIOS-Full vs RCACopilot", "primary_metric": "CpR",                "status": "deferred", "baseline": "RCACopilot", "note": "AIOpsLab corpus pending"},
+    {"id": "B-H5", "rank": 5, "comparison": "HELIOS-Full vs CHASE",      "primary_metric": "log-MTTR delta",     "status": "deferred", "baseline": "CHASE",      "note": "AIOpsLab corpus pending"},
+    {"id": "B-H6", "rank": 6, "comparison": "HELIOS-Full vs CHASE",      "primary_metric": "hallucination rate", "status": "deferred", "baseline": "CHASE",      "note": "AIOpsLab corpus pending"},
+    {"id": "B-H7", "rank": 7, "comparison": "HELIOS-Full vs CHASE",      "primary_metric": "CoE score",          "status": "deferred", "baseline": "CHASE",      "note": "AIOpsLab corpus pending"},
+    {"id": "B-H8", "rank": 8, "comparison": "HELIOS-Full vs CHASE",      "primary_metric": "macro-F1",           "status": "deferred", "baseline": "CHASE",      "note": "AIOpsLab corpus pending"},
 ]
 ```
 

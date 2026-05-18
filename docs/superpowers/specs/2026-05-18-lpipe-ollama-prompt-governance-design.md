@@ -268,6 +268,13 @@ LPIPE_SENTINEL_VALUES = {"l-pipe-connectivity-error", "l-pipe-fallback"}
 def is_lpipe_sentinel(result: dict) -> bool:
     candidates = result.get("ranked_candidates", [])
     return bool(candidates) and candidates[0] in LPIPE_SENTINEL_VALUES
+
+# G-pipe sentinel — defined in Spec 1 §3.4; cross-referenced here for evaluate_ablation.py completeness.
+# Both filters must be applied before any HR@3/CpR aggregation.
+GPIPE_SENTINEL_NARRATIVE = "gpipe-gated-or-skipped"
+
+def is_gpipe_sentinel(result: dict) -> bool:
+    return result.get("narrative") == GPIPE_SENTINEL_NARRATIVE
 ```
 
 This is analogous to the G-pipe sentinel filter (`narrative == "gpipe-gated-or-skipped"`). A-H7 (Full vs noLLM) and A-H6 (G vs D, gate-conditional) both require sentinel rows excluded from metric aggregation — sentinel rows are structural artefacts, not predictions, and including them deflates HR@3 and CpR.
