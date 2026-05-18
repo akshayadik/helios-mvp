@@ -215,15 +215,15 @@ def _structural_edges_temporal(self, spans: list[SpanRecord]) -> list[UEGCEdge]:
 
 And the dispatch in `_structural_edges()`:
 ```python
-def _structural_edges(self, spans: list[SpanRecord]) -> list[UEGCEdge]:
-    # Universal-absence check: schema v1 files set every span's parent_span_id=None
-    # (column absent → build_ueg_c() writes None). Schema v2 root spans get "" after
-    # str() conversion of the Parquet null value. Both None and "" signal "no parent";
-    # use a falsy test so that the fallback triggers when every span is parentless —
-    # regardless of whether the column was absent (v1) or present-but-empty (v2 root-only).
-    # A mixed v2 file always has at least one child span with a real span_id value,
-    # so all(not ...) correctly evaluates to False and the fast path runs normally.
-    if not spans or all(not s.parent_span_id for s in spans):
+def _structural_edges(self, spans: list[SpanRecord], parent_span_id_col_present: bool) -> list[UEGCEdge]:
+    # Fallback only when the column was structurally ABSENT from the Parquet (schema v1).
+    # A schema v2 trace where every span legitimately has parent_span_id="" (root-only trace)
+    # is a valid topology — the fast path runs, every span is skipped by the
+    # `if not child.parent_span_id: continue` guard, and an empty edge list is returned.
+    # DO NOT use `all(not s.parent_span_id for s in spans)`: both an absent-column v1 file
+    # and a root-only v2 file produce all-falsy parent_span_id values, making the cases
+    # indistinguishable from span data alone. Use the caller-supplied flag instead.
+    if not spans or not parent_span_id_col_present:
         import warnings
         warnings.warn("parent_span_id absent — falling back to temporal containment", stacklevel=3)
         return self._structural_edges_temporal(spans)
@@ -243,7 +243,7 @@ def _structural_edges(self, spans: list[SpanRecord]) -> list[UEGCEdge]:
 
 ### 2.3 `build_ueg_c()` factory update
 
-Read both `span_id` and `parent_span_id` from Parquet (`span_id` already exists in schema v1). When `parent_span_id` column is absent, set `parent_span_id=None` for every span — `_structural_edges()` detects this and delegates to `_structural_edges_temporal()`.
+Read both `span_id` and `parent_span_id` from Parquet (`span_id` already exists in schema v1). When `parent_span_id` column is absent, set `parent_span_id=None` for every span. The `has_psid` boolean (not the `None` sentinel) controls the fallback path — call `_structural_edges(spans, parent_span_id_col_present=has_psid)`. Passing the flag explicitly avoids conflating a root-only schema v2 trace (all `parent_span_id=""`, valid topology, should return empty edge list) with an absent-column schema v1 file (needs temporal containment fallback).
 
 **Null normalization — mandatory:** Parquet nullable columns surface as Python `None`, `float('nan')`, `pd.NA` (nullable integer/string dtypes), or `pd.NaT` (timestamp dtypes) when the cell is empty. A bare `str(None)` produces `"None"` and `str(float('nan'))` produces `"nan"` — both are truthy non-empty strings that cause phantom structural edges. `isinstance + math.isnan` only catches `float('nan')`; `pd.isna()` is required to cover `pd.NA`, `pd.NaT`, and other pandas null sentinels that appear in real Parquet data with nullable extension dtypes. Normalise via a helper before constructing `SpanRecord`.
 
@@ -283,9 +283,12 @@ spans = [
     )
     for i in range(n)
 ]
+# has_psid must be forwarded; _structural_edges() cannot distinguish absent-column (v1)
+# from root-only-trace (v2) based on span data alone.
+graph_edges = builder._structural_edges(spans, parent_span_id_col_present=has_psid)
 ```
 
-With this normalization, root spans always receive `parent_span_id=""` (falsy), and the schema-v1 fallback path (`parent_span_id=None`) is preserved only when the column is structurally absent.
+With this normalization, root spans receive `parent_span_id=""` (falsy). The schema-v1 fallback is triggered by `has_psid=False` (the column was absent), not by the presence of `None` or `""` sentinel values in the span data — that distinction allows a root-only schema v2 trace to return an empty but correct edge list rather than silently invoking the temporal heuristic.
 ```
 
 ### 2.4 Test coverage (`tests/graph/test_ueg_c_builder.py`)
@@ -296,7 +299,8 @@ With this normalization, root spans always receive `parent_span_id=""` (falsy), 
 | `test_structural_cross_service_edge` | A→B parent linkage produces STRUCTURAL edge |
 | `test_structural_same_service_skipped` | Intra-service spans produce no structural edge |
 | `test_structural_multi_level_chain` | A→B→C chain produces A→B and B→C structural edges |
-| `test_structural_fallback_on_missing_column` | Missing column → warning raised + temporal containment used |
+| `test_structural_fallback_on_missing_column` | `parent_span_id_col_present=False` passed → warning raised + temporal containment used (schema v1 path) |
+| `test_structural_root_only_v2_no_temporal_fallback` | `parent_span_id_col_present=True`, all spans have `parent_span_id=""` (root-only schema v2 trace) → no warning emitted, empty edge list returned (not temporal fallback) |
 | `test_structural_empty_spans` | Empty span list → empty edge list |
 | `test_structural_parquet_null_variants` | `pd.NA`, `float('nan')`, `None`, `pd.NaT` in `parent_span_id` all normalise to `""` via `_psid()` → no phantom edges produced. Explicit assertions: `_psid(None) == ""`, `_psid(float("nan")) == ""`, `_psid(pd.NA) == ""`, `_psid(pd.NaT) == ""`, `_psid("abc123") == "abc123"` |
 

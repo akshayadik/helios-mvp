@@ -390,7 +390,7 @@ def _vcl_freeze_sha() -> str:
 }
 ```
 
-**`flags` contains exactly the 14 VCLFlag keys** — the 13 boolean flags (`l2c_llm`, `p4_cognitive`, `mahc`, `cbr`, `l2b_graph`, `acp`, `reconcile`, `ueg_c_structural`, `dpipe`, `dpipe_propagation`, `gpipe`, `lpipe`, `router`) plus the string flag `ingest_mode`. `model_version` and `prompt_template_id` are also fields on `VCLManifest` (they participate in the variant hash), but they are **not VCLFlag-controlled gates** and must be excluded from the `flags` dict. The generation script filters `model_dump()` to only VCLFlag keys:
+**`flags` contains exactly the 14 VCLFlag keys** — the 13 boolean flags (`l2c_llm`, `p4_cognitive`, `mahc`, `cbr`, `l2b_graph`, `acp`, `reconcile`, `ueg_c_structural`, `dpipe`, `dpipe_propagation`, `gpipe`, `lpipe`, `router`) plus the string flag `ingest_mode`. `model_version` and `prompt_template_id` are existing Stage 0 VCLManifest fields (not introduced by M3) that participate in the variant hash via `compute_variant_config_hash()`. They are **not VCLFlag-controlled gates** and must be excluded from the `flags` dict. **M3 does NOT change these fields in any variant** — all 8 CONFIRMATORY_VARIANTS retain the Stage 0 frozen defaults (`model_version="helios-llm-baseline"`, `prompt_template_id="baseline-v1"`). L-pipe prompt governance is handled separately by `EXPECTED_PROMPT_SHA` in `lpipe_config.py` and the `PromptRegistry` tamper-guard, not by `VCLManifest.prompt_template_id`. Changing either field from its Stage 0 default would invalidate all pre-registered variant config hashes and requires a deviation log entry with full hash-migration impact analysis. The generation script filters `model_dump()` to only VCLFlag keys:
 
 ```python
 from helios.vcl.registry import VCLFlag

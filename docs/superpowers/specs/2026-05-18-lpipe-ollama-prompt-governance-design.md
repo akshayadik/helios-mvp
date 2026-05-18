@@ -330,6 +330,34 @@ Any subsequent change to `rca_v1.txt` requires a deviation log entry before `EXP
 
 **Signature:** `run_lpipe` accepts the full `UEGCSnapshot` object — not just `snapshot_hash` — so that `_service_list_from_snapshot()` and `_anomaly_summary()` can read service names and anomaly data directly from the in-memory snapshot rather than re-loading from disk via hash lookup:
 
+**Required module-level imports for `pipeline.py`** (omitting any of the three `Ollama*Error` classes causes a `NameError` inside the `except` clause at runtime):
+
+```python
+import time
+from typing import Any
+
+from helios.pipelines.l_pipe.lpipe_config import (
+    EXPECTED_PROMPT_SHA,
+    LPIPE_MAX_RETRIES,
+    MODEL_NAME,
+    OLLAMA_BASE_URL,
+    TIMEOUT_S,
+)
+from helios.pipelines.l_pipe.ollama_client import (
+    OllamaClient,
+    OllamaConnectionError,   # caught in run_lpipe try/except
+    OllamaResponseError,     # caught in run_lpipe try/except
+    OllamaTimeoutError,      # caught in run_lpipe try/except
+)
+from helios.pipelines.l_pipe.prompt_registry import PROMPT_PATH, PromptRegistry
+from helios.pipelines.l_pipe.response_handler import ResponseHandler
+from helios.schemas.ueg_c import UEGCSnapshot
+from helios.schemas.verdict import VERDICT_SCHEMA_VERSION
+from helios.vcl import VCLFlag, gated_by, get_current_manifest
+```
+
+Python evaluates exception names in `except (OllamaTimeoutError, OllamaConnectionError, OllamaResponseError)` at runtime in the enclosing module scope. If any of these names is not imported at module level, Python raises `NameError` when a connectivity exception actually occurs — exactly when fault isolation is most critical.
+
 ```python
 @gated_by(VCLFlag.L2C_LLM)
 def run_lpipe(
@@ -500,8 +528,19 @@ def test_prompt_rendering_sha_is_stable():
         anomaly_summary=_anomaly_summary(snapshot),
     )
     rendered_sha = hashlib.sha256(rendered.encode()).hexdigest()
-    # Compute expected once; freeze it. Any change → deviation log first.
-    EXPECTED_RENDERED_SHA = "<compute on first test run>"
+    # Bootstrap workflow (one-time after rca_v1.txt is committed):
+    #   1. Run: pytest tests/pipelines/test_lpipe_pipeline.py::test_prompt_rendering_sha_is_stable -s
+    #   2. The pytest.skip message prints the 64-char bootstrap value
+    #   3. Paste it into EXPECTED_RENDERED_SHA below, remove the None guard, commit
+    # After bootstrap, any change to rca_v1.txt, _anomaly_summary(), or render() format
+    # causes this test to fail — a deviation log entry is required before updating the value.
+    EXPECTED_RENDERED_SHA: str | None = None  # replace with 64-char hex on first run
+
+    if EXPECTED_RENDERED_SHA is None:
+        import pytest as _pytest
+        _pytest.skip(
+            f"EXPECTED_RENDERED_SHA not yet frozen — bootstrap value: {rendered_sha}"
+        )
     assert rendered_sha == EXPECTED_RENDERED_SHA
 ```
 
