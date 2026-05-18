@@ -103,10 +103,13 @@ Test: `tests/test_snapshot_registry.py` — verify 20 entries, HMAC chain clean,
 
 ### 2.1 SpanRecord update (`helios/graph/ueg_c_builder.py`)
 
+`SpanRecord` gains two new fields. `span_id` is required to support parent_span_id matching (it is already present in the Parquet schema):
+
 ```python
 @dataclass(frozen=True)
 class SpanRecord:
     trace_id: str
+    span_id: str                 # NEW — needed for parent_span_id lookup
     service_name: str
     parent_span_id: str | None   # NEW — None or "" for root spans
     start_us: int
@@ -121,36 +124,35 @@ Replace temporal containment loop with parent_span_id linkage. Key invariants:
 - Same-service parent→child spans are skipped (intra-service calls excluded).
 - Deduplication: one STRUCTURAL edge per (src, tgt) service pair per trace.
 
-Algorithm sketch:
+Algorithm sketch (key invariant: match `child.parent_span_id == parent.span_id` within the same trace):
 ```python
 def _structural_edges(self, spans: list[SpanRecord]) -> list[UEGCEdge]:
-    span_service: dict[str, str] = {}   # span_id → service_name
-    for s in spans:
-        span_service[s.trace_id + ":" + str(id(s))] = s.service_name
-    # Build by matching span_id to parent_span_id within the same trace
+    # Build lookup: (trace_id, span_id) → service_name
+    span_svc: dict[tuple[str, str], str] = {
+        (s.trace_id, s.span_id): s.service_name for s in spans
+    }
     pairs: set[tuple[str, str]] = set()
-    for span in spans:
-        if not span.parent_span_id:
-            continue  # root span
-        parent_svc = _find_service_for_span(spans, span.parent_span_id, span.trace_id)
-        if parent_svc and parent_svc != span.service_name:
-            pairs.add((parent_svc, span.service_name))
+    for child in spans:
+        if not child.parent_span_id:
+            continue  # root span — no incoming structural edge
+        parent_svc = span_svc.get((child.trace_id, child.parent_span_id))
+        if parent_svc and parent_svc != child.service_name:
+            pairs.add((parent_svc, child.service_name))
     return [UEGCEdge(source=src, target=tgt, edge_type=EdgeType.STRUCTURAL, weight=1)
             for src, tgt in sorted(pairs)]
 ```
-
-(Exact helper `_find_service_for_span` is O(n) lookup; plan task details exact span_id matching against the Parquet `span_id` column.)
 
 **Fallback:** If `parent_span_id` column is missing from the Parquet table (unexpected regression), `build_ueg_c()` logs `warnings.warn` and falls back to temporal containment. Never returns an empty graph silently.
 
 ### 2.3 `build_ueg_c()` factory update
 
-Read `parent_span_id` from Parquet:
+Read both `span_id` and `parent_span_id` from Parquet (`span_id` already exists in schema v1):
 ```python
 has_psid = "parent_span_id" in cols
 spans = [
     SpanRecord(
         trace_id=str(cols["trace_id"][i]),
+        span_id=str(cols["span_id"][i]),
         service_name=str(cols["service_name"][i]),
         parent_span_id=str(cols["parent_span_id"][i]) if has_psid else None,
         start_us=int(cols["start_time_us"][i]),
