@@ -12,6 +12,14 @@ if TYPE_CHECKING:
     from helios.schemas.ueg_c import UEGCSnapshot
 
 
+@pytest.fixture(autouse=True)
+def _reset_manifest() -> None:  # type: ignore[return]
+    yield
+    from helios.vcl.decorators import _current_manifest
+
+    _current_manifest.set(None)
+
+
 class TestComputePprDisagreement:
     def test_below_threshold_returns_low_value(self) -> None:
         from helios.pipelines.g_pipe.pipeline import compute_ppr_disagreement
@@ -235,3 +243,19 @@ class TestRunGpipe:
             assert field in result, f"missing field: {field}"
         assert result["evaluation_phase"] == "confirmatory"
         assert result["run_id"] == "run-xyz"
+
+    def test_raises_when_gpipe_flag_off(self) -> None:
+        from helios.pipelines.g_pipe.pipeline import run_gpipe
+        from helios.vcl import GatedComponentInactiveError
+
+        manifest = get_variant("HELIOS-noGraph")
+        set_current_manifest(manifest)
+        with pytest.raises(GatedComponentInactiveError):
+            run_gpipe(
+                incident_id="inc-001",
+                snapshot=_make_snap(),
+                snapshot_hash="b" * 64,
+                dpipe_scores={"A": 0.90, "B": 0.45, "C": 0.36},
+                evaluation_phase="exploratory",
+                run_id="run-001",
+            )
