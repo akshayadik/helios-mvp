@@ -4,7 +4,7 @@
 
 **Update cadence:** On any tracking-doc add/remove/rename
 **Owner module:** Researcher (solo)
-**Last updated:** 2026-05-15 (Milestone 1 exit)
+**Last updated:** 2026-05-18 (Milestone 2 exit + PPR fix)
 
 ---
 
@@ -23,14 +23,14 @@ All tracking documents in `docs/tracking/` follow these rules:
 
 | # | Document | Path | Purpose | First active stage | Update trigger | Last updated | Status |
 |---|----------|------|---------|-------------------|----------------|--------------|--------|
-| 1 | Ablation Architecture | `ablation_architecture.md` | Architectural decision record — design choices with justification and ablation variant mapping | Stage 0 | On any pipeline/component architectural change | 2026-05-15 | ✅ Current |
-| 2 | Calibration Thresholds | `calibration_thresholds.md` | Per-metric thresholds used in MetricIntegrityGate; frozen before confirmatory runs | Stage 1 | After D-pipe/G-pipe/L-pipe threshold tuning | 2026-05-15 | 🟡 Schema only — values pending Stage 2+ |
-| 3 | Dashboard | `dashboard.md` | Live experiment dashboard — Gantt, architecture flow, cell-completion grid, C1 invariants | Stage 0 | Weekly (manual until weekly_dashboard.yml CI lands) | 2026-05-15 | ✅ Current |
+| 1 | Ablation Architecture | `ablation_architecture.md` | Architectural decision record — design choices with justification and ablation variant mapping | Stage 0 | On any pipeline/component architectural change | 2026-05-18 | ✅ Current (v0.5; §2.6 + §3.1 frozen at M2) |
+| 2 | Calibration Thresholds | `calibration_thresholds.md` | Per-metric thresholds used in MetricIntegrityGate; frozen before confirmatory runs | Stage 1 | After D-pipe/G-pipe/L-pipe threshold tuning | 2026-05-18 | ✅ Current (M2 D-pipe + PPR values frozen) |
+| 3 | Dashboard | `dashboard.md` | Live experiment dashboard — Gantt, architecture flow, cell-completion grid, C1 invariants | Stage 0 | Weekly (manual until weekly_dashboard.yml CI lands) | 2026-05-18 | ✅ Current (M2 exit; 10 deviation entries) |
 | 4 | Data Collection Log | `data_collection_log.md` | Per-incident capture record — window times, row counts, anomalies | Stage 0 | After every telemetry capture session | 2026-05-15 | ✅ Current (20 captures) |
-| 5 | Deviation Log | `deviation_log.md` | Human-readable mirror of `deviation_log.jsonl` — 5 most recent HMAC-signed deviation entries | Stage 0 | After every `bin/log_deviation.py` append | 2026-05-15 | ✅ Current (5 entries) |
+| 5 | Deviation Log | `deviation_log.md` | Human-readable mirror of `deviation_log.jsonl` — HMAC-signed deviation entries | Stage 0 | After every `bin/log_deviation.py` append | 2026-05-18 | ✅ Current (10 entries; M2 adds entries 6–10) |
 | 6 | Disjointness Audit Log | `disjointness_audit_log.md` | Record of every DisjointnessAuditor run — static and dynamic results per commit | Stage 1 | After each CI disjointness workflow run | 2026-05-15 | ✅ Current (1 entry) |
 | 7 | Ground Truth Labelling | `ground_truth_labelling.md` | Deterministic fault→root-cause labels for all 20 OTEL Demo incidents | Stage 0 | On corpus expansion or label correction | 2026-05-15 | ✅ Current (20 entries) |
-| 8 | Helios MVP Tracking | `helios_mvp_tracking.md` | Daily task tracker — all engineering, research, evaluation, and gate rows with SHAs and evidence | Stage 0 | After every completed task (DONE transition) | 2026-05-15 | ✅ Current (S0 + M1 rows) |
+| 8 | Helios MVP Tracking | `helios_mvp_tracking.md` | Daily task tracker — all engineering, research, evaluation, and gate rows with SHAs and evidence | Stage 0 | After every completed task (DONE transition) | 2026-05-18 | ✅ Current (S0 + M1 + M2 rows; ENG10/11 + GATE03 added for PPR fix) |
 | 9 | Hypothesis–Variant–Metric Mapping | `hypothesis_variant_metric_mapping.md` | Maps A-H1..8 hypotheses to variants, primary/secondary metrics, statistical tests, and α | Stage 0 | On hypothesis revision (requires deviation log entry) | 2026-05-15 | ✅ Current (8 hypotheses) |
 | 10 | Price Book | `price_book.md` | Per-token and per-compute-second cost coefficients for CpR metric computation | Stage 2 | Stage 5 freeze (post-freeze changes are external-validity threats) | — | 🟡 Schema only — Stage 2+ |
 | 11 | Prompt Version Registry | `prompt_version_registry.md` | Frozen L-pipe prompt templates with prompt_sha — binds H_struct measurement to prompt revisions | Stage 3 | Before each L-pipe prompt update | — | 🟡 Schema only — Stage 3+ |
@@ -38,7 +38,7 @@ All tracking documents in `docs/tracking/` follow these rules:
 | 13 | Reproducibility Manifest | `reproducibility_manifest.md` | Environment pin list, schema freeze record, software versions, and Stage 5 pre-registration checklist | Stage 0 | On environment change or schema freeze | 2026-05-15 | ✅ Current |
 | 14 | Seed Register | `seed_register.md` | Integer seed registry — maps Seed_ID to value, stage, variant, benchmark, and algorithm context | Stage 0 | Before any new experiment seed is used | 2026-05-15 | ✅ Stage 0 seed registered; confirmatory block pending Stage 5 |
 | 15 | Snapshot Hash Registry | `snapshot_hash_registry.md` | Append-only JSONL-mirror — maps incident_id to snapshot_hash and variant_config_hash | Stage 0 | After every telemetry capture (automated via SnapshotRegistry) | 2026-05-15 | ✅ Current (20 entries) |
-| 16 | Tracking Documents Register | `tracking_documents_register.md` | This document — master index of all tracking docs | Stage 0 | On any tracking-doc add/remove/rename | 2026-05-15 | ✅ Current |
+| 16 | Tracking Documents Register | `tracking_documents_register.md` | This document — master index of all tracking docs | Stage 0 | On any tracking-doc add/remove/rename | 2026-05-18 | ✅ Current |
 | 17 | Validity Tracking | `validity_tracking.md` | Threat-to-validity register — internal, construct, and external threats with mitigations | Stage 0 | After each new validity threat identified | 2026-05-15 | ✅ Current (8 threats) |
 | 18 | VCL Manifest Tracking | `vcl_manifest_tracking.md` | Master register of VCL variant configurations and their variant_config_hash values | Stage 0 | After every VCL config change or new variant | 2026-05-14 | ✅ Current (8 confirmatory variants) |
 
