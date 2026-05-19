@@ -38,6 +38,12 @@
 | 8 | 2026-05-16 | Stage 1 | §2.4 K-Hop PPR Pruner — Pruner Efficacy Exit Gate | Pruner achieves 0% node reduction on all 15 calibration incidents; exit gate requires ≥50% reduction | D-pipe Stage C uses CALL edges exclusively; no ground-truth service severed; HR@3=0.5333 valid; pre-M3 replacement tracked | 629886ca14cd7468 |
 | 9 | 2026-05-18 | Stage 1 / M2-fix | §2.4-gate | PPR entry-point fix (exclude isolated async-consumer nodes); PRUNER_EFFICACY_GATE 0.50→0.25; PRUNER_THRESHOLD 0.01→0.02 | Pruner now removes 5 peripheral nodes (36% efficacy vs 0% before); calibrated params and HR@3=0.5333 unchanged | 766ee8e1fc60 |
 | 10 | 2026-05-18 | Stage 1 / M2-fix | §2.4-gate-2 | PRUNER_EFFICACY_GATE 0.25→0.20; INTEGRITY_RATE_GATE 0.85→0.40 | All 15 calibration incidents now pass both gates; calibrated params and LOO-CV HR@3=0.5333 unchanged | 1737fc5b33ab |
+| 11 | 2026-05-18 | Stage 1 / M3 | §3.6.3 PipelineVerdict schema | PipelineVerdict schema-draft-v0.2: added ppr_scores and prompt_version fields | All exploratory verdict hashes invalidated; exploratory data excluded from confirmatory inference | 9bc1857167e9 |
+| 12 | 2026-05-18 | Stage 1 / M3-task6 | §2.2 Span Containment Heuristic | All 20 incidents re-captured with parent_span_id; port defaults updated (Jaeger 32771, OpenSearch 32768) | Structural edge topology changes for all 20 incidents; exploratory corpus only — no pre-registered hypotheses affected | cdc80e197402 |
+| 13 | 2026-05-18 | Stage 1 / M3 | §3.6.8 Orchestration — concurrent pipeline dispatch | Sequential D→G(conditional)→L dispatch; G-pipe gate changed to should_run_gpipe(); run_id threaded through all verdicts | No impact on metric correctness; pipeline isolation preserved; L-pipe remains independent | 84dcc2834950 |
+| 14 | 2026-05-19 | Stage 1 / M3 | §4.2 A-H6 entry gate / §3.6.7 G-pipe threshold | DISAGREEMENT_THRESHOLD 0.30→0.20 after LOO-CV sweep; ppr_scores added to run_dpipe return dict | G-pipe now correctly receives D-pipe PPR scores; DISAGREEMENT_THRESHOLD frozen at 0.20 (OTEL corpus too uniform for discrimination; re-calibrate on AIOpsLab) | 05a602955403 |
+| 15 | 2026-05-19 | Stage 1 / M3 | §3.6.7 L-pipe — model specification | L-pipe uses llama3.1:8b via Ollama (proposal specifies Llama-3.1-70B via vLLM) | Narrative quality (CoE) reduced vs 70B; HR@3/CpR unaffected — depend on ranked_candidates not narrative | 29789db26fba |
+| 16 | 2026-05-19 | Stage 1 / M3 | §3.6.7 L-pipe — serving runtime | Ollama serving runtime for MVP instead of vLLM as specified in proposal | Latency measurements are not production-representative and must not be used for confirmatory MTTR analysis | b7812340df24 |
 
 ---
 
@@ -47,4 +53,4 @@
 
 ---
 
-*Last updated: 2026-05-18 from deviation_log.jsonl (10 entries, chain verified)*
+*Last updated: 2026-05-19 from deviation_log.jsonl (16 entries, chain verified)*

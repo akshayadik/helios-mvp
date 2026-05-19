@@ -31,3 +31,16 @@ Hashes computed at commit `573c82f` (post-PR #12 merge). All variants share
 - `canonical_json` sorts keys, rounds floats to 6 decimal places, no whitespace
 - Adding or renaming any `VCLManifest` field invalidates all hashes — requires a deviation log entry
 - The `model_` prefix namespace warning is suppressed via `protected_namespaces=()` in `ConfigDict` (Pydantic v2.9)
+
+## Milestone 3 OSF Freeze Verification (2026-05-19)
+
+All 8 variant hashes above were independently verified by `bin/verify_osf_freeze.py --generate` against `research/osf/variant_hashes.json`.
+
+| Freeze artefact | Value |
+|---|---|
+| `research/osf/variant_hashes.json` | Generated 2026-05-19T03:53:06 UTC |
+| VCL freeze SHA (in artefact) | `0233165e891ca860683190eef18873216e14cf32` |
+| manifest_sig.txt (over all 6 OSF artefacts) | `e93b5b88339809cdaea7316e5b8f938138f6eb20a227133cda50ef8580ceeb01` |
+| CI verification job | `osf-freeze-verify` — runs `--verify` on every push |
+
+All 8 hashes in the registry above are confirmed identical to the frozen OSF artefact. No hash changes since `573c82f`.
