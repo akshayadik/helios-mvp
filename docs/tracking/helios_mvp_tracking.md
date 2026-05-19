@@ -204,3 +204,16 @@ print(df.groupby('Day')['Status'].value_counts().unstack(fill_value=0))
 | S1-M2-ENG10 | - | ENG | PPR entry-point fix — exclude isolated async-consumer nodes from PPR seed; add hub fallback | §2.4 | Design | C2 | AA | S1-M2-GATE02 | DONE | 2026-05-18 | 2026-05-18 | d0e8576 | TEST | tests/graph/test_ppr_pruner.py::test_isolated_structural_root_excluded_from_ppr_seed | | | Deviation §2.4-gate (sig 766ee8e1fc60); PRUNER_THRESHOLD raised 0.01→0.02; efficacy gate lowered 0.50→0.25; 2 new tests added |
 | S1-M2-ENG11 | - | ENG | Gate final recalibration — PRUNER_EFFICACY_GATE 0.25→0.20; INTEGRITY_RATE_GATE 0.85→0.40 | §2.4 | Design | C2 | AA | S1-M2-ENG10 | DONE | 2026-05-18 | 2026-05-18 | 44e9994 | IMPL | helios/pipelines/d_pipe/dpipe_config.py | | | Deviation §2.4-gate-2 (sig 1737fc5b33ab); efficacy/integrity incompatible on 14-node graph; observed min efficacy=0.214, integrity=0.429 |
 | S1-M2-GATE03 | - | GATE | PPR fix verification — calibration rerun confirms 15/15 incidents pass efficacy and integrity gates | §2.4, §5.2 | Evaluate | C2 | AA | S1-M2-ENG11 | DONE | 2026-05-18 | 2026-05-18 | 44e9994 | EVAL | scripts/calibrate_dpipe.py (efficacy: 15 PASS/0 FAIL; integrity: 15 PASS/0 FAIL) | | | LOO-CV HR@3=0.5333 unchanged; w_error=0.3, rho=0.2, topology_boost=1.00 unchanged; PR #24 merged |
+
+---
+
+## MILESTONE 3 — G-pipe Conditional Peer Pipeline
+
+**Row ID format:** `S1-M3-{TYPE}{nn}` — spans multiple sessions; Day recorded as `-` for all M3 rows.
+
+| Task_ID | Day | Type | Description | Prop_§ | DSR | Contrib | Own | Deps | Status | Started | Done | SHA | Ev_Type | Ev_Ref | Gate | Dev_Ref | Notes |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| S1-M3-ENG01 | - | ENG | G-pipe conditional pipeline: PPR traversal, disagreement gate, sentinel verdict | §3.6.7, §3.3 | Design | C2 | AA | S1-M2-GATE03 | PLANNED | - | - | - | - | - | - | - | |
+| S1-M3-ENG02 | - | ENG | Structural edge re-capture at schema-draft-v0.2 with parent_span_id linkage | §3.6.3, §3.7 | Design | C2 | AA | S1-M3-ENG01 | PLANNED | - | - | - | - | - | - | - | |
+| S1-M3-RES01 | - | RES | G-pipe LOO-CV threshold calibration (DISAGREEMENT_THRESHOLD 0.30→0.20) | §4.1, §3.6.7 | Evaluate | C2 | AA | S1-M3-ENG02 | PLANNED | - | - | - | - | - | - | - | |
+| S1-M3-RES02 | - | RES | A-H6 sentinel filter documentation — ablation_architecture §3.2 + hypothesis mapping | §3.6.7, §B.12 | Communicate | methodology | AA | S1-M3-RES01 | PLANNED | - | - | - | - | - | - | - | |
