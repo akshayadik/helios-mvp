@@ -192,7 +192,10 @@ def _build_prompt_sha_dict() -> dict:  # type: ignore[type-arg]
 
 def _build_thresholds_dict() -> dict:  # type: ignore[type-arg]
     from helios.pipelines.d_pipe import dpipe_config
-    from helios.pipelines.g_pipe.gpipe_config import GPIPE_PPR_ALPHA
+    from helios.pipelines.g_pipe.gpipe_config import (
+        DISAGREEMENT_THRESHOLD,
+        GPIPE_PPR_ALPHA,
+    )
 
     params = json.loads(CALIBRATED_PARAMS_PATH.read_bytes())
     return {
@@ -212,7 +215,7 @@ def _build_thresholds_dict() -> dict:  # type: ignore[type-arg]
             "w_error": params.get("w_error"),
         },
         "gpipe": {
-            "disagreement_threshold": dpipe_config.PRUNER_THRESHOLD,
+            "disagreement_threshold": DISAGREEMENT_THRESHOLD,
             "ppr_alpha": GPIPE_PPR_ALPHA,
             "frozen_at_milestone": "Milestone 3",
             "gpipe_hr_at_3_held_out": params["gpipe_hr_at_3_held_out"],

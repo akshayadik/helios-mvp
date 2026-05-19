@@ -44,6 +44,7 @@
 | 14 | 2026-05-19 | Stage 1 / M3 | §4.2 A-H6 entry gate / §3.6.7 G-pipe threshold | DISAGREEMENT_THRESHOLD 0.30→0.20 after LOO-CV sweep; ppr_scores added to run_dpipe return dict | G-pipe now correctly receives D-pipe PPR scores; DISAGREEMENT_THRESHOLD frozen at 0.20 (OTEL corpus too uniform for discrimination; re-calibrate on AIOpsLab) | 05a602955403 |
 | 15 | 2026-05-19 | Stage 1 / M3 | §3.6.7 L-pipe — model specification | L-pipe uses llama3.1:8b via Ollama (proposal specifies Llama-3.1-70B via vLLM) | Narrative quality (CoE) reduced vs 70B; HR@3/CpR unaffected — depend on ranked_candidates not narrative | 29789db26fba |
 | 16 | 2026-05-19 | Stage 1 / M3 | §3.6.7 L-pipe — serving runtime | Ollama serving runtime for MVP instead of vLLM as specified in proposal | Latency measurements are not production-representative and must not be used for confirmatory MTTR analysis | b7812340df24 |
+| 17 | 2026-05-19 | Stage 3 | §3.6.7 | Fix verify_osf_freeze.py to export DISAGREEMENT_THRESHOLD instead of PRUNER_THRESHOLD for gpipe in thresholds.json. | Ensures that pre-registered G-pipe threshold (0.20) correctly aligns with the execution code rather than matching the D-pipe pruner threshold (0.02). | 74af9e9f3e6a |
 
 ---
 
@@ -53,4 +54,4 @@
 
 ---
 
-*Last updated: 2026-05-19 from deviation_log.jsonl (16 entries, chain verified)*
+*Last updated: 2026-05-19 from deviation_log.jsonl (17 entries, chain verified)*

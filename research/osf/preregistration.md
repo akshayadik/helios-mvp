@@ -95,13 +95,13 @@ and confirmatory data are never mixed.
 
 | File | SHA-256 |
 |---|---|
-| `analysis_plan.json` | <!-- SHA:analysis_plan.json -->`e1deb9a77efe0a32f7f89b5c1314392b95cd2652bd1d9a71acdc57577541899f` |
-| `corpus_manifest.json` | <!-- SHA:corpus_manifest.json -->`361d392834aa5012f09858782277e4bffcad7aaa6f4b637d150c0997d27d377d` |
-| `prompt_sha.json` | <!-- SHA:prompt_sha.json -->`cd50a6e3b9bd8fb4cf6896986fbe53006a9fa6c0b6cad422c6fed42f2698dedf` |
-| `seeds.json` | <!-- SHA:seeds.json -->`bbb9879676cef62c36caf75453fd82b2db04a180f547afd223ff6806c5940bed` |
-| `thresholds.json` | <!-- SHA:thresholds.json -->`31d92177d7f53785d1ee7e4558358d8df226a948f6f3cd9b9fffe097e7c65864` |
-| `variant_hashes.json` | <!-- SHA:variant_hashes.json -->`0caf5192f0d2ab526f374aa8a22f395f8d4806642da2eada1537c7f1b87c7715` |
-| `manifest_sig.txt` | <!-- SHA:manifest_sig.txt -->`bee226dd9f83b0e63bb73cf2f26e09031cde1b8c1f0e541a2b77bfc85c8b0c6e` |
+| `analysis_plan.json` | <!-- SHA:analysis_plan.json -->`a3d6a18bafc8af29821c48260ce80c60a7fdad95d064adb3599271e1aad43e9b` |
+| `corpus_manifest.json` | <!-- SHA:corpus_manifest.json -->`5799747b31ef7058870abe13bcfcb2022b967ecc47623e08d745454babc2b4e0` |
+| `prompt_sha.json` | <!-- SHA:prompt_sha.json -->`1d72b485f559c559dd37b5971857b033c3e2c2b2a941618e0322da7c5b555b2c` |
+| `seeds.json` | <!-- SHA:seeds.json -->`8f5c417ffb3832dfb67ab2edba0a5dc186f289737fb41e446e94cc75cab9da0d` |
+| `thresholds.json` | <!-- SHA:thresholds.json -->`e4696d3ac8638d2bd37ad3dd9299ddab0274b91b04969757c6743bef5a52f8d4` |
+| `variant_hashes.json` | <!-- SHA:variant_hashes.json -->`251dee3af1d5015404daee4caf1fc58b37e8bd0f24c6bdef3412206f03beed07` |
+| `manifest_sig.txt` | <!-- SHA:manifest_sig.txt -->`5aff59aeb82c769c54d8e17df0b621623bded54609a5aca063a77374331fe0da` |
 
 ---
 
