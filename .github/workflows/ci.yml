@@ -314,3 +314,56 @@ jobs:
         if: failure()
         run: |
           echo "::error::VCL disjointness violation detected. Two or more feature flags gate the same code path. See §3.9.1 (Threat 2) for resolution protocol."
+
+# ─────────────────────────────────────────────────────────────────────────────
+# JOB 6: osf-freeze-verify
+# Verifies OSF protocol freeze artefacts are intact and match recorded hashes.
+# --verify does not call _preflight_generate so no DEVIATION_HMAC_SECRET needed.
+# ─────────────────────────────────────────────────────────────────────────────
+  osf-freeze-verify:
+    runs-on: ubuntu-22.04
+    needs: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Poetry ${{ env.POETRY_VERSION }}
+        run: pip install "poetry==${{ env.POETRY_VERSION }}"
+
+      - name: Install dependencies
+        run: poetry install --no-interaction --with dev
+
+      - name: Verify OSF freeze
+        run: poetry run python bin/verify_osf_freeze.py --verify
+
+# ─────────────────────────────────────────────────────────────────────────────
+# JOB 7: ablation-notebook
+# Executes the ablation notebook to confirm it runs end-to-end without errors.
+# Depends on osf-freeze-verify so the notebook only runs if artefacts are clean.
+# ─────────────────────────────────────────────────────────────────────────────
+  ablation-notebook:
+    runs-on: ubuntu-22.04
+    needs: osf-freeze-verify
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Poetry ${{ env.POETRY_VERSION }}
+        run: pip install "poetry==${{ env.POETRY_VERSION }}"
+
+      - name: Install dependencies
+        run: poetry install --no-interaction --with dev
+
+      - name: Execute ablation notebook
+        run: |
+          poetry run jupyter nbconvert --to notebook --execute \
+            --ExecutePreprocessor.timeout=120 \
+            research/ablation_notebook.ipynb
