@@ -47,7 +47,7 @@ def test_non_a_h6_entries_have_null_filter() -> None:
 def test_family_a_ranks_are_unique_and_sequential() -> None:
     from helios.research.analysis_plan import FAMILY_A_HYPOTHESES
 
-    ranks = sorted(h["rank"] for h in FAMILY_A_HYPOTHESES)
+    ranks = sorted(int(h["rank"]) for h in FAMILY_A_HYPOTHESES)  # type: ignore[arg-type]
     assert ranks == list(range(1, 9))
 
 
