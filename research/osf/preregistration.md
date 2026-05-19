@@ -2,9 +2,9 @@
 
 **Title:** HELIOS: A Hybrid Multi-Pipeline Root Cause Analysis Framework for Microservices
 
-**Author:** Akshay Adik (PhD candidate)
+**Author:** Akshay Adik (DBA candidate)
 
-**Freeze date:** 2026-05-18
+**Freeze date:** 2026-05-19
 
 **Milestone:** Milestone 3 — Conditional G-pipe + L-pipe + OSF Full Freeze
 
@@ -108,10 +108,34 @@ and confirmatory data are never mixed.
 ## Deviation Summary
 
 All protocol deviations with analytic consequence are logged in `deviation_log.jsonl`
-(HMAC-SHA256 chained). List each entry by stage, clause, change, reason, and analytic
-consequence. Entries 1-12 covering Milestones 1-3 must be listed before OSF deposit.
+(HMAC-SHA256 chained). Authoritative source: `deviation_log.jsonl`. Chain verified 2026-05-19.
+Full change text and reasons are in the JSONL; this table is the examiner-readable summary.
 
-[Populate from deviation_log.jsonl before OSF deposit — no TBD sections permitted at G3-5 gate]
+**Note on `commit_sha` field:** All 18 entries carry `commit_sha: "LOCAL"` because the
+deviation log CLI was run before pushing each commit to the remote. The HMAC chain is
+cryptographically valid. Actual commit SHAs can be reconstructed from `git log --after`
+cross-referenced with `timestamp_utc` in each entry. See `reproducibility_manifest.md §6`.
+
+| # | Date | Stage | Clause | Change | Analytic Consequence | sig[:16] |
+|---|---|---|---|---|---|---|
+| 1 | 2026-05-08 | Stage 0 | Setup | Python pinned to `>=3.11,<3.12` | Reproducibility constraint; no effect on analysis | `7fee47b53a2dc5b4` |
+| 2 | 2026-05-08 | Stage 0 | §3.6.6 | C1 invariants reduced 6→5; ReconciliationLedger deferred to M1 | E-H5 descoped; A-H5 static routing retained | `fb8ece84e8a1b7bd` |
+| 3 | 2026-05-08 | Stage N | §... | Chain-bootstrap placeholder — corrected by entry 18 | None | `539e67a1910f9da7` |
+| 4 | 2026-05-12 | Stage 1 | §6.2 | Added `model_version` + `prompt_template_id` to VCLManifest | All 8 confirmatory `variant_config_hash` values invalidated and recomputed | `0b8fcc0d03d1fb0e` |
+| 5 | 2026-05-14 | Stage 0 | §B.12 | Stage 0 exit sign-off; EG1–EG6 all satisfied | None (sign-off entry; no protocol change) | `a64c18b7f0b94745` |
+| 6 | 2026-05-16 | Stage 1 | §2.2 | Temporal span-containment heuristic instead of `parent_span_id` linkage | Potential structural-edge misattribution; bounded to PPR entry-point identification | `5655ff9fbeeabfaf` |
+| 7 | 2026-05-16 | Stage 1 | §4.2 | Smoke gate vacuously tied on rcf hold-out (both HR@3 = zero) | No re-calibration permitted post-registration; generalize on AIOpsLab 174-fault corpus | `7737045a57c994a5` |
+| 8 | 2026-05-16 | Stage 1 | §2.4 | Pruner achieves zero node reduction on 15 calibration incidents | D-pipe CALL-edges path valid; HR@3 on calibration corpus unaffected | `629886ca14cd7468` |
+| 9 | 2026-05-18 | Stage 1 / M2-fix | §2.4-gate | PRUNER_EFFICACY_GATE 0.50→0.25; PRUNER_THRESHOLD 0.01→0.02; PPR entry-point bug fixed | Calibrated params (w_error, rho, boost) unchanged; 15/15 PASS | `766ee8e1fc608e60` |
+| 10 | 2026-05-18 | Stage 1 / M2-fix | §2.4-gate-2 | PRUNER_EFFICACY_GATE 0.25→0.20; INTEGRITY_RATE_GATE 0.85→0.40 | All 15 incidents PASS both gates; calibrated params unchanged | `1737fc5b33ab1abe` |
+| 11 | 2026-05-18 | Stage 1 / M3 | §3.6.3 | PipelineVerdict schema-draft-v0.2: added `ppr_scores` + `prompt_version` | All exploratory verdict hashes invalidated; exploratory data excluded from confirmatory inference | `9bc1857167e95a85` |
+| 12 | 2026-05-18 | Stage 1 / M3-task6 | §2.2 | All 20 incidents re-captured with `parent_span_id`; capture port defaults updated | Structural topology changes for all 20 incidents; exploratory corpus only — no pre-registered hypotheses affected | `cdc80e197402feac` |
+| 13 | 2026-05-18 | Stage 1 / M3 | §3.6.8 | RunOrchestrator changed concurrent→sequential D→G(conditional)→L dispatch | No impact on metric correctness; pipeline isolation preserved | `84dcc28349507a2f` |
+| 14 | 2026-05-19 | Stage 1 / M3 | §4.2 / §3.6.7 | DISAGREEMENT_THRESHOLD 0.30→0.20; `ppr_scores` exposed in `run_dpipe` return | Threshold frozen at 0.20; AIOpsLab re-calibration required before confirmatory inference on A-H6 | `05a602955403f9cb` |
+| 15 | 2026-05-19 | Stage 1 / M3 | §3.6.7 | L-pipe uses llama3.1:8b via Ollama (proposal: Llama-3.1-70B via vLLM) | CoE narrative quality reduced vs 70B; HR@3/CpR unaffected (depend on `ranked_candidates`) | `29789db26fba9b1d` |
+| 16 | 2026-05-19 | Stage 1 / M3 | §3.6.7 | L-pipe serving: Ollama runtime instead of vLLM as specified in proposal | `latency_ms` not production-representative; excluded from confirmatory MTTR analysis | `b7812340df247f8a` |
+| 17 | 2026-05-19 | Stage 3 | §3.6.7 | Fix `verify_osf_freeze.py`: use `DISAGREEMENT_THRESHOLD` not `PRUNER_THRESHOLD` for gpipe section | OSF `thresholds.json` now correctly records 0.20; pre-registered threshold aligns with code | `74af9e9f3e6a8f14` |
+| 18 | 2026-05-19 | Stage 0 | §A.1 | Correction: entry 3 was a chain-bootstrap placeholder with no protocol meaning (sig `539e67a1910f`) | None; chain integrity confirmed | `89b0d6566d7ba56c` |
 
 ---
 
