@@ -65,7 +65,7 @@ Legend: ✅ ≥80% complete · 🟡 partial · ⏳ not yet started · ❌ blocke
 | Snapshot hash registry | ✅ | `helios/vcl/snapshot_registry.py` + `data/snapshot_registry.jsonl` (20 entries) |
 | Metric integrity gate | ✅ | `helios/integrity_gate.py` — frozen Milestone 1 |
 | Exclusion ledger (signed) | 🟡 partial | `bin/log_exclusion.py` — schema defined; CLI stub; auto-populated via `AppendOnlyLedger` protocol |
-| Deviation log (signed, chained) | ✅ | `bin/log_deviation.py` — 16 entries, chain verified (M3 adds 6 entries) |
+| Deviation log (signed, chained) | ✅ | `bin/log_deviation.py` — 18 entries, chain verified (M3 adds entries 11–18) |
 | Reconciliation ledger | ✅ | `helios/orchestrator/ledger.py` — 25 entries, HMAC chain verified |
 | DisjointnessAuditor | ✅ | `helios/vcl/disjointness.py` — PASSED at M3 gate; 3 covered (gpipe, dpipe, l2c_llm), 10 uncovered |
 | UEG-C Builder | ✅ | `helios/graph/ueg_c_builder.py` + `ppr_pruner.py` — frozen Milestone 2; 15/15 gate PASS |
@@ -76,13 +76,13 @@ Legend: ✅ ≥80% complete · 🟡 partial · ⏳ not yet started · ❌ blocke
 
 ## Latest deviation log entries (manual)
 
-*Source: `deviation_log.jsonl` — 16 entries total; 6 most recent shown*
+*Source: `deviation_log.jsonl` — 18 entries total; 6 most recent shown*
 
 | # | Date | Stage | Clause | Change (truncated) | sig[:12] |
 |---|---|---|---|---|---|
-| 11 | 2026-05-18 | Stage 1 / M3 | §3.6.3 PipelineVerdict schema | schema-draft-v0.2: ppr_scores + prompt_version fields added | 9bc1857167e9 |
-| 12 | 2026-05-18 | Stage 1 / M3-task6 | §2.2 Span Containment Heuristic | All 20 incidents re-captured with parent_span_id; port defaults updated | cdc80e197402 |
 | 13 | 2026-05-18 | Stage 1 / M3 | §3.6.8 Orchestration | Sequential D→G(conditional)→L dispatch; should_run_gpipe() gate | 84dcc2834950 |
 | 14 | 2026-05-19 | Stage 1 / M3 | §4.2 A-H6 / §3.6.7 G-pipe threshold | DISAGREEMENT_THRESHOLD 0.30→0.20; ppr_scores added to run_dpipe | 05a602955403 |
 | 15 | 2026-05-19 | Stage 1 / M3 | §3.6.7 L-pipe model specification | llama3.1:8b via Ollama (proposal: Llama-3.1-70B via vLLM) | 29789db26fba |
 | 16 | 2026-05-19 | Stage 1 / M3 | §3.6.7 L-pipe serving runtime | Ollama for MVP (proposal: vLLM); latency not production-representative | b7812340df24 |
+| 17 | 2026-05-19 | Stage 1 / M3 | §3.6.7 | Fix verify_osf_freeze.py: use DISAGREEMENT_THRESHOLD not PRUNER_THRESHOLD for gpipe section | 74af9e9f3e6a |
+| 18 | 2026-05-19 | Stage 0 | §A.1 Chain Bootstrap | Correction: entry 3 (sig 539e67a1910f) was chain-bootstrap placeholder; no protocol meaning | 89b0d6566d7b |

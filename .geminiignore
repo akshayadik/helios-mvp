@@ -1,0 +1,26 @@
+# Caches and IDEs
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.vscode/
+.data/captures/
+.coverage
+
+# Heavy or external code
+tests/
+external/otel-demo-pinned/
+
+# AI Tooling metadata
+.claude/agents/**
+.claude/commands/**
+.claude/governance/**
+.claude/hooks/**
+.claude/plans/**
+.claude/skills/**
+.claude/worktrees/**
+.claude/*.md
+
+# Secrets
+.env*
+
+

@@ -1,7 +1,7 @@
 # HELIOS Project — Architecture, Design & Execution Reference
 
-**Version:** Milestone 2 (2026-05-16)
-**Stage:** D-pipe + UEG-C skeleton complete. G/L pipelines remain stubs.
+**Version:** Milestone 3 (2026-05-19)
+**Stage:** D-pipe + UEG-C + G-pipe (conditional PPR) + L-pipe (Protocol A) implemented. OSF protocol frozen.
 **Python:** `>=3.11,<3.12` (strict upper bound — reproducibility commitment)
 **Repo:** `helios-mvp` · Primary branch: `main`
 
@@ -156,10 +156,10 @@ helios/
 │   ├── ledger.py           ReconciliationLedger
 │   └── runner.py           RunOrchestrator (full C1 dispatch loop)
 │
-├── pipelines/              D-pipe (M2) complete; G/L remain stubs
+├── pipelines/              D-pipe (M2) + G-pipe + L-pipe (M3) implemented
 │   ├── d_pipe/             Stages A–D: Metrics, Anomaly, Propagation, Verdict
-│   ├── g_pipe/stub.py      @gated_by(VCLFlag.GPIPE) — returns sentinel dict
-│   └── l_pipe/stub.py      @gated_by(VCLFlag.LPIPE) — returns sentinel dict
+│   ├── g_pipe/             Conditional PPR traversal — @gated_by(VCLFlag.GPIPE); DISAGREEMENT_THRESHOLD=0.20
+│   └── l_pipe/             Protocol A — @gated_by(VCLFlag.L2C_LLM); Ollama llama3.1:8b; LLAMA_SEED=42
 │
 ├── integrity_gate.py       MetricIntegrityGate + AppendOnlyLedger protocol
 ├── store/result_store.py   DuckDB result store (result_row table)
@@ -603,14 +603,19 @@ git push origin stage-N-exit
 
 ## 10. Missing Details & Gaps
 
-The following are known gaps as of Milestone 2. Each is intentional (staged implementation) unless marked ⚠️.
+The following are known gaps as of Milestone 3. Each is intentional (staged implementation) unless marked ⚠️.
+
+### Implemented at Milestone 3 (previously stubs)
+
+| Component | Module | Status | Notes |
+|---|---|---|---|
+| G-pipe | `helios/pipelines/g_pipe/` | ✅ M3 — exploratory | Conditional PPR traversal; DISAGREEMENT_THRESHOLD=0.20 frozen; calibration corpus is OTEL 20-incident set; AIOpsLab re-calibration at Stage 4 |
+| L-pipe | `helios/pipelines/l_pipe/` | ✅ M3 — exploratory | Protocol A via Ollama llama3.1:8b; LLAMA_SEED=42; prompt SHA frozen; vLLM production serving deferred to Stage 5 |
 
 ### Stubs not yet implemented
 
 | Component | Module | Target stage | Notes |
 |---|---|---|---|
-| G-pipe real implementation | `helios/pipelines/g_pipe/` | Stage 4 | Graph causal traversal on UEG-C |
-| L-pipe real implementation | `helios/pipelines/l_pipe/` | Stage 5 | Llama-3.1-70B, Protocol A, vLLM serving |
 | Consensus layer (Uniform Borda) | not yet created | Stage 6 | Fuses D/G/L ranked lists |
 | Auto-remediation (L4) | not yet created | Stage 4+ | Out of MVP scope |
 | P4 cognitive layer | no module yet | Stage 5 | `p4_cognitive` flag exists; implementation pending |
@@ -626,18 +631,19 @@ The following are known gaps as of Milestone 2. Each is intentional (staged impl
 
 ## 11. Milestone Tracking & Production Delta
 
-### 11.1 Immediate Pending Actions (Milestone 2 Exit)
+### 11.1 Immediate Pending Actions (Milestone 3 Exit)
 
 | # | Action | Command / Location | Blocker for |
 |---|---|---|---|
-| 1 | Push `milestone-2-exit` tag to origin | `git push origin milestone-2-exit` | Milestone 2 sign-off |
-| 2 | Push `schema-draft-v0.2` tag to origin | `git push origin schema-draft-v0.2` | Schema freeze proof |
-| 3 | Finalize deviation log entries for M2 | `bin/log_deviation.py verify` | Audit compliance |
+| 1 | Push branch `feature/gpipe_lpipe_osf` and create PR | `git push origin feature/gpipe_lpipe_osf` + `gh pr create` | M3 sign-off |
+| 2 | OSF deposit: populate `research/osf/preregistration.md` deviation summary (entries 1–16) | `bin/verify_osf_freeze.py --populate-prereg` | OSF record creation |
+| 3 | Fix `bin/verify_osf_freeze.py` line 215 — uses `dpipe_config.PRUNER_THRESHOLD` (0.02) instead of `gpipe_config.DISAGREEMENT_THRESHOLD` (0.20) for `gpipe.disagreement_threshold` in `thresholds.json` | `helios/pipelines/g_pipe/gpipe_config.py` | OSF artefact correctness |
+| 4 | Record OSF DOI in `research/osf/preregistration.md` after deposit | Manual | M3 research artefact complete |
 
 ### 11.2 Missing Details with respect to C1
 
 *   **PPR Determinism:** The current `ppr_pruner.py` relies on `networkx.pagerank`. While mathematically deterministic, subtle floating-point drift across different CPU architectures (x86 vs ARM) could violate C1 snapshot-hash stability in distributed environments. A pre-M4 gate requires a fixed-point or rounded implementation.
-*   **Ablation Disjointness (G-pipe/L-pipe):** While D-pipe is now fully implemented and gated, G-pipe and L-pipe remain null stubs. The `DisjointnessAuditor` currently only proves that the *entry points* are disjoint. Full path-disjointness proof is deferred to Stage 7.
+*   **Ablation Disjointness (G-pipe/L-pipe):** D-pipe, G-pipe, and L-pipe are implemented and gated at M3. The `DisjointnessAuditor` proves entry-point disjointness (3 covered flags: gpipe, dpipe, l2c_llm). Full internal path-disjointness proof is deferred to Stage 7.
 *   **Integrity Gate (P4/P5):** The `MetricIntegrityGate` currently ignores P4 (events) and P5 (profiles) because they are `None` in the OTEL Demo. The logic must be extended in Milestone 6 to fail if these are missing during AIOpsLab confirmatory runs.
 
 ### 11.3 Component Roles Reconciled (Research vs. Production)
@@ -667,4 +673,48 @@ The following are known gaps as of Milestone 2. Each is intentional (staged impl
 
 ---
 
-*Generated from Milestone 2 codebase state at commit `d78d29e`. Update this file after each stage gate.*
+### 11.5 Milestone 3 Deliverables (2026-05-19)
+
+| Deliverable | Status | Evidence |
+|---|---|---|
+| G-pipe conditional PPR gate | ✅ Frozen | `gpipe_config.DISAGREEMENT_THRESHOLD=0.20`; SHA `8759d6f` |
+| G-pipe LOO-CV calibration | ✅ Done (exploratory) | HR@3=0.60 held-out; all 20 OTEL incidents trigger at threshold 0.20 |
+| L-pipe Protocol A | ✅ Frozen | Ollama llama3.1:8b; `LLAMA_SEED=42`; prompt SHA frozen; `@gated_by(VCLFlag.L2C_LLM)` |
+| OSF protocol freeze | ✅ Generated | 6 JSON artefacts + `manifest_sig.txt`; `osf-freeze-verify` CI job on every push |
+| Deviation log (16 entries) | ✅ Verified | Entries 11–16 cover schema bump, re-capture, orchestration, threshold, model, runtime |
+| Disjointness audit (M3 gate) | ✅ PASSED | Covered: gpipe, dpipe, l2c_llm (3); uncovered: 10 flags; 0 violations |
+| All 8 VCL variant hashes | ✅ Confirmed | Identical to OSF artefact; VCL freeze SHA `0233165e891ca86` |
+
+### 11.6 Production Go-Live Gaps (Priority-Ordered)
+
+The following gaps must be resolved before any production deployment. Items are ordered by severity.
+
+**P0 — Research protocol correctness (must fix before confirmatory phase)**
+
+| Gap | Detail | Fix |
+|---|---|---|
+| `thresholds.json` bug | `gpipe.disagreement_threshold = 0.02` (reads `PRUNER_THRESHOLD`) instead of `0.20` (`DISAGREEMENT_THRESHOLD`); authoritative source is `gpipe_config.py` | Fix `bin/verify_osf_freeze.py` line 215; regenerate artefacts; log deviation entry |
+| G-pipe threshold not AIOpsLab-calibrated | All 20 OTEL incidents trigger at `DISAGREEMENT_THRESHOLD=0.20`; corpus too uniform for discrimination; frozen at exploratory phase only | Re-calibrate on AIOpsLab confirmatory subset (Stage 4) before confirmatory inference |
+| Consensus layer absent | Uniform Borda fusion not implemented; D/G/L verdicts are not fused into a single ranked list | Implement at Stage 6; no confirmatory HR@3 without it |
+
+**P1 — LLM model fidelity (affects narrative quality and hypothesis validity)**
+
+| Gap | Detail | Fix |
+|---|---|---|
+| Model downgrade | L-pipe uses `llama3.1:8b` via Ollama (proposal: Llama-3.1-70B via vLLM); narrative quality and hallucination rate differ materially | Migrate to vLLM + 70B before Stage 5 confirmatory runs; log deviation entry |
+| Ollama runtime | Ollama not production-representative for latency benchmarking; `latency_ms` in PipelineVerdict is not comparable to vLLM baseline | Replace with vLLM at Stage 5; mark latency metrics from Ollama runs as exploratory-only |
+
+**P2 — Infrastructure and observability (production hardening)**
+
+| Gap | Detail | Fix |
+|---|---|---|
+| No consensus microservice | Uniform Borda is sequential in-process; production requires a low-latency standalone scoring service | Stage 6 architecture; separate service with its own SLO |
+| NetworkX in-memory graph | G-pipe uses NetworkX; production mesh graphs (1000+ services) require Neo4j or Memgraph | Replace before AIOpsLab scale testing |
+| MetricIntegrityGate P4/P5 blind | Gate ignores events and profiles (always `None` in OTEL Demo); AIOpsLab confirmatory runs may populate these | Extend gate at Milestone 6 to fail if P4/P5 absent in confirmatory phase |
+| PPR floating-point drift | `networkx.pagerank` determinism not guaranteed across x86/ARM architectures; UEG-C snapshot hashes may drift in distributed runs | Pre-M4 gate: fixed-point or rounded PPR implementation |
+| Price Book unpopulated | `calibration_thresholds.md` price book schema only — CpR metric cannot be computed | Populate at Stage 2 with token cost coefficients |
+| No live ingestion bridge | Current system reads recorded OTEL Demo captures; production requires Prometheus remote-write + Jaeger stream-tailer | Add at production deployment stage |
+
+---
+
+*Updated to Milestone 3 codebase state at commit `feature/gpipe_lpipe_osf` branch (2026-05-19). Update this file after each stage gate.*
