@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from helios.vcl import VCLFlag  # noqa: F401 — satisfies flag-guard
 
-DISAGREEMENT_THRESHOLD: float = 0.30
+DISAGREEMENT_THRESHOLD: float = 0.20
 
 GPIPE_PPR_ALPHA: float = 0.85
 

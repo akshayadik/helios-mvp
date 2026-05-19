@@ -191,6 +191,8 @@ omit           = [
     # not unit-testable in isolation. Coverage tracked via integration smoke
     # tests in tests/test_e2e_smoke.py and tests/graph/test_hash_stability.py.
     "scripts/calibrate_dpipe.py",
+    "scripts/calibrate_gpipe.py",
+    "scripts/inspect_ppr_scores.py",
     "scripts/smoke_ablation.py",
 ]
  
