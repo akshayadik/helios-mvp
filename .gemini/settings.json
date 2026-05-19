@@ -2,7 +2,10 @@
   "context": {
     "fileName": [
       ".claude/docs/pdf/research_proposal_akshayadik.pdf",
-      ".claude/docs/pdf/project_plan.md"
+      "docs/helios_project_summary.md",
+      "docs/tracking/ablation_architecture.md",
+      "docs/tracking/tracking_documents_register.md",
+      "docs/tracking/HELIOS_MVP_Execution_plan_v0.6.md"
     ]
   },
   "hooks": {
@@ -18,5 +21,8 @@
         ]
       }
     ]
+  },
+  "model": {
+    "compressionThreshold": 0.85
   }
 }
