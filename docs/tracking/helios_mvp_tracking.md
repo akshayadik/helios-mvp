@@ -213,7 +213,7 @@ print(df.groupby('Day')['Status'].value_counts().unstack(fill_value=0))
 
 | Task_ID | Day | Type | Description | Prop_§ | DSR | Contrib | Own | Deps | Status | Started | Done | SHA | Ev_Type | Ev_Ref | Gate | Dev_Ref | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| S1-M3-ENG01 | - | ENG | G-pipe conditional pipeline: PPR traversal, disagreement gate, sentinel verdict | §3.6.7, §3.3 | Design | C2 | AA | S1-M2-GATE03 | PLANNED | - | - | - | - | - | - | - | |
-| S1-M3-ENG02 | - | ENG | Structural edge re-capture at schema-draft-v0.2 with parent_span_id linkage | §3.6.3, §3.7 | Design | C2 | AA | S1-M3-ENG01 | PLANNED | - | - | - | - | - | - | - | |
-| S1-M3-RES01 | - | RES | G-pipe LOO-CV threshold calibration (DISAGREEMENT_THRESHOLD 0.30→0.20) | §4.1, §3.6.7 | Evaluate | C2 | AA | S1-M3-ENG02 | PLANNED | - | - | - | - | - | - | - | |
-| S1-M3-RES02 | - | RES | A-H6 sentinel filter documentation — ablation_architecture §3.2 + hypothesis mapping | §3.6.7, §B.12 | Communicate | methodology | AA | S1-M3-RES01 | PLANNED | - | - | - | - | - | - | - | |
+| S1-M3-ENG01 | - | ENG | G-pipe conditional pipeline: PPR traversal, disagreement gate, sentinel verdict | §3.6.7, §3.3 | Design | C2 | AA | S1-M2-GATE03 | IN_PROGRESS | 2026-05-19 | - | - | - | - | - | - | |
+| S1-M3-ENG02 | - | ENG | Structural edge re-capture at schema-draft-v0.2 with parent_span_id linkage | §3.6.3, §3.7 | Design | C2 | AA | S1-M3-ENG01 | IN_PROGRESS | 2026-05-19 | - | - | - | - | - | - | |
+| S1-M3-RES01 | - | RES | G-pipe LOO-CV threshold calibration (DISAGREEMENT_THRESHOLD 0.30→0.20) | §4.1, §3.6.7 | Evaluate | C2 | AA | S1-M3-ENG02 | IN_PROGRESS | 2026-05-19 | - | - | - | - | - | - | |
+| S1-M3-RES02 | - | RES | A-H6 sentinel filter documentation — ablation_architecture §3.2 + hypothesis mapping | §3.6.7, §B.12 | Communicate | methodology | AA | S1-M3-RES01 | IN_PROGRESS | 2026-05-19 | - | - | - | - | - | - | |
