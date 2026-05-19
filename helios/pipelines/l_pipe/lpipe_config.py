@@ -23,4 +23,6 @@ LLAMA_SEED: int = 42
 # SHA-256 of prompts/rca_v1.txt — None until rca_v1.txt is first committed.
 # Run bootstrap workflow (Task 4) to set this value.
 # Once non-None, any change to rca_v1.txt requires a deviation log entry.
-EXPECTED_PROMPT_SHA: str | None = None
+EXPECTED_PROMPT_SHA: str | None = (
+    "376e555b0bd07a14667c9d5f09275ce5507ddce443fa01781bd7dc40a9365e47"
+)
