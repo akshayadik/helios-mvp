@@ -11,16 +11,51 @@ prints the window hash for C1 snapshot verification.
 """
 
 import argparse
+import json
 import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 # Ensure helios/ is importable when run as a script from the repo root.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from helios.graph.ueg_c_builder import build_ueg_c
 from helios.telemetry.otel_demo_capture import build_default_capture
+from helios.vcl import set_current_manifest
 from helios.vcl.config import VCLManifest
+from helios.vcl.decorators import GatedComponentInactiveError
 from helios.vcl.variants import CONFIRMATORY_VARIANTS
+
+MANIFEST_SCHEMA_VERSION = "schema-draft-v0.2"
+
+
+def _write_snapshot_hash(window: Any, manifest_path: Path) -> None:
+    """Compute UEGCSnapshot hash and patch manifest with snapshot_hash + schema_version.
+
+    build_ueg_c() may return None when l2b_graph flag is off — snapshot_hash is
+    omitted in that case. Requires set_current_manifest() to have been called.
+
+    window_hash is recomputed after updating schema_version so that CaptureReader
+    can verify integrity against the final manifest state.
+    """
+    from helios.schemas.telemetry import TelemetryWindow
+
+    manifest_data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    try:
+        snapshot = build_ueg_c(window, manifest_data["variant_config_hash"])
+    except GatedComponentInactiveError:
+        snapshot = None
+    if snapshot is not None:
+        manifest_data["snapshot_hash"] = snapshot.compute_snapshot_hash()
+    manifest_data["schema_version"] = MANIFEST_SCHEMA_VERSION
+    tw_fields = {
+        k: v
+        for k, v in manifest_data.items()
+        if k not in ("window_hash", "snapshot_hash")
+    }
+    manifest_data["window_hash"] = TelemetryWindow(**tw_fields).compute_window_hash()
+    manifest_path.write_text(json.dumps(manifest_data, indent=2), encoding="utf-8")
 
 
 def main() -> None:
@@ -65,13 +100,21 @@ Incident IDs (see docs/fault_catalogue_v0.md §3):
 
     window = capture.run(start, end)
 
+    set_current_manifest(manifest)
+    if window.p1_metrics_path is None:
+        print("[capture] WARNING: p1_metrics_path is None, skipping snapshot_hash")
+        incident_dir = None
+    else:
+        incident_dir = Path(window.p1_metrics_path).parent
+        _write_snapshot_hash(window, incident_dir / "manifest.json")
+
     print("[capture] DONE")
     print(f"[capture] window_hash   : {window.compute_window_hash()[:16]}...")
     print(f"[capture] p1_metrics    : {window.p1_metrics_path}")
     print(f"[capture] p2_traces     : {window.p2_traces_path}")
     print(f"[capture] p3_logs       : {window.p3_logs_path}")
-    incident_dir = Path(str(window.p1_metrics_path)).parent
-    print(f"[capture] manifest.json : {incident_dir / 'manifest.json'}")
+    if incident_dir is not None:
+        print(f"[capture] manifest.json : {incident_dir / 'manifest.json'}")
 
 
 if __name__ == "__main__":

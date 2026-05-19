@@ -39,7 +39,7 @@ Ranked in priority order. All require `evaluation_phase = confirmatory` data fro
 | A-H7 | A | Full system outperforms LLM-ablated variant on HR@3 | HELIOS-Full | HELIOS-noLLM | HR@3 | hallucination_rate | Wilcoxon signed-rank (one-sided) | 0.00625 | Pre-registered; data pending Stage 6 |
 | A-H1 | A | Full system exceeds fixed baseline on HR@3 | HELIOS-Full | baseline (fixed threshold) | HR@3 | — | Wilcoxon signed-rank (one-sided) | 0.00625 | Pre-registered; data pending Stage 6 |
 | A-H2 | A | Full system outperforms graph-ablated variant on CpR | HELIOS-Full | HELIOS-noGraph | CpR | HR@3 | Wilcoxon signed-rank (one-sided) | 0.00625 | Pre-registered; data pending Stage 6 |
-| A-H6 | A | Graph-only (G) outperforms stats-only (D) on HR@3 (gate-conditional) | HELIOS-G | HELIOS-D | HR@3 | — | Wilcoxon signed-rank (one-sided) | 0.00625 | Conditional confirmatory; entry-gate required |
+| A-H6 | A | Graph-only (G) outperforms stats-only (D) on HR@3 (gate-conditional) | HELIOS-G | HELIOS-D | HR@3 | — | Wilcoxon signed-rank (one-sided) | 0.00625 | Conditional confirmatory; entry-gate required. **Sentinel filter mandatory:** `WHERE pipeline = 'gpipe' AND narrative != 'gpipe-gated-or-skipped'` — sentinel zeros from non-firing incidents MUST be excluded or A-H6 result is methodologically invalid. Filter baked into `analysis_plan.json` A-H6 entry. |
 | A-H5 | A | Full system outperforms router-ablated variant on HR@3 | HELIOS-Full | HELIOS-noRouter | HR@3 | — | Wilcoxon signed-rank (one-sided) | 0.00625 | Pre-registered; data pending Stage 6 |
 | A-H4 | A | Full system outperforms consensus-ablated variant on HR@3 | HELIOS-Full | HELIOS-noConsensus | HR@3 | — | Wilcoxon signed-rank (one-sided) | 0.00625 | Pre-registered; underpowered-disclosed |
 | A-H8 | A | Full system outperforms structural-edge-ablated variant on HR@3 | HELIOS-Full | HELIOS-noStructural | HR@3 | — | Wilcoxon signed-rank (one-sided) | 0.00625 | Pre-registered; underpowered-disclosed |
@@ -74,4 +74,4 @@ Ranked in priority order. All require `evaluation_phase = confirmatory` data fro
 
 ---
 
-*Last updated: 2026-05-15 — A-family structure defined; no run data yet (pending Stage 6)*
+*Last updated: 2026-05-19 — A-H6 sentinel filter mandate added (Milestone 3 G-pipe implementation)*

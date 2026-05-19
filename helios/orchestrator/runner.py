@@ -17,13 +17,14 @@ from helios.integrity_gate import AppendOnlyLedger, MetricIntegrityGate
 from helios.orchestrator.corpus import CorpusLoader
 from helios.orchestrator.ledger import ReconciliationLedger
 from helios.pipelines.d_pipe.pipeline import run_dpipe
-from helios.pipelines.g_pipe.stub import run_gpipe
-from helios.pipelines.l_pipe.stub import run_lpipe
+from helios.pipelines.g_pipe.pipeline import run_gpipe, should_run_gpipe
+from helios.pipelines.l_pipe.pipeline import run_lpipe
 from helios.schemas.telemetry import EvaluationPhase
-from helios.schemas.verdict import PipelineVerdict
+from helios.schemas.ueg_c import UEGCSnapshot
+from helios.schemas.verdict import VERDICT_SCHEMA_VERSION, PipelineVerdict
 from helios.store.result_store import ResultStore
 from helios.telemetry.reader import CaptureReader
-from helios.vcl.decorators import set_current_manifest
+from helios.vcl.decorators import GatedComponentInactiveError, set_current_manifest
 from helios.vcl.snapshot_registry import DuplicateSnapshotError, SnapshotRegistry
 
 if TYPE_CHECKING:
@@ -112,8 +113,90 @@ class RunOrchestrator:
             evaluation_phase=window.evaluation_phase,
             run_id=run_id,
         )
-        g_out = run_gpipe(incident_id=incident_id, snapshot_hash=snapshot_hash)
-        l_out = run_lpipe(incident_id=incident_id, snapshot_hash=snapshot_hash)
+        d_out["schema_version"] = VERDICT_SCHEMA_VERSION
+        dpipe_scores: dict[str, float] = d_out.get("ppr_scores", {})
+        g_out: dict[str, Any]
+        evaluation_phase_str = str(window.evaluation_phase)
+        if ueg_c is not None and should_run_gpipe(d_out, self._manifest):
+            try:
+                g_out = run_gpipe(
+                    incident_id=incident_id,
+                    snapshot=ueg_c,
+                    snapshot_hash=snapshot_hash,
+                    dpipe_scores=dpipe_scores,
+                    evaluation_phase=evaluation_phase_str,
+                    run_id=run_id,
+                )
+            except GatedComponentInactiveError:
+                g_out = {
+                    "pipeline": "gpipe",
+                    "incident_id": incident_id,
+                    "run_id": run_id,
+                    "variant_config_hash": self._config_hash,
+                    "snapshot_hash": snapshot_hash,
+                    "ranked_candidates": [],
+                    "ppr_scores": {},
+                    "hr_at_3": 0.00,
+                    "cpr": 0.00,
+                    "latency_ms": 0.00,
+                    "token_count": 0,
+                    "narrative": "gpipe-gated-or-skipped",
+                    "evaluation_phase": evaluation_phase_str,
+                    "schema_version": VERDICT_SCHEMA_VERSION,
+                }
+        else:
+            g_out = {
+                "pipeline": "gpipe",
+                "incident_id": incident_id,
+                "run_id": run_id,
+                "variant_config_hash": self._config_hash,
+                "snapshot_hash": snapshot_hash,
+                "ranked_candidates": [],
+                "ppr_scores": {},
+                "hr_at_3": 0.00,
+                "cpr": 0.00,
+                "latency_ms": 0.00,
+                "token_count": 0,
+                "narrative": "gpipe-gated-or-skipped",
+                "evaluation_phase": evaluation_phase_str,
+                "schema_version": VERDICT_SCHEMA_VERSION,
+            }
+        lpipe_snapshot = (
+            ueg_c
+            if ueg_c is not None
+            else UEGCSnapshot(
+                incident_id=incident_id,
+                variant_config_hash=self._config_hash,
+                nodes=[],
+                edges=[],
+                captured_at_iso="",
+            )
+        )
+        try:
+            l_out = run_lpipe(
+                incident_id=incident_id,
+                snapshot=lpipe_snapshot,
+                snapshot_hash=snapshot_hash,
+                evaluation_phase=evaluation_phase_str,
+                run_id=run_id,
+            )
+        except GatedComponentInactiveError:
+            l_out = {
+                "pipeline": "lpipe",
+                "incident_id": incident_id,
+                "run_id": run_id,
+                "variant_config_hash": self._config_hash,
+                "snapshot_hash": snapshot_hash,
+                "ranked_candidates": [],
+                "ppr_scores": {},
+                "hr_at_3": 0.00,
+                "cpr": 0.00,
+                "latency_ms": 0.00,
+                "token_count": 0,
+                "narrative": "lpipe-gated-or-skipped",
+                "evaluation_phase": evaluation_phase_str,
+                "schema_version": VERDICT_SCHEMA_VERSION,
+            }
 
         verdicts = [
             self._build_verdict(d_out),
@@ -150,7 +233,7 @@ class RunOrchestrator:
 
     def _build_verdict(self, stub_out: dict[str, Any]) -> PipelineVerdict:
         return PipelineVerdict(
-            run_id=str(uuid.uuid4()),
+            run_id=str(stub_out.get("run_id", str(uuid.uuid4()))),
             incident_id=stub_out["incident_id"],
             variant_config_hash=stub_out["variant_config_hash"],
             snapshot_hash=stub_out["snapshot_hash"],
@@ -159,9 +242,12 @@ class RunOrchestrator:
                 stub_out.get("evaluation_phase", "exploratory")
             ),
             ranked_candidates=stub_out.get("ranked_candidates", []),
-            hr_at_3=float(stub_out.get("hr_at_3", 0)),
-            cpr=float(stub_out.get("cpr", 0)),
-            latency_ms=float(stub_out.get("latency_ms", 0)),
+            hr_at_3=float(stub_out.get("hr_at_3", 0.00)),
+            cpr=float(stub_out.get("cpr", 0.00)),
+            latency_ms=float(stub_out.get("latency_ms", 0.00)),
             token_count=int(stub_out.get("token_count", 0)),
             narrative=stub_out.get("narrative", "stub"),
+            ppr_scores=stub_out.get("ppr_scores", {}),
+            prompt_version=stub_out.get("prompt_version"),
+            schema_version=str(stub_out.get("schema_version", VERDICT_SCHEMA_VERSION)),
         )

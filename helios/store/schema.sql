@@ -1,9 +1,12 @@
--- HELIOS result store — schema-draft-v0.1
+-- HELIOS result store — schema-draft-v0.2
 -- Source: execution plan §3.6.3 + §5.1 run-level inclusion criteria
--- Tagged: schema-draft-v0.1 (will become v1.0 at OSF Stage 5 freeze)
+-- Tagged: schema-draft-v0.2 (will become v1.0 at OSF Stage 5 freeze)
 --
 -- All columns mirror PipelineVerdict fields. variant_config_hash and
 -- snapshot_hash enforce C1 inclusion criteria at query time (§5.1).
+--
+-- PK is (run_id, pipeline): one row per pipeline per incident run.
+-- run_id is a per-incident UUID shared by all three pipeline verdicts.
 
 CREATE TABLE IF NOT EXISTS result_row (
     run_id              VARCHAR     NOT NULL,
@@ -18,9 +21,9 @@ CREATE TABLE IF NOT EXISTS result_row (
     latency_ms          DOUBLE      NOT NULL,
     token_count         BIGINT      NOT NULL,
     narrative           TEXT        NOT NULL,
-    schema_version      VARCHAR     NOT NULL    DEFAULT 'schema-draft-v0.1',
+    schema_version      VARCHAR     NOT NULL    DEFAULT 'schema-draft-v0.2',
     created_at          TIMESTAMP               DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (run_id)
+    PRIMARY KEY (run_id, pipeline)
 );
 
 -- Schema version registry — tracks deployed schema tags for audit trail
@@ -31,4 +34,8 @@ CREATE TABLE IF NOT EXISTS schema_tag (
 
 INSERT INTO schema_tag (tag)
 VALUES ('schema-draft-v0.1')
+ON CONFLICT (tag) DO NOTHING;
+
+INSERT INTO schema_tag (tag)
+VALUES ('schema-draft-v0.2')
 ON CONFLICT (tag) DO NOTHING;

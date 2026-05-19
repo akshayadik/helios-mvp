@@ -1,8 +1,8 @@
 # HELIOS Ablation Architecture — Living ADR
 
-**Document Version:** v0.5
-**Date:** 2026-05-18
-**Status:** §1 frozen at Stage 0. §2 schemas frozen at Stage 0; §2.6 UEG-C Builder implemented and frozen at Milestone 2. §3.0 frozen at Stage 0 (registry + stubs). §3.1 D-pipe implemented and frozen at Milestone 2. §3.2–§3.3 stubs. §4 frozen at Milestone 1. §5–§7 stubs.
+**Document Version:** v0.6
+**Date:** 2026-05-19
+**Status:** §1 frozen at Stage 0. §2 schemas frozen at Stage 0; §2.6 UEG-C Builder implemented and frozen at Milestone 2. §3.0 frozen at Stage 0 (registry + stubs). §3.1 D-pipe implemented and frozen at Milestone 2. §3.2 G-pipe implemented and frozen at Milestone 3. §3.3 stub. §4 frozen at Milestone 1. §5–§7 stubs.
 **Canonical Reference:** `docs/memos/spine_freeze_memo_v0.md`
 **Update Cadence:** After every pipeline-stage change.
 
@@ -239,7 +239,7 @@ Cross-reference: `docs/tracking/calibration_thresholds.md` (frozen values) + `sp
 
 ---
 
-## 3. Peer Pipelines (D-pipe, G-pipe, L-pipe)   [§3.0 FROZEN — Stage 0 | §3.1 IMPLEMENTED — Milestone 2 | §3.2–§3.3 STUB — Stages 4–5]
+## 3. Peer Pipelines (D-pipe, G-pipe, L-pipe)   [§3.0 FROZEN — Stage 0 | §3.1 IMPLEMENTED — Milestone 2 | §3.2 IMPLEMENTED — Milestone 3 | §3.3 STUB — Stage 5]
 
 ### 3.0 Stage 0 Pipeline Foundation   [FROZEN — Stage 0]
 
@@ -344,12 +344,54 @@ Cross-reference: `docs/tracking/calibration_thresholds.md` (frozen parameter tab
 
 ---
 
-### 3.2 G-pipe — Graph Causal Inference   [STUB — Stage 4]
+### 3.2 G-pipe — Conditional PPR-Traversal Peer Pipeline   [IMPLEMENTED — Milestone 3]
 
-> **Not yet implemented.** G-pipe will be written and frozen at the Stage 4 gate.
-> Responsibility: consume registered `UEGCSnapshot` → graph-based causal ranking → `PipelineVerdict`.
-> Gated by `VCLFlag.L2B_GRAPH`; ablation variant `HELIOS-noGraph` disables this path.
-> Cross-reference: `spine_freeze_memo_v0.md` + `docs/tracking/hypothesis_variant_metric_mapping.md` (A-H6).
+**Architecture:** G-pipe activates when D-pipe PPR disagreement exceeds
+DISAGREEMENT_THRESHOLD (calibrated via LOO-CV). It re-runs Personalised PageRank on
+the UEG-C snapshot using D-pipe scores as seed weights, producing an alternative
+ranked candidate list.
+
+**Entry gate formula:**
+```
+disagreement = ppr_scores_sorted[rank_2] / ppr_scores_sorted[rank_0]
+gate_fires   = disagreement >= DISAGREEMENT_THRESHOLD
+```
+
+**Sequential dispatch rationale:** G-pipe requires D-pipe `ppr_scores` before it can
+evaluate the entry gate. RunOrchestrator was changed from concurrent to sequential
+D→G(conditional)→L dispatch (deviation logged §3.6.8, Stage 1/M3). L-pipe remains
+independent of G-pipe results.
+
+**Dual VCL flag dependency:** `@gated_by(VCLFlag.GPIPE)` registers the primary pipeline
+flag for disjointness analysis. VCLFlag.L2B_GRAPH is a soft guard inside
+`should_run_gpipe()` — if absent, behavioral edges are missing and G-pipe is skipped.
+The disjointness auditor attributes G-pipe code to GPIPE.
+
+**A-H6 sentinel filtering (mandatory):** When the gate does not fire, G-pipe emits a
+sentinel with `narrative="gpipe-gated-or-skipped"` and `hr_at_3=0.00`. Evaluation
+scripts MUST filter sentinel rows for A-H6 metric queries:
+
+```sql
+WHERE pipeline = 'gpipe' AND narrative != 'gpipe-gated-or-skipped'
+```
+
+Failure to filter produces a methodologically invalid A-H6 result. This filter is
+baked into `analysis_plan.json` (A-H6 filter field) and must appear in
+`scripts/evaluate_ablation.py` and the ablation notebook L2 section.
+
+**Calibrated parameters (Milestone 3):**
+
+| Parameter | Value | Calibration source |
+|---|---|---|
+| `DISAGREEMENT_THRESHOLD` | 0.20 | LOO-CV sweep on 20-incident corpus; lowered from 0.30 |
+| `GPIPE_PPR_ALPHA` | 0.85 | Matches D-pipe PPR alpha; not re-calibrated |
+
+LOO-CV result: G-pipe HR@3 = 0.60, D-pipe HR@3 = 0.40 on gate-firing incidents — A-H6 PASS signal (exploratory; confirmatory requires AIOpsLab Stage 6 data).
+
+**Cross-references:** §2.6 (UEG-C Builder), §4 (Orchestration), §5 (Verdicts).
+Deviation log entries: schema v0.2 re-capture, sequential dispatch.
+
+Implementation: `helios/pipelines/g_pipe/pipeline.py`. Config: `helios/pipelines/g_pipe/gpipe_config.py`.
 
 ---
 
@@ -432,3 +474,4 @@ all three schemas on every push. Any field addition breaks the test.
 - v0.3 (2026-05-14): §3.0 written and frozen (Stage 0). SnapshotRegistry, G/L-pipe stubs, ingest-to-analysis flow. §3.1–§3.3 sub-stubs added for D/G/L-pipe.
 - v0.4 (2026-05-14): §4 written and frozen (Milestone 1). Orchestration flow, C1 sub-artefact status table, schema freeze summary. Old §4–§6 renumbered to §5–§7. §1.6 integration points updated.
 - v0.5 (2026-05-18): §2.6 UEG-C Builder written and frozen (Milestone 2) — edge construction algorithm, PPR pruner, entry-point detection fix, gate values. §3.1 D-pipe written and frozen (Milestone 2) — four-stage pipeline, calibrated parameters, LOO-CV results.
+- v0.6 (2026-05-19): §3.2 G-pipe written and frozen (Milestone 3) — conditional PPR-traversal pipeline, disagreement gate, sequential dispatch rationale, sentinel filter mandate, calibrated parameters.

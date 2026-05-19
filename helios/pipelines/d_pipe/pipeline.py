@@ -92,4 +92,5 @@ def run_dpipe(
         "pipeline": "dpipe",
         "latency_ms": 0.00,
         "token_count": 0,
+        "ppr_scores": score_final,
     }

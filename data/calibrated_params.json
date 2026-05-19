@@ -7,5 +7,10 @@
   "in_sample_mean_hr_at_3": 0.5333333333333333,
   "in_sample_mean_cpr": 0.4422222222222222,
   "grid_cells_evaluated": 250,
-  "n_calibration_incidents": 15
+  "n_calibration_incidents": 15,
+  "gpipe_hr_at_3_held_out": 0.6,
+  "dpipe_hr_at_3_held_out": 0.4,
+  "gate_passed": true,
+  "n_incidents_triggered": 20,
+  "gpipe_disagreement_threshold_calibrated": 0.2
 }

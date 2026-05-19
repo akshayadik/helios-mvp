@@ -90,6 +90,16 @@ class ResultStore:
         cols = [d[0] for d in desc]
         return [dict(zip(cols, row, strict=False)) for row in cur.fetchall()]
 
+    def fetch_all_for_incident(self, incident_id: str) -> list[dict[str, object]]:
+        """Return all verdict rows for a specific incident_id."""
+        cur = self._con.execute(
+            "SELECT * FROM result_row WHERE incident_id = ?", [incident_id]
+        )
+        rows = cur.fetchall()
+        desc = cur.description or []
+        cols = [d[0] for d in desc]
+        return [dict(zip(cols, row, strict=False)) for row in rows]
+
     def inclusion_rate(self, variant_config_hash: str) -> float:
         """Fraction of expected pipelines (dpipe/gpipe/lpipe) present for this variant hash.
 

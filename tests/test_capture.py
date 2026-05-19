@@ -93,6 +93,7 @@ def _traces_table() -> pa.Table:
         {
             "trace_id": pa.array(["abc123"], type=pa.string()),
             "span_id": pa.array(["def456"], type=pa.string()),
+            "parent_span_id": pa.array([""], type=pa.string()),
             "operation_name": pa.array(["/GetProduct"], type=pa.string()),
             "service_name": pa.array(["productcatalogservice"], type=pa.string()),
             "start_time_us": pa.array([1715000000000000], type=pa.int64()),
@@ -222,7 +223,7 @@ def test_validate(tmp_path):
 
 
 def test_validate_traces_round_trip(tmp_path):
-    """Traces Parquet preserves all seven expected columns."""
+    """Traces Parquet preserves all eight expected columns."""
     table = _traces_table()
     ParquetWriter().write(table, tmp_path / "p2_traces.parquet")
 
@@ -230,6 +231,7 @@ def test_validate_traces_round_trip(tmp_path):
     expected = {
         "trace_id",
         "span_id",
+        "parent_span_id",
         "operation_name",
         "service_name",
         "start_time_us",
@@ -312,7 +314,7 @@ class TestPrometheusMetricsFetcher:
 
 class TestJaegerTracesFetcher:
     def test_fetch_returns_expected_columns(self, window_bounds):
-        """Parses Jaeger traces response into a seven-column table."""
+        """Parses Jaeger traces response into an eight-column table."""
         start, end = window_bounds
         payload = {
             "data": [
@@ -336,6 +338,7 @@ class TestJaegerTracesFetcher:
         expected = {
             "trace_id",
             "span_id",
+            "parent_span_id",
             "operation_name",
             "service_name",
             "start_time_us",
@@ -363,6 +366,94 @@ class TestJaegerTracesFetcher:
             pytest.raises(urllib.error.HTTPError),
         ):
             JaegerTracesFetcher("http://jaeger:16686").fetch(start, end)
+
+    def test_fetch_includes_parent_span_id_column(self, window_bounds):
+        """JaegerTracesFetcher produces an 8-column table including parent_span_id."""
+        start, end = window_bounds
+        payload = {
+            "data": [
+                {
+                    "traceID": "abc123",
+                    "spans": [
+                        {
+                            "spanID": "def456",
+                            "operationName": "/GetProduct",
+                            "startTime": 1715000000000000,
+                            "duration": 1500,
+                            "tags": [{"key": "otel.status_code", "value": "OK"}],
+                            "references": [
+                                {
+                                    "refType": "CHILD_OF",
+                                    "traceID": "abc123",
+                                    "spanID": "aaa111",
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ]
+        }
+        with patch("urllib.request.urlopen", return_value=_http_mock(payload)):
+            table = JaegerTracesFetcher("http://jaeger:16686").fetch(start, end)
+
+        assert "parent_span_id" in table.column_names
+        assert table.column("parent_span_id")[0].as_py() == "aaa111"
+
+    def test_fetch_root_span_has_empty_parent_span_id(self, window_bounds):
+        """A span with no CHILD_OF reference gets parent_span_id='' (root span)."""
+        start, end = window_bounds
+        payload = {
+            "data": [
+                {
+                    "traceID": "abc123",
+                    "spans": [
+                        {
+                            "spanID": "root001",
+                            "operationName": "/root",
+                            "startTime": 1715000000000000,
+                            "duration": 500,
+                            "tags": [],
+                            "references": [],
+                        }
+                    ],
+                }
+            ]
+        }
+        with patch("urllib.request.urlopen", return_value=_http_mock(payload)):
+            table = JaegerTracesFetcher("http://jaeger:16686").fetch(start, end)
+
+        assert table.column("parent_span_id")[0].as_py() == ""
+
+    def test_fetch_cross_trace_child_of_reference_ignored(self, window_bounds):
+        """A CHILD_OF reference to a different traceID must not be used as parent_span_id."""
+        start, end = window_bounds
+        payload = {
+            "data": [
+                {
+                    "traceID": "trace001",
+                    "spans": [
+                        {
+                            "spanID": "span001",
+                            "operationName": "/op",
+                            "startTime": 1715000000000000,
+                            "duration": 500,
+                            "tags": [],
+                            "references": [
+                                {
+                                    "refType": "CHILD_OF",
+                                    "traceID": "other_trace_xyz",
+                                    "spanID": "parent_in_other_trace",
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ]
+        }
+        with patch("urllib.request.urlopen", return_value=_http_mock(payload)):
+            table = JaegerTracesFetcher("http://jaeger:16686").fetch(start, end)
+
+        assert table.column("parent_span_id")[0].as_py() == ""
 
 
 class TestOpenSearchLogsFetcher:
@@ -415,6 +506,69 @@ class TestBuildDefaultCapture:
         assert isinstance(capture, TelemetryCapture)
         assert capture._config.incident_id == "s0-adhc-001"
         assert capture._config.manifest is manifest
+
+
+@pytest.mark.filterwarnings(
+    "ignore:parent_span_id absent:UserWarning"
+)  # build_ueg_c uses schema-v1 Parquet path until Task 4 wires parent_span_id
+def test_manifest_has_snapshot_hash_after_write(config, window_bounds):
+    """After _write_snapshot_hash(), manifest.json has a 64-char hex snapshot_hash."""
+    from bin.run_capture import _write_snapshot_hash
+    from helios.vcl import set_current_manifest
+
+    start, end = window_bounds
+    set_current_manifest(config.manifest)
+    window = TelemetryCapture(
+        config=config, fetchers=_three_stubs(), writer=ParquetWriter()
+    ).run(start, end)
+
+    manifest_path = config.output_dir / config.incident_id / "manifest.json"
+    _write_snapshot_hash(window, manifest_path)
+
+    data = json.loads(manifest_path.read_text())
+    assert "snapshot_hash" in data
+    assert len(data["snapshot_hash"]) == 64
+    assert all(c in "0123456789abcdef" for c in data["snapshot_hash"])
+
+
+@pytest.mark.filterwarnings(
+    "ignore:parent_span_id absent:UserWarning"
+)  # build_ueg_c uses schema-v1 Parquet path until Task 4 wires parent_span_id
+def test_manifest_schema_version_updated_to_v0_2(config, window_bounds):
+    """_write_snapshot_hash() sets schema_version to MANIFEST_SCHEMA_VERSION."""
+    from bin.run_capture import MANIFEST_SCHEMA_VERSION, _write_snapshot_hash
+    from helios.vcl import set_current_manifest
+
+    start, end = window_bounds
+    set_current_manifest(config.manifest)
+    window = TelemetryCapture(
+        config=config, fetchers=_three_stubs(), writer=ParquetWriter()
+    ).run(start, end)
+
+    manifest_path = config.output_dir / config.incident_id / "manifest.json"
+    _write_snapshot_hash(window, manifest_path)
+    data = json.loads(manifest_path.read_text())
+    assert data.get("schema_version") == MANIFEST_SCHEMA_VERSION
+
+
+@pytest.mark.filterwarnings(
+    "ignore:parent_span_id absent:UserWarning"
+)  # build_ueg_c uses schema-v1 Parquet path until Task 4 wires parent_span_id
+def test_manifest_window_hash_and_snapshot_hash_are_distinct(config, window_bounds):
+    """window_hash (L0 raw data) and snapshot_hash (graph topology) are distinct."""
+    from bin.run_capture import _write_snapshot_hash
+    from helios.vcl import set_current_manifest
+
+    start, end = window_bounds
+    set_current_manifest(config.manifest)
+    window = TelemetryCapture(
+        config=config, fetchers=_three_stubs(), writer=ParquetWriter()
+    ).run(start, end)
+
+    manifest_path = config.output_dir / config.incident_id / "manifest.json"
+    _write_snapshot_hash(window, manifest_path)
+    data = json.loads(manifest_path.read_text())
+    assert data["window_hash"] != data["snapshot_hash"]
 
 
 # ---------------------------------------------------------------------------
@@ -490,3 +644,34 @@ class TestCaptureReader:
         """Reading a non-existent incident_id raises FileNotFoundError."""
         with pytest.raises(FileNotFoundError):
             CaptureReader(tmp_path).read("s0-nonexistent-001")
+
+
+def test_manifest_snapshot_hash_absent_when_graph_disabled(config, window_bounds):
+    """When l2b_graph=False, snapshot_hash is NOT written but schema_version is."""
+    from bin.run_capture import MANIFEST_SCHEMA_VERSION, _write_snapshot_hash
+    from helios.vcl import set_current_manifest
+    from helios.vcl.variants import CONFIRMATORY_VARIANTS
+
+    no_graph_manifest = CONFIRMATORY_VARIANTS["HELIOS-noGraph"]
+    set_current_manifest(no_graph_manifest)
+
+    no_graph_config = CaptureConfig(
+        incident_id="s0-cart-001",
+        manifest=no_graph_manifest,
+        evaluation_phase=EvaluationPhase.EXPLORATORY,
+        output_dir=config.output_dir,
+    )
+
+    start, end = window_bounds
+    window = TelemetryCapture(
+        config=no_graph_config, fetchers=_three_stubs(), writer=ParquetWriter()
+    ).run(start, end)
+
+    manifest_path = (
+        no_graph_config.output_dir / no_graph_config.incident_id / "manifest.json"
+    )
+    _write_snapshot_hash(window, manifest_path)
+    data = json.loads(manifest_path.read_text())
+
+    assert "snapshot_hash" not in data
+    assert data.get("schema_version") == MANIFEST_SCHEMA_VERSION

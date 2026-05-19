@@ -16,12 +16,14 @@ VCLManifest-aware: variant_config_hash from the active manifest.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from helios.pipelines.g_pipe.stub import run_gpipe
-from helios.pipelines.l_pipe.stub import run_lpipe
+from helios.pipelines.g_pipe.pipeline import run_gpipe
+from helios.pipelines.l_pipe.pipeline import run_lpipe
 from helios.schemas import EvaluationPhase, PipelineVerdict
+from helios.schemas.ueg_c import EdgeType, NodeType, UEGCEdge, UEGCNode, UEGCSnapshot
 from helios.store.result_store import ResultStore
 from helios.vcl import VCLFlag, get_variant, set_current_manifest
 from helios.vcl.snapshot_registry import SnapshotRegistry
@@ -35,6 +37,25 @@ if TYPE_CHECKING:
 
 _INCIDENT = "inc-smoke-001"
 _SNAP_HASH = "a" * 64
+
+# Minimal snapshot for smoke tests — no real Parquet ingestion at Stage 0
+_SMOKE_SNAPSHOT = UEGCSnapshot(
+    incident_id=_INCIDENT,
+    variant_config_hash="a" * 64,
+    nodes=[
+        UEGCNode(node_id="A", node_type=NodeType.SERVICE, service_name="A"),
+        UEGCNode(node_id="B", node_type=NodeType.SERVICE, service_name="B"),
+        UEGCNode(node_id="C", node_type=NodeType.SERVICE, service_name="C"),
+    ],
+    edges=[
+        UEGCEdge(source="A", target="B", edge_type=EdgeType.CALL, weight=0.80),
+        UEGCEdge(source="B", target="C", edge_type=EdgeType.CALL, weight=0.60),
+    ],
+    captured_at_iso="2026-01-01T00:00:00+00:00",
+)
+
+# D-pipe scores with disagreement above threshold so gpipe runs
+_SMOKE_DPIPE_SCORES = {"A": 0.90, "B": 0.45, "C": 0.36}
 
 
 @pytest.fixture()
@@ -70,9 +91,38 @@ def test_full_pipeline_exploratory_row_inserted(
     )  # access internal path for fixture reuse
     assert reg2.contains(snap_hash)
 
-    # Run gated stubs (simulating pipeline execution)
-    g_result = run_gpipe(incident_id=_INCIDENT, snapshot_hash=snap_hash)
-    l_result = run_lpipe(incident_id=_INCIDENT, snapshot_hash=snap_hash)
+    # Run gated pipelines (simulating pipeline execution)
+    g_result = run_gpipe(
+        incident_id=_INCIDENT,
+        snapshot=_SMOKE_SNAPSHOT,
+        snapshot_hash=snap_hash,
+        dpipe_scores=_SMOKE_DPIPE_SCORES,
+        evaluation_phase="exploratory",
+        run_id="smoke-gpipe-001",
+    )
+    mock_lpipe_handler_result = (
+        MagicMock(ranked_candidates=["A"], narrative="A caused the issue"),
+        MagicMock(prompt_tokens=10, completion_tokens=20),
+    )
+    with (
+        patch("helios.pipelines.l_pipe.pipeline.PromptRegistry") as mock_reg_cls,
+        patch("helios.pipelines.l_pipe.pipeline.OllamaClient"),
+        patch("helios.pipelines.l_pipe.pipeline.ResponseHandler") as mock_handler_cls,
+    ):
+        mock_reg = MagicMock()
+        mock_reg.render.return_value = "test prompt"
+        mock_reg.prompt_version = "rca_v1"
+        mock_reg_cls.return_value = mock_reg
+        mock_handler = MagicMock()
+        mock_handler.handle.return_value = mock_lpipe_handler_result
+        mock_handler_cls.return_value = mock_handler
+        l_result = run_lpipe(
+            incident_id=_INCIDENT,
+            snapshot=_SMOKE_SNAPSHOT,
+            snapshot_hash=snap_hash,
+            evaluation_phase="exploratory",
+            run_id="smoke-lpipe-001",
+        )
 
     # Build and insert PipelineVerdict rows
     for idx, result in enumerate([g_result, l_result]):
@@ -84,8 +134,8 @@ def test_full_pipeline_exploratory_row_inserted(
             pipeline=result["pipeline"],
             evaluation_phase=EvaluationPhase.EXPLORATORY,
             ranked_candidates=result["ranked_candidates"],
-            hr_at_3=result["hr_at_3"],
-            cpr=result["cpr"],
+            hr_at_3=float(result.get("hr_at_3", 0.00)),
+            cpr=float(result.get("cpr", 0.00)),
             latency_ms=result["latency_ms"],
             token_count=result["token_count"],
             narrative=result["narrative"],
@@ -119,7 +169,13 @@ def test_full_pipeline_inactive_flag_blocks_stub(
     set_current_manifest(manifest)
 
     with pytest.raises(GatedComponentInactiveError):
-        run_lpipe(incident_id=_INCIDENT, snapshot_hash=_SNAP_HASH)
+        run_lpipe(
+            incident_id=_INCIDENT,
+            snapshot=_SMOKE_SNAPSHOT,
+            snapshot_hash=_SNAP_HASH,
+            evaluation_phase="exploratory",
+            run_id="smoke-inactive-001",
+        )
 
 
 def test_snapshot_registry_integration(
@@ -136,7 +192,28 @@ def test_snapshot_registry_integration(
     reg.register(snap, vch)
     assert reg.contains(snap)
 
-    g_result = run_gpipe(incident_id="inc-reg-test", snapshot_hash=snap)
+    smoke_snap = UEGCSnapshot(
+        incident_id="inc-reg-test",
+        variant_config_hash=vch,
+        nodes=[
+            UEGCNode(node_id="A", node_type=NodeType.SERVICE, service_name="A"),
+            UEGCNode(node_id="B", node_type=NodeType.SERVICE, service_name="B"),
+            UEGCNode(node_id="C", node_type=NodeType.SERVICE, service_name="C"),
+        ],
+        edges=[
+            UEGCEdge(source="A", target="B", edge_type=EdgeType.CALL, weight=0.80),
+            UEGCEdge(source="B", target="C", edge_type=EdgeType.CALL, weight=0.60),
+        ],
+        captured_at_iso="2026-01-01T00:00:00+00:00",
+    )
+    g_result = run_gpipe(
+        incident_id="inc-reg-test",
+        snapshot=smoke_snap,
+        snapshot_hash=snap,
+        dpipe_scores=_SMOKE_DPIPE_SCORES,
+        evaluation_phase="exploratory",
+        run_id="smoke-reg-test-gpipe",
+    )
     verdict = PipelineVerdict(
         run_id="smoke-reg-test",
         incident_id="inc-reg-test",

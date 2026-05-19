@@ -66,8 +66,8 @@ class CaptureConfig:
     manifest: VCLManifest
     evaluation_phase: EvaluationPhase
     prometheus_url: str = "http://localhost:9090"
-    jaeger_url: str = "http://localhost:32770"
-    opensearch_url: str = "http://localhost:32781"
+    jaeger_url: str = "http://localhost:32771"
+    opensearch_url: str = "http://localhost:32768"
     output_dir: Path = field(default_factory=lambda: Path("data") / "captures")
 
 
@@ -196,6 +196,7 @@ class JaegerTracesFetcher(StreamFetcher):
     def fetch(self, start: datetime, end: datetime) -> pa.Table:
         trace_ids: list[str] = []
         span_ids: list[str] = []
+        parent_ids: list[str] = []
         ops: list[str] = []
         services: list[str] = []
         start_times: list[int] = []
@@ -233,8 +234,17 @@ class JaegerTracesFetcher(StreamFetcher):
                         ),
                         "UNSET",
                     )
+                    parent_id = ""
+                    for ref in span.get("references", []):
+                        if (
+                            ref.get("refType") == "CHILD_OF"
+                            and ref.get("traceID") == tid
+                        ):
+                            parent_id = str(ref.get("spanID", ""))
+                            break
                     trace_ids.append(tid)
                     span_ids.append(str(span.get("spanID", "")))
+                    parent_ids.append(parent_id)
                     ops.append(str(span.get("operationName", "")))
                     services.append(service)
                     start_times.append(int(span.get("startTime", 0)))
@@ -245,6 +255,7 @@ class JaegerTracesFetcher(StreamFetcher):
             {
                 "trace_id": pa.array(trace_ids, type=pa.string()),
                 "span_id": pa.array(span_ids, type=pa.string()),
+                "parent_span_id": pa.array(parent_ids, type=pa.string()),
                 "operation_name": pa.array(ops, type=pa.string()),
                 "service_name": pa.array(services, type=pa.string()),
                 "start_time_us": pa.array(start_times, type=pa.int64()),
