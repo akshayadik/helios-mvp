@@ -132,7 +132,7 @@ coverage      = { version = ">=7.4,<8.0", extras = ["toml"] }
 types-PyYAML  = ">=6.0,<7.0"  # ADDED; mypy stubs for yaml used in verify_osf_freeze.py
  
 # ─────────────────────────────────────────────────────────────────────────────
-# Build system
+# Notebook execution
 # ─────────────────────────────────────────────────────────────────────────────
 nbformat = "^5.10.4"
 nbconvert = "^7.17.1"
