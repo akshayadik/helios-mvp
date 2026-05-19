@@ -219,7 +219,11 @@ ignore_missing_imports = true            # PRESERVED as global fallback
 # ADDED: strict mode + pydantic plugin
 strict                 = true
 plugins                = ["pydantic.mypy"]
- 
+# ADDED: prevents "found twice under different module names" error when
+# bin/ scripts exist both as top-level modules (via sys.path = ".") and
+# as bin.* modules (via files = [..., "bin", ...]).
+explicit_package_bases = true
+
 # PRESERVED: your files list, extended to include scripts/
 # (bin/ preserved in case you add CLI entry points there later)
 files = ["helios", "bin", "scripts", "tests"]

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 from helios.pipelines.g_pipe.gpipe_config import DISAGREEMENT_SWEEP
 from helios.pipelines.g_pipe.pipeline import _ppr_traverse, compute_ppr_disagreement
@@ -26,7 +27,7 @@ GROUND_TRUTH_PATH = Path("data/ground_truth.json")
 HELIOS_ENABLE_CALIBRATE_GPIPE: bool = True
 
 
-def _load_corpus() -> list[dict]:
+def _load_corpus() -> list[dict[str, Any]]:
     from helios.graph.ppr_pruner import prune_graph
     from helios.graph.ueg_c_builder import build_ueg_c
     from helios.pipelines.d_pipe.dpipe_config import (
@@ -109,7 +110,7 @@ def _load_corpus() -> list[dict]:
     return corpus
 
 
-def _loo_cv(corpus: list[dict], threshold: float) -> tuple[float, float, int]:
+def _loo_cv(corpus: list[dict[str, Any]], threshold: float) -> tuple[float, float, int]:
     """Returns (g_hr_at_3, d_hr_at_3, n_triggered)."""
     g_hits, d_hits, n_triggered = 0, 0, 0
     n = len(corpus)
@@ -123,7 +124,7 @@ def _loo_cv(corpus: list[dict], threshold: float) -> tuple[float, float, int]:
             n_triggered += 1
             ranked, _ = _ppr_traverse(held_out["snapshot"], dpipe_scores)
             g_hits += int(gt in ranked[:3])
-        d_ranked = sorted(dpipe_scores, key=dpipe_scores.get, reverse=True)  # type: ignore[arg-type]
+        d_ranked = sorted(dpipe_scores, key=dpipe_scores.get, reverse=True)
         d_hits += int(gt in d_ranked[:3])
     return g_hits / max(n_triggered, 1), d_hits / n, n_triggered
 

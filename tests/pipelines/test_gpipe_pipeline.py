@@ -2,18 +2,20 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
 from helios.vcl import VCLFlag, get_variant, set_current_manifest  # noqa: F401
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+
     from helios.schemas.ueg_c import UEGCSnapshot
 
 
 @pytest.fixture(autouse=True)
-def _reset_manifest() -> None:  # type: ignore[return]
+def _reset_manifest() -> Generator[None, Any, None]:
     yield
     from helios.vcl.decorators import _current_manifest
 

@@ -255,7 +255,7 @@ def test_check_consistency_passes_gpipe_sentinel_row() -> None:
     gate, _ = _make_gate(manifest=manifest)
     cfg_hash = manifest.compute_variant_config_hash()
     snap_hash = _SNAP_HASH
-    rows = [
+    rows: list[dict[str, Any]] = [
         {
             "pipeline": "dpipe",
             "variant_config_hash": cfg_hash,
