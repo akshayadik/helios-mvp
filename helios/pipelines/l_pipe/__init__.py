@@ -1,4 +1,5 @@
-"""helios.pipelines.l_pipe — LLM explanation and feedback pipeline (Stage 5+).
+"""helios.pipelines.l_pipe — LLM explanation pipeline gated by VCLFlag.L2C_LLM."""
 
-Null stub at Stage 0 — gated by VCLFlag.L2C_LLM.
-"""
+from helios.pipelines.l_pipe.pipeline import run_lpipe
+
+__all__ = ["run_lpipe"]

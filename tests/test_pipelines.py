@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 from helios.pipelines.d_pipe.stub import run_dpipe
 from helios.pipelines.g_pipe.pipeline import run_gpipe
-from helios.pipelines.l_pipe.stub import run_lpipe
+from helios.pipelines.l_pipe.pipeline import run_lpipe
 from helios.vcl import (
     GatedComponentInactiveError,
     VCLFlag,
@@ -133,11 +133,48 @@ class TestGPipePipeline:
 # ------------------------------------------------------------------
 
 
-class TestLPipeStub:
+class TestLPipePipeline:
+    def _make_snap(self) -> UEGCSnapshot:
+        from helios.schemas.ueg_c import NodeType, UEGCNode, UEGCSnapshot
+
+        return UEGCSnapshot(
+            incident_id="inc-001",
+            variant_config_hash="a" * 64,
+            nodes=[UEGCNode(node_id="A", node_type=NodeType.SERVICE, service_name="A")],
+            edges=[],
+            captured_at_iso="2026-01-01T00:00:00+00:00",
+        )
+
     def test_lpipe_active_returns_verdict(self) -> None:
+        from unittest.mock import MagicMock, patch
+
         m = _manifest_with()  # HELIOS-Full has l2c_llm=True
         set_current_manifest(m)
-        result = run_lpipe(incident_id="inc-001", snapshot_hash=_FAKE_SNAP)
+        mock_handler_result = (
+            MagicMock(ranked_candidates=["A"], narrative="A caused the issue"),
+            MagicMock(prompt_tokens=10, completion_tokens=20),
+        )
+        with (
+            patch("helios.pipelines.l_pipe.pipeline.PromptRegistry") as mock_reg_cls,
+            patch("helios.pipelines.l_pipe.pipeline.OllamaClient"),
+            patch(
+                "helios.pipelines.l_pipe.pipeline.ResponseHandler"
+            ) as mock_handler_cls,
+        ):
+            mock_reg = MagicMock()
+            mock_reg.render.return_value = "test prompt"
+            mock_reg.prompt_version = "rca_v1"
+            mock_reg_cls.return_value = mock_reg
+            mock_handler = MagicMock()
+            mock_handler.handle.return_value = mock_handler_result
+            mock_handler_cls.return_value = mock_handler
+            result = run_lpipe(
+                incident_id="inc-001",
+                snapshot=self._make_snap(),
+                snapshot_hash=_FAKE_SNAP,
+                evaluation_phase="exploratory",
+                run_id="run-001",
+            )
         assert result["pipeline"] == "lpipe"
         assert result["incident_id"] == "inc-001"
 
@@ -145,7 +182,13 @@ class TestLPipeStub:
         m = _manifest_with(l2c_llm=False)
         set_current_manifest(m)
         with pytest.raises(GatedComponentInactiveError):
-            run_lpipe(incident_id="inc-001", snapshot_hash=_FAKE_SNAP)
+            run_lpipe(
+                incident_id="inc-001",
+                snapshot=self._make_snap(),
+                snapshot_hash=_FAKE_SNAP,
+                evaluation_phase="exploratory",
+                run_id="run-001",
+            )
 
     def test_lpipe_has_gated_by_attribute(self) -> None:
         assert hasattr(run_lpipe, "__gated_by__")

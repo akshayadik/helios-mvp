@@ -62,7 +62,7 @@ class DisjointnessRegistry:
 _PIPELINE_MODULES = [
     "helios.pipelines.d_pipe.stub",
     "helios.pipelines.g_pipe.pipeline",
-    "helios.pipelines.l_pipe.stub",
+    "helios.pipelines.l_pipe.pipeline",
 ]
 
 

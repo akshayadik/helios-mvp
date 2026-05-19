@@ -18,8 +18,9 @@ from helios.orchestrator.corpus import CorpusLoader
 from helios.orchestrator.ledger import ReconciliationLedger
 from helios.pipelines.d_pipe.pipeline import run_dpipe
 from helios.pipelines.g_pipe.pipeline import run_gpipe, should_run_gpipe
-from helios.pipelines.l_pipe.stub import run_lpipe
+from helios.pipelines.l_pipe.pipeline import run_lpipe
 from helios.schemas.telemetry import EvaluationPhase
+from helios.schemas.ueg_c import UEGCSnapshot
 from helios.schemas.verdict import VERDICT_SCHEMA_VERSION, PipelineVerdict
 from helios.store.result_store import ResultStore
 from helios.telemetry.reader import CaptureReader
@@ -160,9 +161,42 @@ class RunOrchestrator:
                 "evaluation_phase": evaluation_phase_str,
                 "schema_version": VERDICT_SCHEMA_VERSION,
             }
-        l_out = run_lpipe(incident_id=incident_id, snapshot_hash=snapshot_hash)
-        l_out["schema_version"] = VERDICT_SCHEMA_VERSION
-        l_out["run_id"] = run_id
+        lpipe_snapshot = (
+            ueg_c
+            if ueg_c is not None
+            else UEGCSnapshot(
+                incident_id=incident_id,
+                variant_config_hash=self._config_hash,
+                nodes=[],
+                edges=[],
+                captured_at_iso="",
+            )
+        )
+        try:
+            l_out = run_lpipe(
+                incident_id=incident_id,
+                snapshot=lpipe_snapshot,
+                snapshot_hash=snapshot_hash,
+                evaluation_phase=evaluation_phase_str,
+                run_id=run_id,
+            )
+        except GatedComponentInactiveError:
+            l_out = {
+                "pipeline": "lpipe",
+                "incident_id": incident_id,
+                "run_id": run_id,
+                "variant_config_hash": self._config_hash,
+                "snapshot_hash": snapshot_hash,
+                "ranked_candidates": [],
+                "ppr_scores": {},
+                "hr_at_3": 0.00,
+                "cpr": 0.00,
+                "latency_ms": 0.00,
+                "token_count": 0,
+                "narrative": "lpipe-gated-or-skipped",
+                "evaluation_phase": evaluation_phase_str,
+                "schema_version": VERDICT_SCHEMA_VERSION,
+            }
 
         verdicts = [
             self._build_verdict(d_out),

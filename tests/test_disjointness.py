@@ -44,9 +44,9 @@ def _clean_registry() -> Generator[None, Any, None]:
 
 def test_no_helios_paths_registered_at_stage0() -> None:
     registry = DisjointnessRegistry()
-    # G-pipe is now the real pipeline (stub deleted at M3); l_pipe stub remains.
+    # G-pipe and L-pipe are now real pipelines (stubs deleted at M3).
     assert "helios.pipelines.g_pipe.pipeline.run_gpipe" in registry._paths
-    assert "helios.pipelines.l_pipe.stub.run_lpipe" in registry._paths
+    assert "helios.pipelines.l_pipe.pipeline.run_lpipe" in registry._paths
 
 
 def test_register_increments_len() -> None:
