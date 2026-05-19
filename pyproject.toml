@@ -127,8 +127,9 @@ pre-commit = ">=3.8,<5.0"    # PRESERVED floor; ceiling added
 # ADDED
 black      = ">=24.0,<27.0"  # format authority; editor integration
 isort      = ">=5.12,<6.0"   # import sorter; editor integration
-coverage   = { version = ">=7.4,<8.0", extras = ["toml"] }
+coverage      = { version = ">=7.4,<8.0", extras = ["toml"] }
                               # [toml] extra enables [tool.coverage] config here
+types-PyYAML  = ">=6.0,<7.0"  # ADDED; mypy stubs for yaml used in verify_osf_freeze.py
  
 # ─────────────────────────────────────────────────────────────────────────────
 # Build system
