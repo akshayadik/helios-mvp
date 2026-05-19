@@ -44,6 +44,14 @@
 
 ---
 
+### Stage 1 / M3 — L-pipe Protocol A
+
+| Seed_ID | Seed_value | Stage | Variant | Benchmark | Registered | Algorithm_context | SHA | Notes |
+|---------|------------|-------|---------|-----------|------------|-------------------|-----|-------|
+| SEED-S1-01 | 42 | Stage 1 / M3 | ALL | ALL | 2026-05-19 | Ollama Protocol A inference seed — controls greedy decoding reproducibility in L-pipe via `LLAMA_SEED` constant in `lpipe_config.py` | 3340abc | Exploratory phase; used alongside temperature=0 for deterministic LLM output. Applies to all L-pipe-enabled variants. Not applicable to L-pipe-disabled variants (e.g., HELIOS-noLLM). |
+
+---
+
 ## Confirmatory Seed Block (Stage 5+)
 
 [PENDING: Stage 5 — 10 seeds × 8 variants × 5 benchmarks to be pre-registered before confirmatory runs begin. Seeds will be drawn by the OSF pre-registration script and committed here atomically with the Stage 5 deviation log entry.]

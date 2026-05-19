@@ -57,28 +57,32 @@ Legend: ✅ ≥80% complete · 🟡 partial · ⏳ not yet started · ❌ blocke
 
 ## C1 Invariants snapshot (manual)
 
-*Last updated: 2026-05-18 (Milestone 2 exit + PPR fix)*
+*Last updated: 2026-05-19 (Milestone 3 exit — G-pipe + L-pipe + OSF freeze)*
 
 | Invariant | Status | Evidence link |
 |---|---|---|
-| Variant manifest hashing | ✅ | `helios/vcl/` — 8 confirmatory variants, unique hashes, frozen Stage 0 |
+| Variant manifest hashing | ✅ | `helios/vcl/` — 8 confirmatory variants, unique hashes, frozen Stage 0; verified by OSF freeze M3 |
 | Snapshot hash registry | ✅ | `helios/vcl/snapshot_registry.py` + `data/snapshot_registry.jsonl` (20 entries) |
 | Metric integrity gate | ✅ | `helios/integrity_gate.py` — frozen Milestone 1 |
 | Exclusion ledger (signed) | 🟡 partial | `bin/log_exclusion.py` — schema defined; CLI stub; auto-populated via `AppendOnlyLedger` protocol |
-| Deviation log (signed, chained) | ✅ | `bin/log_deviation.py` — 10 entries, chain verified (M2 adds 5 entries) |
+| Deviation log (signed, chained) | ✅ | `bin/log_deviation.py` — 16 entries, chain verified (M3 adds 6 entries) |
 | Reconciliation ledger | ✅ | `helios/orchestrator/ledger.py` — 25 entries, HMAC chain verified |
-| DisjointnessAuditor | ✅ | `helios/vcl/disjointness.py` — static + dynamic PASSED at Milestone 1 |
+| DisjointnessAuditor | ✅ | `helios/vcl/disjointness.py` — PASSED at M3 gate; 3 covered (gpipe, dpipe, l2c_llm), 10 uncovered |
 | UEG-C Builder | ✅ | `helios/graph/ueg_c_builder.py` + `ppr_pruner.py` — frozen Milestone 2; 15/15 gate PASS |
 | D-pipe calibration | ✅ | LOO-CV HR@3=0.5333; params frozen in `dpipe_config.py`; SHA `8d11801` |
+| G-pipe calibration | ✅ | LOO-CV HR@3=0.60 held-out; DISAGREEMENT_THRESHOLD=0.20 frozen in `gpipe_config.py`; SHA `8759d6f` |
+| L-pipe Protocol A | ✅ | Ollama llama3.1:8b; EXPECTED_PROMPT_SHA tamper-guard active; `lpipe_config.py`; SHA `25fcd2b` |
+| OSF protocol freeze (M3) | ✅ | 6 JSON artefacts + manifest_sig.txt in `research/osf/`; CI job `osf-freeze-verify` on every push |
 
 ## Latest deviation log entries (manual)
 
-*Source: `deviation_log.jsonl` — 10 entries total; 5 most recent shown*
+*Source: `deviation_log.jsonl` — 16 entries total; 6 most recent shown*
 
 | # | Date | Stage | Clause | Change (truncated) | sig[:12] |
 |---|---|---|---|---|---|
-| 6 | 2026-05-16 | Stage 1 | §2.2 Span Containment Heuristic | Temporal containment backward-scan instead of parent_span_id | 5655ff9fbeeabfaf |
-| 7 | 2026-05-16 | Stage 1 | §4.2 Smoke Ablation | Smoke gate tied: HELIOS-D HR@3=0.00, Random HR@3=0.00 on rcf hold-out | 7737045a57c994a5 |
-| 8 | 2026-05-16 | Stage 1 | §2.4 K-Hop PPR Pruner — Pruner Efficacy Exit Gate | Pruner achieves 0% node reduction; gate requires ≥50% reduction | 629886ca14cd7468 |
-| 9 | 2026-05-18 | Stage 1 / M2-fix | §2.4-gate | PPR entry-point fix; PRUNER_EFFICACY_GATE 0.50→0.25; PRUNER_THRESHOLD 0.01→0.02 | 766ee8e1fc60 |
-| 10 | 2026-05-18 | Stage 1 / M2-fix | §2.4-gate-2 | PRUNER_EFFICACY_GATE 0.25→0.20; INTEGRITY_RATE_GATE 0.85→0.40 | 1737fc5b33ab |
+| 11 | 2026-05-18 | Stage 1 / M3 | §3.6.3 PipelineVerdict schema | schema-draft-v0.2: ppr_scores + prompt_version fields added | 9bc1857167e9 |
+| 12 | 2026-05-18 | Stage 1 / M3-task6 | §2.2 Span Containment Heuristic | All 20 incidents re-captured with parent_span_id; port defaults updated | cdc80e197402 |
+| 13 | 2026-05-18 | Stage 1 / M3 | §3.6.8 Orchestration | Sequential D→G(conditional)→L dispatch; should_run_gpipe() gate | 84dcc2834950 |
+| 14 | 2026-05-19 | Stage 1 / M3 | §4.2 A-H6 / §3.6.7 G-pipe threshold | DISAGREEMENT_THRESHOLD 0.30→0.20; ppr_scores added to run_dpipe | 05a602955403 |
+| 15 | 2026-05-19 | Stage 1 / M3 | §3.6.7 L-pipe model specification | llama3.1:8b via Ollama (proposal: Llama-3.1-70B via vLLM) | 29789db26fba |
+| 16 | 2026-05-19 | Stage 1 / M3 | §3.6.7 L-pipe serving runtime | Ollama for MVP (proposal: vLLM); latency not production-representative | b7812340df24 |
