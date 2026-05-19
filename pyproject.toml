@@ -134,6 +134,9 @@ types-PyYAML  = ">=6.0,<7.0"  # ADDED; mypy stubs for yaml used in verify_osf_fr
 # ─────────────────────────────────────────────────────────────────────────────
 # Build system
 # ─────────────────────────────────────────────────────────────────────────────
+nbformat = "^5.10.4"
+nbconvert = "^7.17.1"
+jupyter = "^1.1.1"
  
 [build-system]
 requires      = ["poetry-core>=1.0.0"]   # PRESERVED exactly

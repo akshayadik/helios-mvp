@@ -1,0 +1,6 @@
+# gitleaks configuration for HELIOS MVP
+# Allowlist known false positives in poetry.lock (sha256 hashes match token patterns)
+
+[allowlist]
+description = "False positive sha256 hashes in poetry.lock"
+paths = ["poetry.lock"]
