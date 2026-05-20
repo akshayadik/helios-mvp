@@ -109,7 +109,31 @@ After running `compile_ground_truth.py`, update `research/osf/corpus_manifest.js
 "ground_truth_sha": "<SHA-256 of data/ground_truth.json>"
 ```
 
-This locks the ground truth at OSF freeze time.
+This anchors the ground truth at OSF freeze time. The SHA is an integrity check, not permanent immutability.
+
+### 2.2a Ground truth label correction path (fix #6)
+
+If a label correction is required after the SHA is locked (e.g., a service name typo), the correction path is:
+
+```bash
+# 1. Fix the error in ground_truth_labelling.md
+# 2. Recompile
+python scripts/compile_ground_truth.py
+
+# 3. Log the correction as a deviation entry (required for DSR validity)
+set -a; source .env; set +a
+poetry run python bin/log_deviation.py \
+  --stage "Stage 1 / M4" \
+  --clause "§3.6.6 Corpus" \
+  --change "Ground truth label correction: <service_name> typo fixed in INC-XXX" \
+  --reason "<describe the error and its source>" \
+  --analytic-consequence "ground_truth_sha in corpus_manifest.json updated; prior analysis runs using old SHA are invalidated"
+
+# 4. Regenerate the OSF manifest to update ground_truth_sha
+poetry run python bin/verify_osf_freeze.py --generate
+```
+
+`compile_ground_truth.py` must support a `--update-manifest` flag that performs steps 1-4 atomically: recompile → write new SHA to `corpus_manifest.json`. It must refuse to run if no deviation log entry exists for the current git HEAD (checked by calling `bin/log_deviation.py verify`). This prevents silent SHA updates.
 
 ### 2.3 `helios/evaluation/metrics.py`
 
@@ -307,12 +331,11 @@ class ConsensusVerdict(BaseModel):
     fusion_algorithm: str          # "uniform_borda_v1" | "none"
     fusion_algorithm_sha: str      # AST-based semantic hash of uniform_borda.py (see Section 4.2)
     source_run_sha: str            # SHA of merged_db at fusion time
-    consensus_verdict_hash: str    # SHA-256 of (incident_id + variant_config_hash + ranked_candidates)
-    ranked_candidates: list[str]
+    consensus_verdict_hash: str    # SHA-256 of (incident_id + variant_config_hash + ranked_candidates_json)
+    ranked_candidates: list[str]   # stored as VARCHAR[] in DuckDB (see Section 4.3)
     # Fused result only — no per-pipeline HR@3 duplication
     consensus_score: float
     hr_at_3_consensus: float
-    ranked_candidates: list[str]
 
     # Reference keys for tracing back to source PipelineVerdict rows
     # Format: "<run_id>|<pipeline>" for each of the 3 pipeline verdicts fused
@@ -379,6 +402,44 @@ FUSION_ALGORITHM_SHA = _compute_ast_hash()  # tamper-evident; auto-updates on lo
 
 `FUSION_CORE_VERSION` is used for the idempotency key (Section 6.2) and for the `fusion_algorithm` field. Both are required; one is human-readable, the other is tamper-evident.
 
+### 4.3 DuckDB LIST column insertion (fix for array casting mismatch)
+
+DuckDB's parameter binding does not accept Python `list[str]` directly as a `VARCHAR[]` column value; passing a list via `?` placeholder may be interpreted as multi-row input or serialised as a string blob depending on the DuckDB-Python driver version.
+
+The correct insertion pattern uses `json.dumps` for all list fields and an explicit `::VARCHAR[]` cast at query time:
+
+```python
+import json, duckdb
+
+def insert_consensus_verdict(con: duckdb.DuckDBPyConnection, cv: ConsensusVerdict) -> None:
+    con.execute(
+        """
+        INSERT INTO consensus_verdicts VALUES (
+            ?, ?, ?, ?, ?, ?, ?,
+            ?::VARCHAR[],   -- ranked_candidates
+            ?::VARCHAR[],   -- active_pipelines
+            ?::VARCHAR[],   -- source_pipeline_verdict_keys
+            ?::DOUBLE[],    -- lpipe_hr_at_3_samples
+            ?, ?, ?, ?, ?, ?, ?, ?
+        )
+        """,
+        [
+            cv.consensus_id, cv.incident_id, cv.variant_config_hash,
+            cv.snapshot_hash, cv.evaluation_phase, cv.pipeline_row_count,
+            cv.fusion_algorithm,
+            json.dumps(cv.ranked_candidates),       # -> ::VARCHAR[]
+            json.dumps(cv.active_pipelines),        # -> ::VARCHAR[]
+            json.dumps(cv.source_pipeline_verdict_keys),  # -> ::VARCHAR[]
+            json.dumps(cv.lpipe_hr_at_3_samples),   # -> ::DOUBLE[]
+            cv.lpipe_sample_count, cv.consensus_score, cv.hr_at_3_consensus,
+            cv.fusion_algorithm_sha, cv.source_run_sha, cv.consensus_verdict_hash,
+            cv.cpr, cv.schema_version,
+        ],
+    )
+```
+
+The same explicit cast must be used when writing `PipelineVerdict.ranked_candidates` to DuckDB in `ResultStore`. A unit test must verify round-trip: insert a ConsensusVerdict, fetch it, assert the Python `list[str]` fields are equal after de-serialisation.
+
 ---
 
 ## Section 5 — UniformBordaConsensus
@@ -399,14 +460,17 @@ class UniformBordaConsensus:
     ) -> ConsensusVerdict:
         """
         Uniform Borda count: each pipeline contributes equal weight.
-        Score for candidate c = sum over pipelines of (N - rank(c))
-        where N = len(candidates). Ties broken alphabetically (deterministic).
-        Returns ConsensusVerdict with ranked_candidates and per-pipeline HR@3.
+        Score for candidate c = sum over pipelines of (N - rank(c, pipeline_ranking))
+        where N = len(candidates for that pipeline).
+        Final sort key: (-borda_score, candidate_name). This is a stable composite key
+        that produces identical results regardless of Python dict insertion order or
+        Timsort's internal positioning of equal-score elements.
         """
 ```
 
-`HELIOS-noConsensus` has `VCLFlag.RECONCILE = False`. `@gated_by` raises `GatedComponentInactiveError`.
-`fuse_verdicts.py` catches this and writes a passthrough: `fusion_algorithm="none"`, `ranked_candidates = dpipe_candidates`, `lpipe_hr_at_3_samples = []`, `lpipe_sample_count = 0`.
+**Tie-breaking contract (fix #1):** The sort must use `sorted(candidates, key=lambda c: (-scores[c], c))`. Using `-score` descending and `candidate_name` ascending as a tiebreaker guarantees byte-lexicographic determinism across all variants and seeds. Tests must verify: (a) two candidates with equal scores always resolve to alphabetical order, and (b) the property holds when input candidates are given in reverse-alphabetical order.
+
+**Layer boundary contract (fix #4):** `UniformBordaConsensus.fuse()` implements ONLY the Borda algorithm. It has no knowledge of D-pipe, fallback rankings, or what to do when `VCLFlag.RECONCILE = False`. `@gated_by` raises `GatedComponentInactiveError`; the coordinator (`fuse_verdicts.py`) is solely responsible for catching it and constructing the passthrough `ConsensusVerdict` by reading the D-pipe `PipelineVerdict` row from the store. This preserves the L2/L3 boundary.
 
 ### 5.3 `--lpipe-samples` flag
 
@@ -436,8 +500,11 @@ def test_rank_preservation(candidates, n_pipelines):
 def test_ties_broken_alphabetically(candidates):
     """Equal Borda scores resolve to alphabetical order."""
 
+def test_ties_stable_under_input_reordering(candidates):
+    """Ties must resolve identically regardless of the order candidates are passed in."""
+
 def test_no_consensus_fallback():
-    """HELIOS-noConsensus: fuse() raises GatedComponentInactiveError; D-pipe passthrough applied."""
+    """GatedComponentInactiveError propagates to caller; fuse() itself does not reference D-pipe."""
 ```
 
 ### 5.4 Integration test: `--dry-run` (new)
@@ -504,7 +571,31 @@ def assert_lineage(store: ResultStore) -> None:
             )
 ```
 
-On lineage failure: append a deviation log entry and write to `ExclusionLedger`. Do not proceed with fusion.
+On lineage failure: append a deviation log entry, write to `ExclusionLedger`, and mark the affected cell with `excluded = True` in the `consensus_verdicts` table (or write a tombstone row with `fusion_algorithm = "excluded"`). Cells that are missing or excluded must never reach `analyse_results.py`.
+
+### 6.1a Exclusion ledger filter gate (fix #3)
+
+`analyse_results.py` must filter the ConsensusVerdict table before computing any statistics:
+
+```python
+def load_analysis_rows(store: ResultStore) -> list[ConsensusVerdict]:
+    """Load only complete, non-excluded consensus cells."""
+    all_rows = store.fetch_all_consensus_rows()
+    complete = [
+        r for r in all_rows
+        if r.pipeline_row_count == 3 and r.fusion_algorithm != "excluded"
+    ]
+    excluded_count = len(all_rows) - len(complete)
+    if excluded_count > 0:
+        logger.warning(
+            "Excluded %d cells from analysis (pipeline_row_count < 3 or excluded flag). "
+            "See exclusion_ledger.jsonl for details.",
+            excluded_count,
+        )
+    return complete
+```
+
+If the filtered set is smaller than `NUM_INCIDENTS * NUM_VARIANTS`, the analysis output must record the actual N used per hypothesis pair, not the expected N. Statistical conclusions must reference the actual N.
 
 ### 6.2 Idempotency key
 
@@ -520,13 +611,21 @@ Runs lineage assertion and fuses only the first 2 incidents (4 cells). Exits 0 i
 
 ### 6.4 Ground truth SHA verification
 
-At the start of `fuse_verdicts.py`, verify:
+At the start of `fuse_verdicts.py`, verify the SHA:
 
 ```python
 actual_sha = sha256(Path("data/ground_truth.json").read_bytes()).hexdigest()
 expected_sha = load_corpus_manifest()["ground_truth_sha"]
-assert actual_sha == expected_sha, "ground_truth.json has been modified since OSF freeze"
+if actual_sha != expected_sha:
+    raise RuntimeError(
+        f"ground_truth.json SHA mismatch.\n"
+        f"  expected: {expected_sha}\n"
+        f"  actual:   {actual_sha}\n"
+        "If you corrected a label, run: python scripts/compile_ground_truth.py --update-manifest"
+    )
 ```
+
+The error message must reference the `--update-manifest` path (Section 2.2a) so the operator knows the correct remediation action rather than assuming the file is corrupted.
 
 ---
 
@@ -542,25 +641,43 @@ import numpy as np
 
 def run_wilcoxon(x: list[float], y: list[float], hypothesis_id: str) -> dict:
     differences = [a - b for a, b in zip(x, y)]
+    nonzero_diffs = [d for d in differences if d != 0]
 
-    # Zero-variance guard
-    if np.std(differences) == 0:
+    # Zero-variance guard — two conditions (fix #5):
+    # (a) all differences are zero (std = 0, test undefined)
+    # (b) all non-zero differences are identical (std of non-zero subset = 0);
+    #     e.g., every pair differs by exactly +0.1 — scipy produces undefined ranks
+    if len(nonzero_diffs) == 0 or np.std(nonzero_diffs) == 0:
         return {
             "hypothesis_id": hypothesis_id,
             "result": "INVARIANT",
-            "note": "All differences are zero; Wilcoxon test not applicable"
+            "n_nonzero": len(nonzero_diffs),
+            "note": (
+                "All non-zero differences are identical or all differences are zero; "
+                "Wilcoxon signed-rank test not applicable"
+            ),
         }
 
-    stat, p_value = scipy.stats.wilcoxon(
-        x, y,
-        alternative="two-sided",
-        method="exact",
-    )
-    # Matched-pairs rank-biserial correlation: r = 1 - (2W) / (n(n+1)/2)
-    # Provides practical significance evidence when N=20 lacks statistical power.
+    try:
+        stat, p_value = scipy.stats.wilcoxon(
+            x, y,
+            alternative="two-sided",
+            method="exact",
+        )
+    except ValueError as exc:
+        # Catch any remaining edge cases scipy raises (e.g., N=1 after zero removal)
+        return {
+            "hypothesis_id": hypothesis_id,
+            "result": "WILCOXON_ERROR",
+            "error": str(exc),
+            "n_nonzero": len(nonzero_diffs),
+        }
+
+    # Matched-pairs rank-biserial r: r = 1 - (2W) / (n_nonzero(n_nonzero+1)/2)
+    # Uses n_nonzero (not total N) because scipy excludes zero-difference pairs.
     # r ∈ [-1, 1]: positive = treatment wins more ranks; negative = control wins.
-    n = len(x)
-    max_w = n * (n + 1) / 2
+    n_nz = len(nonzero_diffs)
+    max_w = n_nz * (n_nz + 1) / 2
     rank_biserial_r = float(1 - (2 * stat) / max_w)
 
     return {
@@ -568,7 +685,8 @@ def run_wilcoxon(x: list[float], y: list[float], hypothesis_id: str) -> dict:
         "statistic": stat,
         "p_value": p_value,
         "rank_biserial_r": rank_biserial_r,
-        "n": n,
+        "n": len(x),
+        "n_nonzero": n_nz,
     }
 ```
 
