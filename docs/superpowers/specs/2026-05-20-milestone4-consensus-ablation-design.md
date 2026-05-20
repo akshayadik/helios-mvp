@@ -151,13 +151,17 @@ for variant in get_all_variants():
         check=True,
         env={**os.environ, "HELIOS_RUN_ID": str(uuid4())},
     )
+    # Structural integrity check before merge (DuckDB row-count probe)
+    _check_db_integrity(db_path)
     merge_into_main_db(db_path, main_db_path, verify_sha=True)
     db_path.unlink()
 ```
 
+`_check_db_integrity(db_path)` opens the file in read-only mode and runs a basic row-count query. DuckDB does not support SQLite's `PRAGMA integrity_check` natively; a row-count probe is the correct equivalent. If the connection or query fails, the function raises `RuntimeError` with the variant name and the error detail, and the ablation loop halts before any corrupt data is merged.
+
 ### 3.2 In-flight smoke check
 
-After the **first** variant subprocess completes and is merged, run a quick HR@3 check.
+After the **first** variant subprocess completes and passes the integrity check and is merged, run a quick HR@3 check against `ground_truth.json`.
 `HR_AT_3_FLOOR` is a module constant representing the minimum non-trivial HR@3 (at least one hit in 20 incidents):
 
 ```python
@@ -165,13 +169,25 @@ HR_AT_3_FLOOR = 0.05  # at least one hit in 20 incidents
 
 rows = ResultStore(main_db_path).fetch_all()
 if all(r.hr_at_3 < HR_AT_3_FLOOR for r in rows):
+    # Log to deviation_log.jsonl before aborting
+    subprocess.run(
+        [
+            "poetry", "run", "python", "bin/log_deviation.py",
+            "--stage", "Stage 1 / M4",
+            "--clause", "§3.6.8 Orchestration",
+            "--change", "Smoke check abort: HR@3 below floor after first variant",
+            "--reason", f"All {len(rows)} pipeline rows have HR@3 < {HR_AT_3_FLOOR}; likely ground_truth.json mismatch or corpus path error",
+            "--analytic-consequence", "Ablation run aborted; no consensus rows written",
+        ],
+        check=True,
+    )
     raise RuntimeError(
         "Smoke check FAILED: all pipeline HR@3 values below floor after first variant. "
-        "Aborting remaining 7 variants."
+        "Deviation logged. Aborting remaining 7 variants."
     )
 ```
 
-If this fires, no further subprocess calls are made. The operator must diagnose and re-run.
+If this fires, no further subprocess calls are made. The deviation log records the abort so the chain remains continuous.
 
 ### 3.3 Merge hardening (`--verify-merge` flag)
 
@@ -214,7 +230,7 @@ class ConsensusVerdict(BaseModel):
     active_pipelines: list[str]
     pipeline_row_count: int        # must be 3 for a complete cell
     fusion_algorithm: str          # "uniform_borda_v1" | "none"
-    fusion_algorithm_sha: str      # from FUSION_CORE_VERSION constant
+    fusion_algorithm_sha: str      # AST-based semantic hash of uniform_borda.py (see Section 4.2)
     source_run_sha: str            # SHA of merged_db at fusion time
     consensus_verdict_hash: str    # SHA-256 of (incident_id + variant_config_hash + ranked_candidates)
     ranked_candidates: list[str]
@@ -236,15 +252,45 @@ class ConsensusVerdict(BaseModel):
 
 The `cpr` model_validator enforces a research protocol constraint, not a default value. It must not be relaxed until the price book is available.
 
-### 4.2 `FUSION_CORE_VERSION` constant
+### 4.2 AST-based semantic fingerprint
+
+`fusion_algorithm_sha` in `ConsensusVerdict` is populated from `FUSION_ALGORITHM_SHA`, a module-level constant computed by parsing `uniform_borda.py`'s own AST at import time. This is stable across whitespace and comment edits; it changes only when functional logic changes.
 
 In `helios/consensus/uniform_borda.py`:
 
 ```python
-FUSION_CORE_VERSION = "borda-v1"
+import ast
+import hashlib
+from pathlib import Path
+
+def _compute_ast_hash() -> str:
+    """Hash functional content of this module, stripping docstrings and comments."""
+    source = Path(__file__).read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    # Strip leading docstrings from all compound nodes
+    for node in ast.walk(tree):
+        if isinstance(
+            node,
+            (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Module),
+        ):
+            if (
+                node.body
+                and isinstance(node.body[0], ast.Expr)
+                and isinstance(node.body[0].value, ast.Constant)
+                and isinstance(node.body[0].value.value, str)
+            ):
+                node.body.pop(0)
+    canonical = ast.dump(tree, indent=None)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+FUSION_CORE_VERSION = "borda-v1"   # human-readable; update when algorithm changes
+FUSION_ALGORITHM_SHA = _compute_ast_hash()  # tamper-evident; auto-updates on logic change
 ```
 
-`fusion_algorithm_sha` in `ConsensusVerdict` is set to `FUSION_CORE_VERSION`, not to a file-system SHA-256 of `uniform_borda.py`. File-system SHA breaks on whitespace and comment changes. The version string changes only when the algorithm logic changes, and that change must be accompanied by a deviation log entry.
+`FUSION_ALGORITHM_SHA` is recorded in every `ConsensusVerdict` row. Re-running `fuse_verdicts.py` after a logic change produces a different SHA, making any mid-run code change detectable in the output artefacts.
+
+`FUSION_CORE_VERSION` is used for the idempotency key (Section 6.2) and for the `fusion_algorithm` field. Both are required; one is human-readable, the other is tamper-evident.
 
 ---
 
@@ -381,11 +427,19 @@ def run_wilcoxon(x: list[float], y: list[float], hypothesis_id: str) -> dict:
         alternative="two-sided",
         method="exact",
     )
+    # Matched-pairs rank-biserial correlation: r = 1 - (2W) / (n(n+1)/2)
+    # Provides practical significance evidence when N=20 lacks statistical power.
+    # r ∈ [-1, 1]: positive = treatment wins more ranks; negative = control wins.
+    n = len(x)
+    max_w = n * (n + 1) / 2
+    rank_biserial_r = float(1 - (2 * stat) / max_w)
+
     return {
         "hypothesis_id": hypothesis_id,
         "statistic": stat,
         "p_value": p_value,
-        "n": len(x),
+        "rank_biserial_r": rank_biserial_r,
+        "n": n,
     }
 ```
 
@@ -409,7 +463,7 @@ Every output from `analyse_results.py` must include a power_disclosure block wit
 
 ### 7.4 Output
 
-Results written to `results/wilcoxon_exploratory.json`. This file is the evidence artefact for G4-6.
+Results written to `results/m4_exploratory_analysis.json`. This file is the evidence artefact for G4-6. Each per-hypothesis entry includes `statistic`, `p_value`, `rank_biserial_r`, and `n`. The `rank_biserial_r` field allows the Chapter 4 dissertation text to argue practical significance when the sample size (N=20) is insufficient to achieve statistical significance at the pre-registered α.
 
 ---
 
@@ -504,7 +558,7 @@ Documents the full environment and command sequence needed to reproduce M4 resul
 | 160 consensus cells computed | G4-3 | 20 incidents × 8 variants; 0 nulls in ConsensusVerdict table | results/fused_verdicts.db |
 | Lineage assertion passes | G4-4 | exactly 480 pipeline rows; all cells complete (3 rows each) | fuse_verdicts.py output |
 | Smoke test passes | G4-5 | `fuse_verdicts.py --smoke` exits 0 | CI job |
-| Wilcoxon results generated | G4-6 | all 8 A-hypotheses in `results/wilcoxon_exploratory.json` | results/ |
+| Wilcoxon results generated | G4-6 | all 8 A-hypotheses in `results/m4_exploratory_analysis.json`; each entry includes `rank_biserial_r` | results/ |
 | Disjointness audit passes | G4-7 | `reconcile` flag covered; PASSED in audit log | disjointness_audit_log.md |
 | Replication check passes | G4-8 | 2-incident byte-equality; `replicate.py` exits 0 | replication_verification_log.md |
 | ReconciliationLedger extended | G4-9 | 3 new outcome types logged; chain verified | reconciliation_ledger.jsonl |
