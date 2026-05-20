@@ -2,7 +2,7 @@
 
 **Goal:** Implement the Uniform Borda consensus layer (L3), run the full 20-incident × 8-variant OTEL exploratory ablation, compute per-pipeline and consensus HR@3, run exploratory Wilcoxon inference, and close all C1 evidence with a final disjointness audit and replication check.
 
-**Architecture:** Post-run analysis pipeline. `RunOrchestrator` stays frozen at M3. Consensus and metrics are computed downstream in `fuse_verdicts.py` from the raw `PipelineVerdict` rows. Each variant run is spawned as a separate OS subprocess to guarantee zero shared state. Per-variant DuckDB files are merged progressively (immediately after each subprocess) into a central DB.
+**Architecture:** Post-run analysis pipeline. `RunOrchestrator` stays frozen at M3. Consensus and metrics are computed downstream in `fuse_verdicts.py` from the raw `PipelineVerdict` rows. Each variant run is spawned as a separate OS subprocess to guarantee zero shared state. Per-variant DuckDB files are collected individually, then merged atomically in a single transaction after all subprocesses succeed, with a pre-merge backup and `--rollback-on-failure` recovery path.
 
 **Tech Stack:** Python 3.11, DuckDB, Pydantic v2, scipy (Wilcoxon), subprocess isolation, HMAC-chained deviation log, VCLFlag feature flags, pytest + hypothesis (property-based tests).
 
@@ -23,7 +23,7 @@ The following rows must be added (all starting PLANNED → IN_PROGRESS as work b
 | S1-M4-ENG01 | ENG | `ground_truth.json` compiler + `helios/evaluation/metrics.py` |
 | S1-M4-ENG02 | ENG | `ConsensusVerdict` schema-draft-v0.3 + `ConsensusIntegrityGate` |
 | S1-M4-ENG03 | ENG | `UniformBordaConsensus` (`@gated_by(VCLFlag.RECONCILE)`) |
-| S1-M4-ENG04 | ENG | `scripts/run_ablation.py` (subprocess isolation + progressive merge) |
+| S1-M4-ENG04 | ENG | `scripts/run_ablation.py` (subprocess isolation + atomic merge + rollback) |
 | S1-M4-ENG05 | ENG | `scripts/fuse_verdicts.py` (idempotent, lineage-asserted, --smoke) |
 | S1-M4-ENG06 | ENG | `scripts/analyse_results.py` (two-sided exact Wilcoxon + Holm-Bonferroni) |
 | S1-M4-ENG07 | ENG | `scripts/replicate.py` + `docs/reproducibility/m4_replication.md` |
@@ -125,18 +125,49 @@ def compute_hr_at_3(ranked_candidates: list[str], acceptable: list[str]) -> floa
 
 `compute_hr_at_3` must never be imported inside `helios/orchestrator/`. If it appears in that import tree, it is a coupling violation.
 
----
+### 2.4 `helios/config/m4_ablation.py`
 
-## Section 3 — Subprocess Isolation and Variant Run Loop
-
-### 3.1 `scripts/run_ablation.py`
-
-Spawns each variant as a fresh Python subprocess. After each subprocess returns, immediately merges the per-variant DuckDB into the central DB, verifies the merged file SHA, then deletes the temp file.
-
-The ablation seed is sourced from the seed register (SEED-S1-01, registered at M3 as `LLAMA_SEED`). It must not be declared as a literal integer in this script; import it from `helios.pipelines.l_pipe.lpipe_config`.
+All magic numbers, expected counts, and floor values are centralised here. Every script imports from this module rather than declaring literals inline.
 
 ```python
+from helios.vcl.variants import get_all_variants
+
+# Corpus dimensions — computed, not hardcoded
+NUM_INCIDENTS: int = 20
+NUM_PIPELINES: int = 3  # d_pipe, g_pipe, l_pipe
+NUM_VARIANTS: int = len(get_all_variants())
+EXPECTED_PIPELINE_ROW_COUNT: int = NUM_INCIDENTS * NUM_VARIANTS * NUM_PIPELINES
+
+# Quality floors
+HR_AT_3_FLOOR: float = 0.05   # minimum non-trivial HR@3 (≥1 hit in 20 incidents)
+
+# L-pipe sampling
+LPIPE_SAMPLES_DEFAULT: int = 1
+LPIPE_SAMPLES_REPLICATION: int = 3
+
+# Output paths
+ABLATION_DB_PATH: str = "results/m4_pipeline_verdicts.duckdb"
+MANIFEST_PATH: str = "results/m4_variant_manifest.json"
+ANALYSIS_OUTPUT_PATH: str = "results/m4_exploratory_analysis.json"
+```
+
+`NUM_VARIANTS` is computed at import time from `get_all_variants()` so that adding a variant automatically updates `EXPECTED_PIPELINE_ROW_COUNT` without a manual constant change.
+
+---
+
+## Section 3 — Subprocess Isolation and Atomic Merge
+
+### 3.1 `scripts/run_ablation.py` — subprocess loop
+
+All eight variants run first; the central DB is not touched until all succeed. Each subprocess writes to an isolated per-variant file. After each subprocess returns, the file is integrity-checked and its SHA-256 is recorded in `MANIFEST_PATH`. No merge occurs in this phase.
+
+The ablation seed is sourced from SEED-S1-01 (`LLAMA_SEED`). It must not be declared as a literal integer; import it from `helios.pipelines.l_pipe.lpipe_config`.
+
+```python
+from helios.config.m4_ablation import ABLATION_DB_PATH, MANIFEST_PATH
 from helios.pipelines.l_pipe.lpipe_config import LLAMA_SEED as ABLATION_SEED
+
+manifest: dict[str, str] = {}  # variant_name → per-variant DB SHA
 
 for variant in get_all_variants():
     db_path = Path(f"results/run_{variant.name}.db")
@@ -151,58 +182,102 @@ for variant in get_all_variants():
         check=True,
         env={**os.environ, "HELIOS_RUN_ID": str(uuid4())},
     )
-    # Structural integrity check before merge (DuckDB row-count probe)
-    _check_db_integrity(db_path)
-    merge_into_main_db(db_path, main_db_path, verify_sha=True)
-    db_path.unlink()
+    _check_db_integrity(db_path)          # row-count probe (see 3.2)
+    manifest[variant.name] = sha256(db_path.read_bytes()).hexdigest()
+    _run_smoke_check_if_first(variant, db_path)  # see 3.3
+
+Path(MANIFEST_PATH).write_text(json.dumps(manifest, indent=2))
+_atomic_merge(manifest, Path(ABLATION_DB_PATH), rollback=args.rollback_on_failure)
 ```
 
-`_check_db_integrity(db_path)` opens the file in read-only mode and runs a basic row-count query. DuckDB does not support SQLite's `PRAGMA integrity_check` natively; a row-count probe is the correct equivalent. If the connection or query fails, the function raises `RuntimeError` with the variant name and the error detail, and the ablation loop halts before any corrupt data is merged.
+### 3.2 Per-variant integrity check
 
-### 3.2 In-flight smoke check
+`_check_db_integrity(db_path: Path) -> None` opens the file in read-only mode and runs a row-count query against the `pipeline_verdicts` table. DuckDB does not support SQLite's `PRAGMA integrity_check`; a successful read-only row-count query is the correct equivalent. If the connection or query raises, the function raises `RuntimeError` with the variant name. The ablation loop halts; no SHA is written to the manifest.
 
-After the **first** variant subprocess completes and passes the integrity check and is merged, run a quick HR@3 check against `ground_truth.json`.
-`HR_AT_3_FLOOR` is a module constant representing the minimum non-trivial HR@3 (at least one hit in 20 incidents):
+### 3.3 In-flight smoke check (first variant only)
+
+`_run_smoke_check_if_first(variant, db_path)` fires only when `variant` is the first in `get_all_variants()`. It reads the per-variant DB **directly** (not the central DB, which has not been touched yet), computes HR@3 against `data/ground_truth.json`, and aborts if all rows are below `HR_AT_3_FLOOR`:
 
 ```python
-HR_AT_3_FLOOR = 0.05  # at least one hit in 20 incidents
+from helios.config.m4_ablation import HR_AT_3_FLOOR
 
-rows = ResultStore(main_db_path).fetch_all()
+rows = ResultStore(db_path).fetch_all()
 if all(r.hr_at_3 < HR_AT_3_FLOOR for r in rows):
-    # Log to deviation_log.jsonl before aborting
     subprocess.run(
         [
             "poetry", "run", "python", "bin/log_deviation.py",
             "--stage", "Stage 1 / M4",
             "--clause", "§3.6.8 Orchestration",
             "--change", "Smoke check abort: HR@3 below floor after first variant",
-            "--reason", f"All {len(rows)} pipeline rows have HR@3 < {HR_AT_3_FLOOR}; likely ground_truth.json mismatch or corpus path error",
-            "--analytic-consequence", "Ablation run aborted; no consensus rows written",
+            "--reason", (
+                f"All {len(rows)} pipeline rows have HR@3 < {HR_AT_3_FLOOR}; "
+                "likely ground_truth.json mismatch or corpus path mapping error"
+            ),
+            "--analytic-consequence", "Ablation run aborted; no variant DBs merged",
         ],
         check=True,
     )
     raise RuntimeError(
-        "Smoke check FAILED: all pipeline HR@3 values below floor after first variant. "
-        "Deviation logged. Aborting remaining 7 variants."
+        "Smoke check FAILED. Deviation logged. Remaining 7 variants not executed."
     )
 ```
 
-If this fires, no further subprocess calls are made. The deviation log records the abort so the chain remains continuous.
+### 3.4 Atomic merge with rollback (`_atomic_merge`)
 
-### 3.3 Merge hardening (`--verify-merge` flag)
+After all 8 variant DBs are written and the manifest is saved, merge into the central DB:
 
-`merge_into_main_db()` must:
-1. Record SHA-256 of the per-variant DB file before merging.
-2. After merge, re-read the rows just inserted and verify their count matches the expected per-variant row count.
-3. On `--verify-merge`: compute SHA-256 of the final merged DB and write it to `corpus_manifest.json` under `"merged_db_sha"`.
+```python
+def _atomic_merge(
+    manifest: dict[str, str],
+    central_db: Path,
+    rollback: bool = True,
+) -> None:
+    backup = central_db.with_suffix(".duckdb.bak")
+    if central_db.exists() and rollback:
+        shutil.copy2(central_db, backup)
+    try:
+        con = duckdb.connect(str(central_db))
+        for variant_name, expected_sha in manifest.items():
+            db_path = Path(f"results/run_{variant_name}.db")
+            actual_sha = sha256(db_path.read_bytes()).hexdigest()
+            if actual_sha != expected_sha:
+                raise RuntimeError(
+                    f"SHA mismatch for {variant_name}: manifest={expected_sha[:12]} "
+                    f"actual={actual_sha[:12]}"
+                )
+            con.execute(f"ATTACH '{db_path}' AS v")
+            con.execute("BEGIN")
+            con.execute(
+                "INSERT INTO pipeline_verdicts SELECT * FROM v.pipeline_verdicts"
+            )
+            con.execute("COMMIT")
+            con.execute("DETACH v")
+            db_path.unlink()
+        # Record final merged DB SHA
+        con.close()
+        merged_sha = sha256(central_db.read_bytes()).hexdigest()
+        _update_corpus_manifest(merged_db_sha=merged_sha)
+    except Exception:
+        con.execute("ROLLBACK")
+        con.close()
+        if rollback and backup.exists():
+            shutil.move(str(backup), str(central_db))
+        raise
+    finally:
+        if backup.exists():
+            backup.unlink(missing_ok=True)
+```
 
-### 3.4 Progressive merge rationale
+SHA re-verification at merge time (comparing against `MANIFEST_PATH` values) detects any file-system mutation between subprocess exit and final merge.
 
-Merging after each variant (rather than batch after all 8):
-- Limits blast radius: if variant 5 fails, variants 1-4 are already in the central DB.
-- Enables the smoke check after variant 1.
-- Frees disk space (temp file deleted immediately).
-- Makes the final DB SHA stable before `fuse_verdicts.py` runs.
+### 3.5 Merge design rationale
+
+Single final merge was chosen over progressive merge for this milestone because:
+- Atomicity: all-or-nothing semantics; partial merges are not possible.
+- Rollback: if any variant's SHA mismatches or the ATTACH fails, the central DB is restored from backup.
+- Audit: the manifest file records per-variant SHAs before the merge, creating a tamper-evident chain from subprocess → manifest → central DB SHA in `corpus_manifest.json`.
+
+Trade-off accepted: blast radius is larger than progressive merge (a subprocess failure in variant 7 means variants 1-6 are still on disk but not yet merged). Mitigated by: (a) per-variant DB files are retained until the merge succeeds, and (b) the manifest records SHAs so a partial re-run can be detected.
 
 ---
 
@@ -234,23 +309,35 @@ class ConsensusVerdict(BaseModel):
     source_run_sha: str            # SHA of merged_db at fusion time
     consensus_verdict_hash: str    # SHA-256 of (incident_id + variant_config_hash + ranked_candidates)
     ranked_candidates: list[str]
+    # Fused result only — no per-pipeline HR@3 duplication
     consensus_score: float
     hr_at_3_consensus: float
-    hr_at_3_dpipe: float
-    hr_at_3_gpipe: float
-    hr_at_3_lpipe: float
+    ranked_candidates: list[str]
+
+    # Reference keys for tracing back to source PipelineVerdict rows
+    # Format: "<run_id>|<pipeline>" for each of the 3 pipeline verdicts fused
+    source_pipeline_verdict_keys: list[str]
+
+    # L-pipe variance fields (populated when --lpipe-samples > 1)
+    lpipe_hr_at_3_samples: list[float]    # length == LPIPE_SAMPLES used; [hr] when default
+    lpipe_sample_count: int               # 1 by default; 3 for replication mode
+
     cpr: float = CPR_PENDING
     cpr_note: str = "price_book_pending_stage_5"
     schema_version: str = "schema-draft-v0.3"
 
     @model_validator(mode="after")
     def _cpr_is_pending_until_stage5(self) -> "ConsensusVerdict":
+        # Stage 5 guard: CpR requires price_book.md to be populated (Stage 5 freeze).
+        # This validator must not be relaxed before then.
         if self.cpr != CPR_PENDING:
             raise ValueError("cpr must equal CPR_PENDING until price_book is populated at Stage 5")
         return self
 ```
 
-The `cpr` model_validator enforces a research protocol constraint, not a default value. It must not be relaxed until the price book is available.
+**Per-pipeline HR@3 removal rationale:** `hr_at_3_dpipe`, `hr_at_3_gpipe`, `hr_at_3_lpipe` are removed from `ConsensusVerdict`. They would duplicate data already present in `PipelineVerdict` rows. `analyse_results.py` computes per-pipeline HR@3 on demand by joining `ConsensusVerdict` with `PipelineVerdict` on `(incident_id, variant_config_hash)`. This keeps the schema normalised.
+
+**`source_pipeline_verdict_keys`** stores `"<run_id>|<pipeline>"` for each of the 3 fused rows, allowing `fuse_verdicts.py` to be audited post-hoc without re-reading the full DB.
 
 ### 4.2 AST-based semantic fingerprint
 
@@ -319,7 +406,13 @@ class UniformBordaConsensus:
 ```
 
 `HELIOS-noConsensus` has `VCLFlag.RECONCILE = False`. `@gated_by` raises `GatedComponentInactiveError`.
-`fuse_verdicts.py` catches this and writes a passthrough: `fusion_algorithm="none"`, `ranked_candidates = dpipe_candidates`.
+`fuse_verdicts.py` catches this and writes a passthrough: `fusion_algorithm="none"`, `ranked_candidates = dpipe_candidates`, `lpipe_hr_at_3_samples = []`, `lpipe_sample_count = 0`.
+
+### 5.3 `--lpipe-samples` flag
+
+`run_ablation.py` accepts `--lpipe-samples N` (default: `LPIPE_SAMPLES_DEFAULT = 1`; use `LPIPE_SAMPLES_REPLICATION = 3` for replication runs). When N > 1, the L-pipe subprocess is called N times per incident with the same seed+prompt, producing N `ranked_candidates` lists. The per-sample HR@3 scores are recorded in `lpipe_hr_at_3_samples`. Borda fusion uses the majority-vote `ranked_candidates` (most common top-1 across samples) when N > 1.
+
+L-pipe variance across samples in `lpipe_hr_at_3_samples` is surfaced in `m4_exploratory_analysis.json` and annotated as a determinism diagnostic, not a primary metric.
 
 ### 5.2 Property-based tests (required)
 
@@ -346,6 +439,42 @@ def test_ties_broken_alphabetically(candidates):
 def test_no_consensus_fallback():
     """HELIOS-noConsensus: fuse() raises GatedComponentInactiveError; D-pipe passthrough applied."""
 ```
+
+### 5.4 Integration test: `--dry-run` (new)
+
+File: `tests/integration/test_run_ablation_dry_run.py`
+
+`run_ablation.py` must support a `--dry-run` flag that:
+- Launches all 8 variant subprocesses as mocked shell commands (no real Ollama/pipeline calls)
+- Writes synthetic per-variant DuckDB files with 20×3=60 placeholder rows each
+- Exercises the full manifest-write → integrity-check → smoke-check → atomic-merge path
+- Asserts: manifest contains 8 entries, central DB has correct row count, backup is cleaned up
+
+```python
+def test_dry_run_full_pipeline(tmp_path, monkeypatch):
+    """Full run_ablation.py --dry-run exercises manifest + integrity + smoke + merge."""
+    # Mock subprocess.run to write synthetic DB files instead of running pipelines
+    ...
+    result = subprocess.run(
+        ["poetry", "run", "python", "scripts/run_ablation.py",
+         "--dry-run", "--corpus", str(tmp_path / "corpus"),
+         "--output-db", str(tmp_path / "central.duckdb")],
+        check=True,
+    )
+    manifest = json.loads((tmp_path / "m4_variant_manifest.json").read_text())
+    assert len(manifest) == 8  # NUM_VARIANTS
+    central_db = duckdb.connect(str(tmp_path / "central.duckdb"))
+    row_count = central_db.execute("SELECT COUNT(*) FROM pipeline_verdicts").fetchone()[0]
+    assert row_count == EXPECTED_PIPELINE_ROW_COUNT
+```
+
+### 5.5 G4-5 smoke: noConsensus path
+
+`fuse_verdicts.py --smoke` must exercise both:
+1. `HELIOS-Full` (RECONCILE=True): `fusion_algorithm="uniform_borda_v1"`, Borda fuse path
+2. `HELIOS-noConsensus` (RECONCILE=False): `fusion_algorithm="none"`, D-pipe passthrough path
+
+The `--smoke` flag selects 2 incidents from the first HELIOS-Full variant and 2 incidents from the first HELIOS-noConsensus variant, covering both code paths in a single CI run.
 
 ---
 
@@ -461,9 +590,34 @@ Every output from `analyse_results.py` must include a power_disclosure block wit
 - `evaluation_phase: "exploratory"`
 - A note that at N=20, power is approximately 15 to 30 percent for a medium effect (Cohen h ≈ 0.28), and that this is an exploratory run; confirmatory inference runs on AIOpsLab at N ≥ 40.
 
-### 7.4 Output
+### 7.4 Per-pipeline HR@3 (on-demand join)
 
-Results written to `results/m4_exploratory_analysis.json`. This file is the evidence artefact for G4-6. Each per-hypothesis entry includes `statistic`, `p_value`, `rank_biserial_r`, and `n`. The `rank_biserial_r` field allows the Chapter 4 dissertation text to argue practical significance when the sample size (N=20) is insufficient to achieve statistical significance at the pre-registered α.
+`analyse_results.py` does NOT read `hr_at_3_dpipe/gpipe/lpipe` from `ConsensusVerdict` (those fields were removed). Instead, it joins:
+
+```python
+# Pseudocode for per-pipeline HR@3 computation
+pipeline_rows = store.fetch_all_pipeline_rows()  # PipelineVerdict table
+consensus_rows = store.fetch_all_consensus_rows()  # ConsensusVerdict table
+
+for cv in consensus_rows:
+    matching = [
+        r for r in pipeline_rows
+        if r.incident_id == cv.incident_id
+        and r.variant_config_hash == cv.variant_config_hash
+    ]
+    per_pipeline_hr = {r.pipeline: r.hr_at_3 for r in matching}
+```
+
+This keeps the ConsensusVerdict schema normalised and prevents HR@3 values from drifting out of sync with the underlying PipelineVerdict rows.
+
+### 7.5 Output
+
+Results written to `results/m4_exploratory_analysis.json`. This file is the evidence artefact for G4-6. Each per-hypothesis entry includes:
+- `statistic`, `p_value`, `rank_biserial_r`, `n`
+- `per_pipeline_hr_at_3`: `{d_pipe: float, g_pipe: float, l_pipe: float}` (from join)
+- `lpipe_variance_diagnostic`: `{sample_count: int, hr_at_3_variance: float}` (from `lpipe_hr_at_3_samples`)
+
+The `rank_biserial_r` field allows the Chapter 4 dissertation text to argue practical significance when N=20 is insufficient to achieve statistical significance at the pre-registered α.
 
 ---
 
@@ -530,21 +684,29 @@ Documents the full environment and command sequence needed to reproduce M4 resul
 ```markdown
 # M4 Replication Guide
 
-## Environment
-- Python: 3.11.x
-- poetry.lock SHA: <fill at M4 exit>
+## Environment Fingerprint
+- Git commit: <M4 exit SHA — fill at exit>
+- Python: 3.11.x (exact patch version)
+- poetry.lock SHA: <fill at M4 exit via sha256sum poetry.lock>
+- Docker Compose hash: <sha256 of docker/otel-demo/compose.yaml>
+- OTEL Demo image tag: <fill at exit — must be pinned in compose.yaml>
 - ABLATION_SEED: SEED-S1-01 (see seed_register.md)
 - FUSION_CORE_VERSION: borda-v1
-- Docker image (OTEL Demo): <tag pinned in compose file>
+- FUSION_ALGORITHM_SHA: <fill at M4 exit — output of _compute_ast_hash() at run time>
+- LPIPE_SAMPLES: 3 (replication mode)
 
-## Commands
+## Full Reproduction Commands
 1. git checkout <M4 exit SHA>
 2. poetry install
-3. python scripts/compile_ground_truth.py
-4. python scripts/run_ablation.py --verify-merge
-5. python scripts/fuse_verdicts.py
-6. python scripts/analyse_results.py
-7. python scripts/replicate.py  # byte-equality check
+3. docker compose -f docker/otel-demo/compose.yaml up -d
+4. python scripts/compile_ground_truth.py
+5. python scripts/run_ablation.py --rollback-on-failure --lpipe-samples 3
+6. python scripts/fuse_verdicts.py
+7. python scripts/analyse_results.py
+8. python scripts/replicate.py  # byte-equality check against reference hashes
+
+## Replicate Without Docker (2-incident subset)
+python scripts/replicate.py --n-incidents 2  # uses pre-captured snapshots from data/captures/
 ```
 
 ---
@@ -557,7 +719,7 @@ Documents the full environment and command sequence needed to reproduce M4 resul
 | ConsensusVerdict schema frozen | G4-2 | schema-draft-v0.3 committed; deviation entry logged | deviation_log.jsonl |
 | 160 consensus cells computed | G4-3 | 20 incidents × 8 variants; 0 nulls in ConsensusVerdict table | results/fused_verdicts.db |
 | Lineage assertion passes | G4-4 | exactly 480 pipeline rows; all cells complete (3 rows each) | fuse_verdicts.py output |
-| Smoke test passes | G4-5 | `fuse_verdicts.py --smoke` exits 0 | CI job |
+| Smoke test passes | G4-5 | `fuse_verdicts.py --smoke` exits 0; exercises both HELIOS-Full (Borda path) and HELIOS-noConsensus (passthrough path) | CI job |
 | Wilcoxon results generated | G4-6 | all 8 A-hypotheses in `results/m4_exploratory_analysis.json`; each entry includes `rank_biserial_r` | results/ |
 | Disjointness audit passes | G4-7 | `reconcile` flag covered; PASSED in audit log | disjointness_audit_log.md |
 | Replication check passes | G4-8 | 2-incident byte-equality; `replicate.py` exits 0 | replication_verification_log.md |
@@ -572,6 +734,8 @@ Documents the full environment and command sequence needed to reproduce M4 resul
 |---|---|---|
 | `data/ground_truth.json` | Create | Compiled ground truth; SHA locked in corpus_manifest.json |
 | `helios/evaluation/metrics.py` | Create | `compute_hr_at_3`, `load_ground_truth` |
+| `helios/config/__init__.py` | Create | Module init |
+| `helios/config/m4_ablation.py` | Create | All M4 constants: counts, floors, paths, sample params |
 | `helios/evaluation/__init__.py` | Create | Module init |
 | `helios/consensus/__init__.py` | Create | Module init |
 | `helios/consensus/verdict.py` | Create | `ConsensusVerdict` (schema-draft-v0.3) + `ConsensusIntegrityGate` |
@@ -589,12 +753,14 @@ Documents the full environment and command sequence needed to reproduce M4 resul
 | `tests/consensus/test_uniform_borda_property.py` | Create | Property-based tests (hypothesis library) |
 | `tests/consensus/test_consensus_integrity_gate.py` | Create | ConsensusIntegrityGate unit tests |
 | `tests/evaluation/test_metrics.py` | Create | `compute_hr_at_3` unit tests |
+| `tests/integration/test_run_ablation_dry_run.py` | Create | Full dry-run integration test: manifest + integrity + smoke + atomic merge |
 
 ---
 
 ## Section 12 — Constraints and Invariants
 
-- **RunOrchestrator is frozen.** `_build_verdict()` must not be modified. HR@3 set to zero in `PipelineVerdict` is correct — HR@3 is computed by `fuse_verdicts.py`.
+- **RunOrchestrator is frozen.** `_build_verdict()` must not be modified. HR@3 set to zero in `PipelineVerdict` is correct — HR@3 is computed by `analyse_results.py` via join.
+- **`helios/config/m4_ablation.py` is the single source of truth** for all counts, floors, and paths. No script may redeclare `EXPECTED_PIPELINE_ROW_COUNT`, `HR_AT_3_FLOOR`, or output filenames as literals.
 - **PipelineVerdict is frozen.** Schema-draft-v0.2 unchanged. `ConsensusVerdict` is schema-draft-v0.3, a separate type.
 - **FUSION_CORE_VERSION must change** if the Borda algorithm logic changes. Changing comments or whitespace does not require a version bump. Any bump requires a deviation log entry.
 - **ground_truth.json SHA is locked** in `corpus_manifest.json` at M3 OSF freeze. `fuse_verdicts.py` must verify it before fusion.
