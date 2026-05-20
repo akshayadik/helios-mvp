@@ -406,12 +406,13 @@ FUSION_ALGORITHM_SHA = _compute_ast_hash()  # tamper-evident; auto-updates on lo
 
 DuckDB's parameter binding does not accept Python `list[str]` directly as a `VARCHAR[]` column value; passing a list via `?` placeholder may be interpreted as multi-row input or serialised as a string blob depending on the DuckDB-Python driver version.
 
-The correct insertion pattern uses `json.dumps` for all list fields and an explicit `::VARCHAR[]` cast at query time:
+The storage layer must not hand-serialize individual fields. Use Pydantic's `model_dump()` to get a dict, then apply `::VARCHAR[]` casts for list columns. This keeps serialisation owned by the model, not scattered across the storage layer:
 
 ```python
 import json, duckdb
 
 def insert_consensus_verdict(con: duckdb.DuckDBPyConnection, cv: ConsensusVerdict) -> None:
+    d = cv.model_dump()
     con.execute(
         """
         INSERT INTO consensus_verdicts VALUES (
@@ -424,21 +425,23 @@ def insert_consensus_verdict(con: duckdb.DuckDBPyConnection, cv: ConsensusVerdic
         )
         """,
         [
-            cv.consensus_id, cv.incident_id, cv.variant_config_hash,
-            cv.snapshot_hash, cv.evaluation_phase, cv.pipeline_row_count,
-            cv.fusion_algorithm,
-            json.dumps(cv.ranked_candidates),       # -> ::VARCHAR[]
-            json.dumps(cv.active_pipelines),        # -> ::VARCHAR[]
-            json.dumps(cv.source_pipeline_verdict_keys),  # -> ::VARCHAR[]
-            json.dumps(cv.lpipe_hr_at_3_samples),   # -> ::DOUBLE[]
-            cv.lpipe_sample_count, cv.consensus_score, cv.hr_at_3_consensus,
-            cv.fusion_algorithm_sha, cv.source_run_sha, cv.consensus_verdict_hash,
-            cv.cpr, cv.schema_version,
+            d["consensus_id"], d["incident_id"], d["variant_config_hash"],
+            d["snapshot_hash"], d["evaluation_phase"], d["pipeline_row_count"],
+            d["fusion_algorithm"],
+            json.dumps(d["ranked_candidates"]),              # -> ::VARCHAR[]
+            json.dumps(d["active_pipelines"]),               # -> ::VARCHAR[]
+            json.dumps(d["source_pipeline_verdict_keys"]),   # -> ::VARCHAR[]
+            json.dumps(d["lpipe_hr_at_3_samples"]),          # -> ::DOUBLE[]
+            d["lpipe_sample_count"], d["consensus_score"], d["hr_at_3_consensus"],
+            d["fusion_algorithm_sha"], d["source_run_sha"], d["consensus_verdict_hash"],
+            d["cpr"], d["schema_version"],
         ],
     )
 ```
 
-The same explicit cast must be used when writing `PipelineVerdict.ranked_candidates` to DuckDB in `ResultStore`. A unit test must verify round-trip: insert a ConsensusVerdict, fetch it, assert the Python `list[str]` fields are equal after de-serialisation.
+`model_dump()` ensures field aliases, validators, and type coercions defined in `ConsensusVerdict` are respected before the dict reaches the storage layer. If the schema gains or loses a field, the storage layer does not need to change — only the INSERT column list changes.
+
+The same explicit cast must be used when writing `PipelineVerdict.ranked_candidates` to DuckDB in `ResultStore`. A unit test must verify round-trip: insert a ConsensusVerdict, fetch it, reconstruct via `ConsensusVerdict.model_validate(row_dict)`, assert equality.
 
 ---
 
@@ -470,7 +473,43 @@ class UniformBordaConsensus:
 
 **Tie-breaking contract (fix #1):** The sort must use `sorted(candidates, key=lambda c: (-scores[c], c))`. Using `-score` descending and `candidate_name` ascending as a tiebreaker guarantees byte-lexicographic determinism across all variants and seeds. Tests must verify: (a) two candidates with equal scores always resolve to alphabetical order, and (b) the property holds when input candidates are given in reverse-alphabetical order.
 
-**Layer boundary contract (fix #4):** `UniformBordaConsensus.fuse()` implements ONLY the Borda algorithm. It has no knowledge of D-pipe, fallback rankings, or what to do when `VCLFlag.RECONCILE = False`. `@gated_by` raises `GatedComponentInactiveError`; the coordinator (`fuse_verdicts.py`) is solely responsible for catching it and constructing the passthrough `ConsensusVerdict` by reading the D-pipe `PipelineVerdict` row from the store. This preserves the L2/L3 boundary.
+**Layer boundary contract (fix #4):** `UniformBordaConsensus.fuse()` implements ONLY the Borda algorithm. It has no knowledge of D-pipe, fallback rankings, or what to do when `VCLFlag.RECONCILE = False`. `@gated_by` raises `GatedComponentInactiveError`; the coordinator (`fuse_verdicts.py`) is solely responsible for catching it.
+
+The null-transform is encapsulated in a separate `PassthroughConsensus` class in `helios/consensus/uniform_borda.py`:
+
+```python
+class PassthroughConsensus:
+    """Null-transform consensus: emits D-pipe rankings unchanged. Used when RECONCILE=False."""
+
+    def fuse(
+        self,
+        pipeline_rows: list[PipelineVerdict],
+        ground_truth: dict[str, list[str]],
+    ) -> ConsensusVerdict:
+        dpipe_row = next(r for r in pipeline_rows if r.pipeline == "d_pipe")
+        return ConsensusVerdict(
+            # ... all required fields, with:
+            fusion_algorithm="none",
+            ranked_candidates=dpipe_row.ranked_candidates,
+            source_pipeline_verdict_keys=[
+                f"{dpipe_row.run_id}|d_pipe"
+            ],
+            lpipe_hr_at_3_samples=[],
+            lpipe_sample_count=0,
+            # ... etc.
+        )
+```
+
+`fuse_verdicts.py` selects the strategy at the cell level:
+
+```python
+try:
+    verdict = UniformBordaConsensus().fuse(pipeline_rows, ground_truth)
+except GatedComponentInactiveError:
+    verdict = PassthroughConsensus().fuse(pipeline_rows, ground_truth)
+```
+
+This keeps `UniformBordaConsensus` free of VCL state knowledge, and `PassthroughConsensus` is independently testable. Both implement the same `fuse()` interface — no isinstance checks, no conditionals in the coordinator beyond the single try/except.
 
 ### 5.3 `--lpipe-samples` flag
 
