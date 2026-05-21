@@ -25,6 +25,7 @@ from helios.vcl.config import VCLManifest  # noqa: F401 — flag-guard complianc
 HELIOS_ENABLE_ANALYSE_RESULTS: bool = True
 
 EXPLORATORY_ALPHA: float = 0.05
+_MEASURABLE_METRICS: frozenset[str] = frozenset({"HR@3"})
 
 
 def run_wilcoxon(
@@ -217,6 +218,24 @@ def main(argv: list[str] | None = None) -> int:
     for hyp in FAMILY_A_HYPOTHESES:
         hyp_id = str(hyp["id"])
         comparison = str(hyp["comparison"])
+        primary_metric = str(hyp.get("primary_metric", "HR@3"))
+
+        if primary_metric not in _MEASURABLE_METRICS:
+            # CpR and other non-HR@3 metrics require Stage 5 price book data.
+            # Using HR@3 pairs here would produce results against the wrong
+            # pre-registered metric, corrupting the audit trail.
+            print(
+                f"  {hyp_id}: primary_metric={primary_metric!r} not measurable "
+                "at M4 (Stage 5+) — marked metric_not_available"
+            )
+            raw_pvalues[hyp_id] = float("nan")
+            per_hyp[hyp_id] = {
+                "skipped": True,
+                "reason": f"metric_not_available:{primary_metric}_pending_stage5",
+                "comparison": comparison,
+            }
+            continue
+
         parts = [p.strip() for p in comparison.split(" vs ")]
         if len(parts) != 2:
             continue

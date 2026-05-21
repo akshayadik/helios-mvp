@@ -21,6 +21,13 @@ from helios.vcl.decorators import gated_by
 
 HELIOS_ENABLE_UNIFORM_BORDA: bool = True
 
+__all__ = [
+    "FUSION_ALGORITHM_SHA",
+    "FUSION_CORE_VERSION",
+    "PassthroughConsensus",
+    "UniformBordaConsensus",
+]
+
 FUSION_CORE_VERSION: str = "borda-v1"
 
 
