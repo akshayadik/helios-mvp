@@ -233,9 +233,9 @@ print(df.groupby('Day')['Status'].value_counts().unstack(fill_value=0))
 
 | Task_ID | Day | Type | Description | Prop_§ | DSR | Contrib | Own | Deps | Status | Started | Done | SHA | Ev_Type | Ev_Ref | Gate | Dev_Ref | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| S1-M4-ENG01 | - | ENG | Add consensus module: ConsensusVerdict, UniformBorda, schema-draft-v0.3 | §3.6.9 | Design | C3,C5 | Akshay | M3-complete | PLANNED | - | - | - | - | - | - | - | |
-| S1-M4-ENG02 | - | ENG | Ablation runner: run_one_variant.py, run_ablation.py, fuse_verdicts.py | §3.7 | Design | C1,C6 | Akshay | S1-M4-ENG01 | PLANNED | - | - | - | - | - | - | - | |
-| S1-M4-ENG03 | - | ENG | Statistical analysis: analyse_results.py, Wilcoxon, Holm-Bonferroni | §4.3 | Evaluate | C5 | Akshay | S1-M4-ENG02 | PLANNED | - | - | - | - | - | - | - | |
+| S1-M4-ENG01 | - | ENG | Add consensus module: ConsensusVerdict, UniformBorda, schema-draft-v0.3 | §3.6.9 | Design | C3,C5 | Akshay | M3-complete | IN_PROGRESS | 2026-05-21 | - | - | - | - | - | - | |
+| S1-M4-ENG02 | - | ENG | Ablation runner: run_one_variant.py, run_ablation.py, fuse_verdicts.py | §3.7 | Design | C1,C6 | Akshay | S1-M4-ENG01 | IN_PROGRESS | 2026-05-21 | - | - | - | - | - | - | |
+| S1-M4-ENG03 | - | ENG | Statistical analysis: analyse_results.py, Wilcoxon, Holm-Bonferroni | §4.3 | Evaluate | C5 | Akshay | S1-M4-ENG02 | IN_PROGRESS | 2026-05-21 | - | - | - | - | - | - | |
 | S1-M4-RES01 | - | RES | Execute ablation matrix: 20 incidents x 8 variants (480 pipeline rows) | §3.7 | Demonstrate | — | Akshay | S1-M4-ENG02 | PLANNED | - | - | - | - | - | - | - | |
 | S1-M4-RES02 | - | RES | Exploratory Wilcoxon run + C1 evidence tables | §4.3 | Evaluate | — | Akshay | S1-M4-ENG03,S1-M4-RES01 | PLANNED | - | - | - | - | - | - | - | |
 | S1-M4-EVAL01 | - | EVAL | Extend ablation_notebook.ipynb L4 section | §5.2 | Communicate | — | Akshay | S1-M4-RES02 | PLANNED | - | - | - | - | - | - | - | |
