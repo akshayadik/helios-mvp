@@ -201,6 +201,9 @@ omit           = [
     "scripts/calibrate_gpipe.py",
     "scripts/inspect_ppr_scores.py",
     "scripts/smoke_ablation.py",
+    # Subprocess entry point — invoked by run_ablation.py via subprocess.run();
+    # tested end-to-end via the ablation dry-run integration tests.
+    "scripts/run_one_variant.py",
 ]
  
 [tool.coverage.report]
