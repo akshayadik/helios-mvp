@@ -39,3 +39,24 @@ ON CONFLICT (tag) DO NOTHING;
 INSERT INTO schema_tag (tag)
 VALUES ('schema-draft-v0.2')
 ON CONFLICT (tag) DO NOTHING;
+
+INSERT INTO schema_tag (tag)
+VALUES ('schema-draft-v0.3')
+ON CONFLICT (tag) DO NOTHING;
+
+-- schema-draft-v0.3: consensus verdict table
+CREATE TABLE IF NOT EXISTS consensus_verdict (
+    incident_id              VARCHAR NOT NULL,
+    variant                  VARCHAR NOT NULL,
+    top_candidates           VARCHAR NOT NULL,  -- JSON array string
+    borda_scores             VARCHAR NOT NULL,  -- JSON object string (per-incident relative; see candidate_universe_size)
+    candidate_universe_size  INTEGER NOT NULL,  -- |all_candidates| for this incident; enables post-hoc normalisation
+    consensus_rank           INTEGER NOT NULL,
+    fusion_algorithm         VARCHAR NOT NULL,
+    fusion_algorithm_sha     VARCHAR NOT NULL,
+    cpr                      DOUBLE  NOT NULL DEFAULT 0,
+    pipeline_row_count       INTEGER NOT NULL,
+    run_id                   VARCHAR NOT NULL,
+    timestamp_utc            VARCHAR NOT NULL,
+    PRIMARY KEY (incident_id, variant)
+);
