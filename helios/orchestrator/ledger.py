@@ -9,9 +9,21 @@ from __future__ import annotations
 
 from helios.vcl.hmac_chain import HMACChainedLog
 
-__all__ = ["ReconciliationLedger"]
+__all__ = ["OUTCOMES", "ReconciliationLedger"]
 
 HELIOS_ENABLE_ORCHESTRATOR: bool = True
+
+OUTCOMES: frozenset[str] = frozenset(
+    {
+        "attempted",
+        "consensus_computed",
+        "consensus_excluded",
+        "consensus_skipped",
+        "excluded",
+        "passed",
+        "skipped",
+    }
+)
 
 
 class ReconciliationLedger(HMACChainedLog):
@@ -24,7 +36,7 @@ class ReconciliationLedger(HMACChainedLog):
         "outcome",
     )
 
-    OUTCOMES: frozenset[str] = frozenset({"attempted", "passed", "excluded", "skipped"})
+    OUTCOMES: frozenset[str] = OUTCOMES
 
     def record(
         self,
