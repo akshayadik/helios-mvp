@@ -154,7 +154,7 @@ build-backend = "poetry.core.masonry.api"
  
 [tool.pytest.ini_options]
 testpaths  = ["tests"]        # PRESERVED
-pythonpath = ["."]            # ADDED: makes `import helios` work without install
+pythonpath = [".", "scripts"]  # "scripts" enables `from scripts.analyse_results import ...` in tests
  
 # CHANGED: was just "-q". Coverage flags added for Stage 0 exit gate (EG1-EG6).
 # --cov-fail-under=90 is the binding gate. Reducing it requires a deviation entry.
@@ -204,6 +204,10 @@ omit           = [
     # Subprocess entry point — invoked by run_ablation.py via subprocess.run();
     # tested end-to-end via the ablation dry-run integration tests.
     "scripts/run_one_variant.py",
+    # CLI driver for post-hoc analysis — requires a populated DuckDB with consensus
+    # rows; pure statistical helpers (run_wilcoxon, apply_holm_bonferroni) are
+    # covered by tests/test_analyse_results.py.
+    "scripts/analyse_results.py",
 ]
  
 [tool.coverage.report]
