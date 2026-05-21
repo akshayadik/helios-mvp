@@ -208,6 +208,9 @@ omit           = [
     # rows; pure statistical helpers (run_wilcoxon, apply_holm_bonferroni) are
     # covered by tests/test_analyse_results.py.
     "scripts/analyse_results.py",
+    # Post-run replication check — requires a populated DuckDB + frozen captures;
+    # tested via --help flag smoke in tests/integration/test_replicate.py.
+    "scripts/replicate.py",
 ]
  
 [tool.coverage.report]
