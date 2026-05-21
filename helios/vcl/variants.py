@@ -265,6 +265,11 @@ EXPLORATORY_VARIANTS: dict[str, VCLManifest] = {
 }
 
 
+def get_all_variants() -> dict[str, VCLManifest]:
+    """Return all confirmatory variants as a fresh dict (8 entries)."""
+    return dict(CONFIRMATORY_VARIANTS)
+
+
 def get_variant(name: str) -> VCLManifest:
     """Resolve a variant name to its VCLManifest (confirmatory first, then exploratory)."""
     if name in CONFIRMATORY_VARIANTS:

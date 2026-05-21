@@ -10,7 +10,12 @@ from .decorators import (
 from .registry import VCLFlag
 from .snapshot_registry import DuplicateSnapshotError, SnapshotRegistry
 from .utils import canonical_json
-from .variants import CONFIRMATORY_VARIANTS, EXPLORATORY_VARIANTS, get_variant
+from .variants import (
+    CONFIRMATORY_VARIANTS,
+    EXPLORATORY_VARIANTS,
+    get_all_variants,
+    get_variant,
+)
 
 __all__ = [
     "CONFIRMATORY_VARIANTS",
@@ -22,6 +27,7 @@ __all__ = [
     "VCLManifest",
     "canonical_json",
     "gated_by",
+    "get_all_variants",
     "get_current_manifest",
     "get_variant",
     "set_current_manifest",
