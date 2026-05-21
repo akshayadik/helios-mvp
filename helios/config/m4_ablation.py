@@ -13,6 +13,10 @@ from helios.vcl import (
 
 HELIOS_ENABLE_M4_ABLATION: bool = True
 
+# Canonical OTEL exploratory corpus size — established by OSF freeze (2026-05-19).
+# Planning documents referenced "125 events" or "16k runs"; those figures come from
+# the Phase 2 pre-registration target (8 variants x 5 benchmarks x 40 faults x 10 seeds).
+# The OSF-frozen value of 20 incidents (OTEL capture windows) is authoritative for M4.
 NUM_INCIDENTS: int = 20
 NUM_PIPELINES: int = 3
 NUM_VARIANTS: int = len(get_all_variants())

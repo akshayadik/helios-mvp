@@ -1,5 +1,6 @@
 """Consensus layer: UniformBorda fusion and ConsensusVerdict schema."""
 
+from helios.consensus.protocol import ConsensusAlgorithm
 from helios.consensus.uniform_borda import (
     FUSION_ALGORITHM_SHA,
     FUSION_CORE_VERSION,
@@ -18,6 +19,7 @@ __all__ = [
     "FUSION_ALGORITHM_SHA",
     "FUSION_CORE_VERSION",
     "SCHEMA_VERSION",
+    "ConsensusAlgorithm",
     "ConsensusIntegrityGate",
     "ConsensusVerdict",
     "PassthroughConsensus",

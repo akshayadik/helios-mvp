@@ -46,6 +46,7 @@
 |---|---|---|---|---|---|
 | External | T6 | Population validity — OTEL Demo is not representative of production microservices | AIOpsLab confirmatory corpus uses 5 production-representative benchmarks (174 incidents); OTEL Demo data is permanently excluded from confirmatory analysis | Two-environment firewall enforced by `EvaluationPhase` enum in `TelemetryWindow`; `MetricIntegrityGate` blocks exploratory rows from `result_row` | Partially mitigated — AIOpsLab corpus pending Stage 2 |
 | External | T7 | Ecological validity — lab fault scenarios differ from production incidents | AIOpsLab uses published fault scenarios derived from real-world post-mortems; incident selection is pre-registered in OSF protocol §2 | `docs/osf_protocol_v0.md §2.4` — inclusion/exclusion criteria; corpus locked at Stage 5 | Partially mitigated — confirmatory corpus pending |
+| External | T9 | Production isomorphism — offline post-hoc consensus fusion differs from inline runtime fusion in a production system; latency of the consensus step is not measured in `PipelineVerdict.latency_ms` | M4 is explicitly exploratory (OTEL corpus); system HR@3 is the sole M4 outcome — no latency claim is made for the consensus layer. Production inline fusion is a Phase 2 engineering goal. | `helios/config/m4_ablation.py` note; `data/m4_results.json analysis_type="exploratory"` | Acknowledged — does not affect M4 statistical conclusions; Phase 2 redesign required before MTTR claims |
 
 ---
 
@@ -55,4 +56,4 @@
 
 ---
 
-*Last updated: 2026-05-15 — 8 threats catalogued; T3/T5/T6/T7 partial pending Stage 2+ data*
+*Last updated: 2026-05-21 — 9 threats catalogued; T3/T5/T6/T7/T9 partial pending Stage 2+ data*

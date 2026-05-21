@@ -16,8 +16,12 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from helios.vcl.config import VCLManifest  # noqa: F401 — flag-guard compliance
+
+if TYPE_CHECKING:
+    from helios.consensus.protocol import ConsensusAlgorithm
 
 HELIOS_ENABLE_FUSE_VERDICTS: bool = True
 
@@ -81,9 +85,11 @@ def _fuse_all(db_path: Path, run_id: str) -> int:
     import duckdb
 
     from helios.consensus.uniform_borda import (
+        FUSION_ALGORITHM_SHA,
         PassthroughConsensus,
         UniformBordaConsensus,
     )
+    from helios.consensus.verdict import ConsensusIntegrityGate
     from helios.vcl import (
         GatedComponentInactiveError,
         get_variant,
@@ -91,8 +97,9 @@ def _fuse_all(db_path: Path, run_id: str) -> int:
     )
 
     groups = _load_pipeline_groups(db_path)
-    borda = UniformBordaConsensus()
-    passthrough = PassthroughConsensus()
+    borda: ConsensusAlgorithm = UniformBordaConsensus()
+    passthrough: ConsensusAlgorithm = PassthroughConsensus()
+    integrity_gate = ConsensusIntegrityGate(expected_sha=FUSION_ALGORITHM_SHA)
 
     conn = duckdb.connect(str(db_path))
     fused_count = 0
@@ -115,6 +122,9 @@ def _fuse_all(db_path: Path, run_id: str) -> int:
                 pipeline_rows=pipeline_rows,
                 run_id=run_id,
             )
+
+        # C1 integrity check: verify fusion_algorithm_sha matches live computation.
+        integrity_gate.check(cv)
 
         conn.execute(
             """
