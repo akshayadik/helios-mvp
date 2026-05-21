@@ -109,8 +109,7 @@ pyarrow  = ">=18.0,<19.0"   # ADDED; Parquet capture (Day 4, §3.7)
 duckdb   = ">=1.1,<1.2"     # ADDED; result store (Day 3, store/schema.sql)
 pandas   = ">=2.2,<3.0"     # ADDED; D-pipe MetricsParser Parquet → DataFrame (M2)
 requests = ">=2.28,<3.0"    # ADDED; L-pipe Ollama HTTP client (M3)
-statsmodels = ">=0.14"       # ADDED; Wilcoxon + Holm-Bonferroni for M4 ablation analysis
-hypothesis = "^6"            # ADDED; property-based testing for consensus module (M4)
+statsmodels = ">=0.14,<0.15"  # ADDED; Wilcoxon + Holm-Bonferroni for M4 ablation analysis
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Development / CI dependencies (TIER 2)
@@ -132,6 +131,7 @@ isort      = ">=5.12,<6.0"   # import sorter; editor integration
 coverage      = { version = ">=7.4,<8.0", extras = ["toml"] }
                               # [toml] extra enables [tool.coverage] config here
 types-PyYAML  = ">=6.0,<7.0"  # ADDED; mypy stubs for yaml used in verify_osf_freeze.py
+hypothesis    = "^6"           # ADDED; property-based testing for consensus module (M4)
  
 # ─────────────────────────────────────────────────────────────────────────────
 # Notebook execution

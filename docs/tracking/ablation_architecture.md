@@ -446,8 +446,6 @@ all three schemas on every push. Any field addition breaks the test.
 
 ## 5. Consensus & Routing Layer   [DESIGN FROZEN — Milestone 4]
 
-## §5 Consensus Layer (Milestone 4)
-
 **Decision:** `UniformBordaConsensus` is the sole fusion algorithm for the OTEL exploratory run.
 The `fusion_algorithm` field in `ConsensusVerdict` is an immutable tamper-anchor; any post-freeze
 change requires a deviation log entry.
