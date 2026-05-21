@@ -1,22 +1,202 @@
 {
-    "s0-adhc-001": "ad",
-    "s0-adhc-002": "ad",
-    "s0-adhc-003": "ad",
-    "s0-cart-001": "cart",
-    "s0-cart-002": "cart",
-    "s0-cart-003": "cart",
-    "s0-imgsl-001": "frontend",
-    "s0-imgsl-002": "frontend",
-    "s0-imgsl-003": "frontend",
-    "s0-imgsl-004": "frontend",
-    "s0-pcat-001": "product-catalog",
-    "s0-pcat-002": "product-catalog",
-    "s0-pcat-003": "product-catalog",
-    "s0-pcat-004": "product-catalog",
-    "s0-pcat-005": "product-catalog",
-    "s0-rcf-001": "recommendation",
-    "s0-rcf-002": "recommendation",
-    "s0-rcf-003": "recommendation",
-    "s0-rcf-004": "recommendation",
-    "s0-rcf-005": "recommendation"
+  "s0-adhc-001": {
+    "incident_id": "s0-adhc-001",
+    "environment": "OTEL Demo",
+    "fault_injected_service": "adService",
+    "root_cause_service": "adService",
+    "fault_type": "adHighCpu",
+    "label_source": "featureflagservice config (deterministic)",
+    "labelled_at": "2026-05-14",
+    "evaluation_phase": "exploratory"
+  },
+  "s0-adhc-002": {
+    "incident_id": "s0-adhc-002",
+    "environment": "OTEL Demo",
+    "fault_injected_service": "adService",
+    "root_cause_service": "adService",
+    "fault_type": "adHighCpu",
+    "label_source": "featureflagservice config (deterministic)",
+    "labelled_at": "2026-05-14",
+    "evaluation_phase": "exploratory"
+  },
+  "s0-adhc-003": {
+    "incident_id": "s0-adhc-003",
+    "environment": "OTEL Demo",
+    "fault_injected_service": "adService",
+    "root_cause_service": "adService",
+    "fault_type": "adHighCpu",
+    "label_source": "featureflagservice config (deterministic)",
+    "labelled_at": "2026-05-14",
+    "evaluation_phase": "exploratory"
+  },
+  "s0-cart-001": {
+    "incident_id": "s0-cart-001",
+    "environment": "OTEL Demo",
+    "fault_injected_service": "cartService",
+    "root_cause_service": "cartService",
+    "fault_type": "cartFailure",
+    "label_source": "featureflagservice config (deterministic)",
+    "labelled_at": "2026-05-14",
+    "evaluation_phase": "exploratory"
+  },
+  "s0-cart-002": {
+    "incident_id": "s0-cart-002",
+    "environment": "OTEL Demo",
+    "fault_injected_service": "cartService",
+    "root_cause_service": "cartService",
+    "fault_type": "cartFailure",
+    "label_source": "featureflagservice config (deterministic)",
+    "labelled_at": "2026-05-15",
+    "evaluation_phase": "exploratory"
+  },
+  "s0-cart-003": {
+    "incident_id": "s0-cart-003",
+    "environment": "OTEL Demo",
+    "fault_injected_service": "cartService",
+    "root_cause_service": "cartService",
+    "fault_type": "cartFailure",
+    "label_source": "featureflagservice config (deterministic)",
+    "labelled_at": "2026-05-15",
+    "evaluation_phase": "exploratory"
+  },
+  "s0-imgsl-001": {
+    "incident_id": "s0-imgsl-001",
+    "environment": "OTEL Demo",
+    "fault_injected_service": "imageService",
+    "root_cause_service": "imageService",
+    "fault_type": "imageSlowLoad",
+    "label_source": "featureflagservice config (deterministic)",
+    "labelled_at": "2026-05-14",
+    "evaluation_phase": "exploratory"
+  },
+  "s0-imgsl-002": {
+    "incident_id": "s0-imgsl-002",
+    "environment": "OTEL Demo",
+    "fault_injected_service": "imageService",
+    "root_cause_service": "imageService",
+    "fault_type": "imageSlowLoad",
+    "label_source": "featureflagservice config (deterministic)",
+    "labelled_at": "2026-05-15",
+    "evaluation_phase": "exploratory"
+  },
+  "s0-imgsl-003": {
+    "incident_id": "s0-imgsl-003",
+    "environment": "OTEL Demo",
+    "fault_injected_service": "imageService",
+    "root_cause_service": "imageService",
+    "fault_type": "imageSlowLoad",
+    "label_source": "featureflagservice config (deterministic)",
+    "labelled_at": "2026-05-15",
+    "evaluation_phase": "exploratory"
+  },
+  "s0-imgsl-004": {
+    "incident_id": "s0-imgsl-004",
+    "environment": "OTEL Demo",
+    "fault_injected_service": "imageService",
+    "root_cause_service": "imageService",
+    "fault_type": "imageSlowLoad",
+    "label_source": "featureflagservice config (deterministic)",
+    "labelled_at": "2026-05-15",
+    "evaluation_phase": "exploratory"
+  },
+  "s0-pcat-001": {
+    "incident_id": "s0-pcat-001",
+    "environment": "OTEL Demo",
+    "fault_injected_service": "productCatalogService",
+    "root_cause_service": "productCatalogService",
+    "fault_type": "productCatalogFailure",
+    "label_source": "featureflagservice config (deterministic)",
+    "labelled_at": "2026-05-14",
+    "evaluation_phase": "exploratory"
+  },
+  "s0-pcat-002": {
+    "incident_id": "s0-pcat-002",
+    "environment": "OTEL Demo",
+    "fault_injected_service": "productCatalogService",
+    "root_cause_service": "productCatalogService",
+    "fault_type": "productCatalogFailure",
+    "label_source": "featureflagservice config (deterministic)",
+    "labelled_at": "2026-05-15",
+    "evaluation_phase": "exploratory"
+  },
+  "s0-pcat-003": {
+    "incident_id": "s0-pcat-003",
+    "environment": "OTEL Demo",
+    "fault_injected_service": "productCatalogService",
+    "root_cause_service": "productCatalogService",
+    "fault_type": "productCatalogFailure",
+    "label_source": "featureflagservice config (deterministic)",
+    "labelled_at": "2026-05-15",
+    "evaluation_phase": "exploratory"
+  },
+  "s0-pcat-004": {
+    "incident_id": "s0-pcat-004",
+    "environment": "OTEL Demo",
+    "fault_injected_service": "productCatalogService",
+    "root_cause_service": "productCatalogService",
+    "fault_type": "productCatalogFailure",
+    "label_source": "featureflagservice config (deterministic)",
+    "labelled_at": "2026-05-15",
+    "evaluation_phase": "exploratory"
+  },
+  "s0-pcat-005": {
+    "incident_id": "s0-pcat-005",
+    "environment": "OTEL Demo",
+    "fault_injected_service": "productCatalogService",
+    "root_cause_service": "productCatalogService",
+    "fault_type": "productCatalogFailure",
+    "label_source": "featureflagservice config (deterministic)",
+    "labelled_at": "2026-05-15",
+    "evaluation_phase": "exploratory"
+  },
+  "s0-rcf-001": {
+    "incident_id": "s0-rcf-001",
+    "environment": "OTEL Demo",
+    "fault_injected_service": "recommendationService",
+    "root_cause_service": "recommendationService",
+    "fault_type": "recommendationCacheFailure",
+    "label_source": "featureflagservice config (deterministic)",
+    "labelled_at": "2026-05-14",
+    "evaluation_phase": "exploratory"
+  },
+  "s0-rcf-002": {
+    "incident_id": "s0-rcf-002",
+    "environment": "OTEL Demo",
+    "fault_injected_service": "recommendationService",
+    "root_cause_service": "recommendationService",
+    "fault_type": "recommendationCacheFailure",
+    "label_source": "featureflagservice config (deterministic)",
+    "labelled_at": "2026-05-15",
+    "evaluation_phase": "exploratory"
+  },
+  "s0-rcf-003": {
+    "incident_id": "s0-rcf-003",
+    "environment": "OTEL Demo",
+    "fault_injected_service": "recommendationService",
+    "root_cause_service": "recommendationService",
+    "fault_type": "recommendationCacheFailure",
+    "label_source": "featureflagservice config (deterministic)",
+    "labelled_at": "2026-05-15",
+    "evaluation_phase": "exploratory"
+  },
+  "s0-rcf-004": {
+    "incident_id": "s0-rcf-004",
+    "environment": "OTEL Demo",
+    "fault_injected_service": "recommendationService",
+    "root_cause_service": "recommendationService",
+    "fault_type": "recommendationCacheFailure",
+    "label_source": "featureflagservice config (deterministic)",
+    "labelled_at": "2026-05-15",
+    "evaluation_phase": "exploratory"
+  },
+  "s0-rcf-005": {
+    "incident_id": "s0-rcf-005",
+    "environment": "OTEL Demo",
+    "fault_injected_service": "recommendationService",
+    "root_cause_service": "recommendationService",
+    "fault_type": "recommendationCacheFailure",
+    "label_source": "featureflagservice config (deterministic)",
+    "labelled_at": "2026-05-15",
+    "evaluation_phase": "exploratory"
+  }
 }
