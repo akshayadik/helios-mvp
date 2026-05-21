@@ -444,11 +444,27 @@ all three schemas on every push. Any field addition breaks the test.
 
 ---
 
-## 5. Consensus & Routing Layer   [STUB — Stage 6]
+## 5. Consensus & Routing Layer   [DESIGN FROZEN — Milestone 4]
 
-> **Not yet implemented.** This section will be written and frozen at the Stage 6 gate.
-> No implementation claims may be added before that gate passes.
-> Cross-reference: `spine_freeze_memo_v0.md` (canonical).
+## §5 Consensus Layer (Milestone 4)
+
+**Decision:** `UniformBordaConsensus` is the sole fusion algorithm for the OTEL exploratory run.
+The `fusion_algorithm` field in `ConsensusVerdict` is an immutable tamper-anchor; any post-freeze
+change requires a deviation log entry.
+
+**Variants and passthrough:** Variants with the consensus flag disabled (e.g., `HELIOS-noConsensus`)
+route through `PassthroughConsensus`, which propagates the top-ranked `PipelineVerdict` directly.
+The `ConsensusVerdict.fusion_algorithm` is set to `"passthrough"` in this case.
+
+**AST fingerprint:** `FUSION_ALGORITHM_SHA` is computed at module import via `ast.dump(ast.parse(source))`
+with docstrings stripped. It is stored in every `ConsensusVerdict` row and verified by
+`ConsensusIntegrityGate` before any row is written.
+
+**Schema version:** `schema-draft-v0.3` adds the `consensus_verdict` table.
+`result_row` (schema-draft-v0.2) is unchanged; the two schemas coexist in the same DuckDB file.
+
+**Two-environment firewall:** All M4 runs use the OTEL Demo corpus (exploratory).
+AIOpsLab corpus runs (confirmatory, Phase 2) must never share a DuckDB file with OTEL results.
 
 ---
 

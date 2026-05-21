@@ -224,3 +224,19 @@ print(df.groupby('Day')['Status'].value_counts().unstack(fill_value=0))
 | S1-M3-ENG06 | - | ENG | OSF notebook + CI: research/ablation_notebook.ipynb + osf-freeze-verify + ablation-notebook CI jobs | §3.6.8 | Design | infra | AA | S1-M3-ENG05 | DONE | 2026-05-19 | 2026-05-19 | 4e113ab | MANIFEST | research/ablation_notebook.ipynb; .github/workflows/ci.yml | - | - | L0-L3 ablation matrix; CI verifies on every push |
 | S1-M3-RES04 | - | RES | Tracking docs update: tracking_documents_register.md + reproducibility_manifest.md + pyproject.toml comment fix | §B.12, §3.3 | Communicate | methodology | AA | S1-M3-ENG06 | DONE | 2026-05-19 | 2026-05-19 | 4e113ab | DOC | docs/tracking/tracking_documents_register.md; docs/tracking/reproducibility_manifest.md | - | - | G3-8 satisfied; manifest_sig recorded; pyproject.toml comment corrected |
 | S1-M3-GATE03 | - | GATE | OSF protocol freeze exit gate — G3-1 through G3-8 all PASS | §3.3, §5.3 | Evaluate | methodology | AA | S1-M3-RES04 | DONE | 2026-05-19 | 2026-05-19 | 4e113ab | TEST | make validate-tracking + poetry run python bin/log_deviation.py verify + 443 tests | - | - | All gate checks pass; ruff/mypy/pytest/deviation/tracking all green |
+
+---
+
+## MILESTONE 4 — Consensus Layer + Ablation Runner + Statistical Analysis
+
+**Row ID format:** `S1-M4-{TYPE}{nn}` — spans multiple sessions; Day column records sprint-day (1–5) within M4.
+
+| Task_ID | Day | Type | Description | Prop_§ | DSR | Contrib | Own | Deps | Status | Started | Done | SHA | Ev_Type | Ev_Ref | Gate | Dev_Ref | Notes |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| S1-M4-ENG01 | - | ENG | Add consensus module: ConsensusVerdict, UniformBorda, schema-draft-v0.3 | §3.6.9 | Design | C3,C5 | Akshay | M3-complete | PLANNED | - | - | - | - | - | - | - | |
+| S1-M4-ENG02 | - | ENG | Ablation runner: run_one_variant.py, run_ablation.py, fuse_verdicts.py | §3.7 | Design | C1,C6 | Akshay | S1-M4-ENG01 | PLANNED | - | - | - | - | - | - | - | |
+| S1-M4-ENG03 | - | ENG | Statistical analysis: analyse_results.py, Wilcoxon, Holm-Bonferroni | §4.3 | Evaluate | C5 | Akshay | S1-M4-ENG02 | PLANNED | - | - | - | - | - | - | - | |
+| S1-M4-RES01 | - | RES | Execute ablation matrix: 20 incidents x 8 variants (480 pipeline rows) | §3.7 | Demonstrate | — | Akshay | S1-M4-ENG02 | PLANNED | - | - | - | - | - | - | - | |
+| S1-M4-RES02 | - | RES | Exploratory Wilcoxon run + C1 evidence tables | §4.3 | Evaluate | — | Akshay | S1-M4-ENG03,S1-M4-RES01 | PLANNED | - | - | - | - | - | - | - | |
+| S1-M4-EVAL01 | - | EVAL | Extend ablation_notebook.ipynb L4 section | §5.2 | Communicate | — | Akshay | S1-M4-RES02 | PLANNED | - | - | - | - | - | - | - | |
+| S1-M4-GATE01 | - | GATE | M4 exit gate: all criteria met, pre-push gate passes | §6 | Evaluate | — | Akshay | S1-M4-EVAL01 | PLANNED | - | - | - | - | - | - | - | |
