@@ -4,7 +4,7 @@
 
 **Update cadence:** On any tracking-doc add/remove/rename
 **Owner module:** Researcher (solo)
-**Last updated:** 2026-05-19 (Milestone 3 exit — 6 document rows updated)
+**Last updated:** 2026-05-21 (Milestone 4 arch review — 6 document rows updated)
 
 ---
 
@@ -23,23 +23,23 @@ All tracking documents in `docs/tracking/` follow these rules:
 
 | # | Document | Path | Purpose | First active stage | Update trigger | Last updated | Status |
 |---|----------|------|---------|-------------------|----------------|--------------|--------|
-| 1 | Ablation Architecture | `ablation_architecture.md` | Architectural decision record — design choices with justification and ablation variant mapping | Stage 0 | On any pipeline/component architectural change | 2026-05-18 | ✅ Current (v0.5; §2.6 + §3.1 frozen at M2) |
+| 1 | Ablation Architecture | `ablation_architecture.md` | Architectural decision record — design choices with justification and ablation variant mapping | Stage 0 | On any pipeline/component architectural change | 2026-05-21 | ✅ Current (v0.7; §3.3 L-pipe frozen at M3; §5 Consensus design frozen at M4) |
 | 2 | Calibration Thresholds | `calibration_thresholds.md` | Per-metric thresholds used in MetricIntegrityGate; frozen before confirmatory runs | Stage 1 | After D-pipe/G-pipe/L-pipe threshold tuning | 2026-05-19 | ✅ Current (M3 G-pipe added: DISAGREEMENT_THRESHOLD=0.20, GPIPE_PPR_ALPHA=0.85, HR@3=0.60 held-out) |
 | 3 | Dashboard | `dashboard.md` | Live experiment dashboard — Gantt, architecture flow, cell-completion grid, C1 invariants | Stage 0 | Weekly (manual until weekly_dashboard.yml CI lands) | 2026-05-19 | ✅ Current (M3 exit; 18 deviation entries; G-pipe + L-pipe + OSF freeze rows added) |
 | 4 | Data Collection Log | `data_collection_log.md` | Per-incident capture record — window times, row counts, anomalies | Stage 0 | After every telemetry capture session | 2026-05-15 | ✅ Current (20 captures) |
 | 5 | Deviation Log | `deviation_log.md` | Human-readable mirror of `deviation_log.jsonl` — HMAC-signed deviation entries | Stage 0 | After every `bin/log_deviation.py` append | 2026-05-19 | ✅ Current (18 entries; M3 adds entries 11–18: schema bump, re-capture, orchestration, threshold, model, runtime, OSF threshold fix, entry-3 correction) |
-| 6 | Disjointness Audit Log | `disjointness_audit_log.md` | Record of every DisjointnessAuditor run — static and dynamic results per commit | Stage 1 | After each CI disjointness workflow run | 2026-05-19 | ✅ Current (2 entries; M3 gate PASSED — covered: gpipe, dpipe, l2c_llm) |
+| 6 | Disjointness Audit Log | `disjointness_audit_log.md` | Record of every DisjointnessAuditor run — static and dynamic results per commit | Stage 1 | After each CI disjointness workflow run | 2026-05-21 | ✅ Current (3 entries; M4 arch review PASSED — 5 covered: gpipe, dpipe, l2c_llm, l2b_graph, mahc; 8 uncovered; 0 violations) |
 | 7 | Ground Truth Labelling | `ground_truth_labelling.md` | Deterministic fault→root-cause labels for all 20 OTEL Demo incidents | Stage 0 | On corpus expansion or label correction | 2026-05-15 | ✅ Current (20 entries) |
-| 8 | Helios MVP Tracking | `helios_mvp_tracking.md` | Daily task tracker — all engineering, research, evaluation, and gate rows with SHAs and evidence | Stage 0 | After every completed task (DONE transition) | 2026-05-18 | ✅ Current (S0 + M1 + M2 rows; ENG10/11 + GATE03 added for PPR fix) |
+| 8 | Helios MVP Tracking | `helios_mvp_tracking.md` | Daily task tracker — all engineering, research, evaluation, and gate rows with SHAs and evidence | Stage 0 | After every completed task (DONE transition) | 2026-05-21 | ✅ Current (S0 + M1 + M2 + M3 + M4 rows; M4 ENG01/02/03 DONE; M4 RES01/RES02/EVAL01/GATE01 PLANNED — pending ablation run) |
 | 9 | Hypothesis–Variant–Metric Mapping | `hypothesis_variant_metric_mapping.md` | Maps A-H1..8 hypotheses to variants, primary/secondary metrics, statistical tests, and α | Stage 0 | On hypothesis revision (requires deviation log entry) | 2026-05-15 | ✅ Current (8 hypotheses) |
 | 10 | Price Book | `price_book.md` | Per-token and per-compute-second cost coefficients for CpR metric computation | Stage 2 | Stage 5 freeze (post-freeze changes are external-validity threats) | — | 🟡 Schema only — Stage 2+ |
-| 11 | Prompt Version Registry | `prompt_version_registry.md` | Frozen L-pipe prompt templates with prompt_sha — binds H_struct measurement to prompt revisions | Stage 3 | Before each L-pipe prompt update | — | 🟡 Schema only — Stage 3+ |
+| 11 | Prompt Version Registry | `prompt_version_registry.md` | Frozen L-pipe prompt templates with prompt_sha — binds H_struct measurement to prompt revisions | Stage 3 | Before each L-pipe prompt update | 2026-05-19 | ✅ Active — rca_v1 frozen at Milestone 3; SHA `376e555b...` recorded in `research/osf/prompt_sha.json` |
 | 12 | Replication Verification Log | `replication_verification_log.md` | Results of the 10% byte-equality replication matrix (bin/replicate.sh) for OSF deposit | Stage 7 | After replication verification runs | — | 🟡 Schema only — Stage 7+ |
 | 13 | Reproducibility Manifest | `reproducibility_manifest.md` | Environment pin list, schema freeze record, software versions, and Stage 5 pre-registration checklist | Stage 0 | On environment change or schema freeze | 2026-05-19 | ✅ Current (Section 5 signature updated post fix-commit 0b60ab2; Section 6 added: commit_sha="LOCAL" convention) |
 | 14 | Seed Register | `seed_register.md` | Integer seed registry — maps Seed_ID to value, stage, variant, benchmark, and algorithm context | Stage 0 | Before any new experiment seed is used | 2026-05-19 | ✅ Current (SEED-S0-01 + SEED-S1-01 registered; SEED-S1-01 = LLAMA_SEED=42 for L-pipe Protocol A) |
 | 15 | Snapshot Hash Registry | `snapshot_hash_registry.md` | Append-only JSONL-mirror — maps incident_id to snapshot_hash and variant_config_hash | Stage 0 | After every telemetry capture (automated via SnapshotRegistry) | 2026-05-15 | ✅ Current (20 entries) |
-| 16 | Tracking Documents Register | `tracking_documents_register.md` | This document — master index of all tracking docs | Stage 0 | On any tracking-doc add/remove/rename | 2026-05-19 | ✅ Current (M3 rows updated for 7 documents) |
-| 17 | Validity Tracking | `validity_tracking.md` | Threat-to-validity register — internal, construct, and external threats with mitigations | Stage 0 | After each new validity threat identified | 2026-05-15 | ✅ Current (8 threats) |
+| 16 | Tracking Documents Register | `tracking_documents_register.md` | This document — master index of all tracking docs | Stage 0 | On any tracking-doc add/remove/rename | 2026-05-21 | ✅ Current (M4 arch review — 6 rows updated: ablation_architecture v0.7, disjointness 3 entries/5 covered, mvp_tracking M4 rows, prompt_registry active, validity T9, self-reference) |
+| 17 | Validity Tracking | `validity_tracking.md` | Threat-to-validity register — internal, construct, and external threats with mitigations | Stage 0 | After each new validity threat identified | 2026-05-21 | ✅ Current (9 threats; T9 added at M4 — production isomorphism: offline consensus vs inline runtime fusion) |
 | 18 | VCL Manifest Tracking | `vcl_manifest_tracking.md` | Master register of VCL variant configurations and their variant_config_hash values | Stage 0 | After every VCL config change or new variant | 2026-05-19 | ✅ Current (8 variants; M3 OSF freeze verification added — all hashes confirmed vs `variant_hashes.json`) |
 
 ---

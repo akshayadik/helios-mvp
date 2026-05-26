@@ -1,8 +1,8 @@
 # HELIOS Ablation Architecture — Living ADR
 
-**Document Version:** v0.6
-**Date:** 2026-05-19
-**Status:** §1 frozen at Stage 0. §2 schemas frozen at Stage 0; §2.6 UEG-C Builder implemented and frozen at Milestone 2. §3.0 frozen at Stage 0 (registry + stubs). §3.1 D-pipe implemented and frozen at Milestone 2. §3.2 G-pipe implemented and frozen at Milestone 3. §3.3 stub. §4 frozen at Milestone 1. §5–§7 stubs.
+**Document Version:** v0.7
+**Date:** 2026-05-21
+**Status:** §1 frozen at Stage 0. §2 schemas frozen at Stage 0; §2.6 UEG-C Builder implemented and frozen at Milestone 2. §3.0 frozen at Stage 0 (registry + stubs). §3.1 D-pipe implemented and frozen at Milestone 2. §3.2 G-pipe implemented and frozen at Milestone 3. §3.3 L-pipe implemented and frozen at Milestone 3. §4 frozen at Milestone 1. §5 Consensus design frozen at Milestone 4. §6–§7 stubs.
 **Canonical Reference:** `docs/memos/spine_freeze_memo_v0.md`
 **Update Cadence:** After every pipeline-stage change.
 
@@ -239,7 +239,7 @@ Cross-reference: `docs/tracking/calibration_thresholds.md` (frozen values) + `sp
 
 ---
 
-## 3. Peer Pipelines (D-pipe, G-pipe, L-pipe)   [§3.0 FROZEN — Stage 0 | §3.1 IMPLEMENTED — Milestone 2 | §3.2 IMPLEMENTED — Milestone 3 | §3.3 STUB — Stage 5]
+## 3. Peer Pipelines (D-pipe, G-pipe, L-pipe)   [§3.0 FROZEN — Stage 0 | §3.1 IMPLEMENTED — Milestone 2 | §3.2 IMPLEMENTED — Milestone 3 | §3.3 IMPLEMENTED — Milestone 3]
 
 ### 3.0 Stage 0 Pipeline Foundation   [FROZEN — Stage 0]
 
@@ -395,12 +395,54 @@ Implementation: `helios/pipelines/g_pipe/pipeline.py`. Config: `helios/pipelines
 
 ---
 
-### 3.3 L-pipe — LLM Explanation   [STUB — Stage 5]
+### 3.3 L-pipe — LLM Explanation Pipeline   [IMPLEMENTED — Milestone 3]
 
-> **Not yet implemented.** L-pipe will be written and frozen at the Stage 5 gate.
-> Responsibility: consume `PipelineVerdict` from D/G-pipe → generate Chain of Explanation (CoE) narrative.
-> Gated by `VCLFlag.L2C_LLM`; ablation variant `HELIOS-noLLM` disables this path.
-> Cross-reference: `spine_freeze_memo_v0.md` + `docs/tracking/hypothesis_variant_metric_mapping.md` (A-H1).
+**Architecture:** L-pipe consumes a `UEGCSnapshot` and produces a Chain of Explanation (CoE) narrative plus a ranked service candidate list. It operates independently of G-pipe results — both receive the same snapshot; the orchestrator runs them in sequence D→G(conditional)→L but L-pipe does not read G-pipe output.
+
+**Entry point:** `helios/pipelines/l_pipe/pipeline.py::run_lpipe()`, gated by `@gated_by(VCLFlag.L2C_LLM)`.
+
+#### Protocol A (frozen at Milestone 3)
+
+| Parameter | Value | Notes |
+|---|---|---|
+| Model | `llama3.1:8b` | Via Ollama; 70B/vLLM deferred (deviation 15) |
+| Serving runtime | Ollama (`http://localhost:11434`) | vLLM deferred to production stage (deviation 16) |
+| Temperature | `0.00` | Greedy decoding — determinism invariant |
+| `top_p` | `1.00` | Greedy decoding |
+| `top_k` | `1` | Greedy decoding |
+| `LLAMA_SEED` | `42` | Determinism seed SEED-S1-01 |
+| Timeout | `120.0 s` | Per inference call |
+| Max retries | `1` | Via `ResponseHandler` |
+
+All Protocol A constants are frozen in `helios/pipelines/l_pipe/lpipe_config.py`. Any change requires a deviation log entry before the constant is updated.
+
+#### Prompt Governance
+
+`PromptRegistry` (`helios/pipelines/l_pipe/prompt_registry.py`) loads `prompts/rca_v1.txt` and computes `SHA-256(text.encode("utf-8"))` at construction time. `run_lpipe` calls `registry.verify_sha_or_raise(EXPECTED_PROMPT_SHA)` before every inference — if the file has been modified the run aborts with `PromptTamperError`.
+
+`EXPECTED_PROMPT_SHA = "376e555b0bd07a14667c9d5f09275ce5507ddce443fa01781bd7dc40a9365e47"` is the frozen hash of `rca_v1.txt`, set at Milestone 3 and recorded in `research/osf/prompt_sha.json`.
+
+The rendered prompt injects `incident_id`, `service_list`, and `anomaly_summary` (derived from snapshot nodes) into the template. `prompt_version` (`"rca_v1"`) is written into every `PipelineVerdict` row for audit traceability.
+
+#### Response Parsing
+
+`ResponseHandler` (`helios/pipelines/l_pipe/response_handler.py`) wraps `OllamaClient.generate()` with:
+- Markdown fence stripping (`sanitize_llm_output`)
+- Pydantic schema validation against `LPipeResponse` (`ranked_candidates`, `narrative`, `confidence`)
+- One retry on validation failure, then fallback to `ranked_candidates=["l-pipe-fallback"]`
+
+#### Ablation Gating
+
+When `VCLFlag.L2C_LLM` is inactive (variants `HELIOS-noLLM`, `HELIOS-D`, `HELIOS-G`), `@gated_by` raises `GatedComponentInactiveError` and the orchestrator emits a sentinel verdict with `narrative="lpipe-gated-or-skipped"`. Evaluation queries must filter this sentinel for A-H1 metric computation (same pattern as the G-pipe sentinel filter in §3.2).
+
+**Deviation log entries:**
+
+| # | Deviation ID | Stage | Clause | Summary |
+|---|---|---|---|---|
+| 15 | `29789db26fba` | Stage 1/M3 | §3.6.7 model specification | `llama3.1:8b` used instead of Llama-3.1-70B; CoE narrative quality reduced; HR@3/CpR unaffected |
+| 16 | `b7812340df24` | Stage 1/M3 | §3.6.7 serving runtime | Ollama used instead of vLLM; latency metrics not production-representative |
+
+**Cross-references:** §4 (Orchestration), §5 (Consensus), `docs/tracking/hypothesis_variant_metric_mapping.md` (A-H1), `docs/tracking/prompt_version_registry.md` (rca_v1 freeze), `research/osf/prompt_sha.json`.
 
 ---
 
@@ -489,3 +531,4 @@ AIOpsLab corpus runs (confirmatory, Phase 2) must never share a DuckDB file with
 - v0.4 (2026-05-14): §4 written and frozen (Milestone 1). Orchestration flow, C1 sub-artefact status table, schema freeze summary. Old §4–§6 renumbered to §5–§7. §1.6 integration points updated.
 - v0.5 (2026-05-18): §2.6 UEG-C Builder written and frozen (Milestone 2) — edge construction algorithm, PPR pruner, entry-point detection fix, gate values. §3.1 D-pipe written and frozen (Milestone 2) — four-stage pipeline, calibrated parameters, LOO-CV results.
 - v0.6 (2026-05-19): §3.2 G-pipe written and frozen (Milestone 3) — conditional PPR-traversal pipeline, disagreement gate, sequential dispatch rationale, sentinel filter mandate, calibrated parameters.
+- v0.7 (2026-05-21): §3.3 L-pipe written and frozen (Milestone 3) — Protocol A parameters, PromptRegistry tamper-guard, ResponseHandler retry/fallback, ablation gating, deviation entries 15–16. §5 Consensus design notes added (Milestone 4). Section header updated to reflect implementation status.
