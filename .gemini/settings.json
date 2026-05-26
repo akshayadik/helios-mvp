@@ -1,28 +1,26 @@
 {
-  "context": {
-    "fileName": [
-      ".claude/docs/pdf/research_proposal_akshayadik.pdf",
-      "docs/helios_project_summary.md",
-      "docs/tracking/ablation_architecture.md",
-      "docs/tracking/tracking_documents_register.md",
-      "docs/tracking/HELIOS_MVP_Execution_plan_v0.6.md"
-    ]
-  },
-  "hooks": {
-    "AfterTool": [
-      {
-        "matcher": ".*",
-        "hooks": [
-          {
-            "name": "helios-verify-and-log",
-            "type": "command",
-            "command": "$GEMINI_PROJECT_DIR/.gemini/hooks/post_tool.sh"
-          }
+    "context": {
+        "fileName": [
+            "docs/research/research_proposal_akshayadik.pdf",
+            "docs/helios_project_summary.md",
+            "docs/tracking/ablation_architecture.md",
+            "docs/tracking/tracking_documents_register.md",
+            "docs/tracking/HELIOS_MVP_Execution_plan_v0.6.md",
         ]
-      }
-    ]
-  },
-  "model": {
-    "compressionThreshold": 0.85
-  }
+    },
+    "hooks": {
+        "AfterTool": [
+            {
+                "matcher": ".*",
+                "hooks": [
+                    {
+                        "name": "helios-verify-and-log",
+                        "type": "command",
+                        "command": "$GEMINI_PROJECT_DIR/.gemini/hooks/post_tool.sh",
+                    }
+                ],
+            }
+        ]
+    },
+    "model": {"compressionThreshold": 0.85},
 }

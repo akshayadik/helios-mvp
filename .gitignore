@@ -32,10 +32,6 @@ Thumbs.db
 .idea/
 *.swp
 
-# Agents
-.claude/docs/pdf/*.pdf
-.claude/docs/pdf/*.md
-
 # External Services
 external/otel-demo-pinned/*
 

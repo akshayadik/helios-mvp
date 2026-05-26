@@ -73,8 +73,8 @@ Document updates must be committed in the **same PR** as the code change they tr
 ## Excluded from this Register
 
 - `HELIOS_MVP_Execution_plan_v0.6.md` — project planning document, not a research tracking artefact; not covered by the schema rules
-- `.claude/docs/pdf/research_proposal_akshayadik.pdf` — source research proposal; read-only reference
-- `.claude/docs/pdf/project_plan.md` — execution plan reference; read-only
+- `docs/research/research_proposal_akshayadik.pdf` — source research proposal; read-only reference
+- `docs/research/project_plan.md` — execution plan reference; read-only
 
 ---
 

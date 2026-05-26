@@ -59,5 +59,5 @@ The project follows the DSR methodology (Hevner et al., 2004), where the HELIOS 
 - **OSF Pre-Registration Protocol**: `docs/osf_protocol_v0.md`
 - **Execution Plan**: `docs/tracking/HELIOS_MVP_Execution_plan_v0.6.md`
 - **Ablation Architecture**: `docs/tracking/ablation_architecture.md`
-- **Research Proposal**: `.claude/docs/pdf/research_proposal_akshayadik.pdf`
-- **Project Plan**: `.claude/docs/pdf/project_plan.md`
+- **Research Proposal**: `docs/research/research_proposal_akshayadik.pdf`
+- **Project Plan**: `docs/research/project_plan.md`
