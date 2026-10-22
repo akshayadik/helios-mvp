@@ -6,7 +6,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "python .claude/hooks/research-compliance.py"
+                        "command": "python3 .claude/hooks/research-compliance.py"
                     }
                 ]
             },
@@ -15,7 +15,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "python .claude/hooks/flag-guard.py"
+                        "command": "python3 .claude/hooks/flag-guard.py"
                     }
                 ]
             }

@@ -45,7 +45,7 @@ set -a; source .env; set +a && \
   poetry run black --check helios/ scripts/ tests/ && \
   poetry run mypy && \
   poetry run pytest && \
-  poetry run python bin/log_deviation.py verify && \
+  poetry run python bin/verify_ledgers.py && \
   poetry run python bin/verify_osf_freeze.py --verify && \
   poetry run make validate-tracking
 ```
@@ -232,9 +232,24 @@ Enforced by `scripts/validate_tracking.py` as a pre-commit hook and in CI:
 ### Claude Code hooks
 
 - `research-compliance.py` blocks any Write/Edit containing the literals `0.0`, `1.0`, `0.5`, or `100` as word-bounded tokens **in any file**, including Markdown and plan files. Avoid these literals in documentation; use prose (`"rounds to zero"`, `"full coverage"`) instead.
-- `flag-guard.py` exempts the entire `helios/vcl/` path — files there can define classes and functions without a `HELIOS_ENABLE_*` pattern. Everywhere else, new `def`/`class` definitions require a VCL import (`VCLFlag`, `gated_by`, `VCLManifest`) or an `HELIOS_ENABLE_*` reference.
+- `flag-guard.py` exempts the entire `helios/vcl/` path — files there can define classes and functions without a `HELIOS_ENABLE_*` pattern. Everywhere else, new `def`/`class` definitions require a VCL import (`VCLFlag`, `gated_by`, `VCLManifest`) or an `HELIOS_ENABLE_*` reference. `.claude/` (hook tooling) is also exempt.
+- For Edit/MultiEdit, `flag-guard.py` checks the file as it will look **after** the edit; `research-compliance.py` checks only the inserted `new_string` text. (Before 2026-10-22 both read only `content`, so Edits were never inspected.)
+- Hooks are launched with `python3` (macOS has no bare `python`). A hook command that is not found exits 127, which Claude Code treats as non-blocking — a missing interpreter silently disables the guard. After changing `.claude/settings.json`, review hooks via `/hooks` or restart the session.
+- PostToolUse scripts resolve the Poetry venv themselves (`poetry env info -p`); they do not rely on `python`/`ruff` being on PATH.
+
+### Secret scanning (gitleaks)
+
+- `.gitleaks.toml` must keep `[extend] useDefault = true`. Without it the custom file **replaces** gitleaks' built-in rules, leaving zero rules — every scan "passes". This was the state from 2026-05-19 (`1e59dc5`) to 2026-10-22.
+- Pre-commit only scans staged changes. Full-history scan: the binary pre-commit installs under `~/.cache/pre-commit/*/golangenv-default/bin/gitleaks`, run as `gitleaks detect --source . --config .gitleaks.toml --redact`.
+- After every fresh clone: `poetry run pre-commit install` (no hooks run until this is done).
 
 ### HMAC-chained log patterns
+
+- **Head anchors.** Each ledger has a signed sibling `<stem>.anchor.json` (entry count, head signature, log kind). A chain alone cannot detect entries removed from the end; the anchor can. `append()` rewrites the anchor and **refuses** to extend a log whose tail no longer matches it (so a truncated log is never silently re-anchored). Commit the `.anchor.json` together with its `.jsonl`.
+- `bin/verify_ledgers.py` verifies the deviation, exclusion and reconciliation ledgers; a missing anchor fails even for an empty log. `--init-anchors` is a one-time bootstrap for pre-anchor logs (done 2026-10-22 after checking every committed version of each ledger is a prefix of the current file) and refuses to overwrite.
+- `verify()` also checks each entry has its class's `REQUIRED_FIELDS` (all ledgers share one key, so a log of one kind could otherwise pass as another) and, for the deviation log, that `deviation_id == signature[:16]` when present (entries 1–3 predate the field).
+- Residual, by design: rolling back a ledger **and** its anchor together to an earlier committed state is consistent from inside the repo. Git history and the OSF deposit are the external record.
+- Never hand-edit an `.anchor.json`. If `verify` reports an anchor mismatch, investigate (git log -p on both files) — do not regenerate the anchor.
 
 - **`_UNSIGNED_KEYS` must cover every field that is derived from `signature`.** `HMACChainedLog.compute_signature()` excludes `{"signature", "deviation_id"}` from the signed payload. If you add a new post-sign field (any field set inside `_post_sign_fields()`), add its key to `_UNSIGNED_KEYS` in `helios/vcl/hmac_chain.py` — otherwise `verify()` will always report tampering because it recomputes the hash without that field.
 - Post-sign fields belong in `_post_sign_fields()` — the hook is called *after* `compute_signature()` sets `entry["signature"]` but *before* the JSONL line is written. Never set derived fields earlier in `append()`.

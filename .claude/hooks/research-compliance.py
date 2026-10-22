@@ -16,8 +16,16 @@ def main():
         print("OK", file=sys.stderr)
         sys.exit(0)
 
-    # Get the content being written/edited
-    content = tool_input.get("content", "") or tool_input.get("new_content", "") or ""
+    # Get the content being written/edited. Edit/MultiEdit send `new_string`
+    # fragments; only the inserted text is checked, so literals already in the
+    # file do not block an unrelated edit.
+    edits = tool_input.get("edits") or [tool_input]
+    content = (
+        tool_input.get("content", "")
+        or tool_input.get("new_content", "")
+        or "\n".join(e.get("new_string", "") for e in edits)
+        or ""
+    )
     file_path = tool_input.get("file_path", tool_input.get("path", ""))
 
     violations = []
