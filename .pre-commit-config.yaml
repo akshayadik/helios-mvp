@@ -14,7 +14,7 @@ repos:
     hooks:
       - id: validate-tracking
         name: Validate helios_mvp_tracking.md schema
-        entry: python scripts/validate_tracking.py
+        entry: python3 scripts/validate_tracking.py
         language: system
         files: '^(docs/tracking/helios_mvp_tracking\.md|scripts/validate_tracking\.py)$'
         pass_filenames: false
