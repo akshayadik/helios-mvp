@@ -20,8 +20,10 @@ from typing import Any
 # Ensure helios/ is importable when run as a script from the repo root.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from bin.log_deviation import load_key
 from helios.graph.ueg_c_builder import build_ueg_c
 from helios.telemetry.otel_demo_capture import build_default_capture
+from helios.telemetry.seal import write_seal
 from helios.vcl import set_current_manifest
 from helios.vcl.config import VCLManifest
 from helios.vcl.decorators import GatedComponentInactiveError
@@ -84,6 +86,10 @@ Incident IDs (see docs/fault_catalogue_v0.md §3):
     )
     args = parser.parse_args()
 
+    # Fail before querying any backend: an unsealed capture is unusable, because
+    # RunOrchestrator skips captures without a valid content seal.
+    seal_key = load_key()
+
     manifest = CONFIRMATORY_VARIANTS[args.variant]
     assert isinstance(manifest, VCLManifest), f"Unexpected type: {type(manifest)}"
     capture = build_default_capture(args.incident_id, manifest)
@@ -107,6 +113,8 @@ Incident IDs (see docs/fault_catalogue_v0.md §3):
     else:
         incident_dir = Path(window.p1_metrics_path).parent
         _write_snapshot_hash(window, incident_dir / "manifest.json")
+        # Seal last: it signs the final manifest bytes and every Parquet stream.
+        print(f"[capture] content_seal  : {write_seal(incident_dir, window, seal_key)}")
 
     print("[capture] DONE")
     print(f"[capture] window_hash   : {window.compute_window_hash()[:16]}...")

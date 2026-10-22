@@ -58,7 +58,7 @@ class RunOrchestrator:
     ) -> None:
         set_current_manifest(manifest)
         self._manifest = manifest
-        self._reader = CaptureReader(captures_dir)
+        self._reader = CaptureReader(captures_dir, seal_key=hmac_key)
         self._registry = SnapshotRegistry(registry_path)
         self._store = ResultStore(db_path)
         self._reconciliation = ReconciliationLedger(
@@ -83,6 +83,16 @@ class RunOrchestrator:
                 variant_config_hash=self._config_hash,
                 outcome="skipped",
                 gate_check="capture_hash_mismatch",
+            )
+            return
+        # Parquet bytes are outside window_hash; the content seal covers them.
+        if not verification.content_intact:
+            self._reconciliation.record(
+                run_id=run_id,
+                incident_id=incident_id,
+                variant_config_hash=self._config_hash,
+                outcome="skipped",
+                gate_check="capture_seal_invalid",
             )
             return
 

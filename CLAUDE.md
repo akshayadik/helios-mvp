@@ -236,6 +236,7 @@ Enforced by `scripts/validate_tracking.py` as a pre-commit hook (working tree vs
 - For Edit/MultiEdit, `flag-guard.py` checks the file as it will look **after** the edit; `research-compliance.py` checks only the inserted `new_string` text. (Before 2026-10-22 both read only `content`, so Edits were never inspected.)
 - Hooks are launched with `python3` (macOS has no bare `python`). A hook command that is not found exits 127, which Claude Code treats as non-blocking — a missing interpreter silently disables the guard. After changing `.claude/settings.json`, review hooks via `/hooks` or restart the session.
 - PostToolUse scripts resolve the Poetry venv themselves (`poetry env info -p`); they do not rely on `python`/`ruff` being on PATH.
+- `format-and-matrix-update.sh` runs `ruff check --fix` after **every** edit, which deletes imports that are unused *at that moment*. When adding an import and its use in separate edits, add the use first (or both in one edit) — otherwise the import is silently stripped and only `ruff check`/mypy in the gate will notice (F821).
 
 ### Secret scanning (gitleaks)
 
