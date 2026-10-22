@@ -72,3 +72,20 @@ class TestReconciliationLedgerRecord:
                 variant_config_hash=_VCH,
                 outcome=outcome,
             )
+
+
+class TestOutcomesSet:
+    def test_outcomes_includes_consensus_computed(self) -> None:
+        from helios.orchestrator.ledger import OUTCOMES
+
+        assert "consensus_computed" in OUTCOMES
+
+    def test_outcomes_includes_consensus_skipped(self) -> None:
+        from helios.orchestrator.ledger import OUTCOMES
+
+        assert "consensus_skipped" in OUTCOMES
+
+    def test_outcomes_includes_consensus_excluded(self) -> None:
+        from helios.orchestrator.ledger import OUTCOMES
+
+        assert "consensus_excluded" in OUTCOMES

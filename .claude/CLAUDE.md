@@ -6,8 +6,8 @@ See root `CLAUDE.md` for all operational rules, commands, and CI details. This f
 
 **ALWAYS read both of these at the start of every session** before any research-related work:
 
-1. `.claude/docs/pdf/research_proposal_akshayadik.pdf` — introduction, literature review, research design; use to ground all RQ framing, hypothesis justification, and artefact design decisions.
-2. `.claude/docs/pdf/project_plan.md` — 15-month execution plan (milestones, gates, deliverables, phase structure); use to assess task fit, scheduling, and milestone alignment.
+1. `docs/research/research_proposal_akshayadik.pdf` — introduction, literature review, research design; use to ground all RQ framing, hypothesis justification, and artefact design decisions.
+2. `docs/research/project_plan.md` — 15-month execution plan (milestones, gates, deliverables, phase structure); use to assess task fit, scheduling, and milestone alignment.
 
 ## Core Artefact
 

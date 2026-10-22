@@ -8,6 +8,7 @@ DisjointnessAuditor() imports pipeline modules and checks flag coverage.
 from __future__ import annotations
 
 import importlib
+import inspect
 from dataclasses import dataclass, field
 
 from helios.vcl.registry import VCLFlag
@@ -63,6 +64,10 @@ _PIPELINE_MODULES = [
     "helios.pipelines.d_pipe.stub",
     "helios.pipelines.g_pipe.pipeline",
     "helios.pipelines.l_pipe.pipeline",
+    # Graph layer: build_ueg_c gates VCLFlag.L2B_GRAPH (module-level function)
+    "helios.graph.ueg_c_builder",
+    # Consensus layer: UniformBordaConsensus.fuse gates VCLFlag.MAHC (class method)
+    "helios.consensus.uniform_borda",
 ]
 
 
@@ -102,11 +107,23 @@ class DisjointnessAuditor:
             mod = importlib.import_module(module_path)
             for name in getattr(mod, "__all__", []):
                 obj = getattr(mod, name, None)
-                if obj is None or not callable(obj):
+                if obj is None:
                     continue
-                gated_by: VCLFlag | None = getattr(obj, "__gated_by__", None)
-                if gated_by is not None and gated_by in flag_to_fns:
-                    flag_to_fns[gated_by].append(f"{module_path}.{name}")
+                if inspect.isclass(obj):
+                    # Scan class methods for @gated_by (functools.wraps copies __dict__)
+                    for method_name in dir(obj):
+                        method = getattr(obj, method_name, None)
+                        if method is None or not callable(method):
+                            continue
+                        gated: VCLFlag | None = getattr(method, "__gated_by__", None)
+                        if gated is not None and gated in flag_to_fns:
+                            flag_to_fns[gated].append(
+                                f"{module_path}.{name}.{method_name}"
+                            )
+                elif callable(obj):
+                    gated = getattr(obj, "__gated_by__", None)
+                    if gated is not None and gated in flag_to_fns:
+                        flag_to_fns[gated].append(f"{module_path}.{name}")
 
         report = DisjointnessReport()
         for flag, fns in flag_to_fns.items():

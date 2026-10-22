@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 import duckdb
 
 if TYPE_CHECKING:
+    from helios.consensus.verdict import ConsensusVerdict
     from helios.schemas.verdict import PipelineVerdict
 
 __all__ = ["ResultStore"]
@@ -116,6 +117,46 @@ class ResultStore:
         ).fetchone()
         n = row[0] if row else 0
         return n / len(_PIPELINES)
+
+    def insert_consensus(self, cv: ConsensusVerdict) -> None:
+        """Insert a ConsensusVerdict row. Duplicate (incident_id, variant) is silently ignored."""
+        self._con.execute(
+            """
+            INSERT OR IGNORE INTO consensus_verdict
+            (incident_id, variant, top_candidates, borda_scores, candidate_universe_size,
+             consensus_rank, fusion_algorithm, fusion_algorithm_sha, cpr,
+             pipeline_row_count, run_id, timestamp_utc)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            [
+                cv.incident_id,
+                cv.variant,
+                json.dumps(cv.top_candidates),
+                json.dumps(cv.borda_scores),
+                cv.candidate_universe_size,
+                cv.consensus_rank,
+                cv.fusion_algorithm,
+                cv.fusion_algorithm_sha,
+                cv.cpr,
+                cv.pipeline_row_count,
+                cv.run_id,
+                cv.timestamp_utc,
+            ],
+        )
+
+    def fetch_all_pipeline_rows(self) -> list[dict[str, object]]:
+        """Return all rows from result_row as a list of dicts."""
+        cur = self._con.execute("SELECT * FROM result_row")
+        desc = cur.description or []
+        cols = [d[0] for d in desc]
+        return [dict(zip(cols, row, strict=False)) for row in cur.fetchall()]
+
+    def fetch_all_consensus_rows(self) -> list[dict[str, object]]:
+        """Return all rows from consensus_verdict as a list of dicts."""
+        cur = self._con.execute("SELECT * FROM consensus_verdict")
+        desc = cur.description or []
+        cols = [d[0] for d in desc]
+        return [dict(zip(cols, row, strict=False)) for row in cur.fetchall()]
 
     # ------------------------------------------------------------------
     # Cleanup

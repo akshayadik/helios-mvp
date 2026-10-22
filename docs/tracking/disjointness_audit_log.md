@@ -36,6 +36,7 @@
 |---|---|---|---|---|---|---|---|---|
 | 2026-05-14 | 72f0245 | Milestone 1 gate | PASSED | dpipe, gpipe, lpipe (3) | l2c_llm, p4_cognitive, mahc, cbr, l2b_graph, acp, reconcile, ueg_c_structural, dpipe_propagation, router (10) | 0 | PASSED — HELIOS-Full vs HELIOS-noGraph contexts show disjoint coverage on pipeline stubs | 10 uncovered flags expected; pipeline stubs only gate 3 flags; target is all 13 covered at Stage 5 |
 | 2026-05-19 | 0726b59 | Milestone 3 gate | PASSED | gpipe (run_gpipe), dpipe (run_dpipe), l2c_llm (run_lpipe) (3) | mahc, ueg_c_structural, lpipe, cbr, dpipe_propagation, l2b_graph, p4_cognitive, acp, router, reconcile (10) | 0 | PASSED — static scan; dynamic coverage not re-run (no new variant contexts added at M3) | Note: covered set changed from {dpipe, gpipe, lpipe} to {gpipe, dpipe, l2c_llm} — L-pipe full implementation now gated by VCLFlag.L2C_LLM (not VCLFlag.LPIPE); `lpipe` flag moved to uncovered; 10 uncovered flags unchanged; target is all 13 covered at Stage 5 |
+| 2026-05-21 | c0b0065 | Milestone 4 architectural review | PASSED | gpipe (run_gpipe), dpipe (run_dpipe), l2c_llm (run_lpipe), l2b_graph (build_ueg_c), mahc (UniformBordaConsensus.fuse) (5) | acp, cbr, router, ueg_c_structural, p4_cognitive, reconcile, dpipe_propagation, lpipe (8) | 0 | PASSED — static scan; DisjointnessAuditor extended to scan class methods via inspect.isclass(); helios.graph.ueg_c_builder and helios.consensus.uniform_borda added to _PIPELINE_MODULES | Coverage increased from 3 → 5: l2b_graph (build_ueg_c) and mahc (UniformBordaConsensus.fuse) now detected; auditor class-method scanning required because @gated_by on an instance method copies __gated_by__ to wrapper via functools.wraps.__dict__ update |
 
 ---
 
@@ -47,4 +48,4 @@
 
 ---
 
-*Last updated: 2026-05-19 at Milestone 3 gate (2 entries total)*
+*Last updated: 2026-05-21 at Milestone 4 architectural review (3 entries total)*

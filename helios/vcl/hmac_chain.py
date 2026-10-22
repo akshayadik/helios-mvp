@@ -7,6 +7,7 @@ import hashlib
 import hmac
 import json
 import os
+import subprocess
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -25,6 +26,24 @@ class TamperDetectedError(RuntimeError):
 
 GENESIS = "GENESIS"
 _UNSIGNED_KEYS: frozenset[str] = frozenset({"signature", "deviation_id"})
+
+
+def _resolve_commit_sha() -> str:
+    """Return the current git HEAD SHA, falling back to LOCAL."""
+    sha = os.getenv("GITHUB_SHA")
+    if sha:
+        return sha
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=5,
+        )
+        return result.stdout.strip()
+    except Exception:  # subprocess failure, git absent, or timeout
+        return "LOCAL"
 
 
 class HMACChainedLog:
@@ -76,7 +95,7 @@ class HMACChainedLog:
         prev_sig = self.previous_signature()
         entry: dict[str, Any] = {
             "timestamp_utc": dt.datetime.now(dt.UTC).isoformat().replace("+00:00", "Z"),
-            "commit_sha": os.getenv("GITHUB_SHA", "LOCAL"),
+            "commit_sha": _resolve_commit_sha(),
             "prev_signature": prev_sig,
             **fields,
         }

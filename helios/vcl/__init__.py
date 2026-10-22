@@ -1,5 +1,6 @@
 """Variant Control Layer — C1 §6.1."""
 
+from .catalog import get_all_variants
 from .config import VCLManifest
 from .decorators import (
     GatedComponentInactiveError,
@@ -22,6 +23,7 @@ __all__ = [
     "VCLManifest",
     "canonical_json",
     "gated_by",
+    "get_all_variants",
     "get_current_manifest",
     "get_variant",
     "set_current_manifest",

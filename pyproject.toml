@@ -109,6 +109,7 @@ pyarrow  = ">=18.0,<19.0"   # ADDED; Parquet capture (Day 4, §3.7)
 duckdb   = ">=1.1,<1.2"     # ADDED; result store (Day 3, store/schema.sql)
 pandas   = ">=2.2,<3.0"     # ADDED; D-pipe MetricsParser Parquet → DataFrame (M2)
 requests = ">=2.28,<3.0"    # ADDED; L-pipe Ollama HTTP client (M3)
+statsmodels = ">=0.14,<0.15"  # ADDED; Wilcoxon + Holm-Bonferroni for M4 ablation analysis
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Development / CI dependencies (TIER 2)
@@ -130,6 +131,7 @@ isort      = ">=5.12,<6.0"   # import sorter; editor integration
 coverage      = { version = ">=7.4,<8.0", extras = ["toml"] }
                               # [toml] extra enables [tool.coverage] config here
 types-PyYAML  = ">=6.0,<7.0"  # ADDED; mypy stubs for yaml used in verify_osf_freeze.py
+hypothesis    = "^6"           # ADDED; property-based testing for consensus module (M4)
  
 # ─────────────────────────────────────────────────────────────────────────────
 # Notebook execution
@@ -152,7 +154,7 @@ build-backend = "poetry.core.masonry.api"
  
 [tool.pytest.ini_options]
 testpaths  = ["tests"]        # PRESERVED
-pythonpath = ["."]            # ADDED: makes `import helios` work without install
+pythonpath = [".", "scripts"]  # "scripts" enables `from scripts.analyse_results import ...` in tests
  
 # CHANGED: was just "-q". Coverage flags added for Stage 0 exit gate (EG1-EG6).
 # --cov-fail-under=90 is the binding gate. Reducing it requires a deviation entry.
@@ -199,6 +201,16 @@ omit           = [
     "scripts/calibrate_gpipe.py",
     "scripts/inspect_ppr_scores.py",
     "scripts/smoke_ablation.py",
+    # Subprocess entry point — invoked by run_ablation.py via subprocess.run();
+    # tested end-to-end via the ablation dry-run integration tests.
+    "scripts/run_one_variant.py",
+    # CLI driver for post-hoc analysis — requires a populated DuckDB with consensus
+    # rows; pure statistical helpers (run_wilcoxon, apply_holm_bonferroni) are
+    # covered by tests/test_analyse_results.py.
+    "scripts/analyse_results.py",
+    # Post-run replication check — requires a populated DuckDB + frozen captures;
+    # tested via --help flag smoke in tests/integration/test_replicate.py.
+    "scripts/replicate.py",
 ]
  
 [tool.coverage.report]

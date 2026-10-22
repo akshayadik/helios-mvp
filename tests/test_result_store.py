@@ -157,3 +157,55 @@ def test_inclusion_rate_filters_by_variant_hash(store: ResultStore) -> None:
 
 def test_vcl_flag_import_accessible() -> None:
     assert VCLFlag.L2C_LLM in VCLFlag.bool_flags()
+
+
+# ------------------------------------------------------------------
+# ConsensusVerdict insert / fetch (schema-draft-v0.3)
+# ------------------------------------------------------------------
+
+
+def _make_cv(incident_id: str = "otel-001", variant: str = "HELIOS-Full") -> object:
+    from helios.consensus.verdict import ConsensusVerdict
+
+    return ConsensusVerdict(
+        incident_id=incident_id,
+        variant=variant,
+        top_candidates=["svc-a", "svc-b"],
+        borda_scores={"svc-a": 2, "svc-b": 1},
+        candidate_universe_size=2,
+        consensus_rank=2,
+        fusion_algorithm="borda-v1",
+        fusion_algorithm_sha="abc123",
+        pipeline_row_count=3,
+        run_id="run-test",
+        timestamp_utc="2026-05-20T10:00:00Z",
+    )
+
+
+def test_insert_and_fetch_consensus(tmp_path: Path) -> None:
+    store = ResultStore(tmp_path / "test.duckdb")
+    cv = _make_cv()
+    store.insert_consensus(cv)  # type: ignore[arg-type]
+    rows = store.fetch_all_consensus_rows()
+    assert len(rows) == 1
+    assert rows[0]["incident_id"] == "otel-001"
+    assert rows[0]["variant"] == "HELIOS-Full"
+    store.close()
+
+
+def test_fetch_all_pipeline_rows_returns_list(tmp_path: Path) -> None:
+    store = ResultStore(tmp_path / "test.duckdb")
+    rows = store.fetch_all_pipeline_rows()
+    assert isinstance(rows, list)
+    store.close()
+
+
+def test_insert_consensus_idempotent_guard(tmp_path: Path) -> None:
+    store = ResultStore(tmp_path / "test.duckdb")
+    cv = _make_cv()
+    store.insert_consensus(cv)  # type: ignore[arg-type]
+    # Second insert of same (incident_id, variant) must not raise — INSERT OR IGNORE
+    store.insert_consensus(cv)  # type: ignore[arg-type]
+    rows = store.fetch_all_consensus_rows()
+    assert len(rows) == 1
+    store.close()

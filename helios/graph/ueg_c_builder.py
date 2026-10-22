@@ -19,6 +19,8 @@ from helios.vcl import VCLFlag, gated_by
 if TYPE_CHECKING:
     from helios.schemas.telemetry import TelemetryWindow
 
+__all__ = ["build_ueg_c"]
+
 
 def _psid(val: object) -> str:
     """Normalise a Parquet nullable parent_span_id cell to str or ''.

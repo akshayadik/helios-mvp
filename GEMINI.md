@@ -9,8 +9,8 @@ HELIOS is an ablation-first Root Cause Analysis (RCA) framework. Research integr
 
 ### Mandatory Session Context
 **ALWAYS reference these documents before any research-related suggestions or creative work:**
-1. `.claude/docs/pdf/research_proposal_akshayadik.pdf` — Ground all RQ framing, hypothesis justification, and artefact design here.
-2. `.claude/docs/pdf/project_plan.md` — Use to assess task fit and milestone alignment.
+1. `docs/research/research_proposal_akshayadik.pdf` — Ground all RQ framing, hypothesis justification, and artefact design here.
+2. `docs/research/project_plan.md` — Use to assess task fit and milestone alignment.
 
 ---
 

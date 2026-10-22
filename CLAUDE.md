@@ -42,11 +42,15 @@ poetry run pre-commit install
 set -a; source .env; set +a && \
   poetry run ruff check helios/ scripts/ tests/ && \
   poetry run ruff format --check helios/ scripts/ tests/ && \
+  poetry run black --check helios/ scripts/ tests/ && \
   poetry run mypy && \
   poetry run pytest && \
   poetry run python bin/log_deviation.py verify && \
-  make validate-tracking
+  poetry run python bin/verify_osf_freeze.py --verify && \
+  poetry run make validate-tracking
 ```
+
+CI's lint job also runs `black --check` (floating `>=24.0,<27.0`, resolves to black 26). ruff 0.6.9 accepts both styles of multi-line string call (`f("""` hugged or split), but black 26 accepts only the hugged form — so a file can pass `ruff format --check` and still fail CI. `verify_osf_freeze.py --verify` reads `helios/vcl/variants.py` from **HEAD**, so it only reflects an edit after commit; `tests/test_verify_osf_freeze.py::test_variants_py_matches_frozen_vcl_sha` checks the working tree.
 
 ### Testing
 
