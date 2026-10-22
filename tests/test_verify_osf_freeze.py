@@ -134,3 +134,20 @@ def test_vcl_freeze_sha_returns_nonempty_string() -> None:
     result = _vcl_freeze_sha()
     assert isinstance(result, str)
     assert len(result) > 0
+
+
+def test_variants_py_matches_frozen_vcl_sha() -> None:
+    """variants.py must stay byte-identical to the blob recorded at OSF freeze.
+
+    The freeze fingerprints the whole file, so even a non-semantic edit fails
+    `verify_osf_freeze.py --verify`. Put new variant helpers in catalog.py.
+    """
+    import json
+
+    frozen = json.loads(Path("research/osf/variant_hashes.json").read_text())
+    content = Path("helios/vcl/variants.py").read_bytes()
+    # git blob id (not a security hash): sha1 over "blob <len>\0<content>"
+    blob_sha = hashlib.sha1(
+        b"blob " + str(len(content)).encode() + b"\0" + content
+    ).hexdigest()
+    assert blob_sha == frozen["vcl_freeze_sha"]
