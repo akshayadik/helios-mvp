@@ -40,9 +40,9 @@ poetry run pre-commit install
 
 ```bash
 set -a; source .env; set +a && \
-  poetry run ruff check helios/ scripts/ tests/ && \
-  poetry run ruff format --check helios/ scripts/ tests/ && \
-  poetry run black --check helios/ scripts/ tests/ && \
+  poetry run ruff check helios/ scripts/ tests/ bin/ && \
+  poetry run ruff format --check helios/ scripts/ tests/ bin/ && \
+  poetry run black --check helios/ scripts/ tests/ bin/ && \
   poetry run mypy && \
   poetry run pytest && \
   poetry run python bin/verify_ledgers.py && \
@@ -186,11 +186,11 @@ L4  Auto-Remediation
 |---|---|
 | `ci.yml` | ruff, mypy, pytest |
 | `disjointness_audit.yml` | Feature-flag disjointness — Stage 5 stub; exits 0 on `ImportError` until `helios/vcl/disjointness.py` is implemented |
-| `ledger_verification.yml` | HMAC chain integrity; requires `DEVIATION_HMAC_SECRET` in repo Secrets |
+| `ledger_verification.yml` | HMAC chain integrity + `verify_ledgers.py` (anchors); **fails** if `DEVIATION_HMAC_SECRET` is missing (only fork PRs skip, with a warning) |
 
 ### Tracking schema rules (R1–R8)
 
-Enforced by `scripts/validate_tracking.py` as a pre-commit hook and in CI:
+Enforced by `scripts/validate_tracking.py` as a pre-commit hook (working tree vs HEAD) and in CI with `--range BASE..HEAD`, which validates **every commit** that touched the tracker against its own parent(s). Before 2026-10-22 CI ran the bare form on a checkout, comparing the file with itself, so R4/R5 never fired in CI. Merge commits: a row is reported only if invalid against every parent. Audit a branch locally with `python3 scripts/validate_tracking.py --range origin/main..HEAD`.
 
 - **R1** DONE rows must have Started, Done, SHA, Ev_Type, Ev_Ref populated.
 - **R2** DEFERRED/CARRIED_OVER rows must have Deviation_Ref.

@@ -38,6 +38,8 @@ from pathlib import Path
 # Configuration
 # --------------------------------------------------------------------------- #
 
+HELIOS_ENABLE_TRACKING_VALIDATOR: bool = True  # always-on audit tooling, not ablatable
+
 TRACKER_PATH = Path("docs/tracking/helios_mvp_tracking.md")
 
 # Column indices (0-based) within a parsed row.
@@ -164,16 +166,16 @@ def parse_rows(text: str) -> list[list[str]]:
     return rows
 
 
-def get_previous_tracker(repo_path: Path = Path(".")) -> str | None:
+def get_previous_tracker(repo_path: Path = Path("."), ref: str = "HEAD") -> str | None:
     """
-    Read the tracker as it existed at HEAD via `git show`. Returns None on the
-    initial commit (no HEAD yet) or if the tracker was not in the previous
-    commit. Any other git failure raises.
+    Read the tracker as it existed at `ref` (default HEAD) via `git show`.
+    Returns None on the initial commit (no HEAD yet) or if the tracker was not
+    in that commit. Any other git failure raises.
     """
     rel = TRACKER_PATH.as_posix()
     try:
         result = subprocess.run(
-            ["git", "show", f"HEAD:{rel}"],
+            ["git", "show", f"{ref}:{rel}"],
             cwd=str(repo_path),
             check=False,
             capture_output=True,
@@ -399,7 +401,73 @@ def validate(current_text: str, previous_text: str | None) -> list[Violation]:
 # --------------------------------------------------------------------------- #
 
 
+def _git_lines(*args: str) -> list[str]:
+    result = subprocess.run(["git", *args], check=False, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError(f"git {' '.join(args)} failed: {result.stderr.strip()}")
+    return result.stdout.split()
+
+
+def validate_commit(commit: str) -> list[Violation]:
+    """Validate the tracker at `commit` against its parent(s).
+
+    For a merge, a row is reported only if it is invalid against every parent:
+    each side's transitions were legal on that side, and comparing the merge
+    to one parent alone would flag the other side's steps as jumps.
+    """
+    current = get_previous_tracker(ref=commit)
+    if current is None:
+        return []
+    parents = _git_lines("rev-list", "--parents", "-n", "1", commit)[1:]
+    if not parents:
+        return validate(current, None)
+    per_parent = [validate(current, get_previous_tracker(ref=p)) for p in parents]
+    if len(per_parent) == 1:
+        return per_parent[0]
+    bad_everywhere = set.intersection(*({v.task_id for v in vs} for vs in per_parent))
+    return [v for v in per_parent[0] if v.task_id in bad_everywhere]
+
+
+def validate_range(rev_range: str) -> list[tuple[str, Violation]]:
+    """Validate every first-parent commit in `rev_range` that changes the tracker.
+
+    This is the CI form of the pre-commit check: comparing a whole PR to its
+    base would merge several legal steps (PLANNED -> IN_PROGRESS -> DONE) into
+    one illegal jump, while comparing HEAD to itself checks nothing.
+    """
+    out: list[tuple[str, Violation]] = []
+    commits = _git_lines(
+        "rev-list",
+        "--reverse",
+        "--first-parent",
+        rev_range,
+        "--",
+        TRACKER_PATH.as_posix(),
+    )
+    for commit in commits:
+        out.extend((commit[:7], v) for v in validate_commit(commit))
+    return out
+
+
 def main(argv: list[str] | None = None) -> int:
+    args = list(sys.argv[1:] if argv is None else argv)
+    if args[:1] == ["--range"] and len(args) == 2:
+        try:
+            found = validate_range(args[1])
+        except RuntimeError as exc:
+            print(f"validator: {exc}", file=sys.stderr)
+            return 2
+        if not found:
+            print(f"validator: {args[1]} — every tracker commit valid.")
+            return 0
+        print(f"\nTRACKING VALIDATION FAILED in {args[1]}:\n", file=sys.stderr)
+        for sha, v in found:
+            print(f"  {sha}  {v.format()}", file=sys.stderr)
+        return 1
+    if args:
+        print("usage: validate_tracking.py [--range BASE..HEAD]", file=sys.stderr)
+        return 2
+
     if not TRACKER_PATH.exists():
         return 0
 

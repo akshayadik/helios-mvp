@@ -148,14 +148,15 @@ jobs:
           pip install "ruff>=0.6.9,<0.7" "black>=24.0,<27.0"
  
       # CHANGED: was "ruff check ." — explicit dirs, plus format check added
+      # bin/ added 2026-10-22: it holds the ledger CLIs (C1 audit code)
       - name: ruff check (lint + import order)
-        run: ruff check helios/ scripts/ tests/
- 
+        run: ruff check helios/ scripts/ tests/ bin/
+
       - name: ruff format --check
-        run: ruff format --check helios/ scripts/ tests/
- 
+        run: ruff format --check helios/ scripts/ tests/ bin/
+
       - name: black --check
-        run: black --check helios/ scripts/ tests/
+        run: black --check helios/ scripts/ tests/ bin/
  
 # ─────────────────────────────────────────────────────────────────────────────
 # JOB 2: typecheck
@@ -258,14 +259,34 @@ jobs:
           python-version: ${{ env.PYTHON_BINDING }}
  
       # stdlib only — no pip/poetry step needed
-      - name: Validate tracking sheet
-        run: python scripts/validate_tracking.py
- 
+      # Every commit in the pushed/PR range is checked against its own
+      # parent(s). The former bare call compared the checked-out file with
+      # HEAD — the same file — so R4/R5 could never fail in CI.
+      - name: Validate tracking sheet (every commit in range)
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          BEFORE: ${{ github.event.before }}
+          SHA: ${{ github.sha }}
+        run: |
+          if [ "$EVENT" = "pull_request" ]; then
+            RANGE="$PR_BASE..$PR_HEAD"
+          elif [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ]; then
+            RANGE="$BEFORE..$SHA"
+          else
+            RANGE="$SHA~1..$SHA"
+          fi
+          echo "Validating tracker history in $RANGE"
+          python scripts/validate_tracking.py --range "$RANGE"
+          # Working tree vs HEAD (same check as the pre-commit hook)
+          python scripts/validate_tracking.py
+
       # ADDED: inline PR annotation so the error is visible on the Files tab
       - name: Annotate PR on failure
         if: failure()
         run: |
-          echo "::error file=docs/tracking/helios_mvp_tracking.md::Tracking sheet violated schema invariants. Run 'python scripts/validate_tracking.py' locally for details. File a deviation-log entry per Appendix B.12 if the change is intentional."
+          echo "::error file=docs/tracking/helios_mvp_tracking.md::Tracking sheet violated schema invariants. Run 'python scripts/validate_tracking.py --range <base>..HEAD' locally for details. File a deviation-log entry per Appendix B.12 if the change is intentional."
  
 # ─────────────────────────────────────────────────────────────────────────────
 # JOB 5: disjointness  (Stage 0 STUB)

@@ -190,9 +190,9 @@ One-liner (fails fast on first error):
 
 ```bash
 set -a; source .env; set +a && \
-  poetry run ruff check helios/ scripts/ tests/ && \
-  poetry run ruff format --check helios/ scripts/ tests/ && \
-  poetry run black --check helios/ scripts/ tests/ && \
+  poetry run ruff check helios/ scripts/ tests/ bin/ && \
+  poetry run ruff format --check helios/ scripts/ tests/ bin/ && \
+  poetry run black --check helios/ scripts/ tests/ bin/ && \
   poetry run mypy && \
   poetry run pytest && \
   poetry run python bin/verify_ledgers.py && \
@@ -465,7 +465,7 @@ Three workflows run on every PR and push to `main`:
 |---|---|---|
 | `ci.yml` | push to main, PR | ruff lint, mypy types, pytest |
 | `disjointness_audit.yml` | PR | Static feature-flag disjointness (stub until Stage 5) |
-| `ledger_verification.yml` | push to main, PR | HMAC chain integrity tests + on-disk chain `verify` |
+| `ledger_verification.yml` | push to main, PR | HMAC chain + anchor tests; on-disk `verify_ledgers.py`; fails if the secret is missing (fork PRs skip with a warning) |
 
 The on-disk chain check in `ledger_verification.yml` requires `DEVIATION_HMAC_SECRET` to be set in repo Secrets (setup step 10). If unset, the workflow skips with a warning rather than blocking — this is intentional, so you can push the initial commits before configuring secrets.
 
