@@ -24,14 +24,22 @@ jobs:
         # --no-cov: this is a targeted canary run; pyproject.toml addopts carries
         # --cov-fail-under=90 which would always fail when only 12 tests run
         # (scripts/validate_tracking.py has 0% coverage in this scoped run).
-        run: poetry run pytest tests/test_deviation_log.py -v --no-cov
+        run: poetry run pytest tests/test_deviation_log.py tests/test_hmac_anchor.py -v --no-cov
       - name: Verify on-disk deviation_log chain
-        # Skips cleanly if the secret isn't configured (so the workflow doesn't
-        # block early-Stage-0 commits before the secret is set up).
+        # A missing secret FAILS the job (2026-10-22): the former silent skip
+        # meant deleting the repo secret disabled ledger verification without
+        # any red check. Only fork PRs, which GitHub never gives secrets, skip
+        # — with a visible warning.
+        env:
+          IS_FORK_PR: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
         run: |
           if [ -z "${DEVIATION_HMAC_SECRET:-}" ]; then
-            echo "DEVIATION_HMAC_SECRET not set — skipping on-disk chain verification."
-            exit 0
+            if [ "$IS_FORK_PR" = "true" ]; then
+              echo "::warning::Fork PR: secrets unavailable, on-disk ledger verification skipped."
+              exit 0
+            fi
+            echo "::error::DEVIATION_HMAC_SECRET is not set — ledger chains cannot be verified."
+            exit 1
           fi
           poetry run python bin/log_deviation.py verify
           # All ledgers, signed head anchors required (truncation / swap checks)
