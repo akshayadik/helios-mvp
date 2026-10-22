@@ -34,3 +34,5 @@ jobs:
             exit 0
           fi
           poetry run python bin/log_deviation.py verify
+          # All ledgers, signed head anchors required (truncation / swap checks)
+          poetry run python bin/verify_ledgers.py

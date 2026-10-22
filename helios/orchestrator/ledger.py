@@ -35,6 +35,7 @@ class ReconciliationLedger(HMACChainedLog):
         "variant_config_hash",
         "outcome",
     )
+    LOG_KIND = "reconciliation"
 
     OUTCOMES: frozenset[str] = OUTCOMES
 

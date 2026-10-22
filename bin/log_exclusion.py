@@ -63,6 +63,7 @@ class ExclusionLedger(HMACChainedLog):
         "reason",
         "analytic_consequence",
     )
+    LOG_KIND = "exclusion"
 
 
 def main() -> int:
@@ -83,6 +84,11 @@ def main() -> int:
 
     if args.cmd == "verify":
         ledger = ExclusionLedger(key=load_key(), log_path=LOG_FILE)
+        # Required even for an empty log: deleting log + anchor together
+        # must not read as a fresh, valid log.
+        if not ledger.anchor_path.exists():
+            print(f"❌ Anchor {ledger.anchor_path.name} missing.")
+            return 1
         ok, msg = ledger.verify()
         print(("✅ " if ok else "❌ ") + msg)
         return 0 if ok else 1
