@@ -1,0 +1,12 @@
+{
+  "incident_id": "s0-pcat-001",
+  "manifest_sha256": "785cf9472195c22b4e12d3374a3838da86a32fcceb5e2230e0926fbc86464002",
+  "pillars": {
+    "p1_metrics": "7c2d6142032915fe70f679c8060e0136e380e5f790920ead0f9d3517589019da",
+    "p2_traces": "7454c9a984edf6b6cf3a7cc31d97d69d05dd293a4fa56f3c53e2844b126c15ed",
+    "p3_logs": "450c318c81838c29f518fb54a6ad0843efce46a4904cf67b5a7962a64705710f"
+  },
+  "seal_kind": "capture-content",
+  "seal_signature": "7eb1521a8c03134bf5158a139f436e75d495fd17aa3da7833f4c37fb69756f41",
+  "seal_version": 1
+}

@@ -1,0 +1,12 @@
+{
+  "incident_id": "s0-rcf-002",
+  "manifest_sha256": "fe04ef998f8139f7806d1b93e5b150e48b0d5098b8950264bf7862bcf5a263b6",
+  "pillars": {
+    "p1_metrics": "374ead0c43c0334d5696f1550a0f12c4fbbb1c59d9bc6967b7ceac18f600bbbf",
+    "p2_traces": "a06d30f9a0c81343e65d0aed398705b46489a8bb15d6115dd9bc1bfd8559418f",
+    "p3_logs": "0d4b36b097b675c024965dead6526d2542c399f233af8cb90c06444ca6563f4a"
+  },
+  "seal_kind": "capture-content",
+  "seal_signature": "db72992b4dedf8d5aa670bbeca7fed26460a682616bec29b20b9d677c7056295",
+  "seal_version": 1
+}

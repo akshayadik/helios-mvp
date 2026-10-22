@@ -1,0 +1,12 @@
+{
+  "incident_id": "s0-cart-001",
+  "manifest_sha256": "e773323bb91f1ee99ce34a88fa26e86d44092978f519d3f135a7188c38077a66",
+  "pillars": {
+    "p1_metrics": "30dba88ce01e155bb1ad29330cca90cefde6cac40c9b3aa1dc23f76ddda50778",
+    "p2_traces": "f9460ec5890d60a39dfc6dac53bdf2ea406c79da823adf5960029a58e9a7822c",
+    "p3_logs": "3386fadd1ad4e407075d39a503e51812c1eec4f0f7fcdcdb8446c13cfecbe359"
+  },
+  "seal_kind": "capture-content",
+  "seal_signature": "ef05036002b3a861b5661972c9ec87156d3798e28c93a9733ccc1eed28ec1653",
+  "seal_version": 1
+}

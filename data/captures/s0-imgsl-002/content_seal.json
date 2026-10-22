@@ -1,0 +1,12 @@
+{
+  "incident_id": "s0-imgsl-002",
+  "manifest_sha256": "a6e33e666fce29aac369ae27b0b452e205a5d0afb9ecdff82d081adf3e50b370",
+  "pillars": {
+    "p1_metrics": "140c07130f8bb6322be453cfd7ce236db03f3ade0786f672d1c4e4a07e8ba020",
+    "p2_traces": "f2d929a663389a12b618314506bb5921f15d1a9152e643b1b4460f49e8513d42",
+    "p3_logs": "c35b2fa649615ccf068da2a82ab26293f2350e2f12aa6a214d109a17036f6166"
+  },
+  "seal_kind": "capture-content",
+  "seal_signature": "471dee8f0a2915426d311897cf71960d1ed7e02ce57f35da9eb7fe75d0db5bbb",
+  "seal_version": 1
+}

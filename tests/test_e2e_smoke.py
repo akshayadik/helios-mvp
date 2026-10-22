@@ -253,6 +253,7 @@ def test_orchestrator_e2e_three_pipeline_dispatch(tmp_path: Path) -> None:
     from helios.orchestrator.runner import RunOrchestrator
     from helios.schemas.telemetry import EvaluationPhase, TelemetryWindow
     from helios.store.result_store import ResultStore
+    from helios.telemetry.seal import write_seal
     from helios.vcl import get_variant, set_current_manifest
 
     captures = tmp_path / "captures"
@@ -271,10 +272,11 @@ def test_orchestrator_e2e_three_pipeline_dispatch(tmp_path: Path) -> None:
     mdata = window.model_dump()
     mdata["window_hash"] = window.compute_window_hash()
     (inc_dir / "manifest.json").write_text(json.dumps(mdata, default=str))
+    key = b"test-secret-at-least-32-chars-long!!"
+    write_seal(inc_dir, window, key)  # a real capture is sealed once final
 
     vcl = get_variant("HELIOS-Full")
     set_current_manifest(vcl)
-    key = b"test-secret-at-least-32-chars-long!!"
 
     orch = RunOrchestrator(
         manifest=vcl,

@@ -1,0 +1,12 @@
+{
+  "incident_id": "s0-adhc-001",
+  "manifest_sha256": "fc3cc536387b7b34c90e390480654a8ec17b7239ed82f2782c8129c2e9da43a6",
+  "pillars": {
+    "p1_metrics": "b2ae4637bb5bd3028d84ef8f0eb75ba3ac491f91882de6579cb0c465bd982160",
+    "p2_traces": "1d04abf84cd1d0949f6c7de955587f36b36aafbf0d98930ac06a5b5304023a9d",
+    "p3_logs": "600ca68d086e0576cd73ed2504e12f67ffb3ba2e06fd4769c28079aea6ae9f8a"
+  },
+  "seal_kind": "capture-content",
+  "seal_signature": "860a82f522f8ba6668878e7da33d0d0e585a15947137f3782a7a4070d0333660",
+  "seal_version": 1
+}

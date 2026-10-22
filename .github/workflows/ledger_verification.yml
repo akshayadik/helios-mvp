@@ -44,3 +44,5 @@ jobs:
           poetry run python bin/log_deviation.py verify
           # All ledgers, signed head anchors required (truncation / swap checks)
           poetry run python bin/verify_ledgers.py
+          # Captures: window hash + HMAC content seal over manifest and Parquet bytes
+          poetry run python bin/verify_captures.py

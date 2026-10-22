@@ -50,6 +50,7 @@
 | 20 | 2026-05-21 | Stage 1 / M4 | §3.7 Exploratory run protocol | Introduce scripts/run_ablation.py: subprocess-isolated per-variant runs, atomic merge of 8 per-variant DuckDB files | None — RunOrchestrator is frozen; subprocess isolation preserves per-variant DB lineage | d3abdcce6bf0 |
 | 21 | 2026-05-21 | Stage 1 / M4 | §4.3 Exploratory inference | Introduce scripts/analyse_results.py: Wilcoxon exact two-sided + Holm-Bonferroni over pre-registered A-family hypotheses | Exploratory only (OTEL corpus); no binding inference; informs Phase 2 planning | 9102928aa3d6 |
 | 22 | 2026-10-22 | Stage 1 / M4 | §B.12 / §3.6.8 | C1 ledger verification hardened: signed head anchor (<stem>.anchor.json: entry count, head signature, log kind) for the deviation, exclusion and reconciliation ledgers; append refuses to extend a log whose tail does not match its anchor; verify checks REQUIRED_FIELDS per log kind and deviation_id == signature[:16]; bin/verify_ledgers.py added to the pre-push gate and ledger CI. Anchors bootstrapped at 21/0/25 entries. | None for any hypothesis, variant, metric or threshold. No existing entry re-signed; all prior signatures verify unchanged. Strengthens the C1 audit claim; residual (ledger + anchor rolled back together to an earlier committed state) relies on git history and the OSF deposit. | 971bcaeaafc7 |
+| 23 | 2026-10-22 | Stage 1 / M4 | §3.6.8 / §5.1 | C1 inclusion gate extended with an HMAC-signed content seal per capture (data/captures/<id>/content_seal.json: SHA-256 of manifest.json bytes and of every declared Parquet stream, bound to incident_id and the capture directory). RunOrchestrator, recorded frozen in entry 20, now skips a capture whose seal is missing or does not match (reconciliation gate_check=capture_seal_invalid). bin/run_capture.py seals new captures; bin/verify_captures.py verifies window hash + seal. TelemetryWindow schema, window_hash, snapshot_hash and OSF artefacts unchanged. | None for any hypothesis, variant, metric or threshold. All 20 exploratory captures are sealed and pass, so the included set is unchanged. Every confirmatory capture must be sealed at capture or import time or it is excluded; seal hashes are to be listed in the OSF corpus manifest at the confirmatory freeze (external anchor). | 986bd5489b38 |
 
 ---
 
@@ -59,4 +60,4 @@
 
 ---
 
-*Last updated: 2026-10-22 from deviation_log.jsonl (22 entries, chain + head anchor verified). Rows 19–21 were missing from this mirror until this update.*
+*Last updated: 2026-10-22 from deviation_log.jsonl (23 entries, chain + head anchor verified). Rows 19–21 were missing from this mirror until 2026-10-22.*

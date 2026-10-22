@@ -14,6 +14,7 @@ from pathlib import Path
 import pyarrow.parquet as pq
 
 from helios.schemas.telemetry import TelemetryWindow
+from helios.telemetry.seal import check_seal
 from helios.vcl.config import VCLManifest  # noqa: F401  # flag-guard compliance
 
 __all__ = ["CaptureReader", "CaptureVerification"]
@@ -23,7 +24,10 @@ __all__ = ["CaptureReader", "CaptureVerification"]
 class CaptureVerification:
     """Result of reading and verifying a single telemetry capture.
 
-    hash_matches is True when the manifest.json was not altered after recording.
+    hash_matches is True when the TelemetryWindow fields in manifest.json were
+    not altered after recording. It does NOT cover Parquet bytes; that is the
+    content seal (seal_checked / seal_error, see helios.telemetry.seal).
+    `intact` requires both.
     """
 
     incident_id: str
@@ -31,10 +35,20 @@ class CaptureVerification:
     stored_hash: str
     computed_hash: str
     stream_row_counts: dict[str, int] = field(default_factory=dict)
+    seal_checked: bool = False
+    seal_error: str | None = None
 
     @property
     def hash_matches(self) -> bool:
         return self.stored_hash == self.computed_hash
+
+    @property
+    def content_intact(self) -> bool:
+        return self.seal_checked and self.seal_error is None
+
+    @property
+    def intact(self) -> bool:
+        return self.hash_matches and self.content_intact
 
 
 class CaptureReader:
@@ -48,8 +62,10 @@ class CaptureReader:
         {output_dir}/{incident_id}/p3_logs.parquet
     """
 
-    def __init__(self, output_dir: Path) -> None:
+    def __init__(self, output_dir: Path, seal_key: bytes | None = None) -> None:
+        """seal_key enables the content-seal check; without it seal_checked is False."""
         self._output_dir = output_dir
+        self._seal_key = seal_key
 
     def read(self, incident_id: str) -> CaptureVerification:
         """Load and verify a recorded capture; raise FileNotFoundError if absent."""
@@ -84,10 +100,16 @@ class CaptureReader:
                 else:
                     row_counts[stream] = 0
 
+        seal_error = None
+        if self._seal_key is not None:
+            seal_error = check_seal(incident_dir, window, self._seal_key)
+
         return CaptureVerification(
             incident_id=incident_id,
             window=window,
             stored_hash=stored_hash,
             computed_hash=computed_hash,
             stream_row_counts=row_counts,
+            seal_checked=self._seal_key is not None,
+            seal_error=seal_error,
         )

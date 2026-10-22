@@ -46,6 +46,7 @@ set -a; source .env; set +a && \
   poetry run mypy && \
   poetry run pytest && \
   poetry run python bin/verify_ledgers.py && \
+  poetry run python bin/verify_captures.py && \
   poetry run python bin/verify_osf_freeze.py --verify && \
   poetry run make validate-tracking
 ```
@@ -236,6 +237,7 @@ Enforced by `scripts/validate_tracking.py` as a pre-commit hook (working tree vs
 - For Edit/MultiEdit, `flag-guard.py` checks the file as it will look **after** the edit; `research-compliance.py` checks only the inserted `new_string` text. (Before 2026-10-22 both read only `content`, so Edits were never inspected.)
 - Hooks are launched with `python3` (macOS has no bare `python`). A hook command that is not found exits 127, which Claude Code treats as non-blocking — a missing interpreter silently disables the guard. After changing `.claude/settings.json`, review hooks via `/hooks` or restart the session.
 - PostToolUse scripts resolve the Poetry venv themselves (`poetry env info -p`); they do not rely on `python`/`ruff` being on PATH.
+- `format-and-matrix-update.sh` runs `ruff check --fix` after **every** edit, which deletes imports that are unused *at that moment*. When adding an import and its use in separate edits, add the use first (or both in one edit) — otherwise the import is silently stripped and only `ruff check`/mypy in the gate will notice (F821).
 
 ### Secret scanning (gitleaks)
 
@@ -250,6 +252,13 @@ Enforced by `scripts/validate_tracking.py` as a pre-commit hook (working tree vs
 - `verify()` also checks each entry has its class's `REQUIRED_FIELDS` (all ledgers share one key, so a log of one kind could otherwise pass as another) and, for the deviation log, that `deviation_id == signature[:16]` when present (entries 1–3 predate the field).
 - Residual, by design: rolling back a ledger **and** its anchor together to an earlier committed state is consistent from inside the repo. Git history and the OSF deposit are the external record.
 - Never hand-edit an `.anchor.json`. If `verify` reports an anchor mismatch, investigate (git log -p on both files) — do not regenerate the anchor.
+
+### Capture content seal
+
+- `window_hash` covers TelemetryWindow fields (metadata + Parquet **paths**) only; it does not change when Parquet bytes change, and the manifest's `snapshot_hash` is outside it. `data/captures/<id>/content_seal.json` (helios/telemetry/seal.py) signs, with the ledger key, the SHA-256 of the exact `manifest.json` bytes and of every declared Parquet stream, bound to the incident id and the directory name.
+- `RunOrchestrator` skips a capture whose seal is missing or mismatched (`gate_check=capture_seal_invalid`). `bin/run_capture.py` seals new captures and refuses to start without the key. Any imported corpus (confirmatory) must be sealed before it can run.
+- Seals are write-once. `bin/verify_captures.py --init-seals` seals only captures whose every file is tracked and identical to git HEAD; the 20 exploratory captures were sealed 2026-10-22 after also matching tag `milestone-3-exit` (deviation entry 23).
+- Never rewrite a `manifest.json` after sealing (even reformatting changes its bytes).
 
 - **`_UNSIGNED_KEYS` must cover every field that is derived from `signature`.** `HMACChainedLog.compute_signature()` excludes `{"signature", "deviation_id"}` from the signed payload. If you add a new post-sign field (any field set inside `_post_sign_fields()`), add its key to `_UNSIGNED_KEYS` in `helios/vcl/hmac_chain.py` — otherwise `verify()` will always report tampering because it recomputes the hash without that field.
 - Post-sign fields belong in `_post_sign_fields()` — the hook is called *after* `compute_signature()` sets `entry["signature"]` but *before* the JSONL line is written. Never set derived fields earlier in `append()`.

@@ -14,6 +14,7 @@ from helios.integrity_gate import AppendOnlyLedger
 from helios.orchestrator.ledger import ReconciliationLedger
 from helios.orchestrator.runner import RunOrchestrator
 from helios.schemas.telemetry import EvaluationPhase, TelemetryWindow
+from helios.telemetry.seal import write_seal
 from helios.vcl import get_variant, set_current_manifest
 
 if TYPE_CHECKING:
@@ -42,6 +43,7 @@ def _make_capture(captures: Path, incident_id: str) -> None:
     (inc_dir / "manifest.json").write_text(
         json.dumps(manifest, default=str), encoding="utf-8"
     )
+    write_seal(inc_dir, window, _KEY)  # a real capture is sealed once final
 
 
 def _make_orchestrator(tmp_path: Path, captures: Path) -> RunOrchestrator:
