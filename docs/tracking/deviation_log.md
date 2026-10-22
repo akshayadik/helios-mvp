@@ -46,6 +46,10 @@
 | 16 | 2026-05-19 | Stage 1 / M3 | §3.6.7 L-pipe — serving runtime | Ollama serving runtime for MVP instead of vLLM as specified in proposal | Latency measurements are not production-representative and must not be used for confirmatory MTTR analysis | b7812340df24 |
 | 17 | 2026-05-19 | Stage 1 / M3 | §3.6.7 | Fix `verify_osf_freeze.py`: use `DISAGREEMENT_THRESHOLD` not `PRUNER_THRESHOLD` for gpipe section in `thresholds.json` | OSF `thresholds.json` now correctly records 0.20; pre-registered threshold aligns with code | 74af9e9f3e6a |
 | 18 | 2026-05-19 | Stage 0 | §A.1 Chain Bootstrap | Correction: entry 3 (sig `539e67a1910f`) was a chain-bootstrap placeholder committed 2026-05-08 with template values (`change='...'`, `stage='Stage N'`); no protocol meaning | None; chain integrity confirmed | 89b0d6566d7b |
+| 19 | 2026-05-21 | Stage 1 / M4 | §3.6.9 Consensus layer | Introduce helios/consensus/: UniformBordaConsensus, ConsensusVerdict, schema-draft-v0.3 table | Adds consensus_verdict DuckDB table; PipelineVerdict schema-draft-v0.2 is unchanged | d22f7735ed58 |
+| 20 | 2026-05-21 | Stage 1 / M4 | §3.7 Exploratory run protocol | Introduce scripts/run_ablation.py: subprocess-isolated per-variant runs, atomic merge of 8 per-variant DuckDB files | None — RunOrchestrator is frozen; subprocess isolation preserves per-variant DB lineage | d3abdcce6bf0 |
+| 21 | 2026-05-21 | Stage 1 / M4 | §4.3 Exploratory inference | Introduce scripts/analyse_results.py: Wilcoxon exact two-sided + Holm-Bonferroni over pre-registered A-family hypotheses | Exploratory only (OTEL corpus); no binding inference; informs Phase 2 planning | 9102928aa3d6 |
+| 22 | 2026-10-22 | Stage 1 / M4 | §B.12 / §3.6.8 | C1 ledger verification hardened: signed head anchor (<stem>.anchor.json: entry count, head signature, log kind) for the deviation, exclusion and reconciliation ledgers; append refuses to extend a log whose tail does not match its anchor; verify checks REQUIRED_FIELDS per log kind and deviation_id == signature[:16]; bin/verify_ledgers.py added to the pre-push gate and ledger CI. Anchors bootstrapped at 21/0/25 entries. | None for any hypothesis, variant, metric or threshold. No existing entry re-signed; all prior signatures verify unchanged. Strengthens the C1 audit claim; residual (ledger + anchor rolled back together to an earlier committed state) relies on git history and the OSF deposit. | 971bcaeaafc7 |
 
 ---
 
@@ -55,4 +59,4 @@
 
 ---
 
-*Last updated: 2026-05-19 from deviation_log.jsonl (18 entries, chain verified)*
+*Last updated: 2026-10-22 from deviation_log.jsonl (22 entries, chain + head anchor verified). Rows 19–21 were missing from this mirror until this update.*
