@@ -18,8 +18,7 @@ if TYPE_CHECKING:
 def _create_minimal_result_db(db_path: Path, variant: str) -> None:
     """Create a minimal DuckDB result_row table with 3 pipeline rows for 1 incident."""
     conn = duckdb.connect(str(db_path))
-    conn.execute(
-        """
+    conn.execute("""
         CREATE TABLE result_row (
             incident_id VARCHAR,
             variant VARCHAR,
@@ -28,8 +27,7 @@ def _create_minimal_result_db(db_path: Path, variant: str) -> None:
             narrative VARCHAR,
             hr_at_3 DOUBLE
         )
-    """
-    )
+    """)
     for pipe in ["d_pipe", "g_pipe", "l_pipe"]:
         conn.execute(
             "INSERT INTO result_row VALUES (?, ?, ?, ?, ?, ?)",

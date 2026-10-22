@@ -15,14 +15,12 @@ if TYPE_CHECKING:
 
 
 def test_compile_ground_truth_produces_valid_json(tmp_path: Path) -> None:
-    md = textwrap.dedent(
-        """
+    md = textwrap.dedent("""
         | incident_id | environment | fault_injected_service | root_cause_service | fault_type | label_source | labelled_at | evaluation_phase |
         |---|---|---|---|---|---|---|---|
         | otel-001 | otel-demo | cartservice | cartservice | latency | manual | 2026-05-15 | exploratory |
         | otel-002 | otel-demo | paymentservice | paymentservice | crash | manual | 2026-05-15 | exploratory |
-    """
-    ).strip()
+    """).strip()
     md_file = tmp_path / "ground_truth_labelling.md"
     md_file.write_text(md)
     out_file = tmp_path / "ground_truth.json"

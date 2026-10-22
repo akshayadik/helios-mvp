@@ -30,8 +30,7 @@ def _ensure_consensus_table(conn: object) -> None:
     import duckdb as _duckdb
 
     assert isinstance(conn, _duckdb.DuckDBPyConnection)
-    conn.execute(
-        """
+    conn.execute("""
         CREATE TABLE IF NOT EXISTS consensus_verdict (
             incident_id              VARCHAR NOT NULL,
             variant                  VARCHAR NOT NULL,
@@ -47,8 +46,7 @@ def _ensure_consensus_table(conn: object) -> None:
             timestamp_utc            VARCHAR NOT NULL,
             PRIMARY KEY (incident_id, variant)
         )
-    """
-    )
+    """)
 
 
 def _load_pipeline_groups(
