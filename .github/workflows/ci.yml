@@ -212,8 +212,10 @@ jobs:
       - name: Install Poetry ${{ env.POETRY_VERSION }}
         run: pip install "poetry==${{ env.POETRY_VERSION }}"
  
+      # No --no-root: integration tests run scripts/*.py as subprocesses, which
+      # do not get pytest's pythonpath injection and must import helios.
       - name: Install all dependencies
-        run: poetry install --no-interaction --no-root --with dev
+        run: poetry install --no-interaction --with dev
  
       # All coverage flags (--cov, --cov-branch, --cov-fail-under=90, etc.)
       # live in pyproject.toml [tool.pytest.ini_options] addopts so they apply
