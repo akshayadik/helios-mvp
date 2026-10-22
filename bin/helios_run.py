@@ -37,6 +37,7 @@ class _ExclusionLedger(HMACChainedLog):
         "reason",
         "analytic_consequence",
     )
+    LOG_KIND = "exclusion"  # same ledger file as bin/log_exclusion.py
 
     def append(self, fields: dict[str, str]) -> None:  # type: ignore[override]
         """Satisfy AppendOnlyLedger protocol — delegates to HMACChainedLog.append."""

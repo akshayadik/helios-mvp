@@ -56,10 +56,18 @@ class DeviationLog(HMACChainedLog):
     """HMAC-chained log for research protocol deviations (§B.12)."""
 
     REQUIRED_FIELDS = ("stage", "clause", "change", "reason", "analytic_consequence")
+    LOG_KIND = "deviation"
 
     def _post_sign_fields(self, entry: dict[str, Any]) -> dict[str, Any]:
         entry["deviation_id"] = entry["signature"][:16]
         return entry
+
+    def _check_post_sign_fields(self, entry: dict[str, Any]) -> str | None:
+        # Entries 1-3 predate deviation_id; when present it must match.
+        dev_id = entry.get("deviation_id")
+        if dev_id is not None and dev_id != entry["signature"][:16]:
+            return f"deviation_id {dev_id!r} does not match signature prefix."
+        return None
 
 
 def main() -> int:
@@ -78,6 +86,11 @@ def main() -> int:
 
     if args.cmd == "verify":
         ledger = DeviationLog(key=load_key(), log_path=LOG_FILE)
+        # Required even for an empty log: deleting log + anchor together
+        # must not read as a fresh, valid log.
+        if not ledger.anchor_path.exists():
+            print(f"❌ Anchor {ledger.anchor_path.name} missing.")
+            return 1
         ok, msg = ledger.verify()
         print(("✅ " if ok else "❌ ") + msg)
         return 0 if ok else 1
