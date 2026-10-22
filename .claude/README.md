@@ -72,8 +72,8 @@ Generates structured deviation table (one row per component) and appends to `exp
 - `flag-guard.py` → Enforces feature flags for every new component
 
 **PostToolUse**:
-- `auto-test-and-log.sh` → Runs pytest + logs to experiment_log.csv
-- `format-and-matrix-update.sh` → Ruff/Black + appends to ablation_matrix.csv
+- `auto-test-and-log.sh` → Runs pytest (Poetry venv) + logs the edit to experiment_log.csv
+- `format-and-matrix-update.sh` → Ruff (Poetry venv) on edited `.py` files; the matrix-append step was removed 2026-10-22 (it never ran)
 
 ## 4. Agents & Governance
 

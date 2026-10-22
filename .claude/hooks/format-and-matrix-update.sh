@@ -1,5 +1,5 @@
 #!/bin/bash
-# HELIOS PostToolUse: Format code + update ablation matrix
+# HELIOS PostToolUse: Format the edited Python file with the project toolchain
 
 set -e
 
@@ -7,24 +7,24 @@ read -r JSON
 
 FILE_PATH=$(echo "$JSON" | jq -r '.tool_input.file_path // .tool_input.path // ""')
 
-echo "📝 Formatting + updating ablation matrix for $FILE_PATH"
+[[ "$FILE_PATH" == *.py ]] || exit 0
 
-# Format (choose your tool — ruff is fastest)
-if command -v ruff >/dev/null; then
-    ruff check --fix "$FILE_PATH" 2>/dev/null || true
-    ruff format "$FILE_PATH" 2>/dev/null || true
-elif command -v black >/dev/null; then
-    black --quiet "$FILE_PATH" 2>/dev/null || true
+echo "📝 Formatting $FILE_PATH"
+
+# Use the project's pinned ruff (poetry venv), not whatever is on PATH.
+POETRY=$(command -v poetry || echo "$HOME/.local/bin/poetry")
+VENV=$("$POETRY" env info -p 2>/dev/null || true)
+RUFF="$VENV/bin/ruff"
+if [[ -x "$RUFF" ]]; then
+    "$RUFF" check --fix "$FILE_PATH" 2>/dev/null || true
+    "$RUFF" format "$FILE_PATH" 2>/dev/null || true
+    echo "✅ Formatted with $("$RUFF" --version)"
+else
+    echo "⚠️ Not formatted: no Poetry virtualenv ruff found (run: poetry install)"
 fi
 
-# Update ablation matrix (assumes you have a simple CSV updater)
-python -c '
-import csv, sys, datetime
-row = ["$(date -u +"%Y-%m-%d %H:%M:%S")", "$(git rev-parse --short HEAD 2>/dev/null || echo unknown)", "'"$FILE_PATH"'", "edited", "42"]
-with open("ablation_matrix.csv", "a", newline="") as f:
-    writer = csv.writer(f)
-    writer.writerow(row)
-print("✅ Ablation matrix updated")
-' 2>/dev/null || echo "⚠️ Matrix update skipped (file may not exist yet)"
-
-echo "✅ Format + matrix update complete"
+# The former "ablation matrix update" step was removed (2026-10-22). It never
+# ran (bare `python`), its row was built inside single quotes so `$(date)` was
+# never expanded, and it targeted a root ablation_matrix.csv that does not
+# exist. .claude/ablation_matrix.csv is the variant-definition table; per-edit
+# events belong in experiments/experiment_log.csv (auto-test-and-log.sh).

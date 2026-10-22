@@ -232,7 +232,16 @@ Enforced by `scripts/validate_tracking.py` as a pre-commit hook and in CI:
 ### Claude Code hooks
 
 - `research-compliance.py` blocks any Write/Edit containing the literals `0.0`, `1.0`, `0.5`, or `100` as word-bounded tokens **in any file**, including Markdown and plan files. Avoid these literals in documentation; use prose (`"rounds to zero"`, `"full coverage"`) instead.
-- `flag-guard.py` exempts the entire `helios/vcl/` path — files there can define classes and functions without a `HELIOS_ENABLE_*` pattern. Everywhere else, new `def`/`class` definitions require a VCL import (`VCLFlag`, `gated_by`, `VCLManifest`) or an `HELIOS_ENABLE_*` reference.
+- `flag-guard.py` exempts the entire `helios/vcl/` path — files there can define classes and functions without a `HELIOS_ENABLE_*` pattern. Everywhere else, new `def`/`class` definitions require a VCL import (`VCLFlag`, `gated_by`, `VCLManifest`) or an `HELIOS_ENABLE_*` reference. `.claude/` (hook tooling) is also exempt.
+- For Edit/MultiEdit, `flag-guard.py` checks the file as it will look **after** the edit; `research-compliance.py` checks only the inserted `new_string` text. (Before 2026-10-22 both read only `content`, so Edits were never inspected.)
+- Hooks are launched with `python3` (macOS has no bare `python`). A hook command that is not found exits 127, which Claude Code treats as non-blocking — a missing interpreter silently disables the guard. After changing `.claude/settings.json`, review hooks via `/hooks` or restart the session.
+- PostToolUse scripts resolve the Poetry venv themselves (`poetry env info -p`); they do not rely on `python`/`ruff` being on PATH.
+
+### Secret scanning (gitleaks)
+
+- `.gitleaks.toml` must keep `[extend] useDefault = true`. Without it the custom file **replaces** gitleaks' built-in rules, leaving zero rules — every scan "passes". This was the state from 2026-05-19 (`1e59dc5`) to 2026-10-22.
+- Pre-commit only scans staged changes. Full-history scan: the binary pre-commit installs under `~/.cache/pre-commit/*/golangenv-default/bin/gitleaks`, run as `gitleaks detect --source . --config .gitleaks.toml --redact`.
+- After every fresh clone: `poetry run pre-commit install` (no hooks run until this is done).
 
 ### HMAC-chained log patterns
 
