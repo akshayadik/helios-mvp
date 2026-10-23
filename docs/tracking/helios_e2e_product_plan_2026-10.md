@@ -24,7 +24,7 @@ The full Ch3 scope needs about 60 weeks to reach analysis; the deadline leaves 2
 | IN2 | **Calibrated uncertainty in consensus.** MAHC outputs a ranked set with a calibrated confidence, calibrated on the calibration split only | Honest product output; sharper A-H4 signal |
 | IN3 | **Cheap-first routing.** The router runs the statistical and graph pipelines first and calls the LLM only on disagreement or low confidence (Ch3's Non-LLM-First Gate, made central) | Lower CpR (A-H5); explainable cost/benefit |
 
-Calibration and training (G-pipe ranker, router initialisation, MAHC calibration, λ) use only a **calibration partition** that is disjoint from confirmatory cases and fixed with a registered seed in S0 (candidate: RCAEval RE1/RE3 + a stratified slice of RE2 + the 20-incident OTel set). Confirmatory cases stay sealed until phase E.
+Calibration and training (G-pipe ranker, router initialisation, MAHC calibration, λ) use only **build data outside the confirmatory pool** (D11, approved 2026-10-23, `s0_3_d11_corpus_run_design.md`): the OTel Demo testbed (20 existing + about 60 new trace-bearing captures in S1–S2) and RCAEval's 495 trace-free cases (RE1, RE2-SS, RE3-SS). The confirmatory pool — 240 RCAEval cases (RE2-OB, RE2-TT, RE3-OB, RE3-TT; 78 groups) — stays sealed until phase E.
 
 ---
 
@@ -148,7 +148,7 @@ All decided by the owner on 2026-10-23 except D11, which is prepared in S0 for r
 | D8 | H4b scaling study | **Stage B, after 31 March** (RB3), under its own pre-registration |
 | D9 | G-pipe | **(a) Lightweight learned ranker over PPR scores and graph features, trained on calibration data only** |
 | D10 | MTTR on recorded data | **(c) Both:** B-H6 uses time-to-correct-diagnosis on recorded cases (deviation entry); true MTTR with live remediation on the OTel Demo as an exploratory result |
-| D11 | Corpus and run design for RB1 (confirmatory cases, calibration partition, seeds, cells, power) | **Open** — prepared in S0.3 for review before OSF deposit 1 |
+| D11 | Corpus and run design for RB1 | **Approved 2026-10-23** (`s0_3_d11_corpus_run_design.md`): 240-case sealed pool, build data outside it, 1,920 confirmatory + 1,200 baseline runs, clustering-aware sensitivity, three sanity floors; binding at OSF deposit 1 |
 | D12 | RQ4 user study | **Submit the IRB application this week**; the study runs mid-February to mid-March if approval arrives by early February, otherwise later without affecting confirmatory results |
 
 ---
@@ -163,7 +163,7 @@ Twenty working weeks (the 28 Dec – 1 Jan week is off). Every sprint ends with 
 |---|---|---|
 | S0.1 | Verify RCAEval RE2: licence, labels, modalities; AIOpsLab feasibility check | Go/no-go per dataset recorded |
 | S0.2 | Decisions D1, D2, D5, D6, D7, D9–D12 recorded; call with the guide (D5, D6, two-stage scope), outcome recorded in the call-reference doc | Tracker + deviation entries |
-| S0.3 | Corpus and run design (D11): confirmatory cases, calibration partition with registered seed, power check | Partition manifest hashed |
+| S0.3 | Corpus and run design (D11) — **approved 2026-10-23**; pool manifest hashed when the pool is sealed in S1 | Design approved; pool manifest hashed in S1.1 |
 | S0.4 | Flag registry + 15 variants; analysis plan Families A, B, E; metric contract (CpR = cost; MRR; Avg@5; strata; MTTR per D10) | Hashes unique; plan matches matrix §2–§4 as adapted |
 | S0.5 | Seed register; Ed25519; audit step E | Ledgers verify |
 | S0.6 | **OSF deposit 1** (hypotheses, variants, metrics, analysis plan, corpus design, Stage B scope) | DOI in the deviation log |

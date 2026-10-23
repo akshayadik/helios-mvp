@@ -1,6 +1,6 @@
-# S0.3 — D11: Corpus and run design (DRAFT for owner review)
+# S0.3 — D11: Corpus and run design
 
-**Date:** 2026-10-23 · **Tracking:** S2-M5-RES02 · **Builds on:** `s0_1_dataset_check.md` (findings F1–F5) · **Status:** draft — nothing here is frozen until the owner approves it and it is deposited in OSF deposit 1.
+**Date:** 2026-10-23 · **Tracking:** S2-M5-RES02 · **Builds on:** `s0_1_dataset_check.md` (findings F1–F5) · **Status:** **approved by the owner 2026-10-23**; binding once deposited in OSF deposit 1. Until then it can still be changed (with a note here); afterwards, only by deviation entry and pre-registration addendum, and never after confirmatory data has been seen.
 
 **Recommendation in one paragraph.** Use all **240 RCAEval multi-source cases** (RE2-OB, RE2-TT, RE3-OB, RE3-TT; 78 service-and-fault groups) as the confirmatory pool, sealed and untouched until phase E. Build and calibrate HELIOS only on data outside that pool: the OTel Demo testbed (20 existing incidents plus about 60 new captures, all with traces) and RCAEval's 495 trace-free cases (RE1, RE2-SS, RE3-SS). Run every confirmatory variant and every baseline once per case with a registered seed, rank over **all** services of each system, and report three sanity floors. This keeps the evidence clean, keeps all 78 groups for power, and gives the trained parts enough trace-bearing data.
 
@@ -98,7 +98,11 @@
 
 ---
 
-## 8. What needs the owner's decision
+## 8. Owner decision
+
+**Approved 2026-10-23** (all three items below). Future data: build and calibration data can be added at any time, kept separate from the pool; new confirmatory systems (e.g. AIOpsLab) join only by addendum before phase E; data collected after the results form a new, separately pre-registered study.
+
+### Items approved
 
 1. **Approve the pool and the build data split** (§1–§2), including about 60 new OTel Demo captures in S1–S2.
 2. **Approve the controls** (§3), the run design (§4) and the clustering treatment (§5).
