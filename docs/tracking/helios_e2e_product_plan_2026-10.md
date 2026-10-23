@@ -131,22 +131,24 @@ Tier 1 = built and verified by the freeze (confirmatory + core product). Tier 2 
 
 ---
 
-## 4. Open decisions
+## 4. Decisions
 
-| # | Decision | Status / default |
+All decided by the owner on 2026-10-23 except D11, which is prepared in S0 for review. Each protocol-relevant decision is logged through `bin/log_deviation.py` when it is implemented in S0, and goes to the chair in the clarifications memo (D5, D6, deferrals).
+
+| # | Decision | Outcome |
 |---|---|---|
-| D1 | Approved Ch3 binds over the May freeze, as baseline | Default yes |
-| D2 | Ch3 flag registry | Default adopt |
-| D3 | LLM for confirmatory runs | **Decided (RB2): 8B**; 70B sensitivity if budget |
-| D4 | Router pre-training | **Decided (RB3): initialise from the calibration partition**; 1,200-incident set deferred |
-| D5 | Five baselines | Default: five from the RCAEval suite, chosen with the chair |
-| D6 | Ch3 clarifications | Default accept, inform chair |
-| D7 | Ed25519 signatures | Default add |
-| D8 | H4b scaling study | **Decided (RB3): deferred** — limitation or post-deadline |
-| D9 | G-pipe | Default: learning-to-rank over PPR + graph features |
-| **D10 (new)** | **MTTR on recorded data.** Ch3 defines MTTR as detection → restored service after remediation (p.203); recorded datasets contain no remediation, so B-H6 (log-MTTR) cannot be measured as written | Options: (a) B-H6 uses time-to-correct-diagnosis on recorded cases, deviation entry; (b) measure MTTR on the live OTel Demo with remediation, exploratory only; (c) both |
-| **D11 (new)** | **Corpus and run design restated** for RB1: confirmatory cases, calibration partition, number of seeds (the L-pipe is greedy, so seeds matter for trained components only), cells and power | Fixed in S0 before OSF deposit 1 |
-| **D12 (new)** | **RQ4 user study** before 31 March | Needs the IRB application this week; otherwise moved after the deadline |
+| D1 | Which document binds | **(a) Approved Ch3 is the reference; the undeposited May freeze is replaced.** The code must reflect Ch3, used as the baseline under the design-latitude rule |
+| D2 | Flag registry | **(a) Rename code flags to the Ch3 names and add the five missing Ch3 flags** — no mapping table |
+| D3 | LLM for confirmatory runs | **8B (RB2)**; 70B sensitivity if budget |
+| D4 | Router pre-training | **Initialise from the calibration partition (RB3)**; 1,200-incident set deferred |
+| D5 | Five baselines | **Five methods from the RCAEval suite, run on the same cases; CHASE kept as the published-score anchor.** Shortlist to the chair after the S0 dataset check |
+| D6 | Ch3 inconsistencies | **Accept the proposed clarifications as pre-registration text; memo to the chair before data collection** |
+| D7 | Deviation-log signatures | **(a) Add Ed25519, public key deposited on OSF; keep the HMAC chain underneath** |
+| D8 | H4b scaling study | **Deferred (RB3)** — limitation or post-deadline |
+| D9 | G-pipe | **(a) Lightweight learned ranker over PPR scores and graph features, trained on calibration data only** |
+| D10 | MTTR on recorded data | **(c) Both:** B-H6 uses time-to-correct-diagnosis on recorded cases (deviation entry); true MTTR with live remediation on the OTel Demo as an exploratory result |
+| D11 | Corpus and run design for RB1 (confirmatory cases, calibration partition, seeds, cells, power) | **Open** — prepared in S0.3 for review before OSF deposit 1 |
+| D12 | RQ4 user study | **Submit the IRB application this week**; the study runs mid-February to mid-March if approval arrives by early February, otherwise later without affecting confirmatory results |
 
 ---
 
