@@ -238,6 +238,8 @@ These are in the approved text, so the code cannot "match" them. Each needs a **
 
 ## 12. Decisions needed before R1 changes anything
 
+**Outcome (owner, 2026-10-23):** D1 (a), D2 (a), D5 (RCAEval suite + CHASE anchor), D6 (accept; discussed with the guide on a call), D7 (a), D9 (a, learned ranker over PPR) adopted as recommended; D3, D4 and D8 settled by the re-baseline (8B; calibration-partition initialisation; H4b deferred). New decisions D10 (MTTR split) and D12 (IRB now) are in `helios_e2e_product_plan_2026-10.md` §4. The table below is kept as the record of the options considered.
+
 | # | Decision | Options | Recommendation |
 |---|---|---|---|
 | **D1** | Binding order | (a) Approved Ch3 binds; the May freeze is replaced before deposit · (b) May freeze binds, Ch3 differences logged as deviations | **(a)** — the freeze is not deposited, and the committee approved Ch3 |
