@@ -1,7 +1,9 @@
 # HELIOS — End-to-End Plan: Full Product Build → Evidence Collection → Analysis
 
 **Version:** first draft · **Written:** 2026-10-22 · **Owner:** AA
-**Supersedes for scheduling:** `HELIOS_MVP_Execution_plan_v0.6.md` (MVP/Phase-2 split) and `e2e_one_month_plan_2026-09.md` (never executed). It does **not** change the protocol: every protocol change still goes through `bin/log_deviation.py`, and the protocol itself is settled in Phase P0 against `docs/tracking/r1_traceability_matrix.md`.
+**Supersedes for scheduling:** `HELIOS_MVP_Execution_plan_v0.6.md` (MVP/Phase-2 split). It does **not** change the protocol: every protocol change still goes through `bin/log_deviation.py`, and the protocol itself is settled in Phase P0 against `docs/tracking/r1_traceability_matrix.md`.
+
+**Design latitude (owner direction, 2026-10-23).** The goal is a high-quality, production-grade observability product that shows innovation and creativity. Chapter 3 is the **baseline, not the final verdict**: where a different or more creative method gives a better or more production-ready result, prefer it. This plan and the R1 matrix are guides, not rigid specifications. One line does not move: a change that alters what a pre-registered test measures is recorded (deviation entry, pre-registration update) **before** confirmatory data is collected, so the evidence stays valid.
 
 **Shape of the plan, as requested:** build the **complete product** first (every feature of the approved design), freeze it, then run **testing and evidence collection** (confirmatory and exploratory), then **analysis**. No confirmatory data is collected before the build is frozen and the pre-registration is deposited.
 
@@ -202,7 +204,7 @@ Settles what is built, so nothing is built twice.
 |---|---|---|
 | P2.1 | Verdict contract (ranked list, μ, σ, cost, latency) across D, G, L | All three emit the contract; schema version bumped with a deviation entry |
 | P2.2 | D-pipe completion: σ estimate, Tier C trigger, determinism settings, subgraph-aware training | Bitwise rerun equality |
-| P2.3 | G-pipe per D9: trained graph-ML model on the pruned subgraph, PPR stage retained | Rerun equality; held-out HR@3 on the OTel set (exploratory) |
+| P2.3 | G-pipe per D9: trained graph-ML model on the pruned subgraph, PPR stage retained; PPR scores rounded with the `canonical_json` six-decimal rule before they affect ordering or hashes | Rerun equality (identical rounded score maps on repeat calls); held-out HR@3 on the OTel set (exploratory) |
 | P2.4 | L-pipe multi-agent: Orchestrator, Specialization Gate, worker mesh, Persona Profiles (episode-boundary refresh), (μ, σ) emission | Each worker's verdict logged; `p4_cognitive` scoped to L-pipe visibility (p.138 coupling fix) |
 | P2.5 | Knowledge Cortex (RAG, warm tier seeded from the OTel set + testbed only) | SOP retrieval tests; no confirmatory incident in the index (hash check) |
 | P2.6 | LLM Gateway with per-episode token accounting; model-agnostic serving interface (Ollama for development, vLLM for Protocol A) | Same prompt through both backends; token counts logged |

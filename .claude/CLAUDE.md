@@ -7,7 +7,13 @@ See root `CLAUDE.md` for all operational rules, commands, and CI details. This f
 **ALWAYS read both of these at the start of every session** before any research-related work:
 
 1. `docs/research/research_proposal_akshayadik.pdf` — introduction, literature review, research design; use to ground all RQ framing, hypothesis justification, and artefact design decisions.
-2. `docs/research/project_plan.md` — 15-month execution plan (milestones, gates, deliverables, phase structure); use to assess task fit, scheduling, and milestone alignment.
+2. `docs/tracking/helios_e2e_product_plan_2026-10.md` — current end-to-end plan (full product build P0–P8 → evidence collection → analysis); use for task fit, scheduling and phase gates. Its companion `docs/tracking/r1_traceability_matrix.md` maps the approved Ch3 against the code. (`docs/research/project_plan.md` is the original 15-month plan, kept for history.)
+
+## Product Direction (owner, 2026-10-23)
+
+- The aim is a **high-quality, production-grade observability product that shows innovation and creativity**.
+- **Chapter 3 is the baseline, not the final verdict.** Where a different or more creative method gives a better or more production-ready result, propose and prefer it. The e2e plan and the R1 matrix are guides, not rigid specifications — do not refuse or water down a better design just because Ch3 describes another one.
+- What does not bend is evidence integrity: a change that alters what a pre-registered test measures is recorded (deviation entry, pre-registration update) **before** confirmatory data is collected; build/calibration data stays separate from confirmatory data; every mechanism stays behind a feature flag so it can be ablated.
 
 ## Core Artefact
 

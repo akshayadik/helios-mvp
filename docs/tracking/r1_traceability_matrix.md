@@ -4,6 +4,8 @@
 **Prepared:** 2026-10-22, against `main` @ `b25c287` (after integrity-audit steps A–D).
 **Owner:** AA.
 
+**How to use this matrix (owner direction, 2026-10-23):** Chapter 3 is the baseline, not the final verdict. "ALIGN" here means "the default unless a better, more production-grade or more innovative method is chosen". Departing from Ch3 is allowed and encouraged where it improves the product; what is required is that any change to a pre-registered test is recorded before confirmatory data is collected.
+
 **Sources**
 
 | Tag | Source |
