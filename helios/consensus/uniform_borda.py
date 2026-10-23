@@ -72,7 +72,7 @@ FUSION_ALGORITHM_SHA: str = _compute_ast_hash()
 
 
 class UniformBordaConsensus:
-    @gated_by(VCLFlag.MAHC)
+    @gated_by(VCLFlag.MAHC_HIERARCHICAL)
     def fuse(
         self,
         *,

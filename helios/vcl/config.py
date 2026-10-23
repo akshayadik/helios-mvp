@@ -18,22 +18,25 @@ class VCLManifest(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True, protected_namespaces=())
 
-    # 12 proposal flags (Table 12 / §3.6.7)
+    # Chapter 3 flags (names per D2; see registry.py)
     l2c_llm: bool = False
     p4_cognitive: bool = False
-    mahc: bool = False
-    cbr: bool = False
+    mahc_hierarchical: bool = False
+    cbr_routing: bool = False
     l2b_graph: bool = False
-    acp: bool = False
-    reconcile: bool = False
-    ueg_c_structural: bool = False
+    acp_stateful: bool = False
+    reconcile_terminal: bool = False
+    fgsv_ks_gate: bool = False
+    iol_self_telemetry: bool = False
+    coe_narrative: bool = False
+    his_tier: bool = False
+    sampling_regime_tag: bool = False
+    ueg_structural: bool = False
+
+    # Implementation flags kept by D2
     dpipe: bool = False
     dpipe_propagation: bool = False
     gpipe: bool = False
-    lpipe: bool = False
-
-    # Cross-pipeline routing; True in all variants except HELIOS-noRouter
-    router: bool = True
 
     # Operational string flag — validated, not a boolean gate
     ingest_mode: str = "recorded"

@@ -46,7 +46,7 @@ FAMILY_A_HYPOTHESES: list[dict[str, str | int | float | None]] = [
     {
         "id": "A-H2",
         "rank": 4,
-        "comparison": "HELIOS-Full vs HELIOS-noGraph",
+        "comparison": "HELIOS-Full vs HELIOS-LLM-only",
         "primary_metric": "CpR",
         "alpha": 0.01,
         "filter": None,
@@ -171,7 +171,7 @@ FAMILY_B_HYPOTHESES: list[dict[str, str | int]] = [
 _VARIANT_HYPOTHESIS_MAP: dict[str, str] = {
     "HELIOS-Full": "A-H1, A-H2, A-H3, A-H4, A-H5, A-H7, A-H8",
     "HELIOS-noLLM": "A-H7",
-    "HELIOS-noGraph": "A-H2",
+    "HELIOS-LLM-only": "A-H2",
     "HELIOS-D": "A-H3, A-H6",
     "HELIOS-G": "A-H6",
     "HELIOS-noConsensus": "A-H4",
@@ -182,7 +182,7 @@ _VARIANT_HYPOTHESIS_MAP: dict[str, str] = {
 _VARIANT_STATUS_MAP: dict[str, str] = {
     "HELIOS-Full": "confirmatory",
     "HELIOS-noLLM": "confirmatory",
-    "HELIOS-noGraph": "confirmatory",
+    "HELIOS-LLM-only": "confirmatory",
     "HELIOS-D": "confirmatory",
     "HELIOS-G": "cond. confirmatory",
     "HELIOS-noConsensus": "exploratory",

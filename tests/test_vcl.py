@@ -84,18 +84,18 @@ class TestCanonicalJson:
 
 
 class TestVCLFlag:
-    def test_flag_count_is_14(self) -> None:
-        assert len(VCLFlag) == 14
+    def test_flag_count_is_17(self) -> None:
+        assert len(VCLFlag) == 17
 
-    def test_all_flags_returns_14_strings(self) -> None:
+    def test_all_flags_returns_17_strings(self) -> None:
         flags = VCLFlag.all_flags()
-        assert len(flags) == 14
+        assert len(flags) == 17
         assert all(isinstance(f, str) for f in flags)
 
     def test_bool_flags_excludes_ingest_mode(self) -> None:
         bf = VCLFlag.bool_flags()
         assert VCLFlag.INGEST_MODE not in bf
-        assert len(bf) == 13
+        assert len(bf) == 16
 
     def test_flag_values_are_lowercase_strings(self) -> None:
         for flag in VCLFlag:
@@ -121,8 +121,8 @@ class TestVCLManifest:
         )
 
     def test_hash_changes_on_flag_flip(self) -> None:
-        m1 = VCLManifest.from_flags(lpipe=True)
-        m2 = VCLManifest.from_flags(lpipe=False)
+        m1 = VCLManifest.from_flags(l2c_llm=True)
+        m2 = VCLManifest.from_flags(l2c_llm=False)
         assert m1.compute_variant_config_hash() != m2.compute_variant_config_hash()
 
     def test_extra_fields_forbidden(self) -> None:
@@ -131,12 +131,12 @@ class TestVCLManifest:
 
     def test_frozen_raises_on_mutation(self, full_manifest: VCLManifest) -> None:
         with pytest.raises(ValidationError):
-            full_manifest.lpipe = False  # type: ignore[misc]
+            full_manifest.l2c_llm = False  # type: ignore[misc]
 
     def test_from_flags_factory(self) -> None:
-        m = VCLManifest.from_flags(dpipe=True, lpipe=True, ingest_mode="live")
+        m = VCLManifest.from_flags(dpipe=True, l2c_llm=True, ingest_mode="live")
         assert m.dpipe is True
-        assert m.lpipe is True
+        assert m.l2c_llm is True
         assert m.ingest_mode == "live"
 
     def test_ingest_mode_live_accepted(self) -> None:
@@ -153,7 +153,7 @@ class TestVCLManifest:
         baseline_hash = baseline.compute_variant_config_hash()
 
         mutations = [
-            VCLManifest.from_flags(lpipe=True),
+            VCLManifest.from_flags(l2c_llm=True),
             VCLManifest.from_flags(model_version="helios-llm-experimental"),
             VCLManifest.from_flags(prompt_template_id="variant-v2"),
         ]
@@ -187,20 +187,20 @@ class TestVCLManifest:
 
 class TestGatedBy:
     def test_gated_passes_when_flag_true(self, clear_manifest: None) -> None:
-        manifest = VCLManifest.from_flags(lpipe=True)
+        manifest = VCLManifest.from_flags(l2c_llm=True)
         set_current_manifest(manifest)
 
-        @gated_by(VCLFlag.LPIPE)
+        @gated_by(VCLFlag.L2C_LLM)
         def run_lpipe() -> str:
             return "ok"
 
         assert run_lpipe() == "ok"
 
     def test_gated_raises_when_flag_false(self, clear_manifest: None) -> None:
-        manifest = VCLManifest.from_flags(lpipe=False)
+        manifest = VCLManifest.from_flags(l2c_llm=False)
         set_current_manifest(manifest)
 
-        @gated_by(VCLFlag.LPIPE)
+        @gated_by(VCLFlag.L2C_LLM)
         def run_lpipe() -> str:
             return "ok"
 
@@ -235,10 +235,10 @@ class TestGatedBy:
         assert get_current_manifest() is manifest
 
     def test_error_message_contains_hash(self, clear_manifest: None) -> None:
-        manifest = VCLManifest.from_flags(mahc=False)
+        manifest = VCLManifest.from_flags(mahc_hierarchical=False)
         set_current_manifest(manifest)
 
-        @gated_by(VCLFlag.MAHC)
+        @gated_by(VCLFlag.MAHC_HIERARCHICAL)
         def run_mahc() -> None:
             pass
 
@@ -260,16 +260,66 @@ class TestVariants:
         for flag in VCLFlag.bool_flags():
             assert getattr(full, flag.value) is True, f"{flag.value} should be True"
 
-    def test_no_router_only_router_false(self) -> None:
+    def test_no_router_only_cbr_routing_false(self) -> None:
         no_router = CONFIRMATORY_VARIANTS["HELIOS-noRouter"]
-        assert no_router.router is False
+        assert no_router.cbr_routing is False
         # Every other bool flag must be True in noRouter
         for flag in VCLFlag.bool_flags():
-            if flag is VCLFlag.ROUTER:
+            if flag is VCLFlag.CBR_ROUTING:
                 continue
             assert (
                 getattr(no_router, flag.value) is True
             ), f"{flag.value} should be True in HELIOS-noRouter"
+
+    def test_ch3_table17_confirmatory_names(self) -> None:
+        assert set(CONFIRMATORY_VARIANTS) == {
+            "HELIOS-Full",
+            "HELIOS-noLLM",
+            "HELIOS-LLM-only",
+            "HELIOS-D",
+            "HELIOS-noConsensus",
+            "HELIOS-noRouter",
+            "HELIOS-G",
+            "HELIOS-noStructural",
+        }
+
+    def test_llm_only_runs_l_pipe_alone(self) -> None:
+        m = CONFIRMATORY_VARIANTS["HELIOS-LLM-only"]
+        assert m.l2c_llm is True
+        assert (m.dpipe, m.gpipe, m.l2b_graph) == (False, False, False)
+        assert (m.mahc_hierarchical, m.cbr_routing) == (False, False)
+
+    def test_single_pipeline_variants_disable_the_other_pipelines(self) -> None:
+        d = CONFIRMATORY_VARIANTS["HELIOS-D"]
+        g = CONFIRMATORY_VARIANTS["HELIOS-G"]
+        assert (d.dpipe, d.gpipe, d.l2c_llm) == (True, False, False)
+        assert (g.gpipe, g.l2b_graph, g.l2c_llm) == (True, True, False)
+
+    def test_flags_not_named_in_table17_follow_full(self) -> None:
+        full = CONFIRMATORY_VARIANTS["HELIOS-Full"]
+        unnamed = (
+            "fgsv_ks_gate",
+            "iol_self_telemetry",
+            "coe_narrative",
+            "his_tier",
+            "sampling_regime_tag",
+        )
+        for name, manifest in CONFIRMATORY_VARIANTS.items():
+            for flag in unnamed:
+                assert getattr(manifest, flag) == getattr(full, flag), (name, flag)
+
+    def test_removed_may_registry_names_are_gone(self) -> None:
+        fields = set(VCLManifest.model_fields)
+        for old in (
+            "mahc",
+            "cbr",
+            "router",
+            "acp",
+            "reconcile",
+            "ueg_c_structural",
+            "lpipe",
+        ):
+            assert old not in fields
 
     def test_all_variants_use_recorded_ingest_mode(self) -> None:
         for name, manifest in CONFIRMATORY_VARIANTS.items():
@@ -307,26 +357,28 @@ class TestExploratoryVariants:
         for name in EXPLORATORY_VARIANTS:
             assert get_variant(name) is EXPLORATORY_VARIANTS[name]
 
-    def test_live_variant_uses_live_ingest_mode(self) -> None:
-        assert EXPLORATORY_VARIANTS["HELIOS-live"].ingest_mode == "live"
-
-    def test_all_non_live_exploratory_variants_use_recorded(self) -> None:
+    def test_all_exploratory_variants_use_recorded(self) -> None:
         for name, manifest in EXPLORATORY_VARIANTS.items():
-            if name == "HELIOS-live":
-                continue
-            assert (
-                manifest.ingest_mode == "recorded"
-            ), f"{name} should use recorded ingest_mode"
+            assert manifest.ingest_mode == "recorded", name
 
-    def test_each_single_flag_variant_differs_from_full_by_one_flag(self) -> None:
+    def test_all_fifteen_variant_hashes_are_unique(self) -> None:
+        manifests = [*CONFIRMATORY_VARIANTS.values(), *EXPLORATORY_VARIANTS.values()]
+        hashes = {m.compute_variant_config_hash() for m in manifests}
+        assert len(manifests) == 15
+        assert len(hashes) == 15, "Two variants share the same hash"
+
+    def test_each_exploratory_variant_differs_from_full_by_one_flag(self) -> None:
         full = CONFIRMATORY_VARIANTS["HELIOS-Full"]
         single_flag_variants = {
-            "HELIOS-noP4": "p4_cognitive",
-            "HELIOS-noMAHC": "mahc",
-            "HELIOS-noCBR": "cbr",
-            "HELIOS-noACP": "acp",
-            "HELIOS-noReconcile": "reconcile",
+            "HELIOS-noCogni": "p4_cognitive",
+            "HELIOS-noACP": "acp_stateful",
+            "HELIOS-noReconcile": "reconcile_terminal",
+            "HELIOS-HIS3": "his_tier",
+            "HELIOS-noFGSV": "fgsv_ks_gate",
+            "HELIOS-noIOL": "iol_self_telemetry",
+            "HELIOS-noExpl": "coe_narrative",
         }
+        assert set(single_flag_variants) == set(EXPLORATORY_VARIANTS)
         for variant_name, disabled_flag in single_flag_variants.items():
             manifest = EXPLORATORY_VARIANTS[variant_name]
             assert (

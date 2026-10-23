@@ -40,7 +40,7 @@ def test_dry_run_prints_variant_list(tmp_path: Path) -> None:
         text=True,
     )
     # Must list all 8 confirmatory variants
-    for name in ["HELIOS-Full", "HELIOS-noLLM", "HELIOS-noGraph", "HELIOS-D"]:
+    for name in ["HELIOS-Full", "HELIOS-noLLM", "HELIOS-LLM-only", "HELIOS-D"]:
         assert name in result.stdout, f"{name} not in output"
 
 

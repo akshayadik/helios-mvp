@@ -652,7 +652,7 @@ def test_manifest_snapshot_hash_absent_when_graph_disabled(config, window_bounds
     from helios.vcl import set_current_manifest
     from helios.vcl.variants import CONFIRMATORY_VARIANTS
 
-    no_graph_manifest = CONFIRMATORY_VARIANTS["HELIOS-noGraph"]
+    no_graph_manifest = CONFIRMATORY_VARIANTS["HELIOS-LLM-only"]
     set_current_manifest(no_graph_manifest)
 
     no_graph_config = CaptureConfig(

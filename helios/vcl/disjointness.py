@@ -66,7 +66,7 @@ _PIPELINE_MODULES = [
     "helios.pipelines.l_pipe.pipeline",
     # Graph layer: build_ueg_c gates VCLFlag.L2B_GRAPH (module-level function)
     "helios.graph.ueg_c_builder",
-    # Consensus layer: UniformBordaConsensus.fuse gates VCLFlag.MAHC (class method)
+    # Consensus layer: UniformBordaConsensus.fuse gates VCLFlag.MAHC_HIERARCHICAL (class method)
     "helios.consensus.uniform_borda",
 ]
 

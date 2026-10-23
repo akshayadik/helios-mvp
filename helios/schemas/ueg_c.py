@@ -2,7 +2,7 @@
 
 NodeType + EdgeType define the 4-class edge taxonomy for the UEG-C graph.
 UEGCSnapshot is the canonical container with SHA-256 content-addressable identity.
-VCLManifest provides variant_config_hash; ueg_c_structural flag gates structural edges.
+VCLManifest provides variant_config_hash; ueg_structural flag gates structural edges.
 schema-draft-v0.1: stable until OSF Stage 5 freeze.
 """
 
@@ -29,7 +29,7 @@ class NodeType(StrEnum):
 class EdgeType(StrEnum):
     """UEG-C directed-edge taxonomy — 4 classes (proposal §3.6.4).
 
-    STRUCTURAL edges are gated by VCLFlag.UEG_C_STRUCTURAL in the G-pipe builder.
+    STRUCTURAL edges are gated by VCLFlag.UEG_STRUCTURAL in the G-pipe builder.
     """
 
     STRUCTURAL = "structural"
