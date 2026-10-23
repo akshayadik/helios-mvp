@@ -7,7 +7,7 @@ See root `CLAUDE.md` for all operational rules, commands, and CI details. This f
 **ALWAYS read both of these at the start of every session** before any research-related work:
 
 1. `docs/research/research_proposal_akshayadik.pdf` — introduction, literature review, research design; use to ground all RQ framing, hypothesis justification, and artefact design decisions.
-2. `docs/tracking/helios_e2e_product_plan_2026-10.md` — current end-to-end plan (Stage A sprints S0–S5 to the mid-February evidence freeze → evidence collection → analysis by 2027-03-31; Stage B completes the full product by end of July 2027); use for task fit, scheduling and phase gates. Its companion `docs/tracking/r1_traceability_matrix.md` maps the approved Ch3 against the code. (`docs/research/project_plan.md` is the original 15-month plan, kept for history.)
+2. `docs/tracking/helios_e2e_product_plan_2026-10.md` — current end-to-end plan (Stage A sprints S0–S5 to the mid-February evidence freeze → evidence collection → analysis by 2027-03-31; Stage B completes the full product by end of July 2027); use for task fit, scheduling and phase gates. Its companions: `docs/tracking/helios_task_breakdown.md` (**every task as a module — goal, steps, done-when, tracking ID; start here to pick up the next task**), `docs/tracking/s0_3_d11_corpus_run_design.md` (approved corpus and run design) and `docs/tracking/r1_traceability_matrix.md` (approved Ch3 vs the code). (`docs/research/project_plan.md` is the original 15-month plan, kept for history.)
 
 ## Product Direction (owner, 2026-10-23)
 
