@@ -13,6 +13,7 @@ See root `CLAUDE.md` for all operational rules, commands, and CI details. This f
 
 - The aim is a **high-quality, production-grade observability product that shows innovation and creativity**.
 - **Chapter 3 is the baseline, not the final verdict.** Where a different or more creative method gives a better or more production-ready result, propose and prefer it. The e2e plan and the R1 matrix are guides, not rigid specifications — do not refuse or water down a better design just because Ch3 describes another one.
+- **Deadline: results ready (evidence collected + analysed) by 2027-03-31**; Chapters 4–5 are written after. The plan is re-baselined to 21 weeks (2026-10-23): recorded-dataset evaluation (RCAEval RE2 + AIOpsLab if feasible), 8B model for confirmatory runs, three scope tiers (Tier 1 by the mid-February freeze, Tier 2 exploratory if it fits, Tier 3 after the deadline), and three adopted innovations — evidence-grounded narratives, calibrated consensus confidence, cheap-first routing. Protect Tier 1; cut Tier 2 before rushing Tier 1.
 - What does not bend is evidence integrity: a change that alters what a pre-registered test measures is recorded (deviation entry, pre-registration update) **before** confirmatory data is collected; build/calibration data stays separate from confirmatory data; every mechanism stays behind a feature flag so it can be ablated.
 
 ## Core Artefact
