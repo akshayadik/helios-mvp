@@ -245,3 +245,13 @@ print(df.groupby('Day')['Status'].value_counts().unstack(fill_value=0))
 | S1-M4-ENG06 | - | ENG | Integrity audit step B: signed head anchor, schema-on-read, deviation_id check for HMAC ledgers | §B.12, §3.6.8 | Design | C1 | AA | S1-M4-ENG05 | DONE | 2026-10-22 | 2026-10-22 | da4e9d6 | TEST | tests/test_hmac_anchor.py | - | dev-022 (971bcaeaafc7) | Closes audit gaps G2 (truncation), G3 (cross-log swap), G6 (deviation_id). 18 tests; mutation-checked |
 | S1-M4-ENG07 | - | ENG | Integrity audit step C: CI validates every tracker commit (--range); ledger CI fails without secret; bin/ linted in CI | §B.12 | Design | C1 | AA | S1-M4-ENG06 | DONE | 2026-10-22 | 2026-10-22 | 100c275 | TEST | tests/test_validate_tracking_range.py | - | - | Closes audit gaps G4 (CI R4/R5 blind spot), G9 (silent ledger skip). Retro-audit: all 44 historical tracker commits valid. No deviation entry (no rule change) |
 | S1-M4-ENG08 | - | ENG | Integrity audit step D: HMAC-signed content seal per capture (Parquet + manifest bytes); run path skips unsealed or altered captures | §3.6.8, §5.1 | Design | C1 | AA | S1-M4-ENG07 | DONE | 2026-10-22 | 2026-10-22 | 70c4c65 | TEST | tests/test_capture_seal.py | - | dev-023 (986bd5489b38) | Closes audit gap G1 (capture contents unhashed). Sidecar design chosen 2026-10-22 over manifest hashes / TelemetryWindow schema bump. 20 captures sealed (7c1a8e5) after matching milestone-3-exit; 17 tests, mutation-checked |
+
+---
+
+## MILESTONE 5 — Stage A, Sprint S0: Foundation (re-baselined plan, 2026-10-23)
+
+**Row ID format:** `S2-M5-{TYPE}{nn}` — sprint S0 of `docs/tracking/helios_e2e_product_plan_2026-10.md`; Day column is `-` (milestone rows).
+
+| Task_ID | Day | Type | Description | Prop_§ | DSR | Contrib | Own | Deps | Status | Started | Done | SHA | Ev_Type | Ev_Ref | Gate | Dev_Ref | Notes |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| S2-M5-RES01 | - | RES | S0.1 dataset check: RCAEval licence, labels, modalities; AIOpsLab feasibility | §3.6 | Evaluate | methodology | AA | - | DONE | 2026-10-23 | 2026-10-23 | e854c0a | DOC | docs/tracking/s0_1_dataset_check.md | - | - | RCAEval GO (239 full-modality cases); AIOpsLab spike in S1; findings F1–F5 feed D11 |
