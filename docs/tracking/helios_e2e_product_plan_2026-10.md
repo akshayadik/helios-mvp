@@ -1,6 +1,6 @@
 # HELIOS — End-to-End Plan: Product Build → Evidence Collection → Analysis
 
-**Version:** second draft, re-baselined 2026-10-23 to the GGU deadline · **Owner:** AA
+**Version:** second draft, re-baselined 2026-10-23 to the GGU deadline; full product scope kept, built in two stages · **Owner:** AA
 **Deadline:** **results ready by 2027-03-31** (evidence collected and analysed); Chapters 4–5 are written after.
 **Supersedes for scheduling:** `HELIOS_MVP_Execution_plan_v0.6.md` and this plan's first draft (60-week full scope). It does **not** change the protocol by itself: protocol changes go through `bin/log_deviation.py`, mostly in sprint S0, against `docs/tracking/r1_traceability_matrix.md`.
 
@@ -18,7 +18,7 @@ The full Ch3 scope needs about 60 weeks to reach analysis; the deadline leaves 2
 |---|---|---|
 | RB1 | **Recorded-dataset evaluation.** Confirmatory and baseline evidence come from recorded, labelled multi-source incidents — **RCAEval RE2** (270 cases with metrics, logs and traces; Online Boutique, Sock Shop, Train-Ticket; 11 fault types) plus AIOpsLab where it can be run in time — instead of building five live fault-injection environments | Removes months of infrastructure; restates the corpus and the 16,000-run design in the pre-registration (S0); licence and labels verified in week 1 |
 | RB2 | **8B model for confirmatory runs** (D3 option b; deviations 15–16 already logged). A rented 70B run on a subset is a sensitivity check if budget allows | L-pipe claims are stated for the 8B model |
-| RB3 | **Three scope tiers** (§3): Tier 1 by the freeze, Tier 2 as exploratory if it fits, Tier 3 after 31 March or future work — each deferral recorded with a deviation entry | Confirmatory hypotheses and the core product are protected first |
+| RB3 | **Full product scope, built in two stages — nothing is cut** (owner, 2026-10-23). **Stage A** (evidence build): Tier 1 and, if ready, Tier 2, frozen mid-February for the confirmatory evidence. **Stage B**: the rest of the full product (Tier 3) is built straight on, February–July 2027, into the same product behind feature flags, and evaluated exploratorily after March (§11) | Results by 31 March cover the Stage A build; the full product is still built |
 | RB4 | **21-week timeline** (§6) | Freeze mid-February; evidence to mid-March; analysis to 31 March |
 | IN1 | **Evidence-grounded narratives.** Every claim in the Chain-of-Evidence narrative cites a UEG-C node or edge; a verifier drops ungrounded claims before display, and its rejections are logged | Lowers H_fact (A-H7), raises trust (RQ4), product differentiator |
 | IN2 | **Calibrated uncertainty in consensus.** MAHC outputs a ranked set with a calibrated confidence, calibrated on the calibration split only | Honest product output; sharper A-H4 signal |
@@ -36,7 +36,8 @@ Calibration and training (G-pipe ranker, router initialisation, MAHC calibration
 4. **Unset parameters are fixed before freeze**, on calibration data, each with a deviation entry.
 5. **Failures are covariates, never silent fallbacks** (p.139).
 6. **Engineering gate on every change:** tracking row (IN_PROGRESS → DONE), PR, full pre-push gate (ruff/black incl. `bin/`, mypy strict, pytest ≥ 90% coverage, `verify_ledgers.py`, `verify_captures.py`, `verify_osf_freeze.py`, tracking `--range`), tests that fail if the feature is removed, deviation entry when there is an analytic consequence.
-7. **Quality over breadth.** A Tier-1 feature ships production-grade (tests, docs, operability) or it is not done; Tier 2 is cut before Tier 1 is rushed.
+7. **Quality, without cutting scope.** Every feature ships production-grade (tests, docs, operability) or it is not done. If time runs short before the freeze, Tier 2 moves to Stage B rather than Tier 1 being rushed; nothing is dropped from the product.
+8. **The frozen evidence build is never touched.** Stage B work happens after the `build-freeze` tag, on `main` behind its feature flags; the confirmatory runs execute from the frozen commit only.
 
 ---
 
@@ -56,7 +57,7 @@ Calibration and training (G-pipe ranker, router initialisation, MAHC calibration
 
 ## 3. Scope by tier
 
-Tier 1 = built and verified by the freeze (confirmatory + core product). Tier 2 = exploratory, built only if Tier 1 is on time. Tier 3 = after 31 March or future work, each with a deviation entry. "S" = sprint (§5).
+Nothing in this section is cut (full product scope). Tier 1 = in the Stage A evidence build, frozen mid-February (confirmatory + core product). Tier 2 = in the Stage A build if ready by the freeze (exploratory evidence); otherwise built in Stage B. Tier 3 = Stage B: built after the freeze, February–July 2027, behind feature flags, evaluated exploratorily after March (§11). "S" = sprint (§5).
 
 ### 3.1 C1 and evaluation plane
 
@@ -133,7 +134,7 @@ Tier 1 = built and verified by the freeze (confirmatory + core product). Tier 2 
 
 ## 4. Decisions
 
-All decided by the owner on 2026-10-23 except D11, which is prepared in S0 for review. Each protocol-relevant decision is logged through `bin/log_deviation.py` when it is implemented in S0, and goes to the chair in the clarifications memo (D5, D6, deferrals).
+All decided by the owner on 2026-10-23 except D11, which is prepared in S0 for review. Each protocol-relevant decision is logged through `bin/log_deviation.py` when it is implemented in S0, and is agreed with the guide on a call (D5, D6, the two-stage scope); outcomes are recorded in the Claude Doc "HELIOS pre-registration clarifications — call reference".
 
 | # | Decision | Outcome |
 |---|---|---|
@@ -142,9 +143,9 @@ All decided by the owner on 2026-10-23 except D11, which is prepared in S0 for r
 | D3 | LLM for confirmatory runs | **8B (RB2)**; 70B sensitivity if budget |
 | D4 | Router pre-training | **Initialise from the calibration partition (RB3)**; 1,200-incident set deferred |
 | D5 | Five baselines | **Five methods from the RCAEval suite, run on the same cases; CHASE kept as the published-score anchor.** Shortlist to the chair after the S0 dataset check |
-| D6 | Ch3 inconsistencies | **Accept the proposed clarifications as pre-registration text; memo to the chair before data collection** |
+| D6 | Ch3 inconsistencies | **Accept the proposed clarifications as pre-registration text; walk the guide through them on a call before data collection, outcome recorded in the call-reference doc** |
 | D7 | Deviation-log signatures | **(a) Add Ed25519, public key deposited on OSF; keep the HMAC chain underneath** |
-| D8 | H4b scaling study | **Deferred (RB3)** — limitation or post-deadline |
+| D8 | H4b scaling study | **Stage B, after 31 March** (RB3), under its own pre-registration |
 | D9 | G-pipe | **(a) Lightweight learned ranker over PPR scores and graph features, trained on calibration data only** |
 | D10 | MTTR on recorded data | **(c) Both:** B-H6 uses time-to-correct-diagnosis on recorded cases (deviation entry); true MTTR with live remediation on the OTel Demo as an exploratory result |
 | D11 | Corpus and run design for RB1 (confirmatory cases, calibration partition, seeds, cells, power) | **Open** — prepared in S0.3 for review before OSF deposit 1 |
@@ -161,11 +162,11 @@ Twenty working weeks (the 28 Dec – 1 Jan week is off). Every sprint ends with 
 | WP | Work | Exit check |
 |---|---|---|
 | S0.1 | Verify RCAEval RE2: licence, labels, modalities; AIOpsLab feasibility check | Go/no-go per dataset recorded |
-| S0.2 | Decisions D1, D2, D5, D6, D7, D9–D12 recorded; chair memo (D5, D6, deferrals) | Tracker + deviation entries |
+| S0.2 | Decisions D1, D2, D5, D6, D7, D9–D12 recorded; call with the guide (D5, D6, two-stage scope), outcome recorded in the call-reference doc | Tracker + deviation entries |
 | S0.3 | Corpus and run design (D11): confirmatory cases, calibration partition with registered seed, power check | Partition manifest hashed |
 | S0.4 | Flag registry + 15 variants; analysis plan Families A, B, E; metric contract (CpR = cost; MRR; Avg@5; strata; MTTR per D10) | Hashes unique; plan matches matrix §2–§4 as adapted |
 | S0.5 | Seed register; Ed25519; audit step E | Ledgers verify |
-| S0.6 | **OSF deposit 1** (hypotheses, variants, metrics, analysis plan, corpus design, deferrals) | DOI in the deviation log |
+| S0.6 | **OSF deposit 1** (hypotheses, variants, metrics, analysis plan, corpus design, Stage B scope) | DOI in the deviation log |
 | S0.7 | Lead-time items: IRB (D12), GPU/API budget, baseline environments | Submitted / booked |
 
 ### S1 — Data and graph (3 weeks, 16 Nov – 4 Dec)
@@ -255,8 +256,9 @@ Exit: every cell complete or formally excluded; inclusion reported; 10% clean-en
 | S5 Integration + freeze | 2 | 1–12 Feb |
 | E Evidence collection | 4 | 15 Feb – 12 Mar |
 | A Analysis | 3 | 15–31 Mar |
+| Stage B product build (Tier 3, §11) | ~20 | 15 Feb – end of Jul 2027 (alongside E and A, then full time) |
 
-No slack is built in. If a sprint slips, Tier 2 work in S3–S4 is cut first; the freeze date moves only if Tier 1 is at risk, and then by taking time from E3/E5, never from E1/E2 or A1/A2.
+No slack is built in. If a sprint slips, Tier 2 work in S3–S4 moves to Stage B first (it is not dropped); the freeze date moves only if Tier 1 is at risk, and then by taking time from E3/E5, never from E1/E2 or A1/A2.
 
 ---
 
@@ -266,7 +268,7 @@ No slack is built in. If a sprint slips, Tier 2 work in S3–S4 is cut first; th
 |---|---|---|
 | Compute | One GPU workstation or rented GPU for 8B inference over the campaign; 70B subset if budget | S2 onward; E |
 | Datasets | RCAEval (Zenodo), AIOpsLab if feasible | S0.1 |
-| Approvals | GGU IRB (D12); chair sign-off on D5, D6 and deferrals | S0 |
+| Approvals | GGU IRB (D12); agreement with the guide on D5, D6 and the two-stage scope (call) | S0 |
 | People | Two raters (H_fact sample); 24 participants if RQ4 runs | E |
 | APIs | Judge models for FAE (optional) | E |
 
@@ -282,13 +284,24 @@ No slack is built in. If a sprint slips, Tier 2 work in S3–S4 is cut first; th
 | Baselines fail to run on RE2 | Choose other suite methods; record substitutions before the freeze |
 | IRB late | RQ4 moves after 31 March (D12) |
 | Defect during phase E | Deviation entry; rerun or exclude with ledger entries |
-| Tier-3 deferrals weaken the dissertation's breadth | Recorded as scoped limitations with future-work pre-registrations; the product backlog keeps them (§11) |
+| Stage B features are not in the confirmatory results | Confirmatory claims cover the frozen Stage A build; Stage B features are evaluated exploratorily after March under their own pre-registration |
+| Stage B work disturbs the evidence build | Confirmatory runs execute only from the `build-freeze` commit; the VCL blocks any divergent artefact hash |
 
 ---
 
-## 11. After 31 March — Tier 3 backlog
+## 11. Stage B — completing the full product (15 Feb – end of Jul 2027)
 
-Live OTLP ingest; P4/P5 telemetry; full Privacy Gateway with differential privacy; adversarial monitor; eBPF tiered sampling; multi-tenancy; Helm production deployment; full digital twin, ASRE and remediation templates with automatic action; Monitor Agent and learning loops; full sentinel + fallback agent; HIS tiers; 1,200-incident synthetic pre-training set; 70B Protocol A and Qwen contrast; H4b scaling sub-study; Tier-4 cognitive faults; FAE judging at scale. The full-scope feature definitions (Ch3 page references, parameters) are in the first draft of this plan (git history, commit `c0fe406`) and in the R1 matrix.
+Nothing from the full design is dropped: Stage B builds the rest of the product (Tier 3, plus any Tier 2 that missed the freeze) on `main` after the `build-freeze` tag, behind feature flags, to the same engineering gate. It starts alongside evidence collection and analysis (which are mostly compute and statistics) and becomes full time after 31 March. The full feature definitions (Ch3 page references, parameters) are in the first draft of this plan (git history, commit `c0fe406`) and in the R1 matrix.
+
+| Sprint | Window | Work |
+|---|---|---|
+| B1 | 15 Feb – 31 Mar (alongside E and A) | Live OTLP ingest; P4 cognitive telemetry (MCP spans, goal drift, loop depth) and P5 business telemetry; Helm production deployment; multi-tenant administration |
+| B2 | Apr | Full Privacy Gateway with per-tenant differential privacy; Adversarial Robustness Monitor with attestation; eBPF tiered adaptive sampling |
+| B3 | May | Full digital twin with traffic mirroring; ASRE (structural, WAL-replay, sketch); versioned remediation templates; automatic-action adoption stage under α; Monitor Agent |
+| B4 | Jun | Full Cognitive Sentinels + Deterministic Fallback Agent; full IOL; HIS tiers; learning loops (MAML-Quick, ACP retraining, bias audit) in production mode; 1,200-incident synthetic pre-training testbed |
+| B5 | Jul | Stage B evaluation, exploratory and pre-registered separately: E-H1 (Tier-4 cognitive faults), full E-H4 (twin), E-H6 (IOL), E-H9 (HIS), H4b scaling sub-study, 70B Protocol A and Qwen contrast, FAE judging at scale. **Full product complete** |
+
+Stage B results are exploratory additions; they never alter the confirmatory results produced from the frozen Stage A build.
 
 ---
 
