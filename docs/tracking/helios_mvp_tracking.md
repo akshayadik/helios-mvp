@@ -254,4 +254,4 @@ print(df.groupby('Day')['Status'].value_counts().unstack(fill_value=0))
 
 | Task_ID | Day | Type | Description | Prop_§ | DSR | Contrib | Own | Deps | Status | Started | Done | SHA | Ev_Type | Ev_Ref | Gate | Dev_Ref | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| S2-M5-RES01 | - | RES | S0.1 dataset check: RCAEval licence, labels, modalities; AIOpsLab feasibility | §3.6 | Evaluate | methodology | AA | - | IN_PROGRESS | 2026-10-23 | - | - | - | - | - | - | Read-only verification; feeds D11 |
+| S2-M5-RES01 | - | RES | S0.1 dataset check: RCAEval licence, labels, modalities; AIOpsLab feasibility | §3.6 | Evaluate | methodology | AA | - | DONE | 2026-10-23 | 2026-10-23 | e854c0a | DOC | docs/tracking/s0_1_dataset_check.md | - | - | RCAEval GO (239 full-modality cases); AIOpsLab spike in S1; findings F1–F5 feed D11 |
