@@ -173,7 +173,7 @@ Twenty working weeks (the 28 Dec – 1 Jan week is off). Every sprint ends with 
 
 | WP | Work | Exit check |
 |---|---|---|
-| S1.1 | Dataset adapters → sealed recorded windows (RE2, OTel, AIOpsLab if go) | Every case sealed and reproducible |
+| S1.1 | Dataset adapters → sealed recorded windows (RCAEval full-modality cases, OTel set) with opaque incident IDs, service-name normalisation and a leakage test (S0.1 findings F1–F5); two-day AIOpsLab recording spike → Stage A or Stage B | Every case sealed and reproducible; no case name or label string reaches any pipeline input (test) |
 | S1.2 | Log templates; typed UEG-C with composition rules; structural bundle | Cross-domain path test; noStructural changes the snapshot hash |
 | S1.3 | K-hop pruner to Algorithm 5; K, top-n calibrated | 50–200-node outputs on calibration data |
 | S1.4 | Verdict contract; LLM token accounting; price book; scoring path (post-dispatch, never fed to pipelines) | HR@k and cost recorded for every pipeline row |
