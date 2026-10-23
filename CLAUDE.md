@@ -120,7 +120,7 @@ L3  Explanation & Feedback    — L-pipe (LLM) + P4 cognitive layer
 L4  Auto-Remediation
 ```
 
-**Ablation variants:** HELIOS-Full, HELIOS-noLLM, HELIOS-noGraph, HELIOS-noStats (and per-component variants for C1–C6).
+**Ablation variants:** 8 confirmatory (Ch3 Table 17): HELIOS-Full, noLLM, LLM-only, D, noConsensus, noRouter, G, noStructural; 7 exploratory: noCogni, noACP, noReconcile, HIS3, noFGSV, noIOL, noExpl.
 
 **Metrics:** HR@3, CpR, hallucination rate, CoE narrative quality, MTTR reduction.
 
@@ -138,8 +138,8 @@ L4  Auto-Remediation
 `helios/vcl/` contains the Variant Control Layer — C1 of the dissertation's methodological contribution. Key modules and non-obvious decisions:
 
 **Flag registry (`registry.py`)**
-- **14 flags** (not 13): 12 proposal flags + `router` (bool) + `ingest_mode` (str).
-- `VCLFlag.bool_flags()` returns the 13 boolean flags, excluding `INGEST_MODE`. Always use this when iterating flags for gating — never iterate `VCLFlag` directly.
+- **17 flags** (owner decision D2, 2026-10-23, deviation entry 31): 13 Chapter 3 flags (`l2c_llm`, `p4_cognitive`, `mahc_hierarchical`, `cbr_routing`, `l2b_graph`, `acp_stateful`, `reconcile_terminal`, `fgsv_ks_gate`, `iol_self_telemetry`, `coe_narrative`, `his_tier`, `sampling_regime_tag`, `ueg_structural`) + 3 implementation flags (`dpipe`, `dpipe_propagation`, `gpipe`) + `ingest_mode` (str). The May names `mahc`, `cbr`, `router`, `acp`, `reconcile`, `ueg_c_structural`, `lpipe` no longer exist (`cbr_routing` is Ch3's cost-based routing, ORAR: OFF = uniform routing = HELIOS-noRouter).
+- `VCLFlag.bool_flags()` returns the 16 boolean flags, excluding `INGEST_MODE`. Always use this when iterating flags for gating — never iterate `VCLFlag` directly.
 
 **Manifest and hashing (`config.py`, `utils.py`)**
 - `VCLManifest` is `frozen=True` + `extra="forbid"`. Hash is exhaustive — adding a field without updating the model breaks hash stability.
@@ -152,8 +152,8 @@ L4  Auto-Remediation
 - Uses `ContextVar` for thread/async safety. Call `set_current_manifest()` before invoking any `@gated_by` component; missing manifest raises `RuntimeError`.
 
 **Variants (`variants.py`)**
-- `router` defaults to `True` in `VCLManifest`; only `HELIOS-noRouter` sets it `False`. All other 7 confirmatory variants inherit `router=True` implicitly — do not set it explicitly in every variant.
-- All 8 variant hashes are unique (enforced by `test_all_variant_hashes_are_unique`). If you add a variant that duplicates an existing hash, a test will fail.
+- Every variant is built as `_full_except(...)` from HELIOS-Full's flags; Table 17 "passthru" is OFF; flags Table 17 does not name follow Full; each exploratory variant is Full with exactly one flag OFF.
+- All 15 variant hashes are unique (enforced by `test_all_fifteen_variant_hashes_are_unique`). Helpers go in `catalog.py`, never `variants.py` (it is fingerprinted by the OSF freeze).
 
 **Hook and lint**
 - `flag-guard.py` exempts `helios/vcl/` from the "component without flag" check — VCL is the flag system itself. Consumers of VCL (files outside `helios/vcl/`) are recognised as flag-compliant if they import `VCLFlag`, `gated_by`, or `VCLManifest`.

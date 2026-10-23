@@ -74,7 +74,7 @@ class TestShouldRunGpipe:
     def test_gpipe_flag_off_returns_false(self) -> None:
         from helios.pipelines.g_pipe.pipeline import should_run_gpipe
 
-        manifest = get_variant("HELIOS-noGraph")
+        manifest = get_variant("HELIOS-LLM-only")
         result = should_run_gpipe(
             self._dpipe_dict({"a": 0.34, "b": 0.33, "c": 0.33}), manifest
         )
@@ -250,7 +250,7 @@ class TestRunGpipe:
         from helios.pipelines.g_pipe.pipeline import run_gpipe
         from helios.vcl import GatedComponentInactiveError
 
-        manifest = get_variant("HELIOS-noGraph")
+        manifest = get_variant("HELIOS-LLM-only")
         set_current_manifest(manifest)
         with pytest.raises(GatedComponentInactiveError):
             run_gpipe(

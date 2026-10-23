@@ -109,7 +109,7 @@ class RunOrchestrator:
             ueg_c = build_ueg_c(
                 window,
                 self._config_hash,
-                enable_structural=self._manifest.ueg_c_structural,
+                enable_structural=self._manifest.ueg_structural,
             )
             if ueg_c is not None:
                 ueg_c, _prune_result = prune_graph(ueg_c)

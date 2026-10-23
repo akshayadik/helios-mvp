@@ -28,7 +28,7 @@ def _make_pipeline_rows(candidates_per_pipe: list[list[str]]) -> list[dict]:
 
 @pytest.fixture(autouse=True)
 def _set_full_manifest() -> None:
-    """Inject HELIOS-Full manifest so @gated_by(VCLFlag.MAHC) passes."""
+    """Inject HELIOS-Full manifest so @gated_by(VCLFlag.MAHC_HIERARCHICAL) passes."""
     from helios.vcl.variants import CONFIRMATORY_VARIANTS
 
     set_current_manifest(CONFIRMATORY_VARIANTS["HELIOS-Full"])
