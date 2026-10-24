@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 HELIOS is a doctoral research artefact: a Root Cause Analysis (RCA) framework built around **ablation-first design science**. The entire architecture is structured so every major component (C1–C6) can be toggled at runtime via feature flags, enabling controlled ablation studies. Research integrity is enforced by code — not convention.
 
-Current stage: **Stage 0** (Spine + Harness). Pipeline modules (`helios/pipelines/`) are stubs; `bin/log_exclusion.py` is a Stage 1+ stub. Fully-implemented Stage 0 artefacts: **HMAC-chained deviation log** (`bin/log_deviation.py`), **tracking validator** (`scripts/validate_tracking.py`), and **VCL core** (`helios/vcl/`). Python must be exactly `>=3.11,<3.12` — the upper bound is a reproducibility commitment, not a preference.
+Current stage: **Stage A, Sprint S1 next** (S0 closed 2026-10-24, tag `rb-s0-exit`; sprint status in `docs/sprints/README.md`). Pipeline modules (`helios/pipelines/`) are stubs; `bin/log_exclusion.py` is a Stage 1+ stub. Fully-implemented Stage 0 artefacts: **HMAC-chained deviation log** (`bin/log_deviation.py`), **tracking validator** (`scripts/validate_tracking.py`), and **VCL core** (`helios/vcl/`). Python must be exactly `>=3.11,<3.12` — the upper bound is a reproducibility commitment, not a preference.
 
 ---
 
@@ -109,12 +109,24 @@ poetry run python bin/log_deviation.py verify
 
 Run `poetry run pytest tests/test_deviation_log.py -v` after every new entry.
 
-### Stage gate tagging
+### Sprints: plans, exit gates and exit reports
 
-```bash
-git tag stage-N-exit
-git push origin stage-N-exit
+Every sprint of the plan (S0–S5, phase E, phase A, Stage B modules) has a folder in `docs/sprints/` — conventions and the exit-report template are in `docs/sprints/README.md`:
+
 ```
+docs/sprints/<sprint>/plan.md          written before the sprint; read it before starting its tasks
+docs/sprints/<sprint>/exit_report.md   written at the exit gate
+```
+
+Task steps stay authoritative in `docs/tracking/helios_task_breakdown.md`; a sprint plan that disagrees with it is corrected, not followed. At every exit gate, in this order:
+
+1. Every task row of the sprint DONE (or DEFERRED / CARRIED_OVER with a deviation reference); open the gate row as IN_PROGRESS in its own commit.
+2. Run the full pre-push gate on `main` and tag the merge commit (annotated): `git tag -a rb-sN-exit <sha> -m "..."` then `git push origin rb-sN-exit` (S5's exit is `build-freeze`). Tags are never moved or rewritten.
+3. Write `exit_report.md`: exit criteria (met / not met, with evidence — an unmet criterion is reported as carried over, never hidden), gate results, deliverables (task, row, SHA, deviation entry), **retrospective** (plan vs actual; decisions and why; what went wrong and what changed; design-science notes for Chapter 4), carry-overs with owners and dates.
+4. Documentation sync: the status column in `docs/sprints/README.md`, `docs/tracking/dashboard.md`, `docs/tracking/tracking_documents_register.md`, and any tracking document whose update trigger the sprint hit (e.g. `vcl_manifest_tracking.md` after a variant change). Stale documents that cannot be fixed in the sync are marked stale in the register and listed in the next sprint's plan.
+5. Close the gate row (DONE, `Ev_Ref` = the exit report and tag) and open a PR. Before the next sprint starts, refresh its `plan.md` (capacity, owner items, items carried over).
+
+Sprint write-ups that other documents or an OSF deposit cite by path stay in `docs/tracking/` and are linked from the plan, not moved. The May-plan tags `stage-N-exit` (e.g. `stage-0-exit`) are historical.
 
 ---
 
