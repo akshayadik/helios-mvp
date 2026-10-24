@@ -152,11 +152,19 @@ FAMILY_A_HYPOTHESES: list[Hypothesis] = [
 
 # ---------------------------------------------------------------------------
 # Family B — baseline comparison (confirmatory, separate Holm family).
-# Five baselines come from the RCAEval suite (D5); their names and the order of
-# B-H1..B-H5 (expected discordance, p.192) are fixed with the guide before OSF
-# deposit 1. "Best baseline" = the baseline with the highest HR@3 on the pool.
+# Five baselines from the RCAEval suite (D5), in the priority order agreed with
+# the dissertation chair (deviation entry 36). A baseline that cannot run on the
+# pool is replaced by BASELINE_ALTERNATES in order, logged before the build
+# freeze. "Best baseline" = the baseline with the highest HR@3 on the pool.
 # ---------------------------------------------------------------------------
-_PENDING_BASELINE = "named before OSF deposit 1 (D5)"
+BASELINES: tuple[str, ...] = (
+    "Multi-source BARO",
+    "TraceRCA",
+    "BARO (metrics only)",
+    "PDiagnose",
+    "Multi-source RCD",
+)
+BASELINE_ALTERNATES: tuple[str, ...] = ("CIRCA (metrics only)", "CausalRCA")
 
 FAMILY_B_HYPOTHESES: list[Hypothesis] = [
     *[
@@ -165,7 +173,7 @@ FAMILY_B_HYPOTHESES: list[Hypothesis] = [
             "rank": k,
             "alpha": _ALPHA_BY_RANK[k],
             "comparison": f"HELIOS-Full vs BASELINE-{k}",
-            "baseline": _PENDING_BASELINE,
+            "baseline": BASELINES[k - 1],
             "primary_metric": "HR@3 (paired binary)",
             "test": "mcnemar_exact_mid_p",
             "direction": "a > b",
@@ -339,7 +347,10 @@ ANALYSIS_SETTINGS: dict[str, str | int | float | list[str]] = {
     ),
     "unit_of_analysis": "case, paired across variants and baselines (D11)",
     "effect_size_commitment": "Cohen h >= 0.276 (n = 73 required, 84 with attrition)",
-    "baseline_hr_at_3": "CHASE adjusted to AIOpsLab: 0.60 or 0.61, fixed with the guide (D6 item 1)",
+    "baseline_hr_at_3": (
+        "CHASE adjusted to AIOpsLab: 0.60, agreed with the chair (D6 item 1); "
+        "0.61 (sum of the stated components) reported in the sensitivity band"
+    ),
     "target_hr_at_3": 0.73,
     "cell_inclusion_rule": "a variant x system x metric cell needs >= 80% of its cases included",
     "effect_reporting": [

@@ -57,7 +57,7 @@ RUN_SYSTEM_SLOTS: tuple[str, ...] = (
     "HELIOS-noFGSV",
     "HELIOS-noIOL",
     "HELIOS-noExpl",
-    # Family B baselines, named before OSF deposit 1 (D5)
+    # Family B baselines; names in helios.research.analysis_plan.BASELINES (D5)
     "BASELINE-1",
     "BASELINE-2",
     "BASELINE-3",

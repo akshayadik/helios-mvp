@@ -142,7 +142,7 @@ All decided by the owner on 2026-10-23 except D11, which is prepared in S0 for r
 | D2 | Flag registry | **(a) Rename code flags to the Ch3 names and add the five missing Ch3 flags** — no mapping table |
 | D3 | LLM for confirmatory runs | **8B (RB2)**; 70B sensitivity if budget |
 | D4 | Router pre-training | **Initialise from the calibration partition (RB3)**; 1,200-incident set deferred |
-| D5 | Five baselines | **Five methods from the RCAEval suite, run on the same cases; CHASE kept as the published-score anchor.** Shortlist to the chair after the S0 dataset check |
+| D5 | Five baselines | **Five methods from the RCAEval suite, run on the same cases; CHASE kept as the published-score anchor.** Agreed with the chair (deviation entry 36): multi-source BARO, TraceRCA, BARO (metrics), PDiagnose, multi-source RCD; alternates CIRCA, CausalRCA; CHASE value 0.60 |
 | D6 | Ch3 inconsistencies | **Accept the proposed clarifications as pre-registration text; walk the guide through them on a call before data collection, outcome recorded in the call-reference doc** |
 | D7 | Deviation-log signatures | **(a) Add Ed25519, public key deposited on OSF; keep the HMAC chain underneath** |
 | D8 | H4b scaling study | **Stage B, after 31 March** (RB3), under its own pre-registration |
