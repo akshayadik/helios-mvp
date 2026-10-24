@@ -132,6 +132,11 @@ def test_candidate_set_is_the_union_over_modalities() -> None:
     assert got == ["cart", "frontend"]
 
 
+def test_declared_distinct_pair_is_not_an_alias() -> None:
+    got = names.candidate_set("ss", ["payment"], ["paymentservice"])
+    assert got == ["payment", "paymentservice"]
+
+
 def test_unresolved_alias_pair_stops_sealing() -> None:
     with pytest.raises(names.UnresolvedAliasError, match="cart"):
         names.candidate_set("ss", ["cart", "cart-service"])

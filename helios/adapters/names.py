@@ -23,6 +23,7 @@ if TYPE_CHECKING:
 
 __all__ = [
     "ALIASES",
+    "DISTINCT",
     "SYSTEMS",
     "UnresolvedAliasError",
     "candidate_set",
@@ -46,6 +47,24 @@ ALIASES: dict[str, dict[str, str]] = {
     "ob": {"frontendservice": "frontend"},
     "tt": {},
     "ss": {},
+}
+
+# Name pairs that look like aliases but are different services, per system,
+# with the reason. Same append-only rule as ALIASES.
+DISTINCT: dict[str, dict[frozenset[str], str]] = {
+    "ob": {},
+    "tt": {},
+    "ss": {
+        frozenset({"payment", "paymentservice"}): (
+            "Sock Shop `payment` vs Online Boutique `paymentservice`: build case "
+            "re3ss_carts_f1_3 also holds sparse Online Boutique series (co-located "
+            "deployment); kept as recorded, not merged"
+        ),
+        frozenset({"shipping", "shippingservice"}): (
+            "Sock Shop `shipping` vs Online Boutique `shippingservice`: same case "
+            "and reason as payment / paymentservice"
+        ),
+    },
 }
 
 _SUFFIX = re.compile(r"[-_]?service$")
@@ -72,7 +91,12 @@ def unresolved_aliases(system: str, names: Iterable[str]) -> list[tuple[str, str
     pairs: list[tuple[str, str]] = []
     for group in by_stem.values():
         ordered = sorted(group)
-        pairs.extend((a, b) for i, a in enumerate(ordered) for b in ordered[i + 1 :])
+        pairs.extend(
+            (a, b)
+            for i, a in enumerate(ordered)
+            for b in ordered[i + 1 :]
+            if frozenset({a, b}) not in DISTINCT[system]
+        )
     return pairs
 
 
