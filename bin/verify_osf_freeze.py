@@ -83,10 +83,30 @@ def _verify_artefact(path: Path, regenerated: dict) -> bool:  # type: ignore[typ
     return on_disk_raw == regenerated_bytes
 
 
-def _generate_manifest_sig(osf_dir: Path) -> None:
+_SHA_MARKER_VALUE = re.compile(r"(<!-- SHA:[^ ]+ -->)`[0-9a-f]{64}`")
+
+
+def _prereg_bytes_for_sig(prereg_path: Path) -> bytes:
+    """preregistration.md with SHA-marker values blanked (audit step E).
+
+    --populate-prereg writes each artefact's SHA, including manifest_sig.txt's,
+    into the markers; blanking them keeps the signature free of that loop
+    while every other byte of the pre-registration text is covered.
+    """
+    if not prereg_path.exists():
+        return b""
+    text = prereg_path.read_bytes().replace(b"\r\n", b"\n").decode("utf-8")
+    return _SHA_MARKER_VALUE.sub(r"\1", text).encode("utf-8")
+
+
+def _manifest_digest(osf_dir: Path, prereg_path: Path) -> str:
     json_files = sorted(f for f in osf_dir.glob("*.json"))
     concatenated = b"".join(f.read_bytes().replace(b"\r\n", b"\n") for f in json_files)
-    sig = hashlib.sha256(concatenated).hexdigest()
+    return hashlib.sha256(concatenated + _prereg_bytes_for_sig(prereg_path)).hexdigest()
+
+
+def _generate_manifest_sig(osf_dir: Path, prereg_path: Path = PREREG_PATH) -> None:
+    sig = _manifest_digest(osf_dir, prereg_path)
     (osf_dir / "manifest_sig.txt").write_bytes(sig.encode("utf-8"))
 
 
@@ -288,6 +308,20 @@ def _analysis_plan_problems(ap: dict) -> list[str]:  # type: ignore[type-arg]
     return problems
 
 
+def _instance_file_hashes(incident_dir: Path) -> dict[str, str]:
+    """SHA-256 of every file of one case (manifest, Parquet streams, content seal).
+
+    Ch3 fixes the corpus with a SHA-256 per instance (p.111, p.161). These are
+    plain hashes of the bytes on disk, so anyone can recheck them against the
+    OSF deposit without the HMAC key.
+    """
+    return {
+        f.name: hashlib.sha256(f.read_bytes()).hexdigest()
+        for f in sorted(incident_dir.iterdir())
+        if f.is_file() and not f.name.startswith(".")
+    }
+
+
 def _build_corpus_manifest_dict() -> dict:  # type: ignore[type-arg]
     incidents = []
     if CAPTURES_DIR.exists():
@@ -298,15 +332,20 @@ def _build_corpus_manifest_dict() -> dict:  # type: ignore[type-arg]
             if not manifest_path.exists():
                 continue
             cap = json.loads(manifest_path.read_bytes())
+            files = _instance_file_hashes(d)
             incidents.append(
                 {
                     "incident_id": cap["incident_id"],
                     "snapshot_hash": cap["snapshot_hash"],
                     "fault_class": _fault_class(cap["incident_id"]),
+                    "files": files,
+                    "instance_sha256": hashlib.sha256(
+                        canonical_json(files).encode("utf-8")
+                    ).hexdigest(),
                 }
             )
     return {
-        "schema_version": "v1",
+        "schema_version": "v2",
         "generated_at_iso": _now_iso(),
         "exploratory": {
             "phase": "exploratory",
@@ -372,9 +411,7 @@ def _cmd_verify() -> None:
     if ap_path.exists():
         errors.extend(_analysis_plan_problems(json.loads(ap_path.read_bytes())))
 
-    json_files = sorted(f for f in OSF_DIR.glob("*.json"))
-    concatenated = b"".join(f.read_bytes().replace(b"\r\n", b"\n") for f in json_files)
-    expected_sig = hashlib.sha256(concatenated).hexdigest()
+    expected_sig = _manifest_digest(OSF_DIR, PREREG_PATH)
     sig_path = OSF_DIR / "manifest_sig.txt"
     if not sig_path.exists():
         errors.append("Missing: manifest_sig.txt")

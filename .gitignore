@@ -21,6 +21,8 @@ data/*.parquet
 # Secrets
 .env
 *.pem
+# Public key only (D7): deposited on OSF, verifies the deviation log. Never add private keys.
+!keys/deviation_log_ed25519.pub.pem
 *.key
 
 # OS

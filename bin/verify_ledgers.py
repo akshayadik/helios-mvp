@@ -22,7 +22,7 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from bin.log_deviation import DeviationLog, load_key
+from bin.log_deviation import DeviationLog, load_key, load_public_key_file
 from bin.log_exclusion import ExclusionLedger
 from helios.orchestrator.ledger import ReconciliationLedger
 
@@ -46,7 +46,9 @@ def main(argv: list[str] | None = None) -> int:
     key = load_key()
     failed = False
     for cls, path in LEDGERS:
-        ledger = cls(key=key, log_path=path)
+        # The deviation log is also Ed25519-signed from entry 35 (D7).
+        public = load_public_key_file() if cls is DeviationLog else None
+        ledger = cls(key=key, log_path=path, ed25519_public=public)
         if args.init_anchors and not ledger.anchor_path.exists():
             print(f"⚓ {path}: {ledger.init_anchor()}")
         if not ledger.anchor_path.exists():

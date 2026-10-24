@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import sys
 import tempfile
 from pathlib import Path
@@ -78,7 +79,7 @@ def test_generate_manifest_sig_excludes_itself() -> None:
         b = tmp / "bbb.json"
         a.write_bytes(b'{"x":1}\n')
         b.write_bytes(b'{"y":2}\n')
-        _generate_manifest_sig(tmp)
+        _generate_manifest_sig(tmp, tmp / "no_prereg.md")
         sig_path = tmp / "manifest_sig.txt"
         assert sig_path.exists()
         # manifest_sig.txt itself is excluded — only .json files concatenated
@@ -151,3 +152,46 @@ def test_variants_py_matches_frozen_vcl_sha() -> None:
         b"blob " + str(len(content)).encode() + b"\0" + content
     ).hexdigest()
     assert blob_sha == frozen["vcl_freeze_sha"]
+
+
+def test_manifest_sig_covers_prereg_text_but_not_sha_marker_values(
+    tmp_path: Path,
+) -> None:
+    """Audit step E: editing the pre-registration changes manifest_sig."""
+    sys.path.insert(0, str(Path("bin")))
+    from verify_osf_freeze import _manifest_digest
+
+    (tmp_path / "a.json").write_bytes(b'{"x":1}\n')
+    prereg = tmp_path / "preregistration.md"
+    marker = "| `a.json` | <!-- SHA:a.json -->"
+    prereg.write_text(f"# Plan\nH1 one-sided.\n{marker}`{'a' * 64}` |\n")
+    base = _manifest_digest(tmp_path, prereg)
+
+    prereg.write_text(f"# Plan\nH1 one-sided.\n{marker}`{'b' * 64}` |\n")
+    assert _manifest_digest(tmp_path, prereg) == base
+
+    prereg.write_text(f"# Plan\nH1 two-sided.\n{marker}`{'b' * 64}` |\n")
+    assert _manifest_digest(tmp_path, prereg) != base
+
+
+def test_corpus_manifest_hashes_every_file_of_a_case(tmp_path: Path) -> None:
+    sys.path.insert(0, str(Path("bin")))
+    from verify_osf_freeze import _instance_file_hashes
+
+    (tmp_path / "manifest.json").write_bytes(b"{}")
+    (tmp_path / "p1_metrics.parquet").write_bytes(b"pq")
+    (tmp_path / ".DS_Store").write_bytes(b"junk")
+    hashes = _instance_file_hashes(tmp_path)
+    assert hashes == {
+        "manifest.json": hashlib.sha256(b"{}").hexdigest(),
+        "p1_metrics.parquet": hashlib.sha256(b"pq").hexdigest(),
+    }
+
+
+def test_committed_corpus_manifest_lists_case_file_hashes() -> None:
+    manifest = json.loads(Path("research/osf/corpus_manifest.json").read_bytes())
+    incidents = manifest["exploratory"]["incidents"]
+    assert manifest["schema_version"] == "v2"
+    for inc in incidents:
+        assert {"manifest.json", "content_seal.json"} <= inc["files"].keys()
+        assert len(inc["instance_sha256"]) == 64

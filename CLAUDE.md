@@ -30,6 +30,9 @@ Current stage: **Stage 0** (Spine + Harness). Pipeline modules (`helios/pipeline
 # Generate HMAC secret (required for deviation log; must not be committed)
 python3 -c "import secrets; print(f'DEVIATION_HMAC_SECRET={secrets.token_urlsafe(32)}')" > .env
 chmod 600 .env
+# Ed25519 key for deviation entries from 35 on (D7): restore the
+# DEVIATION_ED25519_PRIVATE_KEY line from the password manager into .env.
+# The key pair already exists (keys/deviation_log_ed25519.pub.pem); `keygen` is one-time and refuses to replace it.
 
 poetry env use python3.11
 poetry install
@@ -191,7 +194,7 @@ L4  Auto-Remediation
 |---|---|
 | `ci.yml` | ruff, mypy, pytest |
 | `disjointness_audit.yml` | Feature-flag disjointness — Stage 5 stub; exits 0 on `ImportError` until `helios/vcl/disjointness.py` is implemented |
-| `ledger_verification.yml` | HMAC chain integrity + `verify_ledgers.py` (anchors); **fails** if `DEVIATION_HMAC_SECRET` is missing (only fork PRs skip, with a warning) |
+| `ledger_verification.yml` | `log_deviation.py verify-public` (Ed25519, public key only, no secret) + HMAC chain integrity + `verify_ledgers.py` (anchors); the HMAC part **fails** if `DEVIATION_HMAC_SECRET` is missing (only fork PRs skip, with a warning) |
 
 ### Tracking schema rules (R1–R8)
 
@@ -213,7 +216,7 @@ Enforced by `scripts/validate_tracking.py` as a pre-commit hook (working tree vs
 - Default model: **Sonnet 4.6**. Use Opus only for cross-pipeline reasoning.
 - Plan mode (`Shift+Tab`) required for cross-pipeline changes.
 - `bin/log_deviation.py` requires `DEVIATION_HMAC_SECRET` loaded from `.env` (`set -a; source .env; set +a`).
-- The `.env` file is gitignored — back it up in a password manager; losing it breaks chain verification.
+- The `.env` file is gitignored — back it up in a password manager; losing it breaks chain verification. It holds two secrets: `DEVIATION_HMAC_SECRET` and `DEVIATION_ED25519_PRIVATE_KEY`.
 - `DEVIATION_HMAC_SECRET` must also be set in GitHub Secrets for `ledger_verification.yml` to run the on-disk chain check.
 
 ### ruff
@@ -256,6 +259,9 @@ Enforced by `scripts/validate_tracking.py` as a pre-commit hook (working tree vs
 - `verify()` also checks each entry has its class's `REQUIRED_FIELDS` (all ledgers share one key, so a log of one kind could otherwise pass as another) and, for the deviation log, that `deviation_id == signature[:16]` when present (entries 1–3 predate the field).
 - Residual, by design: rolling back a ledger **and** its anchor together to an earlier committed state is consistent from inside the repo. Git history and the OSF deposit are the external record.
 - Never hand-edit an `.anchor.json`. If `verify` reports an anchor mismatch, investigate (git log -p on both files) — do not regenerate the anchor.
+- **Ed25519 layer (D7, S0.9, deviation entry 35).** From entry `ED25519_FROM_ENTRY = 35` the deviation log is also signed with Ed25519: each entry carries `ed25519_signature` over all its other fields (HMAC `signature` and `prev_signature` included), and the anchor carries `log_sha256` (digest of the whole file) plus `anchor_ed25519_signature`. `poetry run python bin/log_deviation.py verify-public` needs only the committed public key `keys/deviation_log_ed25519.pub.pem` and checks every byte, entries 1–34 included (they stay HMAC-only; their bytes are covered by the signed digest). CI runs it without secrets.
+- Appending needs both `DEVIATION_HMAC_SECRET` and `DEVIATION_ED25519_PRIVATE_KEY`; the CLI refuses a private key that does not match the committed public key. `ed25519_signature` is in `_UNSIGNED_KEYS`, so HMAC signatures are unchanged by the layer. The boundary is a code constant: stripping signatures cannot downgrade the log. The exclusion and reconciliation ledgers stay HMAC-only (`ED25519_FROM_ENTRY = None`).
+- Losing the Ed25519 private key means no further deviation entries can be appended; rotation would need a new key, a code change and a deviation entry signed by the HMAC chain. Back the key up with the HMAC secret.
 
 ### Capture content seal
 

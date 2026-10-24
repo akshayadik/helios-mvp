@@ -116,6 +116,7 @@ statsmodels = ">=0.14,<0.15"  # ADDED; Wilcoxon + Holm-Bonferroni for M4 ablatio
 # ─────────────────────────────────────────────────────────────────────────────
 networkx = "^3.6.1"
 scipy = "^1.17.1"
+cryptography = ">=43,<47"
  
 [tool.poetry.group.dev.dependencies]
 # PRESERVED — versions tightened to match actual current releases
