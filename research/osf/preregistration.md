@@ -211,13 +211,13 @@ Nothing in the product scope is cut. **Stage A** — every mechanism the confirm
 
 | File | SHA-256 |
 |---|---|
-| `analysis_plan.json` | <!-- SHA:analysis_plan.json -->`20dcee4a7b9f9d13f3b180a5a0ba30757ac9948e226fe214bfbbb35f2226d7f4` |
-| `corpus_manifest.json` | <!-- SHA:corpus_manifest.json -->`12128b568267afc1f19d8ff177d8c5e4078d205d5177c206fe77c12eb66dd36a` |
-| `prompt_sha.json` | <!-- SHA:prompt_sha.json -->`a027d8350e32e09e2ba72eb0e72b9c5596ccd6c5ef0cc48c1a10bad61a2c52d1` |
-| `seeds.json` | <!-- SHA:seeds.json -->`b2ada58de52500daef4a9621035e4b4ac3b3971506ce714f86cc95d0bf9847b6` |
-| `thresholds.json` | <!-- SHA:thresholds.json -->`0bb93eb368211162da09061d07c4b587c28ef37d017487bb60dab54271613cab` |
-| `variant_hashes.json` | <!-- SHA:variant_hashes.json -->`567f786c1cc4d9263448971afbe048f45cddab4ad60409d0852345aa2d85e8b4` |
-| `manifest_sig.txt` | <!-- SHA:manifest_sig.txt -->`9de8bbf6ed2637eabb9e2fbaca9cc33d3ae77044b5ed1e8179e97d1fb4c08519` |
+| `analysis_plan.json` | <!-- SHA:analysis_plan.json -->`34d6a303729bedfeebcc83ede351a93c70c4cd33ffbf0955e1bdd92ca97d6c15` |
+| `corpus_manifest.json` | <!-- SHA:corpus_manifest.json -->`a5e1abf14c4a087e0a12d1841a32d22a2b0c2aa4fc5bbd9049861cef2cd6d7b9` |
+| `prompt_sha.json` | <!-- SHA:prompt_sha.json -->`6d9b01b76edfaf186d93347f5f56e8e8dc11a12436af2b83254d4bf55254d3cf` |
+| `seeds.json` | <!-- SHA:seeds.json -->`8a7f76ac524a2eb5a5f7d197b59bb6ee3518ebeeaf3047ac6991d13a79de2061` |
+| `thresholds.json` | <!-- SHA:thresholds.json -->`a90bbe733c28501aec18cf9de7b13412307c11ad1438a3ccbdf97e6530bcd725` |
+| `variant_hashes.json` | <!-- SHA:variant_hashes.json -->`d005c59b7d37aef2458519603309a1b97b9df366655d5311919b394b59af0b46` |
+| `manifest_sig.txt` | <!-- SHA:manifest_sig.txt -->`e5a076cb816a6cac3f3ddf693639b4335093d08b3e90d03f7955255673570df4` |
 
 `manifest_sig.txt` = SHA-256 over the JSON artefacts above, this file (with the SHA values in this table blanked) and `docs/tracking/metric_contract.md`.
 
