@@ -126,7 +126,7 @@ Nothing in this section is cut (full product scope). Tier 1 = in the Stage A evi
 | FGSV lite: KS gate + replay on recorded data, PASS / FAIL / STALE | T2 · S4 | Full twin, ASRE, remediation templates → T3 |
 | Monitor Agent, learning loops, multi-tenant admin | T3 | |
 | Baselines: five from the RCAEval suite (D5), run on the same cases; CHASE as published-score comparison | T1 · S4 | Family B |
-| Metrics: HR@1/3/10, Avg@5, MRR, CpR, TTT, H_fact (verifier + two-rater sample), H_struct, non-convergence | T1 · S4 | MTTR → D10 |
+| Metrics: HR@1/3/10, Avg@5, MRR, CpR, TTT, H_fact (verifier + two raters on every Full and noLLM narrative), H_struct, non-convergence | T1 · S4 | MTTR → D10 |
 | Analysis suite: Wilcoxon, sign test, McNemar exact mid-p, Holm per family, BCa, Cliff's δ, Hodges–Lehmann, BH and mixed-model sensitivity | T1 · S4 | |
 | H4b scaling sub-study, Tier-4 cognitive faults (E-H1), Qwen contrast | T3 | Limitation or follow-up |
 
@@ -223,7 +223,7 @@ No code changes. A defect found here is fixed under a deviation entry; affected 
 | E2 Baselines (Family B) | HELIOS-Full vs the five baselines on the same cases |
 | E3 Exploratory family | Built Tier-2 variants only; the rest reported as deferred |
 | E4 RQ4 user study | Only if IRB approval arrives by early February (D12) |
-| E5 Rating | H_fact: verifier output + two blind raters on a stratified sample (κ ≥ 0.7); FAE judges if budget |
+| E5 Rating | H_fact: verifier output + two blind raters on every Full and noLLM narrative (κ ≥ 0.7; adjudicator below); FAE judges if budget |
 | E6 Sensitivity | 70B subset if budget; MTTR on the live OTel Demo if D10 (b)/(c) |
 
 Exit: every cell complete or formally excluded; inclusion reported; 10% clean-environment replication.
@@ -269,7 +269,7 @@ No slack is built in. If a sprint slips, Tier 2 work in S3–S4 moves to Stage B
 | Compute | One GPU workstation or rented GPU for 8B inference over the campaign; 70B subset if budget | S2 onward; E |
 | Datasets | RCAEval (Zenodo), AIOpsLab if feasible | S0.1 |
 | Approvals | GGU IRB (D12); agreement with the guide on D5, D6 and the two-stage scope (call) | S0 |
-| People | Two raters (H_fact sample); 24 participants if RQ4 runs | E |
+| People | Two raters and a standby adjudicator (H_fact, every Full and noLLM narrative; S0.11 L2–L3); 24 participants if RQ4 runs | E |
 | APIs | Judge models for FAE (optional) | E |
 
 ---

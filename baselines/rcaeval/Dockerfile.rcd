@@ -1,0 +1,23 @@
+# RCAEval baseline environment, "rcd" mode (Python 3.8): RCD and
+# multi-source RCD, with RCAEval's patched pyAgrum / causal-learn files
+# (the links of RCAEval's script/link.sh). Isolated from the HELIOS
+# environment (D5, S0.11). Base image and RCAEval commit are pinned.
+FROM python@sha256:1d52838af602b4b5a831beb13a0e4d073280665ea7be7f69ce2382f29c5a613f
+ARG RCAEVAL_COMMIT=2fca61b9730a69c21ef72411844735634dbb010f
+ARG SITE=/usr/local/lib/python3.8/site-packages
+RUN apt-get update -y \
+ && apt-get install -y --no-install-recommends git build-essential libxml2 libxml2-dev zlib1g-dev graphviz \
+ && rm -rf /var/lib/apt/lists/*
+RUN git clone https://github.com/phamquiluan/RCAEval.git /opt/RCAEval \
+ && git -C /opt/RCAEval checkout --quiet "${RCAEVAL_COMMIT}"
+WORKDIR /opt/RCAEval
+# scikit-network 0.31.0 has no cp38 aarch64 wheel; its setup.py imports numpy,
+# so numpy (the lock-file version) and Cython are installed first.
+RUN pip install --no-cache-dir wheel numpy==1.23.5 Cython==0.29.37 \
+ && pip install --no-cache-dir -e ".[rcd]" \
+ && ln -fs "$PWD/lib/pyAgrum/lib/image.py" "$SITE/pyAgrum/lib/" \
+ && ln -fs "$PWD/lib/causallearn/search/ConstraintBased/FCI.py" "$SITE/causallearn/search/ConstraintBased/" \
+ && ln -fs "$PWD/lib/causallearn/utils/Fas.py" "$SITE/causallearn/utils/" \
+ && ln -fs "$PWD/lib/causallearn/utils/PCUtils/SkeletonDiscovery.py" "$SITE/causallearn/utils/PCUtils/" \
+ && ln -fs "$PWD/lib/causallearn/graph/GraphClass.py" "$SITE/causallearn/graph/" \
+ && pip freeze > /opt/pip-freeze.txt

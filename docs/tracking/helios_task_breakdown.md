@@ -16,7 +16,7 @@
 |---|---|---|---|
 | S0 Foundation | 2–13 Nov 2026 | S0.1–S0.11 | Protocol aligned to Ch3, OSF deposit 1 |
 | S1 Data and graph | 16 Nov – 4 Dec | S1.1–S1.10 | Sealed datasets, typed incident graph, scoring path |
-| S2 Reasoning | 7–25 Dec | S2.1–S2.8 | Pipelines, consensus, grounded narratives |
+| S2 Reasoning | 7–25 Dec | S2.1–S2.9 | Pipelines, consensus, grounded narratives |
 | S3 Routing | 4–15 Jan 2027 | S3.1–S3.5 | Cheap-first router, learning |
 | S4 Product + evaluation tooling | 18–29 Jan | S4.1–S4.11 | API, console, baselines, metrics, analysis |
 | S5 Integration + freeze | 1–12 Feb | S5.1–S5.7 | Verification, build freeze, OSF deposit 2 |
@@ -124,6 +124,7 @@
 ### S0.11 — Lead-time items (you)
 - **Tracking:** S2-M5-RES05 · **Effort:** ongoing
 - **Steps:** IRB application for RQ4 (D12) this week; GPU / API budget decision (70B sensitivity, judge models); baseline environments for the chosen RCAEval methods.
+- **Register:** `docs/tracking/s0_11_lead_time_register.md` (items L1–L10 with needed-by dates, owner and status). Second rater and adjudicator added; baseline-environment spike done there.
 
 ### S0 exit gate
 - **Tracking:** S2-M5-GATE02 · **Done when:** S0.2–S0.10 DONE, gate green, tag `rb-s0-exit`.
@@ -254,6 +255,17 @@
 - **Steps:** narrator writes claims that cite graph node/edge IDs; deterministic claim parser; verifier drops claims whose cited element does not exist or does not support the claim; rejections logged; `coe_narrative=OFF` shows the ranked list only.
 - **Done when:** every displayed claim cites an element (test); rejection rate reported.
 
+### S2.9 — Rating rubric and blind labelling protocol (H_fact)
+- **Goal:** Two raters can label every Full and noLLM narrative blind to variant, against a frozen rubric, before any confirmatory narrative exists.
+- **Tier:** T1 · **Tracking:** S2-M7-RES01 · **Effort:** 1½ (+ owner and rater training time) · **Depends on:** S2.8, S0.11 (L2, L3)
+- **Steps:**
+  1. Rubric: what counts as one atomic claim; "supported" (the cited element exists and supports it; root-cause claims also agree with the ground truth); worked examples from build data.
+  2. Labelling tool: shows each narrative as claims plus the evidence each cites, in one neutral format for all variants (the deterministic noLLM narrative must not be recognisable by style); presentation order shuffled with a seed from a new register block (needs a deviation entry); rater labels stored per claim; κ computed by S4.9.
+  3. Training set: 50 narratives from build data. Both raters label; compute κ; discuss disagreements; revise the rubric; repeat until κ ≥ 0.7.
+  4. Freeze the rubric (hash) and add it to OSF deposit 2 (S5.7) before confirmatory labelling.
+- **Done when:** κ ≥ 0.7 on the training set; rubric hash recorded; tool tested on fixtures.
+- **Deviation:** the presentation-order seed block; any rubric decision that changes what H_fact measures.
+
 ### S2 exit gate
 - **Tracking:** S2-M7-GATE01 · tag `rb-s2-exit`.
 
@@ -319,7 +331,7 @@
 
 ### S4.9 — Metrics suite
 - **Tier:** T1 · **Tracking:** S2-M9-ENG09 · **Effort:** 1½ · **Depends on:** S1.9, S2.4, S2.8
-- **Steps:** HR@k, Avg@5, MRR, CpR, time to correct diagnosis, TTT, H_struct, H_fact (verifier output + rater tool for the two-rater sample, κ), non-convergence count.
+- **Steps:** HR@k, Avg@5, MRR, CpR, time to correct diagnosis, TTT, H_struct, H_fact (verifier output + κ over the two raters' labels from the S2.9 tool), non-convergence count.
 - **Done when:** fixture values match hand computation.
 
 ### S4.10 — Run orchestrator and integrity
@@ -361,6 +373,7 @@
 
 ### S5.7 — OSF deposit 2 (freeze addendum)
 - **Tracking:** S2-M10-GATE02 · **Effort:** ½ (+ your upload)
+- **Steps:** addendum with the freeze record (S5.6) and the frozen rating rubric (S2.9).
 - **Done when:** DOI in the deviation log. **Stage A build complete.**
 
 ---
@@ -375,7 +388,7 @@ No code changes; defects → deviation entry, rerun or exclude with ledger entri
 | E2 Baselines | S2-M11-EVAL02 | 5 baselines × 240 cases | Paired tables complete |
 | E3 Exploratory | S2-M11-EVAL03 | Built Tier-2 variants × 240 | Results labelled exploratory |
 | E4 RQ4 user study | S2-M11-RES01 | If IRB approved: 24 participants, Full vs noExpl, Latin square | Dataset stored; IRB number logged |
-| E5 Rating | S2-M11-RES02 | H_fact two-rater sample (κ ≥ 0.7); judges if budget | Agreement reported |
+| E5 Rating | S2-M11-RES02 | H_fact: two raters label every Full and noLLM narrative (480 each; κ ≥ 0.7; adjudicator below); judges if budget | Agreement reported |
 | E6 Sensitivity | S2-M11-EVAL04 | 70B subset if budget; 10% rerun replication | Reported |
 
 ---
