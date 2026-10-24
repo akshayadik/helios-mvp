@@ -13,21 +13,21 @@ def test_ground_truth_ranked_first_gives_hr_and_cpr_one() -> None:
     scores = {"svc-a": 0.9, "svc-b": 0.50, "svc-c": 0.3}
     result = DVerdict.compute(scores, ground_truth_service="svc-a")
     assert result["hr_at_3"] == 1
-    assert result["cpr"] == pytest.approx(1)
+    assert result["mrr"] == pytest.approx(1)
 
 
 def test_ground_truth_ranked_second_gives_half_cpr() -> None:
     scores = {"svc-a": 0.9, "svc-b": 0.8, "svc-c": 0.3}
     result = DVerdict.compute(scores, ground_truth_service="svc-b")
     assert result["hr_at_3"] == 1
-    assert result["cpr"] == pytest.approx(1 / 2)
+    assert result["mrr"] == pytest.approx(1 / 2)
 
 
 def test_ground_truth_outside_top_3_gives_hr_zero() -> None:
     scores = {"a": 0.9, "b": 0.8, "c": 0.7, "d": 0.2}
     result = DVerdict.compute(scores, ground_truth_service="d")
     assert result["hr_at_3"] == 0
-    assert result["cpr"] == pytest.approx(1 / 4)
+    assert result["mrr"] == pytest.approx(1 / 4)
 
 
 def test_alphabetic_tiebreak_is_deterministic() -> None:
@@ -40,7 +40,7 @@ def test_alphabetic_tiebreak_is_deterministic() -> None:
 
 def test_no_ground_truth_returns_nan_cpr() -> None:
     result = DVerdict.compute({"x": 0.50})
-    assert math.isnan(result["cpr"])
+    assert math.isnan(result["mrr"])
     assert result["hr_at_3"] == 0
 
 

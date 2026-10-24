@@ -58,7 +58,7 @@ def _make_verdict(run_id: str = "run-001") -> PipelineVerdict:
         evaluation_phase=EvaluationPhase.EXPLORATORY,
         ranked_candidates=["svc-A", "svc-B", "svc-C"],
         hr_at_3=0.67,
-        cpr=0.33,
+        mrr=0.33,
         latency_ms=42.5,
         token_count=512,
         narrative="svc-A caused a database connection timeout",
@@ -267,7 +267,7 @@ class TestPipelineVerdict:
                 evaluation_phase=EvaluationPhase.EXPLORATORY,
                 ranked_candidates=["svc-A"],
                 hr_at_3=0.67,
-                cpr=0.33,
+                mrr=0.33,
                 latency_ms=42.5,
                 token_count=512,
                 narrative="ok",
@@ -290,13 +290,13 @@ class TestPipelineVerdict:
                 evaluation_phase=EvaluationPhase.EXPLORATORY,
                 ranked_candidates=[],
                 hr_at_3=-0.1,
-                cpr=0.33,
+                mrr=0.33,
                 latency_ms=42.5,
                 token_count=512,
                 narrative="x",
             )
 
-    def test_cpr_above_one_rejected(self) -> None:
+    def test_mrr_above_one_rejected(self) -> None:
         with pytest.raises(ValidationError):
             PipelineVerdict(
                 run_id="r",
@@ -307,7 +307,7 @@ class TestPipelineVerdict:
                 evaluation_phase=EvaluationPhase.EXPLORATORY,
                 ranked_candidates=[],
                 hr_at_3=0.67,
-                cpr=1.1,
+                mrr=1.1,
                 latency_ms=42.5,
                 token_count=512,
                 narrative="x",
@@ -324,7 +324,7 @@ class TestPipelineVerdict:
                 evaluation_phase=EvaluationPhase.EXPLORATORY,
                 ranked_candidates=[],
                 hr_at_3=0.67,
-                cpr=0.33,
+                mrr=0.33,
                 latency_ms=-1,
                 token_count=512,
                 narrative="x",
@@ -341,7 +341,7 @@ class TestPipelineVerdict:
                 evaluation_phase=EvaluationPhase.EXPLORATORY,
                 ranked_candidates=[],
                 hr_at_3=0.67,
-                cpr=0.33,
+                mrr=0.33,
                 latency_ms=42.5,
                 token_count=-1,
                 narrative="x",
@@ -474,7 +474,7 @@ class TestHashCollisions:
                 evaluation_phase=EvaluationPhase.EXPLORATORY,
                 ranked_candidates=[f"svc-{rng.randint(1, 99)}"],
                 hr_at_3=round(rng.uniform(0.01, 0.99), 6),
-                cpr=round(rng.uniform(0.01, 0.99), 6),
+                mrr=round(rng.uniform(0.01, 0.99), 6),
                 latency_ms=round(rng.uniform(10.5, 499.5), 6),
                 token_count=rng.randint(64, 2048),
                 narrative=f"narrative-{i}",
@@ -539,7 +539,7 @@ def test_verdict_v0_2_has_ppr_scores_and_prompt_version() -> None:
     assert v.ppr_scores == {"svc-A": 0.75, "svc-B": 0.25}
     assert v.prompt_version is None
     assert v.schema_version == VERDICT_SCHEMA_VERSION
-    assert VERDICT_SCHEMA_VERSION == "schema-draft-v0.2"
+    assert VERDICT_SCHEMA_VERSION == "schema-draft-v0.4"
 
 
 def test_verdict_v0_2_hr_at_3_defaults_to_zero() -> None:
@@ -556,7 +556,7 @@ def test_verdict_v0_2_hr_at_3_defaults_to_zero() -> None:
         narrative="gpipe-gated-or-skipped",
     )
     assert v.hr_at_3 == 0.00
-    assert v.cpr == 0.00
+    assert v.mrr == 0.00
 
 
 def test_verdict_schema_version_constant_matches_default() -> None:

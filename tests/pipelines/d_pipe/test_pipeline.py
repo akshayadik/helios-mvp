@@ -47,7 +47,7 @@ def test_run_dpipe_with_no_p1_metrics_returns_verdict(manifest, tmp_path: Path) 
         run_id="run-001",
     )
     assert "hr_at_3" in result
-    assert "cpr" in result
+    assert "mrr" in result
     assert "ranked_candidates" in result
     assert isinstance(result["hr_at_3"], int | float)
 
@@ -88,4 +88,4 @@ def test_run_dpipe_deterministic(manifest) -> None:
 
     assert result1["ranked_candidates"] == result2["ranked_candidates"]
     assert result1["hr_at_3"] == result2["hr_at_3"]
-    assert result1["cpr"] == result2["cpr"]
+    assert result1["mrr"] == result2["mrr"]

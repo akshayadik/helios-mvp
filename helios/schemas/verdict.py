@@ -14,13 +14,13 @@ from helios.vcl.utils import canonical_json
 
 __all__ = ["VERDICT_SCHEMA_VERSION", "PipelineVerdict"]
 
-VERDICT_SCHEMA_VERSION: str = "schema-draft-v0.2"
+VERDICT_SCHEMA_VERSION: str = "schema-draft-v0.4"
 
 
 class PipelineVerdict(BaseModel):
     """Single pipeline result row — all semantic fields required for metric integrity gate (§5.1).
 
-    Stores pre-computed hr_at_3/cpr alongside raw ranked_candidates for downstream audit.
+    Stores pre-computed hr_at_3/mrr (mrr = reciprocal rank; see docs/tracking/metric_contract.md) alongside raw ranked_candidates for downstream audit.
     pipeline must be one of: dpipe | gpipe | lpipe.
     """
 
@@ -34,7 +34,7 @@ class PipelineVerdict(BaseModel):
     evaluation_phase: EvaluationPhase
     ranked_candidates: list[str]
     hr_at_3: float = Field(default=0.00, ge=0, le=1)
-    cpr: float = Field(default=0.00, ge=0, le=1)
+    mrr: float = Field(default=0.00, ge=0, le=1)
     latency_ms: float = Field(ge=0)
     token_count: int = Field(ge=0)
     narrative: str

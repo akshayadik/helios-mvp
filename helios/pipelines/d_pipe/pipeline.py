@@ -18,6 +18,8 @@ from helios.pipelines.d_pipe.stages.c_propagation_engine import PropagationEngin
 from helios.pipelines.d_pipe.stages.d_verdict import DVerdict
 from helios.vcl import VCLFlag, gated_by, get_current_manifest
 
+__all__ = ["run_dpipe"]
+
 if TYPE_CHECKING:
     from helios.schemas.telemetry import EvaluationPhase, TelemetryWindow
     from helios.schemas.ueg_c import UEGCSnapshot
@@ -72,17 +74,17 @@ def run_dpipe(
     # Stage D: verdict
     verdict = DVerdict.compute(score_final, ground_truth_service=ground_truth_service)
 
-    # Normalise for PipelineVerdict schema: cpr must be in [0, 1]; narrative must be str.
-    cpr_raw = verdict.get("cpr", float("nan"))
-    cpr_norm: float = (
-        0.00 if (cpr_raw is None or math.isnan(cpr_raw)) else float(cpr_raw)
+    # Normalise for PipelineVerdict schema: mrr must be in [0, 1]; narrative must be str.
+    mrr_raw = verdict.get("mrr", float("nan"))
+    mrr_norm: float = (
+        0.00 if (mrr_raw is None or math.isnan(mrr_raw)) else float(mrr_raw)
     )
     narrative_raw = verdict.get("narrative")
     narrative_norm: str = "" if narrative_raw is None else str(narrative_raw)
 
     return {
         **verdict,
-        "cpr": cpr_norm,
+        "mrr": mrr_norm,
         "narrative": narrative_norm,
         "incident_id": incident_id,
         "snapshot_hash": snapshot_hash,

@@ -61,7 +61,7 @@ class DisjointnessRegistry:
 
 
 _PIPELINE_MODULES = [
-    "helios.pipelines.d_pipe.stub",
+    "helios.pipelines.d_pipe.pipeline",
     "helios.pipelines.g_pipe.pipeline",
     "helios.pipelines.l_pipe.pipeline",
     # Graph layer: build_ueg_c gates VCLFlag.L2B_GRAPH (module-level function)
