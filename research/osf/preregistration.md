@@ -200,7 +200,7 @@ Nothing in the product scope is cut. **Stage A** — every mechanism the confirm
 
 | What | How |
 |---|---|
-| Deviation log, with the public key only | `poetry run python bin/log_deviation.py verify-public` — Ed25519 from entry 35; the signed anchor covers every byte of entries 1–35. Public key `keys/deviation_log_ed25519.pub.pem`, SHA-256 `cc10123700fbf26d2cfabb2f8088057f29473830bad83c12cc06651eade1dcaa` |
+| Deviation log, with the public key only | `poetry run python bin/log_deviation.py verify-public` — Ed25519 from entry 35; the signed anchor covers every byte of the log, including the HMAC-only entries 1–34. Public key `keys/deviation_log_ed25519.pub.pem`, SHA-256 `cc10123700fbf26d2cfabb2f8088057f29473830bad83c12cc06651eade1dcaa` |
 | Any single signed entry, without project code | `openssl pkeyutl -verify -pubin -inkey keys/deviation_log_ed25519.pub.pem -rawin -in <entry without ed25519_signature, compact sorted JSON> -sigfile <signature bytes>` |
 | These artefacts | `poetry run python bin/verify_osf_freeze.py --verify` regenerates every JSON artefact from the code and checks `manifest_sig.txt` |
 | Corpus | `corpus_manifest.json` lists the SHA-256 of every file of every case |
@@ -248,6 +248,7 @@ Nothing in the product scope is cut. **Stage A** — every mechanism the confirm
 | 33 | 2026-10-24 | Metric contract: one definition per metric, strata, matched HR@3; cpr renamed mrr | `3bbedb34eef6d803` |
 | 34 | 2026-10-24 | Binding seed register 10,000,000-10,009,999 | `5f66223c8394493c` |
 | 35 | 2026-10-24 | Ed25519 signatures on the deviation log; pre-registration in manifest_sig; per-file corpus hashes (D7, audit step E) | `dc0af094444ba074` |
+| 36 | 2026-10-24 | Chair call outcome: five baselines named in priority order, CHASE value 0.60, clarifications and strata confirmed (D5, D6) | `b468a44e2c78e3eb` |
 
 ---
 
