@@ -1,7 +1,9 @@
 {
-  "anchor_signature": "8b69c9686721b5e11c3a4900a42dabe097ef99995f62e32a6b915693897193bd",
+  "anchor_ed25519_signature": "ac4876888cc89b2c799896401d0e164e342101131fa1157417ffec5970e1c5d1d91cd1cda30e42deb40006879d19177e3f13c2aeb5f082be06ea31cf88095606",
+  "anchor_signature": "45990b909f9c6718935d986fb8ff491d237d8ef7606c2cdc5eff1ba6b7f45953",
   "anchor_version": 1,
-  "entries": 34,
-  "head_signature": "5f66223c8394493c96a0b33065d31709d470c00c624c2a1d47a6a1ac56a9ebe0",
-  "log_kind": "deviation"
+  "entries": 35,
+  "head_signature": "dc0af094444ba07428e428fb91d2339434163a76af6af479ba069391c91627d5",
+  "log_kind": "deviation",
+  "log_sha256": "b0e63cd3e8aa898099967affbc611f2af3849108f347afa4e852fee3a6738a5e"
 }
