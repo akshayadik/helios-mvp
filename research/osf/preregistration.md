@@ -211,13 +211,13 @@ Nothing in the product scope is cut. **Stage A** — every mechanism the confirm
 
 | File | SHA-256 |
 |---|---|
-| `analysis_plan.json` | <!-- SHA:analysis_plan.json --> |
-| `corpus_manifest.json` | <!-- SHA:corpus_manifest.json --> |
-| `prompt_sha.json` | <!-- SHA:prompt_sha.json --> |
-| `seeds.json` | <!-- SHA:seeds.json --> |
-| `thresholds.json` | <!-- SHA:thresholds.json --> |
-| `variant_hashes.json` | <!-- SHA:variant_hashes.json --> |
-| `manifest_sig.txt` | <!-- SHA:manifest_sig.txt --> |
+| `analysis_plan.json` | <!-- SHA:analysis_plan.json -->`20dcee4a7b9f9d13f3b180a5a0ba30757ac9948e226fe214bfbbb35f2226d7f4` |
+| `corpus_manifest.json` | <!-- SHA:corpus_manifest.json -->`12128b568267afc1f19d8ff177d8c5e4078d205d5177c206fe77c12eb66dd36a` |
+| `prompt_sha.json` | <!-- SHA:prompt_sha.json -->`a027d8350e32e09e2ba72eb0e72b9c5596ccd6c5ef0cc48c1a10bad61a2c52d1` |
+| `seeds.json` | <!-- SHA:seeds.json -->`b2ada58de52500daef4a9621035e4b4ac3b3971506ce714f86cc95d0bf9847b6` |
+| `thresholds.json` | <!-- SHA:thresholds.json -->`0bb93eb368211162da09061d07c4b587c28ef37d017487bb60dab54271613cab` |
+| `variant_hashes.json` | <!-- SHA:variant_hashes.json -->`567f786c1cc4d9263448971afbe048f45cddab4ad60409d0852345aa2d85e8b4` |
+| `manifest_sig.txt` | <!-- SHA:manifest_sig.txt -->`9de8bbf6ed2637eabb9e2fbaca9cc33d3ae77044b5ed1e8179e97d1fb4c08519` |
 
 `manifest_sig.txt` = SHA-256 over the JSON artefacts above, this file (with the SHA values in this table blanked) and `docs/tracking/metric_contract.md`.
 
