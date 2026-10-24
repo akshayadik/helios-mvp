@@ -31,8 +31,10 @@ from helios.pipelines.l_pipe.lpipe_config import (
 )
 from helios.pipelines.l_pipe.prompt_registry import PROMPT_PATH
 from helios.research.analysis_plan import (
+    ANALYSIS_SETTINGS,
     FAMILY_A_HYPOTHESES,
     FAMILY_B_HYPOTHESES,
+    FAMILY_E_HYPOTHESES,
     _hypothesis_for_variant,
     _status_for_variant,
 )
@@ -249,23 +251,40 @@ def _build_variant_hashes_dict() -> dict:  # type: ignore[type-arg]
 
 
 def _build_analysis_plan_dict() -> dict:  # type: ignore[type-arg]
+    # Settings live in helios.research.analysis_plan (single source of truth).
     data: dict = {  # type: ignore[type-arg]
-        "schema_version": "v1",
+        "schema_version": "v2",
         "generated_at_iso": _now_iso(),
-        "statistical_test": "Wilcoxon signed-rank (one-sided)",
-        "correction": "Holm-Bonferroni",
-        "family_alpha": 0.05,
-        "alpha_at_rank_1": 0.00625,
-        "effect_size_commitment": "Cohen h >= 0.276",
-        "target_hr_at_3": 0.73,
-        "baseline_hr_at_3": 0.6,
+        "settings": ANALYSIS_SETTINGS,
         "family_a_hypotheses": FAMILY_A_HYPOTHESES,
         "family_b_hypotheses": FAMILY_B_HYPOTHESES,
+        "family_e_hypotheses": FAMILY_E_HYPOTHESES,
     }
-    assert len(data["family_b_hypotheses"]) == 8, "Family B must have 8 entries"
-    a_h6 = next(h for h in data["family_a_hypotheses"] if h["id"] == "A-H6")
-    assert a_h6.get("filter"), "A-H6 must have a non-empty filter field"
+    for problem in _analysis_plan_problems(data):
+        raise AssertionError(problem)
     return data
+
+
+def _analysis_plan_problems(ap: dict) -> list[str]:  # type: ignore[type-arg]
+    """Structural checks shared by --generate and --verify."""
+    problems = []
+    fam_a = ap.get("family_a_hypotheses", [])
+    for family, expected in (
+        ("family_a_hypotheses", 8),
+        ("family_b_hypotheses", 8),
+        ("family_e_hypotheses", 10),
+    ):
+        if len(ap.get(family, [])) != expected:
+            problems.append(
+                f"analysis_plan.json: {family} must have {expected} entries"
+            )
+    for hyp_id, stratum in (("A-H4", "ambiguous"), ("A-H6", "narrative_heavy")):
+        entry = next((h for h in fam_a if h["id"] == hyp_id), None)
+        if entry is None or entry.get("stratum") != stratum:
+            problems.append(
+                f"analysis_plan.json: {hyp_id} must be restricted to the {stratum} stratum"
+            )
+    return problems
 
 
 def _build_corpus_manifest_dict() -> dict:  # type: ignore[type-arg]
@@ -350,14 +369,7 @@ def _cmd_verify() -> None:
 
     ap_path = OSF_DIR / "analysis_plan.json"
     if ap_path.exists():
-        ap = json.loads(ap_path.read_bytes())
-        a_h6_entries = [
-            h for h in ap.get("family_a_hypotheses", []) if h["id"] == "A-H6"
-        ]
-        if not a_h6_entries or not a_h6_entries[0].get("filter"):
-            errors.append("A-H6 missing filter field in analysis_plan.json")
-        if len(ap.get("family_b_hypotheses", [])) != 8:
-            errors.append("analysis_plan.json: family_b_hypotheses must have 8 entries")
+        errors.extend(_analysis_plan_problems(json.loads(ap_path.read_bytes())))
 
     json_files = sorted(f for f in OSF_DIR.glob("*.json"))
     concatenated = b"".join(f.read_bytes().replace(b"\r\n", b"\n") for f in json_files)
