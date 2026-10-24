@@ -38,12 +38,14 @@ Suggested order: S1.1 → S1.4 → S1.5 → S1.6 / S1.7 on the data path; S1.8 �
 
 - Raise Docker Desktop memory to at least 16 GB (S0.11 L9) — S1.2 captures and S1.3 (`kind`) need it too.
 - Second rater and adjudicator confirmed by 30 Nov (S0.11 L2–L3).
+- **Back up `data/rcaeval/pool/`** (5.7 GB, git-ignored, sealed 2026-10-25): the seals bind these exact bytes, and re-converting with other library versions may change them.
+- **Decide the detection trigger before S2.1** (raised in S1.1). The deposited metric contract says no pipeline receives the injection time, and the pre-registration says baselines run with the same inputs; RCAEval baselines normally take the injection time, and every window is centred on it. (a) Recommended: one frozen, label-free detector tuned on build data gives every system — HELIOS and the five baselines — the same trigger time; an exploratory run with the true injection time bridges to published scores. (b) Give every system the true injection time (RCAEval convention): needs a deviation entry and an OSF addendum before confirmatory data.
 
 ## Documentation carried from S0
 
 - `docs/tracking/ablation_architecture.md` still uses the May flag and variant names: revise to the Chapter 3 names before S1.5 (UEG-C).
 - `docs/tracking/validity_tracking.md`: add the S0 threats (case-name leakage F1, concentrated root causes F2, rater blinding for noLLM narratives).
-- `data/snapshot_registry.jsonl`, cited in May as the source of `snapshot_hash_registry.md`, is not in the repository: find or rebuild it in S1.1.
+- ~~`data/snapshot_registry.jsonl` missing~~ — resolved in S1.1: reset on purpose in `b24955c` (May re-capture); runs recreate it.
 
 ## Expected deviation entries
 

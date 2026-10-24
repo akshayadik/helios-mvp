@@ -85,7 +85,7 @@ Legend: ✅ ≥80% complete · 🟡 partial · ⏳ not yet started · ❌ blocke
 | Seed register | ✅ | 10,000,000–10,009,999, layout hash pinned (`seed_register.md`) |
 | Tracker schema | ✅ | Validator in pre-commit and CI over every commit (`--range`) |
 | DisjointnessAuditor | 🟡 | As of M4 (2026-05-21): 5 flags covered, 0 violations; re-certified for all 16 boolean flags in S5.2 |
-| Snapshot hash registry | 🟡 | `data/snapshot_registry.jsonl`, cited in May as holding 20 entries, is not in the repository; check in S1.1 |
+| Snapshot hash registry | ✅ (empty) | `data/snapshot_registry.jsonl` was reset on purpose when the 20 incidents were re-captured (commit `b24955c`, May 2026); runs recreate it (`bin/helios_run.py` default path). Checked in S1.1 |
 
 ## Latest deviation log entries (manual)
 
