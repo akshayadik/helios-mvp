@@ -263,6 +263,23 @@ def test_converted_case_is_sealed_and_readable(tmp_path: Path) -> None:
     assert verification.intact
 
 
+def test_nullable_integer_trace_columns_become_text(tmp_path: Path) -> None:
+    raw = _raw_case(tmp_path)
+    df = pd.read_parquet(raw / "traces.parquet")
+    df["statusCode"] = pd.array([2, None], dtype="Int64")
+    df.to_parquet(raw / "traces.parquet")
+    out = convert_case(
+        _record(),
+        raw,
+        tmp_path / "build",
+        "build",
+        seal_key=KEY,
+        variant_config_hash=CONFIG_HASH,
+    )
+    p2 = pq.read_table(tmp_path / "build" / out.incident_id / "p2_traces.parquet")
+    assert p2.column("status_code").to_pylist() == ["2", ""]
+
+
 def test_seconds_trace_times_are_converted_to_microseconds(tmp_path: Path) -> None:
     raw = _raw_case(tmp_path)
     df = pd.read_parquet(raw / "traces.parquet")

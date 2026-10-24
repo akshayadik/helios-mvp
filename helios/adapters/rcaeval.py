@@ -303,21 +303,26 @@ def _to_us(values: pd.Series, factor: int) -> Any:
     return (ints // -factor if factor < 0 else ints * factor).to_numpy()
 
 
+def _text(values: pd.Series) -> Any:
+    """Any column as text with missing values empty (nullable ints included)."""
+    return values.astype("string").fillna("").astype(str).to_numpy()
+
+
 def _write_traces(df: pd.DataFrame, system: str, path: Path) -> tuple[int, str]:
     factor, unit = _microsecond_factor(df["startTime"])
-    operation = df["operationName"].fillna("")
+    operation = df["operationName"].astype("string")
     if "methodName" in df.columns:
-        operation = df["methodName"].fillna(operation)
+        operation = df["methodName"].astype("string").fillna(operation)
     table = pa.table(
         {
-            "trace_id": df["traceID"].astype(str).to_numpy(),
-            "span_id": df["spanID"].astype(str).to_numpy(),
-            "parent_span_id": df["parentSpanID"].fillna("").astype(str).to_numpy(),
-            "operation_name": operation.astype(str).to_numpy(),
+            "trace_id": _text(df["traceID"]),
+            "span_id": _text(df["spanID"]),
+            "parent_span_id": _text(df["parentSpanID"]),
+            "operation_name": _text(operation),
             "service_name": [canonical(system, s) for s in df["serviceName"]],
             "start_time_us": _to_us(df["startTime"], factor),
             "duration_us": _to_us(df["duration"], factor),
-            "status_code": df["statusCode"].fillna("").astype(str).to_numpy(),
+            "status_code": _text(df["statusCode"]),
         }
     )
     pq.write_table(table, path)
@@ -332,7 +337,7 @@ def _write_logs(df: pd.DataFrame, system: str, path: Path) -> int:
             "timestamp": stamps.dt.strftime("%Y-%m-%dT%H:%M:%SZ").to_numpy(),
             "service_name": [canonical(system, s) for s in df["container_name"]],
             "severity": [""] * n,
-            "body": df["message"].fillna("").astype(str).to_numpy(),
+            "body": _text(df["message"]),
             "trace_id": [""] * n,
             "span_id": [""] * n,
         }

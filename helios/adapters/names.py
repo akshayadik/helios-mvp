@@ -52,7 +52,17 @@ ALIASES: dict[str, dict[str, str]] = {
 # Name pairs that look like aliases but are different services, per system,
 # with the reason. Same append-only rule as ALIASES.
 DISTINCT: dict[str, dict[frozenset[str], str]] = {
-    "ob": {},
+    "ob": {
+        frozenset({"payment", "paymentservice"}): (
+            "Online Boutique uses `paymentservice` in metrics, traces and logs; "
+            "`payment` occurs only as sparse metric columns (Sock Shop series from a "
+            "co-located deployment, 4 columns across the pool, median 7% filled, "
+            "checked at sealing 2026-10-25); kept as recorded, not merged"
+        ),
+        frozenset({"shipping", "shippingservice"}): (
+            "same as payment / paymentservice (4 columns, median 9% filled)"
+        ),
+    },
     "tt": {},
     "ss": {
         frozenset({"payment", "paymentservice"}): (
