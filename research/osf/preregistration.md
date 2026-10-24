@@ -217,7 +217,7 @@ Nothing in the product scope is cut. **Stage A** — every mechanism the confirm
 | `seeds.json` | <!-- SHA:seeds.json -->`8a7f76ac524a2eb5a5f7d197b59bb6ee3518ebeeaf3047ac6991d13a79de2061` |
 | `thresholds.json` | <!-- SHA:thresholds.json -->`a90bbe733c28501aec18cf9de7b13412307c11ad1438a3ccbdf97e6530bcd725` |
 | `variant_hashes.json` | <!-- SHA:variant_hashes.json -->`d005c59b7d37aef2458519603309a1b97b9df366655d5311919b394b59af0b46` |
-| `manifest_sig.txt` | <!-- SHA:manifest_sig.txt -->`e5a076cb816a6cac3f3ddf693639b4335093d08b3e90d03f7955255673570df4` |
+| `manifest_sig.txt` | <!-- SHA:manifest_sig.txt -->`aabfd0ecb5818eb39a45d9bde8cb1e759f9b8b7b769ceead0c0fc4659bfb5a5a` |
 
 `manifest_sig.txt` = SHA-256 over the JSON artefacts above, this file (with the SHA values in this table blanked) and `docs/tracking/metric_contract.md`.
 
@@ -257,4 +257,4 @@ Nothing in the product scope is cut. **Stage A** — every mechanism the confirm
 
 **DOI:** [10.17605/OSF.IO/KMR3D](https://doi.org/10.17605/OSF.IO/KMR3D) · **Registration:** https://osf.io/kmr3d · **Registered:** 2026-10-24 (public, OSF Preregistration template).
 
-The deposited text is this file at commit `524b621f24290271fd2f0cd9e53ef361612044dd` (git tag `osf-deposit-1`), attached to the registration as `osf_deposit_1.zip` (SHA-256 `87717b6d5d9bde7bc629569d2fd6ad21b2e81c1ac4bd1ff19516c7b5b1cd9a85`). Three edits were made after the deposit (deviation entry 37): this section, the status line at the top, and row 37 of the deviation summary. Everything else is unchanged from the deposited version; compare with `git diff osf-deposit-1 -- research/osf/preregistration.md`.
+The deposited text is this file at commit `524b621f24290271fd2f0cd9e53ef361612044dd` (git tag `osf-deposit-1`), attached to the registration as `osf_deposit_1.zip` (SHA-256 `87717b6d5d9bde7bc629569d2fd6ad21b2e81c1ac4bd1ff19516c7b5b1cd9a85`). Four edits were made after the deposit (deviation entry 37): this section, the status line at the top, row 37 of the deviation summary, and the `manifest_sig.txt` row of §12 (the signature covers this file, so it changes with it). The six JSON artefacts are byte-identical to the deposit. Everything else is unchanged; compare with `git diff osf-deposit-1 -- research/osf/preregistration.md`.
