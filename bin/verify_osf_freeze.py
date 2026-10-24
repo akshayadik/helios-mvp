@@ -38,7 +38,7 @@ from helios.research.analysis_plan import (
     _hypothesis_for_variant,
     _status_for_variant,
 )
-from helios.research.seeds import SEED_REGISTRY
+from helios.research.seeds import SEED_REGISTRY, register_layout
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
 from helios.vcl.registry import VCLFlag as _VCLFlagEnum
 from helios.vcl.utils import canonical_json
@@ -169,6 +169,7 @@ def _build_seeds_dict() -> dict:  # type: ignore[type-arg]
         "schema_version": "v1",
         "generated_at_iso": _now_iso(),
         "seeds": SEED_REGISTRY,
+        "register": register_layout(),
     }
 
 

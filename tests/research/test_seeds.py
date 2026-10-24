@@ -5,10 +5,11 @@ from __future__ import annotations
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
 
 
-def test_seed_registry_has_two_entries() -> None:
+def test_seed_registry_has_three_entries() -> None:
     from helios.research.seeds import SEED_REGISTRY
 
-    assert len(SEED_REGISTRY) == 2
+    assert len(SEED_REGISTRY) == 3
+    assert SEED_REGISTRY[2]["value"] == 10_000_000
 
 
 def test_seed_registry_global_seed_value() -> None:
