@@ -48,6 +48,7 @@ OSF_DIR = Path("research/osf")
 CAPTURES_DIR = Path("data/captures")
 CALIBRATED_PARAMS_PATH = Path("data/calibrated_params.json")
 PREREG_PATH = OSF_DIR / "preregistration.md"
+METRIC_CONTRACT_PATH = Path("docs/tracking/metric_contract.md")
 _REGISTRY_PATH = Path("docs/tracking/prompt_version_registry.md")
 
 _VCL_FLAG_KEYS = {f.value for f in _VCLFlagEnum}
@@ -99,14 +100,32 @@ def _prereg_bytes_for_sig(prereg_path: Path) -> bytes:
     return _SHA_MARKER_VALUE.sub(r"\1", text).encode("utf-8")
 
 
-def _manifest_digest(osf_dir: Path, prereg_path: Path) -> str:
+def _manifest_digest(
+    osf_dir: Path, prereg_path: Path, contract_path: Path = METRIC_CONTRACT_PATH
+) -> str:
+    """SHA-256 over the JSON artefacts, the pre-registration and the metric contract.
+
+    The pre-registration defines its metrics by reference to the metric
+    contract, so the contract is signed with it (S0.10).
+    """
     json_files = sorted(f for f in osf_dir.glob("*.json"))
     concatenated = b"".join(f.read_bytes().replace(b"\r\n", b"\n") for f in json_files)
-    return hashlib.sha256(concatenated + _prereg_bytes_for_sig(prereg_path)).hexdigest()
+    contract = (
+        contract_path.read_bytes().replace(b"\r\n", b"\n")
+        if contract_path.exists()
+        else b""
+    )
+    return hashlib.sha256(
+        concatenated + _prereg_bytes_for_sig(prereg_path) + contract
+    ).hexdigest()
 
 
-def _generate_manifest_sig(osf_dir: Path, prereg_path: Path = PREREG_PATH) -> None:
-    sig = _manifest_digest(osf_dir, prereg_path)
+def _generate_manifest_sig(
+    osf_dir: Path,
+    prereg_path: Path = PREREG_PATH,
+    contract_path: Path = METRIC_CONTRACT_PATH,
+) -> None:
+    sig = _manifest_digest(osf_dir, prereg_path, contract_path)
     (osf_dir / "manifest_sig.txt").write_bytes(sig.encode("utf-8"))
 
 

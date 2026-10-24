@@ -79,7 +79,7 @@ def test_generate_manifest_sig_excludes_itself() -> None:
         b = tmp / "bbb.json"
         a.write_bytes(b'{"x":1}\n')
         b.write_bytes(b'{"y":2}\n')
-        _generate_manifest_sig(tmp, tmp / "no_prereg.md")
+        _generate_manifest_sig(tmp, tmp / "no_prereg.md", tmp / "no_contract.md")
         sig_path = tmp / "manifest_sig.txt"
         assert sig_path.exists()
         # manifest_sig.txt itself is excluded — only .json files concatenated
@@ -195,3 +195,38 @@ def test_committed_corpus_manifest_lists_case_file_hashes() -> None:
     for inc in incidents:
         assert {"manifest.json", "content_seal.json"} <= inc["files"].keys()
         assert len(inc["instance_sha256"]) == 64
+
+
+def test_manifest_sig_covers_the_metric_contract(tmp_path: Path) -> None:
+    sys.path.insert(0, str(Path("bin")))
+    from verify_osf_freeze import _manifest_digest
+
+    (tmp_path / "a.json").write_bytes(b'{"x":1}\n')
+    contract = tmp_path / "metric_contract.md"
+    contract.write_text("HR@3 on the fused list\n")
+    base = _manifest_digest(tmp_path, tmp_path / "none.md", contract)
+    contract.write_text("HR@3 on the D-pipe list\n")
+    assert _manifest_digest(tmp_path, tmp_path / "none.md", contract) != base
+
+
+def test_preregistration_tables_match_the_frozen_plan_and_variants() -> None:
+    """The pre-registration text cannot drift from analysis_plan.py or variants.py."""
+    from helios.research.analysis_plan import (
+        FAMILY_A_HYPOTHESES,
+        FAMILY_B_HYPOTHESES,
+        FAMILY_E_HYPOTHESES,
+    )
+    from helios.vcl import CONFIRMATORY_VARIANTS, EXPLORATORY_VARIANTS
+
+    text = Path("research/osf/preregistration.md").read_text(encoding="utf-8")
+    for h in (*FAMILY_A_HYPOTHESES, *FAMILY_B_HYPOTHESES):
+        row = (
+            f"| {h['id']} | {h['rank']} | {h['alpha']} | {h['comparison']} "
+            f"| {h['primary_metric']} | {h['test']} |"
+        )
+        assert row in text, h["id"]
+    for h in FAMILY_E_HYPOTHESES:
+        assert f"| {h['id']} | {h['comparison']} | {h['primary_metric']} |" in text
+    for name, manifest in {**CONFIRMATORY_VARIANTS, **EXPLORATORY_VARIANTS}.items():
+        assert f"| {name} |" in text
+        assert f"`{manifest.compute_variant_config_hash()[:16]}`" in text, name
