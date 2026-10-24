@@ -2,7 +2,7 @@
 
 **Written:** 2026-10-23 · **Owner:** AA · **Companion to:** `helios_e2e_product_plan_2026-10.md` (schedule, principles, decisions) and `s0_3_d11_corpus_run_design.md` (corpus and runs).
 
-**How to use.** Pick the next task whose dependencies are done. Open its tracking row (ID shown) as IN_PROGRESS in its own commit, do the steps, check every "Done when" item, run the full pre-push gate, then flip the row to DONE with the implementation SHA. "Deviation" says whether the change needs a `bin/log_deviation.py` entry before merging. Effort is in working days. Chapter 3 is the baseline, not the final verdict: a better design is welcome — just record any change to what a pre-registered test measures before confirmatory data exists.
+**How to use.** Pick the next task whose dependencies are done. Open its tracking row (ID shown) as IN_PROGRESS in its own commit, do the steps, check every "Done when" item, run the full pre-push gate, then flip the row to DONE with the implementation SHA. "Deviation" says whether the change needs a `bin/log_deviation.py` entry before merging. Effort is in working days. **Sprints:** each sprint has a folder under `docs/sprints/` with its `plan.md` (sprint view of these modules) and, at its exit gate, an `exit_report.md` (criteria, gate, deliverables, retrospective, carry-overs; template in `docs/sprints/README.md`). Every exit gate also refreshes `dashboard.md` and `tracking_documents_register.md`. Chapter 3 is the baseline, not the final verdict: a better design is welcome — just record any change to what a pre-registered test measures before confirmatory data exists.
 
 **Tracking milestone per sprint:** S0 = `S2-M5`, S1 = `S2-M6`, S2 = `S2-M7`, S3 = `S2-M8`, S4 = `S2-M9`, S5 = `S2-M10`, Evidence = `S2-M11`, Analysis = `S2-M12`, Stage B = `S3-M13` … `S3-M17`. Each task gets its own row (`{milestone}-{ENG|RES|EVAL|GATE}{nn}`).
 
@@ -127,7 +127,7 @@
 - **Register:** `docs/tracking/s0_11_lead_time_register.md` (items L1–L10 with needed-by dates, owner and status). Second rater and adjudicator added; baseline-environment spike done there.
 
 ### S0 exit gate
-- **Tracking:** S2-M5-GATE02 · **Done when:** S0.2–S0.10 DONE, gate green, tag `rb-s0-exit`.
+- **Tracking:** S2-M5-GATE02 · **Done when:** S0.2–S0.10 DONE, gate green, tag `rb-s0-exit`. ✅ Closed 2026-10-24: `docs/sprints/s0-foundation/exit_report.md`.
 
 ---
 
@@ -202,7 +202,7 @@
 - **Deviation:** yes (price book values).
 
 ### S1 exit gate
-- **Tracking:** S2-M6-GATE01 · tag `rb-s1-exit`.
+- **Tracking:** S2-M6-GATE01 · tag `rb-s1-exit`; exit report `docs/sprints/` (S1 folder) and documentation sync.
 
 ---
 
@@ -267,7 +267,7 @@
 - **Deviation:** the presentation-order seed block; any rubric decision that changes what H_fact measures.
 
 ### S2 exit gate
-- **Tracking:** S2-M7-GATE01 · tag `rb-s2-exit`.
+- **Tracking:** S2-M7-GATE01 · tag `rb-s2-exit`; exit report `docs/sprints/` (S2 folder) and documentation sync.
 
 ---
 
@@ -299,7 +299,7 @@
 - **Steps:** route to D+G when the LLM fails; covariate recorded.
 
 ### S3 exit gate
-- **Tracking:** S2-M8-GATE01 · tag `rb-s3-exit`.
+- **Tracking:** S2-M8-GATE01 · tag `rb-s3-exit`; exit report `docs/sprints/` (S3 folder) and documentation sync.
 
 ---
 
@@ -345,7 +345,7 @@
 - **Done when:** fixture data reproduces hand-computed statistics.
 
 ### S4 exit gate
-- **Tracking:** S2-M9-GATE01 · tag `rb-s4-exit`.
+- **Tracking:** S2-M9-GATE01 · tag `rb-s4-exit`; exit report `docs/sprints/` (S4 folder) and documentation sync.
 
 ---
 
@@ -375,12 +375,13 @@
 - **Tracking:** S2-M10-GATE02 · **Effort:** ½ (+ your upload)
 - **Steps:** addendum with the freeze record (S5.6) and the frozen rating rubric (S2.9).
 - **Done when:** DOI in the deviation log. **Stage A build complete.**
+- **Exit report:** `docs/sprints/s5-integration-freeze/exit_report.md` and documentation sync.
 
 ---
 
 # Phase E — Evidence collection (15 Feb – 12 Mar)
 
-No code changes; defects → deviation entry, rerun or exclude with ledger entries.
+No code changes; defects → deviation entry, rerun or exclude with ledger entries. Plan and exit report: `docs/sprints/e-evidence/`.
 
 | Task | Tracking | Work | Done when |
 |---|---|---|---|
@@ -404,6 +405,8 @@ No code changes; defects → deviation entry, rerun or exclude with ledger entri
 | A5 C1 + innovation evidence | S2-M12-EVAL05 | Verification rates; grounding rejection rate; confidence calibration; cheap-first savings |
 | A6 Results package | S2-M12-GATE01 | Tables, figures, deviation summary, replication bundle — **results ready 31 March** |
 
+Plan and exit report: `docs/sprints/a-analysis/`.
+
 ---
 
 # Stage B — Completing the full product (15 Feb – end of Jul 2027)
@@ -418,4 +421,4 @@ Built on `main` after the `build-freeze` tag, behind feature flags (`VCLFlag`), 
 | B4 Self-healing and learning | S3-M16 | Jun | Full Cognitive Sentinels + Deterministic Fallback Agent; full IOL; HIS tiers; learning loops in production mode; 1,200-incident synthetic pre-training testbed |
 | B5 Stage B evaluation | S3-M17 | Jul | E-H1 (Tier-4 cognitive faults), full E-H4, E-H6, E-H9, H4b scaling, 70B and Qwen contrast, FAE at scale — each pre-registered separately. **Full product complete** |
 
-Each Stage B module is broken into tasks with the same template (goal, steps, done when, tracking) when its sprint starts.
+Each Stage B module is broken into tasks with the same template (goal, steps, done when, tracking) when its sprint starts. Plans and exit reports: `docs/sprints/stage-b/` and one folder per module.

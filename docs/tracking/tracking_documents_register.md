@@ -1,10 +1,10 @@
 # Tracking Documents Register
 
-**Purpose:** Index of all 18 living tracking documents with paths, purposes, owners, and update cadences. Single source of truth for which docs exist and why.
+**Purpose:** Index of the living tracking documents with paths, purposes, owners, and update cadences. Single source of truth for which docs exist and why.
 
 **Update cadence:** On any tracking-doc add/remove/rename
 **Owner module:** Researcher (solo)
-**Last updated:** 2026-05-21 (Milestone 4 arch review — 6 document rows updated)
+**Last updated:** 2026-10-24 (S0 exit documentation sync: rows re-checked against the repository; plan and S0 documents added; sprint folder `docs/sprints/` registered)
 
 ---
 
@@ -21,50 +21,62 @@ All tracking documents in `docs/tracking/` follow these rules:
 
 ## Document Index
 
+Status key: ✅ current · ⚠️ stale (content predates the October re-baseline; update due as noted) · 🟡 schema only.
+
 | # | Document | Path | Purpose | First active stage | Update trigger | Last updated | Status |
 |---|----------|------|---------|-------------------|----------------|--------------|--------|
-| 1 | Ablation Architecture | `ablation_architecture.md` | Architectural decision record — design choices with justification and ablation variant mapping | Stage 0 | On any pipeline/component architectural change | 2026-05-21 | ✅ Current (v0.7; §3.3 L-pipe frozen at M3; §5 Consensus design frozen at M4) |
-| 2 | Calibration Thresholds | `calibration_thresholds.md` | Per-metric thresholds used in MetricIntegrityGate; frozen before confirmatory runs | Stage 1 | After D-pipe/G-pipe/L-pipe threshold tuning | 2026-05-19 | ✅ Current (M3 G-pipe added: DISAGREEMENT_THRESHOLD=0.20, GPIPE_PPR_ALPHA=0.85, HR@3=0.60 held-out) |
-| 3 | Dashboard | `dashboard.md` | Live experiment dashboard — Gantt, architecture flow, cell-completion grid, C1 invariants | Stage 0 | Weekly (manual until weekly_dashboard.yml CI lands) | 2026-05-19 | ✅ Current (M3 exit; 18 deviation entries; G-pipe + L-pipe + OSF freeze rows added) |
-| 4 | Data Collection Log | `data_collection_log.md` | Per-incident capture record — window times, row counts, anomalies | Stage 0 | After every telemetry capture session | 2026-05-15 | ✅ Current (20 captures) |
-| 5 | Deviation Log | `deviation_log.md` | Human-readable mirror of `deviation_log.jsonl` — HMAC-signed deviation entries | Stage 0 | After every `bin/log_deviation.py` append | 2026-05-19 | ✅ Current (18 entries; M3 adds entries 11–18: schema bump, re-capture, orchestration, threshold, model, runtime, OSF threshold fix, entry-3 correction) |
-| 6 | Disjointness Audit Log | `disjointness_audit_log.md` | Record of every DisjointnessAuditor run — static and dynamic results per commit | Stage 1 | After each CI disjointness workflow run | 2026-05-21 | ✅ Current (3 entries; M4 arch review PASSED — 5 covered: gpipe, dpipe, l2c_llm, l2b_graph, mahc; 8 uncovered; 0 violations) |
-| 7 | Ground Truth Labelling | `ground_truth_labelling.md` | Deterministic fault→root-cause labels for all 20 OTEL Demo incidents | Stage 0 | On corpus expansion or label correction | 2026-05-15 | ✅ Current (20 entries) |
-| 8 | Helios MVP Tracking | `helios_mvp_tracking.md` | Daily task tracker — all engineering, research, evaluation, and gate rows with SHAs and evidence | Stage 0 | After every completed task (DONE transition) | 2026-05-21 | ✅ Current (S0 + M1 + M2 + M3 + M4 rows; M4 ENG01/02/03 DONE; M4 RES01/RES02/EVAL01/GATE01 PLANNED — pending ablation run) |
-| 9 | Hypothesis–Variant–Metric Mapping | `hypothesis_variant_metric_mapping.md` | Maps A-H1..8 hypotheses to variants, primary/secondary metrics, statistical tests, and α | Stage 0 | On hypothesis revision (requires deviation log entry) | 2026-05-15 | ✅ Current (8 hypotheses) |
-| 10 | Price Book | `price_book.md` | Per-token and per-compute-second cost coefficients for CpR metric computation | Stage 2 | Stage 5 freeze (post-freeze changes are external-validity threats) | — | 🟡 Schema only — Stage 2+ |
-| 11 | Prompt Version Registry | `prompt_version_registry.md` | Frozen L-pipe prompt templates with prompt_sha — binds H_struct measurement to prompt revisions | Stage 3 | Before each L-pipe prompt update | 2026-05-19 | ✅ Active — rca_v1 frozen at Milestone 3; SHA `376e555b...` recorded in `research/osf/prompt_sha.json` |
-| 12 | Replication Verification Log | `replication_verification_log.md` | Results of the 10% byte-equality replication matrix (bin/replicate.sh) for OSF deposit | Stage 7 | After replication verification runs | — | 🟡 Schema only — Stage 7+ |
-| 13 | Reproducibility Manifest | `reproducibility_manifest.md` | Environment pin list, schema freeze record, software versions, and Stage 5 pre-registration checklist | Stage 0 | On environment change or schema freeze | 2026-05-19 | ✅ Current (Section 5 signature updated post fix-commit 0b60ab2; Section 6 added: commit_sha="LOCAL" convention) |
-| 14 | Seed Register | `seed_register.md` | Integer seed registry — maps Seed_ID to value, stage, variant, benchmark, and algorithm context | Stage 0 | Before any new experiment seed is used | 2026-05-19 | ✅ Current (SEED-S0-01 + SEED-S1-01 registered; SEED-S1-01 = LLAMA_SEED=42 for L-pipe Protocol A) |
-| 15 | Snapshot Hash Registry | `snapshot_hash_registry.md` | Append-only JSONL-mirror — maps incident_id to snapshot_hash and variant_config_hash | Stage 0 | After every telemetry capture (automated via SnapshotRegistry) | 2026-05-15 | ✅ Current (20 entries) |
-| 16 | Tracking Documents Register | `tracking_documents_register.md` | This document — master index of all tracking docs | Stage 0 | On any tracking-doc add/remove/rename | 2026-05-21 | ✅ Current (M4 arch review — 6 rows updated: ablation_architecture v0.7, disjointness 3 entries/5 covered, mvp_tracking M4 rows, prompt_registry active, validity T9, self-reference) |
-| 17 | Validity Tracking | `validity_tracking.md` | Threat-to-validity register — internal, construct, and external threats with mitigations | Stage 0 | After each new validity threat identified | 2026-05-21 | ✅ Current (9 threats; T9 added at M4 — production isomorphism: offline consensus vs inline runtime fusion) |
-| 18 | VCL Manifest Tracking | `vcl_manifest_tracking.md` | Master register of VCL variant configurations and their variant_config_hash values | Stage 0 | After every VCL config change or new variant | 2026-05-19 | ✅ Current (8 variants; M3 OSF freeze verification added — all hashes confirmed vs `variant_hashes.json`) |
+| 1 | Ablation Architecture | `ablation_architecture.md` | Architectural decision record | Stage 0 | On any pipeline/component architectural change | 2026-10-24 | ⚠️ Stale: v0.7 still uses the May flag and variant names (renamed in S0.4–S0.5, entry 31); revise before S1.5 |
+| 2 | Calibration Thresholds | `calibration_thresholds.md` | Thresholds used by the integrity gate | Stage 1 | After threshold tuning | 2026-05-19 | ⚠️ May values on the OTel corpus; recalibrated on build data in S1–S3 |
+| 3 | Dashboard | `dashboard.md` | Sprint Gantt, architecture, evidence grid, integrity snapshot | Stage 0 | At every sprint exit | 2026-10-24 | ✅ Current (S0 exit) |
+| 4 | Data Collection Log | `data_collection_log.md` | Per-incident capture record | Stage 0 | After every capture session | 2026-05-15 | ✅ Current for the 20 OTel captures; S1.2 adds about 60 |
+| 5 | Deviation Log | `deviation_log.md` | Mirror of `deviation_log.jsonl` | Stage 0 | After every `bin/log_deviation.py` append | 2026-10-24 | ✅ Current (38 entries) |
+| 6 | Disjointness Audit Log | `disjointness_audit_log.md` | Every DisjointnessAuditor run | Stage 1 | After each audit run | 2026-05-21 | ✅ Current as a history (3 entries, May flag names); next entry at S5.2 certification |
+| 7 | Ground Truth Labelling | `ground_truth_labelling.md` | Fault → root-cause labels, OTel corpus | Stage 0 | On corpus expansion or label correction | 2026-05-15 | ✅ Current for 20 OTel incidents; RCAEval ground truth is a separate sealed file (S1.1) |
+| 8 | Helios MVP Tracking | `helios_mvp_tracking.md` | Task tracker with SHAs and evidence (schema R1–R8) | Stage 0 | Every task start and finish | 2026-10-24 | ✅ Current (Milestone 5 = S0 closed; RES05 open) |
+| 9 | Hypothesis–Variant–Metric Mapping | `hypothesis_variant_metric_mapping.md` | Readable view of Families A, B, E | Stage 0 | On analysis-plan change | 2026-10-24 | ✅ Current (generated from `helios/research/analysis_plan.py`) |
+| 10 | Price Book | `price_book.md` | Cost coefficients for CpR | Stage 2 | Frozen at `build-freeze` | 2026-05-08 | 🟡 Schema only — filled in S1.10 |
+| 11 | Prompt Version Registry | `prompt_version_registry.md` | Frozen L-pipe prompts with SHA | Stage 3 | Before each prompt change | 2026-05-19 | ✅ Current (rca_v1); new prompts in S2.3 |
+| 12 | Replication Verification Log | `replication_verification_log.md` | 10% byte-equality replication | Stage 7 | After replication runs | 2026-05-08 | 🟡 Schema only — S5.4 and phase E |
+| 13 | Reproducibility Manifest | `reproducibility_manifest.md` | Environment pins, schema freeze, checklist | Stage 0 | On environment change or schema freeze | 2026-05-19 | ⚠️ Predates the Ed25519 layer, `cryptography` and the baseline images; full update at `build-freeze` (S5.6) |
+| 14 | Seed Register | `seed_register.md` | Seed registry | Stage 0 | Before any new seed is used | 2026-10-24 | ✅ Current (binding register SEED-SA0-01, entry 34) |
+| 15 | Snapshot Hash Registry | `snapshot_hash_registry.md` | Incident → snapshot hash mirror | Stage 0 | After every capture | 2026-05-15 | ⚠️ Its source `data/snapshot_registry.jsonl` is not in the repository; check in S1.1 |
+| 16 | Tracking Documents Register | `tracking_documents_register.md` | This index | Stage 0 | On any tracking-doc add/remove/rename and at every sprint exit | 2026-10-24 | ✅ Current |
+| 17 | Validity Tracking | `validity_tracking.md` | Threat-to-validity register | Stage 0 | After each new threat | 2026-05-21 | ⚠️ 9 May threats; S0 findings (case-name leakage F1, concentrated root causes F2, rater blinding) to be added in S1 |
+| 18 | VCL Manifest Tracking | `vcl_manifest_tracking.md` | Variant configuration hashes | Stage 0 | After every VCL change or new variant | 2026-10-24 | ✅ Current (15 variants; confirmatory hashes match OSF deposit 1) |
+| 19 | E2E Product Plan | `helios_e2e_product_plan_2026-10.md` | Schedule, principles, decisions D1–D12 | Stage A | On a plan change approved by the owner | 2026-10-24 | ✅ Current |
+| 20 | Task Breakdown | `helios_task_breakdown.md` | Every task as a module (authoritative steps) | Stage A | When a task is added or changed | 2026-10-24 | ✅ Current |
+| 21 | R1 Traceability Matrix | `r1_traceability_matrix.md` | Approved Ch3 vs the code | Stage A | On a design change against Ch3 | 2026-10-23 | ✅ Current (approved) |
+| 22 | Metric Contract | `metric_contract.md` | One definition per metric; strata | Stage A / S0 | Deposited; changes need a deviation entry | 2026-10-24 | ✅ Current (in OSF deposit 1; read with entry 38) |
+| 23 | S0.1 Dataset Check | `s0_1_dataset_check.md` | RCAEval / AIOpsLab findings F1–F5 | Stage A / S0 | Fixed record | 2026-10-23 | ✅ Final |
+| 24 | S0.3 Corpus and Run Design | `s0_3_d11_corpus_run_design.md` | Approved D11 design | Stage A / S0 | Addendum only (e.g. AIOpsLab) | 2026-10-23 | ✅ Final (approved) |
+| 25 | S0.11 Lead-time Register | `s0_11_lead_time_register.md` | Owner lead-time items L1–L10 | Stage A / S0 | When an item's status changes | 2026-10-24 | ✅ Current (open) |
+| 26 | Sprint plans and exit reports | `docs/sprints/` | One folder per sprint: `plan.md` and `exit_report.md` | Stage A | Plan before each sprint; exit report at each exit | 2026-10-24 | ✅ Current (S0 closed; S1–S5, E, A, Stage B planned) |
+
+Historical, not maintained: `stage0_gap_analysis.md` (May Stage 0 gap analysis), `HELIOS_MVP_Execution_plan_v0.6.md` (May plan).
 
 ---
 
-## Milestone 3 OSF Artefacts
+## OSF Artefacts
 
-The following artefacts are generated by `bin/verify_osf_freeze.py --generate` and verified by the `osf-freeze-verify` CI job on every push. They are not tracking documents in the schema-enforced sense but are registered here as research artefacts per G3-8.
+Generated by `bin/verify_osf_freeze.py --generate` and verified on every push by the `osf-freeze-verify` CI job and by the pre-push gate. Deposited in OSF deposit 1 (DOI 10.17605/OSF.IO/KMR3D, commit `524b621`, tag `osf-deposit-1`). **Never regenerate after a deposit**: keep the JSON bytes as deposited and recompute only `manifest_sig.txt` when a covered text file changes.
 
-| Path | Type | Purpose | Generation | Active since |
-|---|---|---|---|---|
-| `research/osf/seeds.json` | Generated | Reproducibility seed registry | `bin/verify_osf_freeze.py --generate` | Milestone 3 |
-| `research/osf/prompt_sha.json` | Generated | Prompt version + SHA-256 tamper anchor | `bin/verify_osf_freeze.py --generate` | Milestone 3 |
-| `research/osf/thresholds.json` | Generated | D-pipe + G-pipe calibrated thresholds | `bin/verify_osf_freeze.py --generate` | Milestone 3 |
-| `research/osf/variant_hashes.json` | Generated | 8 variant config hashes + flag matrix | `bin/verify_osf_freeze.py --generate` | Milestone 3 |
-| `research/osf/analysis_plan.json` | Generated | A-family + B-family hypothesis tables | `bin/verify_osf_freeze.py --generate` | Milestone 3 |
-| `research/osf/corpus_manifest.json` | Generated | Exploratory corpus 20-incident manifest | `bin/verify_osf_freeze.py --generate` | Milestone 3 |
-| `research/osf/manifest_sig.txt` | Generated | SHA-256 over 6 JSON artefacts | `bin/verify_osf_freeze.py --generate` | Milestone 3 |
-| `research/osf/preregistration.md` | Human-authored | Pre-registration document for OSF deposit | Manual; SHAs injected by `--populate-prereg` | Milestone 3 |
-| `research/ablation_notebook.ipynb` | Generated | L0-L3 ablation pipeline matrix notebook | Manual creation; CI executes via nbconvert | Milestone 3 |
+| Path | Type | Purpose |
+|---|---|---|
+| `research/osf/seeds.json` | Generated | Seed registry and binding register layout |
+| `research/osf/prompt_sha.json` | Generated | Prompt version and SHA-256 |
+| `research/osf/thresholds.json` | Generated | Calibrated thresholds |
+| `research/osf/variant_hashes.json` | Generated | 8 confirmatory variant hashes and flag matrix |
+| `research/osf/analysis_plan.json` | Generated | Families A, B, E with baselines, α by rank and tests |
+| `research/osf/corpus_manifest.json` | Generated | Corpus manifest with per-file SHA-256 |
+| `research/osf/manifest_sig.txt` | Generated | SHA-256 over the JSON artefacts, `preregistration.md` and `metric_contract.md` |
+| `research/osf/preregistration.md` | Human-authored | Pre-registration text (deposited) |
+| `research/ablation_notebook.ipynb` | Notebook | Ablation matrix notebook; executed in CI and in the pre-push gate |
 
 ---
 
 ## Ownership and Responsibility
 
-All 18 documents are maintained by the researcher (Akshay Adik, solo). There is no delegation.
+All documents are maintained by the researcher (Akshay Adik, solo). There is no delegation.
 
 Document updates must be committed in the **same PR** as the code change they track. A PR that adds a new capture must also update `data_collection_log.md` and `snapshot_hash_registry.md`. A PR that adds a variant must also update `vcl_manifest_tracking.md`.
 
@@ -74,7 +86,7 @@ Document updates must be committed in the **same PR** as the code change they tr
 
 - `HELIOS_MVP_Execution_plan_v0.6.md` — project planning document, not a research tracking artefact; not covered by the schema rules
 - `docs/research/research_proposal_akshayadik.pdf` — source research proposal; read-only reference
-- `docs/research/project_plan.md` — execution plan reference; read-only
+- `docs/research/project_plan.md` — original 15-month plan, kept for history; read-only
 
 ---
 
@@ -102,4 +114,12 @@ hypothesis_variant_metric_mapping.md
 
 disjointness_audit_log.md
     └─ helios_mvp_tracking.md (GATE rows reference audit entries)
+
+helios_e2e_product_plan_2026-10.md + helios_task_breakdown.md
+    └─ docs/sprints/<sprint>/plan.md (sprint view)
+    └─ helios_mvp_tracking.md (one row per task)
+        └─ docs/sprints/<sprint>/exit_report.md (written at the exit gate)
+
+helios/vcl/variants.py
+    └─ research/osf/variant_hashes.json (deposited)
 ```
