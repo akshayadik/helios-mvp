@@ -4,7 +4,7 @@
 
 **Author:** Akshay Adik (DBA candidate, Golden Gate University) · **Dissertation chair:** Dr. Anil Kumar Vuppala
 
-**Status:** DRAFT for OSF deposit 1. Items marked **[CALL]** are confirmed with the dissertation chair before upload; this line is removed at deposit. **Prepared:** 2026-10-24. **Replaces:** the undeposited freeze of 2026-05-19 (deviation entry 24).
+**Status:** Final text for OSF deposit 1. Every choice below was agreed with the dissertation chair on a call (outcome reported 2026-10-24; deviation entry 36). **Prepared:** 2026-10-24. **Replaces:** the undeposited freeze of 2026-05-19 (deviation entry 24).
 
 ---
 
@@ -121,7 +121,7 @@ Estimates with BCa intervals; no p-value claims. Stage A items use the evidence 
 
 ---
 
-## 6. Baselines (D5) — **[CALL]**
+## 6. Baselines (D5, agreed with the chair)
 
 Five methods from the RCAEval suite run on the same 240 cases, with the same inputs, rankings over all services and registered seeds. CHASE (published HR@3 0.72, adjusted to 0.60 by Chapter 3's rule) is kept as a published-score anchor for the effect-size framing only; it is not run.
 
@@ -151,7 +151,7 @@ The single definition of every metric is `docs/tracking/metric_contract.md` (dep
 | H_fact, H_struct | Unsupported claims / all claims; failed tool calls / all tool calls; labelled by two raters blind to variant, Cohen's κ ≥ 0.7, third adjudicator below | A-H7 |
 | MRR | Reciprocal rank of the ground truth; descriptive | — |
 
-**Strata and matching — [CALL] confirm.** *Ambiguous* (A-H4): the pipelines' top-1 services disagree in the HELIOS-Full run. *Narrative-heavy* (A-H6): the share of post-injection log lines with templates unseen before injection is at or above its median on build data. *Matched HR@3* (A-H5): cases where both variants have the same HR@3 outcome; all cases as sensitivity.
+**Strata and matching (agreed with the chair).** *Ambiguous* (A-H4): the pipelines' top-1 services disagree in the HELIOS-Full run. *Narrative-heavy* (A-H6): the share of post-injection log lines with templates unseen before injection is at or above its median on build data. *Matched HR@3* (A-H5): cases where both variants have the same HR@3 outcome; all cases as sensitivity.
 
 **Sanity floors**, reported beside every HR@k: random ranking over all services; prior-only random ranking of the 5 injected services (HR@3 = 0.60); HELIOS-D.
 
@@ -174,7 +174,7 @@ The single definition of every metric is `docs/tracking/metric_contract.md` (dep
 
 | # | Chapter 3 issue | Resolution |
 |---|---|---|
-| 1 | CHASE adjustment components sum to −0.11 but the stated total is −0.12 (p.194) | **[CALL]** Keep the stated 0.60; record the arithmetic; report 0.61 inside the ±25% sensitivity band |
+| 1 | CHASE adjustment components sum to −0.11 but the stated total is −0.12 (p.194) | 0.60, the stated value, is kept (agreed with the chair); the arithmetic is recorded and 0.61 is reported inside the ±25% sensitivity band |
 | 2 | Avg@5 not defined | Defined as the RCAEval mean of HR@1 … HR@5 (§7) |
 | 3 | A-H7 confirmatory in Table 18 but excluded on p.116 | Table 18 and the Holm order bind; A-H7 is rank 2 |
 | 4 | Five baselines never named | §6 |

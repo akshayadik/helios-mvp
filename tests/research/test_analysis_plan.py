@@ -200,3 +200,19 @@ def test_variant_map_points_each_ablation_at_its_hypothesis() -> None:
 def test_unknown_variant_defaults() -> None:
     assert _hypothesis_for_variant("HELIOS-Unknown") == ""
     assert _status_for_variant("HELIOS-Unknown") == "exploratory"
+
+
+def test_family_b_names_the_chair_agreed_baselines_in_priority_order() -> None:
+    from helios.research.analysis_plan import BASELINE_ALTERNATES, BASELINES
+
+    assert BASELINES == (
+        "Multi-source BARO",
+        "TraceRCA",
+        "BARO (metrics only)",
+        "PDiagnose",
+        "Multi-source RCD",
+    )
+    assert BASELINE_ALTERNATES == ("CIRCA (metrics only)", "CausalRCA")
+    named = [h["baseline"] for h in FAMILY_B_HYPOTHESES[:5]]
+    assert named == list(BASELINES)
+    assert "0.60, agreed with the chair" in str(ANALYSIS_SETTINGS["baseline_hr_at_3"])
