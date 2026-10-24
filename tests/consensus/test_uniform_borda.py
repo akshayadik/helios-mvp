@@ -13,7 +13,7 @@ from helios.vcl import (
 
 def _make_pipeline_rows(candidates_per_pipe: list[list[str]]) -> list[dict]:
     """Build mock pipeline rows from ranked candidate lists."""
-    pipes = ["d_pipe", "g_pipe", "l_pipe"]
+    pipes = ["dpipe", "gpipe", "lpipe"]
     rows = []
     for pipe, candidates in zip(pipes, candidates_per_pipe, strict=False):
         rows.append(
@@ -118,6 +118,23 @@ def test_passthrough_consensus_propagates_top_verdict() -> None:
     assert isinstance(result, ConsensusVerdict)
     assert result.fusion_algorithm == "passthrough"
     assert len(result.top_candidates) >= 1
+
+
+def test_passthrough_prefers_dpipe_whatever_the_row_order() -> None:
+    from helios.consensus.uniform_borda import PassthroughConsensus
+
+    rows = [
+        {"pipeline": "lpipe", "ranked_candidates": ["svc-l"], "narrative": "n"},
+        {"pipeline": "gpipe", "ranked_candidates": ["svc-g"], "narrative": "n"},
+        {"pipeline": "dpipe", "ranked_candidates": ["svc-d"], "narrative": "n"},
+    ]
+    result = PassthroughConsensus().fuse(
+        incident_id="otel-001",
+        variant="HELIOS-noConsensus",
+        pipeline_rows=rows,
+        run_id="r1",
+    )
+    assert result.top_candidates[0] == "svc-d"
 
 
 def test_uniform_borda_empty_pipeline_rows_raises() -> None:

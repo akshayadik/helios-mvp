@@ -43,7 +43,7 @@ def _make_verdict(
         evaluation_phase=phase,
         ranked_candidates=["svc-a", "svc-b"],
         hr_at_3=0.75,
-        cpr=0.6,
+        mrr=0.6,
         latency_ms=42.5,
         token_count=128,
         narrative="stub narrative",
@@ -69,6 +69,32 @@ def test_store_creates_tables_on_init(store: ResultStore) -> None:
 def test_schema_tag_row_present(store: ResultStore) -> None:
     tags = store.schema_tags()
     assert "schema-draft-v0.1" in tags
+    assert "schema-draft-v0.4" in tags
+
+
+def test_pre_v0_4_database_cpr_column_is_renamed_to_mrr(tmp_path: Path) -> None:
+    db = tmp_path / "old.db"
+    con = duckdb.connect(str(db))
+    con.execute(
+        "CREATE TABLE result_row (run_id VARCHAR, incident_id VARCHAR,"
+        " variant_config_hash VARCHAR, snapshot_hash VARCHAR, pipeline VARCHAR,"
+        " evaluation_phase VARCHAR, ranked_candidates JSON, hr_at_3 DOUBLE,"
+        " cpr DOUBLE, latency_ms DOUBLE, token_count BIGINT, narrative TEXT,"
+        " schema_version VARCHAR, created_at TIMESTAMP,"
+        " PRIMARY KEY (run_id, pipeline))"
+    )
+    con.execute(
+        "INSERT INTO result_row VALUES ('r0', 'i0', 'h', 's', 'dpipe',"
+        " 'exploratory', '[]', 1, 0.25, 1, 0, 'n', 'schema-draft-v0.2', NULL)"
+    )
+    con.close()
+
+    migrated = ResultStore(db)
+    migrated.insert(_make_verdict())
+    rows = migrated._con.execute(
+        "SELECT run_id, mrr FROM result_row ORDER BY run_id"
+    ).fetchall()
+    assert rows == [("r0", 0.25), (_RUN_A, 0.6)]
 
 
 # ------------------------------------------------------------------
@@ -137,7 +163,7 @@ def test_inclusion_rate_filters_by_variant_hash(store: ResultStore) -> None:
         evaluation_phase=EvaluationPhase.EXPLORATORY,
         ranked_candidates=[],
         hr_at_3=0.4,
-        cpr=0.4,
+        mrr=0.4,
         latency_ms=10.0,
         token_count=0,
         narrative="other",

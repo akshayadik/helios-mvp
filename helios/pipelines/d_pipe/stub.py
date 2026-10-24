@@ -27,7 +27,7 @@ def run_dpipe(incident_id: str, snapshot_hash: str) -> dict[str, Any]:
         "snapshot_hash": snapshot_hash,
         "ranked_candidates": [],
         "hr_at_3": 0,
-        "cpr": 0,
+        "mrr": 0,
         "latency_ms": 0,
         "token_count": 0,
         "narrative": "stub",

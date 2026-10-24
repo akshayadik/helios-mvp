@@ -71,7 +71,7 @@ class TestSchemaRoundTrip:
             evaluation_phase=EvaluationPhase.EXPLORATORY,
             ranked_candidates=[],
             hr_at_3=0,
-            cpr=0,
+            mrr=0,
             latency_ms=0,
             token_count=0,
             narrative="stub",

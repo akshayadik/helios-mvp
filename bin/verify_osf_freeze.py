@@ -186,8 +186,8 @@ def _build_prompt_sha_dict() -> dict:  # type: ignore[type-arg]
         "model_family": "llama3.1",
         "frozen_at_milestone": "Milestone 3",
         "note": (
-            "Production target: llama3.1:70b via vLLM. "
-            "Deviation logged (see deviation_log entries 11-12)."
+            "Confirmatory runs use llama3.1:8b on Ollama; 70b is a sensitivity subset. "
+            "Deviation logged (see deviation_log entries 15, 16 and 26)."
         ),
     }
 
@@ -207,7 +207,7 @@ def _build_thresholds_dict() -> dict:  # type: ignore[type-arg]
             "calibration_incidents": params.get("n_calibration_incidents", 15),
             "frozen_at_milestone": "Milestone 2",
             "integrity_rate_gate": dpipe_config.INTEGRITY_RATE_GATE,
-            "loo_cv_cpr": params.get("loo_cv_mean_cpr"),
+            "loo_cv_mrr": params.get("loo_cv_mean_mrr"),
             "loo_cv_hr_at_3": params.get("loo_cv_mean_hr_at_3"),
             "ppr_alpha": GPIPE_PPR_ALPHA,
             "pruner_efficacy_gate": dpipe_config.PRUNER_EFFICACY_GATE,

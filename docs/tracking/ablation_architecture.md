@@ -64,7 +64,7 @@ Full implementation: `helios/vcl/config.py`. Hash derivation: `helios/vcl/utils.
 ### 1.4 Gating Mechanism (`helios/vcl/decorators.py`)
 
 ```python
-@gated_by(VCLFlag.LPIPE)
+@gated_by(VCLFlag.L2C_LLM)
 def run_lpipe(...):
     ...
 ```
@@ -74,26 +74,29 @@ def run_lpipe(...):
   *(Stage 1+ integration: this error will be caught by the metric integrity gate and logged to the exclusion ledger — not yet implemented at Stage 0.)*
 - All gated functions register `__gated_by__` for static disjointness audit.
 
-### 1.5 Confirmatory, Conditional Confirmatory & Exploratory Variants (Frozen)
+### 1.5 Confirmatory and Exploratory Variants
 
-**Full Flag Matrix** — column abbreviations: `l2c` = l2c_llm, `p4c` = p4_cognitive, `l2b` = l2b_graph, `rec` = reconcile, `ueg` = ueg_c_structural, `dpi` = dpipe, `dpp` = dpipe_propagation, `gpi` = gpipe, `lpi` = lpipe, `rtr` = router.
+Regenerated 2026-10-24 from `helios/vcl/variants.py` (owner decision D2, deviation entry 31): 16 boolean flags, 8 confirmatory and 7 exploratory variants. Each variant is HELIOS-Full with the listed flags switched off. The May 2026 13-flag table (`router`, `lpipe`, `ueg_c_structural`, HELIOS-noGraph) is superseded; flag names follow `helios/vcl/registry.py`.
 
-| Variant                | l2c | p4c | mahc | cbr | l2b | acp | rec | ueg | dpi | dpp | gpi | lpi | rtr | Status                   | Hypothesis               |
-|------------------------|:---:|:---:|:----:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|--------------------------|--------------------------|
-| HELIOS-Full            | T   | T   | T    | T   | T   | T   | T   | T   | T   | T   | T   | T   | T   | Confirmatory             | A-H1, A-H3               |
-| HELIOS-noLLM           | F   | T   | T    | T   | T   | T   | T   | T   | T   | T   | T   | F   | T   | Confirmatory             | A-H1                     |
-| HELIOS-noGraph         | T   | T   | T    | T   | F   | T   | T   | T   | T   | T   | F   | T   | T   | Exploratory              | — ¹                      |
-| HELIOS-D               | F   | T   | F    | F   | F   | F   | F   | T   | T   | T   | F   | F   | F   | Confirmatory             | A-H3                     |
-| HELIOS-G               | F   | T   | F    | F   | T   | F   | F   | T   | T   | F   | T   | F   | F   | Conditional Confirmatory | A-H6 (entry-gate)        |
-| HELIOS-noConsensus     | T   | T   | F    | T   | T   | T   | T   | T   | T   | T   | T   | T   | T   | Exploratory              | A-H4                     |
-| HELIOS-noRouter        | T   | T   | T    | T   | T   | T   | T   | T   | T   | T   | T   | T   | F   | Exploratory              | A-H5                     |
-| HELIOS-noStructural    | T   | T   | T    | T   | T   | T   | T   | F   | T   | T   | T   | T   | T   | Exploratory              | A-H8                     |
+| Variant | Flags off (vs HELIOS-Full) | Status | Hypothesis | Hash (first 12) |
+|---|---|---|---|---|
+| HELIOS-Full | all 16 boolean flags on | Confirmatory | A-H1, A-H2, A-H3, A-H4, A-H5, A-H6, A-H7, A-H8, B-H1..B-H8 | `5382fafae6db` |
+| HELIOS-noLLM | `l2c_llm` | Confirmatory | A-H1, A-H7 | `7f82c31138c7` |
+| HELIOS-LLM-only | `acp_stateful`, `cbr_routing`, `dpipe`, `dpipe_propagation`, `gpipe`, `l2b_graph`, `mahc_hierarchical`, `reconcile_terminal` | Confirmatory | A-H2 | `b16c8aa62dfa` |
+| HELIOS-D | `acp_stateful`, `cbr_routing`, `gpipe`, `l2b_graph`, `l2c_llm`, `mahc_hierarchical`, `reconcile_terminal` | Confirmatory | A-H3 | `794a1bab0b82` |
+| HELIOS-noConsensus | `mahc_hierarchical` | Confirmatory | A-H4 | `40360d2e8e84` |
+| HELIOS-noRouter | `cbr_routing` | Confirmatory | A-H5, E-H2 | `69a0ed936c92` |
+| HELIOS-G | `acp_stateful`, `cbr_routing`, `dpipe_propagation`, `l2c_llm`, `mahc_hierarchical`, `reconcile_terminal` | Confirmatory | A-H6 | `7b3c08e169c2` |
+| HELIOS-noStructural | `ueg_structural` | Confirmatory | A-H8, E-H10 | `a6a64740c315` |
+| HELIOS-noCogni | `p4_cognitive` | Exploratory | E-H1 | `77393185f21c` |
+| HELIOS-noACP | `acp_stateful` | Exploratory | E-H8 (E-H3 retired) | `2f4866e6e670` |
+| HELIOS-noReconcile | `reconcile_terminal` | Exploratory | E-H5 | `003940202112` |
+| HELIOS-HIS3 | `his_tier` | Exploratory | E-H9 | `b6f325139863` |
+| HELIOS-noFGSV | `fgsv_ks_gate` | Exploratory | E-H4 | `4b7d1c9aa21f` |
+| HELIOS-noIOL | `iol_self_telemetry` | Exploratory | E-H6 | `af55fe7c0181` |
+| HELIOS-noExpl | `coe_narrative` | Exploratory | E-H7 | `e65e0d47a54e` |
 
-*Derived from `spine_freeze_memo_v0.md §2.2` (canonical source). Frozen variant hashes in `spine_freeze_memo_v0.md §2.3`.*
-
-¹ HELIOS-noGraph is exploratory with no dedicated pre-registered hypothesis in the MVP confirmatory family. It serves as a supporting ablation for graph-related sensitivity analysis.
-
-**Frozen Variant Hashes:** See `spine_freeze_memo_v0.md §2.3` — authoritative table with VCL Freeze SHA provenance.
+Hypothesis IDs come from `helios/research/analysis_plan.py`; metrics from `docs/tracking/metric_contract.md`. Full hashes are in `research/osf/variant_hashes.json`.
 
 ### 1.6 Integration Points
 
@@ -169,7 +172,7 @@ and result store (`helios/store/schema.sql`).
 | `evaluation_phase` | `EvaluationPhase` | Enum | `exploratory` or `confirmatory` |
 | `ranked_candidates` | `list[str]` | Ordered | Top-k service names (HR@3 source) |
 | `hr_at_3` | `float` | `[0, 1]` | Hit-Rate@3 |
-| `cpr` | `float` | `[0, 1]` | Causal Precision-Recall |
+| `mrr` | `float` | `[0, 1]` | Reciprocal rank of the ground-truth service (descriptive; named `cpr` before schema-draft-v0.4) |
 | `latency_ms` | `float` | `>= 0` | Pipeline wall-clock latency |
 | `token_count` | `int` | `>= 0` | LLM tokens consumed (L-pipe) or 0 |
 | `narrative` | `str` | Non-empty | Chain of Explanation (CoE) text |
@@ -293,7 +296,7 @@ exercises the registry in isolation via direct `register()` + `verify()` calls.
 
 G-pipe and L-pipe are implemented as gated null stubs. Each stub:
 - Is decorated with `@gated_by(VCLFlag.X)` — raises `GatedComponentInactiveError` when invoked
-  with the controlling flag inactive (e.g., in `HELIOS-noLLM`, `lpipe=False` blocks `run_lpipe`)
+  with the controlling flag inactive (e.g., in `HELIOS-noLLM`, `l2c_llm=False` blocks `run_lpipe`)
 - Returns a sentinel `PipelineVerdict`-shaped dict (empty `ranked_candidates`, narrative `"stub"`)
   when the flag is active — preserving the E2E smoke contract without real computation
 - Records `variant_config_hash` from the active `VCLManifest` via `get_current_manifest()`
@@ -323,7 +326,7 @@ D-pipe is a four-stage statistical anomaly detection pipeline frozen at Mileston
 | A | `a_metrics_parser.py` | Ingest Prometheus metrics Parquet; compute wm90 (weighted 90th-percentile latency) and error rate per service | Histogram bin interpolation over `LE_BOUNDARIES` |
 | B | `b_anomaly_scorer.py` | Score each service on latency + error rate deviation from baseline | Pearson/Spearman correlation + `w_error`-weighted composite |
 | C | `c_propagation_engine.py` | Propagate anomaly scores along CALL edges using `rho_threshold` damping | Breadth-first edge traversal with topology boost (`topology_boost_factor`) |
-| D | `d_verdict.py` | Rank services; produce `PipelineVerdict` with `ranked_candidates`, `hr_at_3`, `cpr` | Descending score sort; top-3 extraction |
+| D | `d_verdict.py` | Rank services; produce `PipelineVerdict` with `ranked_candidates`, `hr_at_3`, `mrr` | Descending score sort; top-3 extraction |
 
 **Gating:** Stage C propagation is independently gated by `VCLFlag.DPIPE_PROPAGATION`. When `dpipe_propagation=False` (e.g., ablation study), propagation is skipped and raw Stage B scores are ranked directly.
 

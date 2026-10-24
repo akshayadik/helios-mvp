@@ -18,7 +18,7 @@ _CANDIDATE_LIST = st.lists(_NAMES, min_size=1, max_size=5, unique=True)
 
 
 def _build_rows(ranked_lists: list[list[str]]) -> list[dict]:
-    pipes = ["d_pipe", "g_pipe", "l_pipe"]
+    pipes = ["dpipe", "gpipe", "lpipe"]
     return [
         {"pipeline": p, "ranked_candidates": r, "narrative": "normal"}
         for p, r in zip(pipes, ranked_lists, strict=False)

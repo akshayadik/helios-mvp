@@ -28,7 +28,7 @@ def _create_minimal_result_db(db_path: Path, variant: str) -> None:
             hr_at_3 DOUBLE
         )
     """)
-    for pipe in ["d_pipe", "g_pipe", "l_pipe"]:
+    for pipe in ["dpipe", "gpipe", "lpipe"]:
         conn.execute(
             "INSERT INTO result_row VALUES (?, ?, ?, ?, ?, ?)",
             ["otel-001", variant, pipe, json.dumps(["svc-a", "svc-b"]), "normal", 1],

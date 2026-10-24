@@ -116,7 +116,7 @@ class UniformBordaConsensus:
         )
 
 
-_PASSTHROUGH_PIPELINE_PRIORITY: tuple[str, ...] = ("d_pipe", "g_pipe", "l_pipe")
+_PASSTHROUGH_PIPELINE_PRIORITY: tuple[str, ...] = ("dpipe", "gpipe", "lpipe")
 
 
 class PassthroughConsensus:

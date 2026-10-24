@@ -39,7 +39,7 @@ HELIOS (**H**ybrid **E**xplainable **L**earning for **I**ncident **O**bservabili
 Results are fused by a **Uniform Borda consensus layer** into a single ranked candidate list.
 
 **Primary metric:** HR@3 (Hit-Rate at rank 3) — was the root-cause service in the top-3 candidates?
-**Secondary metrics:** CpR (Causal Precision-Recall), hallucination rate (L-pipe), CoE narrative quality, MTTR delta.
+**Secondary metrics:** CpR (Cost per Resolution), hallucination rate (H_fact, H_struct), Avg@5, time to correct diagnosis, MRR (descriptive). Definitions: `docs/tracking/metric_contract.md`.
 
 ---
 
@@ -57,17 +57,17 @@ Results are fused by a **Uniform Borda consensus layer** into a single ranked ca
 ### 2.2 Confirmatory Hypotheses (Family A — Ablation)
 
 Statistical test: paired Wilcoxon signed-rank (one-sided), Holm–Bonferroni correction.
-**n = 174** incident pairs. **α at rank 1 = 0.00625**.
+Confirmatory pool: the 240 RCAEval cases fixed by D5/D11 (deviation entry 25). Updated 2026-10-24 from `helios/research/analysis_plan.py` (S0.6, deviation entry 32); α by rank follows Holm (rank 1 = 0.00625).
 
 | Rank | ID | Comparison | Primary metric |
 |---|---|---|---|
 | 1 | A-H3 | HELIOS-Full vs HELIOS-D | HR@3 |
-| 2 | A-H7 | HELIOS-Full vs HELIOS-noLLM | HR@3 |
-| 3 | A-H1 | HELIOS-Full vs fixed threshold 0.60 | HR@3 |
-| 4 | A-H2 | HELIOS-Full vs HELIOS-noGraph | CpR |
-| 5 | A-H6 | HELIOS-G vs HELIOS-D (gate-conditional) | HR@3 |
-| 6 | A-H5 | HELIOS-Full vs HELIOS-noRouter | HR@3 |
-| 7 | A-H4 | HELIOS-Full vs HELIOS-noConsensus | HR@3 — underpowered-disclosed |
+| 2 | A-H7 | HELIOS-Full vs HELIOS-noLLM | H_fact, H_struct (sign test) |
+| 3 | A-H1 | HELIOS-Full vs HELIOS-noLLM | HR@3 |
+| 4 | A-H2 | HELIOS-Full vs HELIOS-LLM-only | HR@3 |
+| 5 | A-H6 | HELIOS-Full vs HELIOS-G | HR@3, narrative-heavy stratum |
+| 6 | A-H5 | HELIOS-noRouter vs HELIOS-Full | log-CpR at matched HR@3 |
+| 7 | A-H4 | HELIOS-Full vs HELIOS-noConsensus | HR@3, ambiguous stratum — underpowered-disclosed |
 | 8 | A-H8 | HELIOS-Full vs HELIOS-noStructural | HR@3 — underpowered-disclosed |
 
 **Effect size commitment:** Cohen's h ≥ 0.276. Target HR@3 = 0.73 vs CHASE baseline HR@3 = 0.60.
@@ -314,7 +314,7 @@ Per-pipeline result row written to DuckDB.
 | `evaluation_phase` | `EvaluationPhase` | Enum | Exploratory or confirmatory |
 | `ranked_candidates` | `list[str]` | Ordered | Top-k service names (HR@3 source) |
 | `hr_at_3` | `float` | `[0–1]` | Hit-Rate@3 |
-| `cpr` | `float` | `[0–1]` | Causal Precision-Recall |
+| `mrr` | `float` | `[0–1]` | Reciprocal rank (descriptive; named `cpr` before schema-draft-v0.4) |
 | `latency_ms` | `float` | `>= 0` | Wall-clock latency |
 | `token_count` | `int` | `>= 0` | LLM tokens (L-pipe) or 0 |
 | `narrative` | `str` | Non-empty | Chain of Explanation (CoE) |
@@ -616,7 +616,7 @@ The following are known gaps as of Milestone 3. Each is intentional (staged impl
 
 | Component | Module | Target stage | Notes |
 |---|---|---|---|
-| Consensus layer (Uniform Borda) | not yet created | Stage 6 | Fuses D/G/L ranked lists |
+| Consensus layer (Uniform Borda, passthrough) | `helios/consensus/` | Done (Milestone 4) | Vote-only fusion for HELIOS-noConsensus; MAHC (`mahc_hierarchical`) is S2 work |
 | Auto-remediation (L4) | not yet created | Stage 4+ | Out of MVP scope |
 | P4 cognitive layer | no module yet | Stage 5 | `p4_cognitive` flag exists; implementation pending |
 | MAHC, CBR, ACP | no modules yet | Stage 3+ | Flags exist in VCL; no implementations |

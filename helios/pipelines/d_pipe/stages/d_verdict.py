@@ -15,17 +15,17 @@ class DVerdict:
     ) -> dict[str, Any]:
         ranked = sorted(score_final, key=lambda s: (-score_final[s], s))
         hr_at_3 = 0
-        cpr = float("nan")
+        mrr = float("nan")
         if ground_truth_service is not None:
             if ground_truth_service in ranked:
                 gt_rank = ranked.index(ground_truth_service) + 1
             else:
                 gt_rank = len(ranked) + 1
             hr_at_3 = int(ground_truth_service in ranked[:3])
-            cpr = 1 / gt_rank
+            mrr = 1 / gt_rank
         return {
             "hr_at_3": hr_at_3,
-            "cpr": cpr,
+            "mrr": mrr,
             "ranked_candidates": ranked[:3],
             "narrative": None,
         }

@@ -49,7 +49,7 @@ CALIBRATION_SET = [
 ]
 HR_AT_3_GATE = 0.25
 
-# Per-grid-cell result entry: (hr_per_incident, cpr_per_incident, w_error, rho, boost)
+# Per-grid-cell result entry: (hr_per_incident, mrr_per_incident, w_error, rho, boost)
 ResultEntry = tuple[list[float], list[float], float, float, float]
 
 # Fields written by the capture script that are not part of the schema.
@@ -72,9 +72,9 @@ def _evaluate_params(
     rho_threshold: float,
     topology_boost_factor: float,
 ) -> tuple[list[float], list[float]]:
-    """Return (per_incident_hr, per_incident_cpr) for the full calibration set."""
+    """Return (per_incident_hr, per_incident_mrr) for the full calibration set."""
     hr_vals: list[float] = []
-    cpr_vals: list[float] = []
+    mrr_vals: list[float] = []
 
     for i, incident_id in enumerate(CALIBRATION_SET):
         window = _load_window(captures, incident_id)
@@ -94,35 +94,35 @@ def _evaluate_params(
                 ground_truth_service=gt_svc,
             )
             hr_vals.append(float(result.get("hr_at_3", 0)))
-            cpr_val = result.get("cpr", 0.00)
-            cpr_vals.append(float(cpr_val) if cpr_val == cpr_val else 0.00)
+            mrr_val = result.get("mrr", 0.00)
+            mrr_vals.append(float(mrr_val) if mrr_val == mrr_val else 0.00)
         except Exception:
             hr_vals.append(0.00)
-            cpr_vals.append(0.00)
+            mrr_vals.append(0.00)
 
-    return hr_vals, cpr_vals
+    return hr_vals, mrr_vals
 
 
 def _fold_metrics(
-    hr_vals: list[float], cpr_vals: list[float], indices: list[int]
+    hr_vals: list[float], mrr_vals: list[float], indices: list[int]
 ) -> dict[str, float]:
     if not indices:
         raise ValueError("_fold_metrics: indices must be non-empty")
     hr = [hr_vals[i] for i in indices]
-    cpr = [cpr_vals[i] for i in indices]
+    mrr = [mrr_vals[i] for i in indices]
     n = len(hr)
     return {
         "mean_hr": sum(hr) / n,
-        "mean_cpr": sum(cpr) / n,
+        "mean_mrr": sum(mrr) / n,
         "std_hr": statistics.stdev(hr) if n > 1 else 0.00,
-        "min_cpr": min(cpr),
+        "min_mrr": min(mrr),
     }
 
 
 def _tiebreak_key(
     m: dict[str, float], boost: float
 ) -> tuple[float, float, float, float, float]:
-    return (-m["mean_hr"], -m["mean_cpr"], m["std_hr"], -m["min_cpr"], boost)
+    return (-m["mean_hr"], -m["mean_mrr"], m["std_hr"], -m["min_mrr"], boost)
 
 
 def _check_graph_gates(captures: Path, calibration_set: list[str]) -> None:
@@ -202,13 +202,13 @@ def main() -> None:
         f"Evaluating {len(grid)} parameter combinations x {len(CALIBRATION_SET)} LOO folds ..."
     )
 
-    # Build results matrix: for each (w, rho, boost), store per-incident (hr, cpr) lists.
+    # Build results matrix: for each (w, rho, boost), store per-incident (hr, mrr) lists.
     all_results: list[ResultEntry] = []
     for w_err, rho, boost in grid:
-        hr_per, cpr_per = _evaluate_params(
+        hr_per, mrr_per = _evaluate_params(
             args.captures, ground_truth, w_err, rho, boost
         )
-        all_results.append((hr_per, cpr_per, w_err, rho, boost))
+        all_results.append((hr_per, mrr_per, w_err, rho, boost))
 
     n_folds = len(CALIBRATION_SET)
     all_indices = list(range(n_folds))
@@ -218,7 +218,7 @@ def main() -> None:
         all_results,
         key=lambda e: _tiebreak_key(_fold_metrics(e[0], e[1], all_indices), e[4]),
     )
-    best_hr_per, best_cpr_per, best_w, best_rho, best_boost = best_entry
+    best_hr_per, best_mrr_per, best_w, best_rho, best_boost = best_entry
 
     print(
         f"Best params: w_error={best_w}, rho_threshold={best_rho}, topology_boost={best_boost}"
@@ -226,7 +226,7 @@ def main() -> None:
 
     # True LOO-CV: for each fold k, select best params on 14 training incidents, evaluate on k.
     loo_hr_vals: list[float] = []
-    loo_cpr_vals: list[float] = []
+    loo_mrr_vals: list[float] = []
     for k in all_indices:
         train_idx = [j for j in all_indices if j != k]
         best_train = min(
@@ -236,10 +236,10 @@ def main() -> None:
             ),
         )
         loo_hr_vals.append(best_train[0][k])
-        loo_cpr_vals.append(best_train[1][k])
+        loo_mrr_vals.append(best_train[1][k])
 
     loo_mean_hr = sum(loo_hr_vals) / n_folds
-    loo_mean_cpr = sum(loo_cpr_vals) / n_folds
+    loo_mean_mrr = sum(loo_mrr_vals) / n_folds
 
     print(
         f"LOO-CV HR@3={loo_mean_hr:.4f},"
@@ -257,9 +257,9 @@ def main() -> None:
         "rho_threshold": best_rho,
         "topology_boost_factor": best_boost,
         "loo_cv_mean_hr_at_3": loo_mean_hr,
-        "loo_cv_mean_cpr": loo_mean_cpr,
+        "loo_cv_mean_mrr": loo_mean_mrr,
         "in_sample_mean_hr_at_3": sum(best_hr_per) / n_folds,
-        "in_sample_mean_cpr": sum(best_cpr_per) / n_folds,
+        "in_sample_mean_mrr": sum(best_mrr_per) / n_folds,
         "grid_cells_evaluated": len(grid),
         "n_calibration_incidents": n_folds,
     }

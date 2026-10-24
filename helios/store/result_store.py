@@ -37,7 +37,24 @@ class ResultStore:
     # ------------------------------------------------------------------
 
     def _init_schema(self) -> None:
+        self._migrate_cpr_to_mrr()
         self._con.execute(_SCHEMA_SQL.read_text(encoding="utf-8"))
+
+    def _migrate_cpr_to_mrr(self) -> None:
+        """Rename result_row.cpr to mrr in databases created before schema-draft-v0.4.
+
+        The column always held reciprocal rank; CpR is cost per resolution
+        (docs/tracking/metric_contract.md). Values are unchanged.
+        """
+        cols = {
+            r[0]
+            for r in self._con.execute(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_schema = 'main' AND table_name = 'result_row'"
+            ).fetchall()
+        }
+        if "cpr" in cols and "mrr" not in cols:
+            self._con.execute("ALTER TABLE result_row RENAME COLUMN cpr TO mrr")
 
     def table_names(self) -> list[str]:
         rows = self._con.execute(
@@ -60,7 +77,7 @@ class ResultStore:
             INSERT INTO result_row (
                 run_id, incident_id, variant_config_hash, snapshot_hash,
                 pipeline, evaluation_phase, ranked_candidates,
-                hr_at_3, cpr, latency_ms, token_count, narrative, schema_version
+                hr_at_3, mrr, latency_ms, token_count, narrative, schema_version
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             [
@@ -72,7 +89,7 @@ class ResultStore:
                 verdict.evaluation_phase.value,
                 json.dumps(verdict.ranked_candidates),
                 verdict.hr_at_3,
-                verdict.cpr,
+                verdict.mrr,
                 verdict.latency_ms,
                 verdict.token_count,
                 verdict.narrative,

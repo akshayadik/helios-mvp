@@ -235,7 +235,7 @@ class TestRunGpipe:
             "ranked_candidates",
             "ppr_scores",
             "hr_at_3",
-            "cpr",
+            "mrr",
             "latency_ms",
             "token_count",
             "narrative",
