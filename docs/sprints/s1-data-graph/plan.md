@@ -1,6 +1,6 @@
 # Sprint S1 — Data and graph · plan
 
-**Window:** 16 Nov – 4 Dec 2026 (15 working days) · **Milestone:** S2-M6 · **Exit tag:** `rb-s1-exit` · **Status:** next
+**Window:** planned 16 Nov – 4 Dec 2026 (15 working days); **started early on 2026-10-24** at the owner's request, end date unchanged (about 30 working days available) · **Milestone:** S2-M6 · **Exit tag:** `rb-s1-exit` · **Status:** in progress
 
 Task details: `docs/tracking/helios_task_breakdown.md` § Sprint S1 (authoritative).
 
@@ -11,11 +11,11 @@ Every case sealed in the HELIOS recorded format with no label leakage; the typed
 ## Entry conditions
 
 - `rb-s0-exit` (met 2026-10-24). Seed register for opaque IDs (S0.8) and the D11 design (S0.3) in place.
-- **Early start possible:** S0 closed three weeks before this window. Starting S1 on 26 Oct gives the over-committed sprints (S1, S2, S4) slack. Owner to confirm.
+- **Early start:** confirmed by the owner on 2026-10-24. The end date stays 4 Dec; the extra weeks absorb S1's overrun, and any time left over moves S2 forward to protect the over-committed S4.
 
 ## Capacity
 
-16 days of tasks in 15 working days. If the sprint starts on time, the AIOpsLab spike (S1.3, Tier 2) is the first to slip.
+16 days of tasks; with the early start about 30 working days are available before 4 Dec. If the sprint finishes early, its exit gate runs early and S2 starts.
 
 ## Tasks
 
@@ -36,7 +36,6 @@ Suggested order: S1.1 → S1.4 → S1.5 → S1.6 / S1.7 on the data path; S1.8 �
 
 ## Owner items
 
-- Confirm the start date (early start or 16 Nov).
 - Raise Docker Desktop memory to at least 16 GB (S0.11 L9) — S1.2 captures and S1.3 (`kind`) need it too.
 - Second rater and adjudicator confirmed by 30 Nov (S0.11 L2–L3).
 

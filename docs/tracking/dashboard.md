@@ -16,7 +16,7 @@ gantt
 
     section Stage A build
     S0 Foundation (closed 24 Oct)        :done, s0, 2026-10-23, 2d
-    S1 Data and graph                    :s1, 2026-11-16, 2026-12-04
+    S1 Data and graph (started early)    :active, s1, 2026-10-24, 2026-12-04
     S2 Reasoning, consensus, narratives  :s2, 2026-12-07, 2026-12-25
     S3 Routing and learning              :s3, 2027-01-04, 2027-01-15
     S4 Product shell, evaluation tooling :s4, 2027-01-18, 2027-01-29
@@ -37,7 +37,7 @@ gantt
 | Sprint | Status | Exit |
 |---|---|---|
 | S0 Foundation | Closed 2026-10-24 | `rb-s0-exit`; [exit report](../sprints/s0-foundation/exit_report.md) |
-| S1 Data and graph | Next (early start possible) | — |
+| S1 Data and graph | In progress (started 2026-10-24, early) | — |
 
 ## Architecture flow (manual; updated when ablation_architecture.md changes)
 
