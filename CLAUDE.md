@@ -49,6 +49,7 @@ set -a; source .env; set +a && \
   poetry run mypy && \
   poetry run pytest && \
   poetry run python bin/verify_ledgers.py && \
+  poetry run python bin/log_deviation.py verify-public && \
   poetry run python bin/verify_captures.py && \
   poetry run python bin/verify_osf_freeze.py --verify && \
   poetry run make validate-tracking && \
