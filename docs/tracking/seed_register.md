@@ -54,7 +54,22 @@
 
 ## Confirmatory Seed Block (Stage 5+)
 
-[PENDING: Stage 5 — 10 seeds × 8 variants × 5 benchmarks to be pre-registered before confirmatory runs begin. Seeds will be drawn by the OSF pre-registration script and committed here atomically with the Stage 5 deviation log entry.]
+*Superseded 2026-10-24 by the binding seed register (S0.8, deviation entry 34). The May plan of 10 seeds × 8 variants × 5 benchmarks no longer applies: the evidence design is one run per (case, system) on 240 recorded cases (D11, entry 25).*
+
+The confirmatory seeds are not listed row by row here: each is pure arithmetic on frozen inputs, so the rule and the layout are what is registered. Source of truth: `helios/research/seeds.py`; frozen copy: `research/osf/seeds.json` (in OSF deposit 1, layout_sha256 `ce0cab374e9a7d66a7c996266afbca3175665f8d148bf7b034ff7b7a000f871f`).
+
+| Block | Seeds | Rule |
+|---|---|---|
+| run | 10,000,000–10,007,199 | first seed + case position in the sealed pool order × 24 + system slot (15 variants, 5 baselines, 4 spare) |
+| training | 10,007,200–10,007,327 | first seed + component slot × 8 + replicate (0 binding, 1–5 robustness) |
+| bca | 10,007,328–10,007,391 | one per hypothesis, in analysis-plan order |
+| opaque_id | 10,007,392–10,007,407 | one per corpus |
+| prewarm | 10,007,408–10,008,607 | one per pre-warm incident |
+| reserved | 10,008,608–10,009,999 | new blocks only by deviation entry |
+
+| Seed_ID | Seed_value | Stage | Variant | Benchmark | Registered | Algorithm_context | SHA | Notes |
+|---------|------------|-------|---------|-----------|------------|-------------------|-----|-------|
+| SEED-SA0-01 | 10000000 | Stage A / S0 | ALL | ALL | 2026-10-24 | First seed of the binding register; every confirmatory, training, BCa, opaque-ID and pre-warm seed derives from it by the block layout above | a91534f | Deviation entry 34; `SEED_REGISTRY` SEED-003 in `helios/research/seeds.py` |
 
 ---
 

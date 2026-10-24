@@ -1,28 +1,43 @@
-# HELIOS MVP — Live Dashboard
+# HELIOS — Live Dashboard
 
-_Auto-refresh target (Stage 1+): `weekly_dashboard.yml` GitHub Action will
-regenerate the dynamic sections (cell-completion grid, deviation count) every
-Friday EOD. Until then, sections marked **(manual)** are kept current by hand._
+_Manual until a weekly CI job regenerates the dynamic sections. Refreshed at every sprint exit (see `docs/sprints/README.md`)._
 
-## Stage Progress (manual)
+**Last updated:** 2026-10-24 (S0 exit documentation sync; replaces the May 2026 stage plan)
+
+## Sprint progress (manual)
+
+Plan: `docs/tracking/helios_e2e_product_plan_2026-10.md`; sprint plans and exit reports: `docs/sprints/`.
 
 ```mermaid
 gantt
-    title HELIOS MVP — Stage Progress
+    title HELIOS — Stage A to results (31 Mar 2027) and Stage B (Jul 2027)
     dateFormat YYYY-MM-DD
-    axisFormat %b %d
+    axisFormat %d %b
 
-    section Tracking
-    Stage 0 — Repo + VCL skeleton + Harness   :active, s0, 2026-05-08, 14d
-    Stage 1 — Telemetry + VCL Foundation      :s1, after s0, 28d
-    Stage 2 — D-pipe                          :s2, after s1, 14d
-    Stage 3 — G-pipe                          :s3, after s2, 14d
-    Stage 4 — L-pipe + Consensus              :s4, after s3, 21d
-    Stage 5 — OSF Freeze                      :crit, s5, after s4, 7d
-    Stage 6 — Confirmatory runs               :s6, after s5, 21d
-    Stage 7 — Replication verification        :s7, after s6, 14d
-    Stage 8 — Chapter 4 + OSF deposit         :crit, s8, after s7, 28d
+    section Stage A build
+    S0 Foundation (closed 24 Oct)        :done, s0, 2026-10-23, 2d
+    S1 Data and graph                    :s1, 2026-11-16, 2026-12-04
+    S2 Reasoning, consensus, narratives  :s2, 2026-12-07, 2026-12-25
+    S3 Routing and learning              :s3, 2027-01-04, 2027-01-15
+    S4 Product shell, evaluation tooling :s4, 2027-01-18, 2027-01-29
+    S5 Integration and build freeze      :crit, s5, 2027-02-01, 2027-02-12
+
+    section Evidence and analysis
+    E Evidence collection                :e, 2027-02-15, 2027-03-12
+    A Analysis (results ready 31 Mar)    :crit, a, 2027-03-15, 2027-03-31
+
+    section Stage B (full product)
+    B1 Ingest and deployment             :b1, 2027-02-15, 2027-03-31
+    B2 Privacy and robustness            :b2, 2027-04-01, 2027-04-30
+    B3 Safe action                       :b3, 2027-05-01, 2027-05-31
+    B4 Self-healing and learning         :b4, 2027-06-01, 2027-06-30
+    B5 Stage B evaluation                :b5, 2027-07-01, 2027-07-31
 ```
+
+| Sprint | Status | Exit |
+|---|---|---|
+| S0 Foundation | Closed 2026-10-24 | `rb-s0-exit`; [exit report](../sprints/s0-foundation/exit_report.md) |
+| S1 Data and graph | Next (early start possible) | — |
 
 ## Architecture flow (manual; updated when ablation_architecture.md changes)
 
@@ -42,48 +57,45 @@ flowchart LR
     VCL -.gates.-> C
     MIG[Metric Integrity Gate] -.audits.-> R
     MIG -.signs.-> EL[(exclusion_ledger.jsonl)]
-    DL[(deviation_log.jsonl)] -.HMAC chain.-> VCL
+    DL[(deviation_log.jsonl)] -.HMAC chain + Ed25519.-> VCL
 ```
 
-## Cell-completion grid (manual until weekly_dashboard.yml lands)
+## Evidence grid (phase E; empty until 15 Feb 2027)
 
-| Variant            | AIOpsLab | Train-Ticket | DeathStar | PetShop | OpsEval |
-|--------------------|----------|--------------|-----------|---------|---------|
-| HELIOS-Full        | ⏳ 0/N   | ⏳ 0/N       | ⏳ 0/N    | ⏳ 0/N  | ⏳ 0/N  |
-| HELIOS-noLLM       | ⏳ 0/N   | ⏳ 0/N       | ⏳ 0/N    | ⏳ 0/N  | ⏳ 0/N  |
-| HELIOS-noConsensus | ⏳ 0/N   | ⏳ 0/N       | ⏳ 0/N    | ⏳ 0/N  | ⏳ 0/N  |
+Confirmatory pool: 240 RCAEval cases (RE2-OB, RE2-TT, RE3-OB, RE3-TT), sealed in S1.1. Each cell counts cases run or formally excluded; a cell enters inference only with at least 80% of its cases.
+
+| System | RE2-OB | RE2-TT | RE3-OB | RE3-TT |
+|---|---|---|---|---|
+| 8 confirmatory variants (Family A) | ⏳ | ⏳ | ⏳ | ⏳ |
+| 5 baselines B1–B5 (Family B) | ⏳ | ⏳ | ⏳ | ⏳ |
+| Exploratory variants (Family E) | ⏳ | ⏳ | ⏳ | ⏳ |
 
 Legend: ✅ ≥80% complete · 🟡 partial · ⏳ not yet started · ❌ blocked
 
-## C1 Invariants snapshot (manual)
+## Integrity snapshot (manual)
 
-*Last updated: 2026-05-21 (Milestone 4 arch review — DisjointnessAuditor 3→5 covered; Consensus layer added)*
-
-| Invariant | Status | Evidence link |
+| Invariant | Status | Evidence (as of 2026-10-24 unless stated) |
 |---|---|---|
-| Variant manifest hashing | ✅ | `helios/vcl/` — 8 confirmatory variants, unique hashes, frozen Stage 0; verified by OSF freeze M3 |
-| Snapshot hash registry | ✅ | `helios/vcl/snapshot_registry.py` + `data/snapshot_registry.jsonl` (20 entries) |
-| Metric integrity gate | ✅ | `helios/integrity_gate.py` — frozen Milestone 1 |
-| Exclusion ledger (signed) | 🟡 partial | `bin/log_exclusion.py` — schema defined; CLI stub; auto-populated via `AppendOnlyLedger` protocol |
-| Deviation log (signed, chained) | ✅ | `bin/log_deviation.py` — 18 entries, chain verified (M3 adds entries 11–18) |
-| Reconciliation ledger | ✅ | `helios/orchestrator/ledger.py` — 25 entries, HMAC chain verified |
-| DisjointnessAuditor | ✅ | `helios/vcl/disjointness.py` — PASSED at M4 arch review; 5 covered (gpipe, dpipe, l2c_llm, l2b_graph, mahc), 8 uncovered, 0 violations |
-| Consensus integrity gate | ✅ | `helios/consensus/protocol.py` + `fuse_verdicts.py` — `ConsensusIntegrityGate` verifies `fusion_algorithm_sha` before every row write; design frozen M4 |
-| UEG-C Builder | ✅ | `helios/graph/ueg_c_builder.py` + `ppr_pruner.py` — frozen Milestone 2; 15/15 gate PASS |
-| D-pipe calibration | ✅ | LOO-CV HR@3=0.5333; params frozen in `dpipe_config.py`; SHA `8d11801` |
-| G-pipe calibration | ✅ | LOO-CV HR@3=0.60 held-out; DISAGREEMENT_THRESHOLD=0.20 frozen in `gpipe_config.py`; SHA `8759d6f` |
-| L-pipe Protocol A | ✅ | Ollama llama3.1:8b; EXPECTED_PROMPT_SHA tamper-guard active; `lpipe_config.py`; SHA `25fcd2b` |
-| OSF protocol freeze (M3) | ✅ | 6 JSON artefacts + manifest_sig.txt in `research/osf/`; CI job `osf-freeze-verify` on every push |
+| Deviation log (HMAC chain + Ed25519) | ✅ | 38 entries; `verify-public` passes with the public key only; entries from 35 Ed25519-signed |
+| Reconciliation ledger | ✅ | 25 entries; chain and anchor verified |
+| Exclusion ledger | ✅ (empty) | Anchor present; populated from phase E |
+| Capture content seals | ✅ | 20 exploratory OTel captures; `verify_captures.py` passes |
+| VCL variants | ✅ | 15 variants (8 confirmatory, 7 exploratory), unique hashes; confirmatory hashes identical to OSF deposit 1 (`vcl_manifest_tracking.md`) |
+| OSF freeze | ✅ | Deposit 1, DOI 10.17605/OSF.IO/KMR3D; `verify_osf_freeze.py --verify` passes |
+| Seed register | ✅ | 10,000,000–10,009,999, layout hash pinned (`seed_register.md`) |
+| Tracker schema | ✅ | Validator in pre-commit and CI over every commit (`--range`) |
+| DisjointnessAuditor | 🟡 | As of M4 (2026-05-21): 5 flags covered, 0 violations; re-certified for all 16 boolean flags in S5.2 |
+| Snapshot hash registry | 🟡 | `data/snapshot_registry.jsonl`, cited in May as holding 20 entries, is not in the repository; check in S1.1 |
 
 ## Latest deviation log entries (manual)
 
-*Source: `deviation_log.jsonl` — 18 entries total; 6 most recent shown*
+*Source: `deviation_log.jsonl` — 38 entries; 6 most recent shown. Full text: `deviation_log.md`.*
 
-| # | Date | Stage | Clause | Change (truncated) | sig[:12] |
-|---|---|---|---|---|---|
-| 13 | 2026-05-18 | Stage 1 / M3 | §3.6.8 Orchestration | Sequential D→G(conditional)→L dispatch; should_run_gpipe() gate | 84dcc2834950 |
-| 14 | 2026-05-19 | Stage 1 / M3 | §4.2 A-H6 / §3.6.7 G-pipe threshold | DISAGREEMENT_THRESHOLD 0.30→0.20; ppr_scores added to run_dpipe | 05a602955403 |
-| 15 | 2026-05-19 | Stage 1 / M3 | §3.6.7 L-pipe model specification | llama3.1:8b via Ollama (proposal: Llama-3.1-70B via vLLM) | 29789db26fba |
-| 16 | 2026-05-19 | Stage 1 / M3 | §3.6.7 L-pipe serving runtime | Ollama for MVP (proposal: vLLM); latency not production-representative | b7812340df24 |
-| 17 | 2026-05-19 | Stage 1 / M3 | §3.6.7 | Fix verify_osf_freeze.py: use DISAGREEMENT_THRESHOLD not PRUNER_THRESHOLD for gpipe section | 74af9e9f3e6a |
-| 18 | 2026-05-19 | Stage 0 | §A.1 Chain Bootstrap | Correction: entry 3 (sig 539e67a1910f) was chain-bootstrap placeholder; no protocol meaning | 89b0d6566d7b |
+| # | Date | Change (short) | sig[:12] |
+|---|---|---|---|
+| 33 | 2026-10-24 | Metric contract; cpr renamed mrr | `3bbedb34eef6` |
+| 34 | 2026-10-24 | Binding seed register 10,000,000–10,009,999 | `5f66223c8394` |
+| 35 | 2026-10-24 | Ed25519 signatures on the deviation log; audit step E | `dc0af094444b` |
+| 36 | 2026-10-24 | Chair call outcome: baselines B1–B5, CHASE value | `b468a44e2c78` |
+| 37 | 2026-10-24 | OSF deposit 1, DOI 10.17605/OSF.IO/KMR3D | `67070970b2ed` |
+| 38 | 2026-10-24 | Rating rubric deposited at OSF deposit 2 | `77e90d75e0ef` |
