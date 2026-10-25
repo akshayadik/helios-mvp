@@ -268,3 +268,13 @@ print(df.groupby('Day')['Status'].value_counts().unstack(fill_value=0))
 | S2-M5-GATE02 | - | GATE | S0 exit gate: S0.1-S0.10 DONE, full gate green on main, tag rb-s0-exit | §3.3, §3.9 | Evaluate | C1 | AA | S2-M5-GATE01 | DONE | 2026-10-24 | 2026-10-24 | 4b637a8 | DOC | docs/sprints/s0-foundation/exit_report.md; tag rb-s0-exit | - | dev-001..dev-038 | 588 tests, coverage 91.82%, 38 ledger entries verified with the public key; S0.11 owner items (IRB, rater, adjudicator) carried over in S2-M5-RES05 |
 | S2-M5-RES06 | - | RES | Sprint folder docs/sprints/ (plan per sprint S0-S5, E, A, Stage B; S0 exit report with retrospective) and S0 documentation sync (dashboard, document register, seed register, variant registry) | §3.9 | Communicate | methodology | AA | S2-M5-GATE02 | DONE | 2026-10-24 | 2026-10-24 | 7e610df | DOC | docs/sprints/README.md; docs/sprints/s0-foundation/exit_report.md | - | - | Owner request 2026-10-24; 9 sprint plans; stale docs fixed or carried to S1 (ablation_architecture names, validity threats, snapshot registry source) |
 | S2-M5-RES07 | - | RES | Sprint workflow in CLAUDE.md: sprint folder, exit-gate order, exit report with retrospective, documentation sync | §3.9 | Communicate | methodology | AA | S2-M5-RES06 | DONE | 2026-10-24 | 2026-10-24 | 3955565 | DOC | CLAUDE.md § Sprints: plans, exit gates and exit reports | - | - | Owner request 2026-10-24; also in project memory (feedback_sprint_folder) |
+
+---
+
+## MILESTONE 6 — Stage A, Sprint S1: Data and graph (started early 2026-10-24)
+
+**Row ID format:** `S2-M6-{TYPE}{nn}` — sprint S1 of `docs/tracking/helios_e2e_product_plan_2026-10.md`; plan `docs/sprints/s1-data-graph/plan.md`; Day column is `-` (milestone rows).
+
+| Task_ID | Day | Type | Description | Prop_§ | DSR | Contrib | Own | Deps | Status | Started | Done | SHA | Ev_Type | Ev_Ref | Gate | Dev_Ref | Notes |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| S2-M6-ENG01 | - | ENG | S1.1 RCAEval adapter: per-case download with checksums, conversion to TelemetryWindow + P1-P3 Parquet, opaque incident IDs from the seed register, name normalisation, sealing, pool manifest, pool locked until build-freeze, leakage test | §3.6, §3.9 | Build | C1 | AA | S2-M5-ENG04 | DONE | 2026-10-24 | 2026-10-25 | cbfcab5 | ARTEFACT_HASH | data/rcaeval/pool_manifest.json digest 8f68dfd9b50d (240 cases); build_manifest.json digest 158e108859e5 (495) | - | - | Implements D11 §1-§3; 240 + 495 sealed and verified; pool locked until build-freeze; 30 tests; detection-trigger decision raised for the owner before S2.1 |

@@ -10,12 +10,17 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pyarrow.parquet as pq
 
-from helios.schemas.telemetry import TelemetryWindow
+from helios.schemas.telemetry import EvaluationPhase, TelemetryWindow
+from helios.telemetry.pool_lock import require_unlocked
 from helios.telemetry.seal import check_seal
 from helios.vcl.config import VCLManifest  # noqa: F401  # flag-guard compliance
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 __all__ = ["CaptureReader", "CaptureVerification"]
 
@@ -62,10 +67,20 @@ class CaptureReader:
         {output_dir}/{incident_id}/p3_logs.parquet
     """
 
-    def __init__(self, output_dir: Path, seal_key: bytes | None = None) -> None:
-        """seal_key enables the content-seal check; without it seal_checked is False."""
+    def __init__(
+        self,
+        output_dir: Path,
+        seal_key: bytes | None = None,
+        pool_lock: Callable[[str], None] = require_unlocked,
+    ) -> None:
+        """seal_key enables the content-seal check; without it seal_checked is False.
+
+        pool_lock is called for every confirmatory window and raises
+        PoolLockedError until tag build-freeze exists (D11); tests inject it.
+        """
         self._output_dir = output_dir
         self._seal_key = seal_key
+        self._pool_lock = pool_lock
 
     def read(self, incident_id: str) -> CaptureVerification:
         """Load and verify a recorded capture; raise FileNotFoundError if absent."""
@@ -84,6 +99,8 @@ class CaptureReader:
         )  # post-capture annotation; not a TelemetryWindow field
 
         window = TelemetryWindow(**raw)
+        if window.evaluation_phase == EvaluationPhase.CONFIRMATORY:
+            self._pool_lock(incident_id)
         computed_hash = window.compute_window_hash()
 
         row_counts: dict[str, int] = {}

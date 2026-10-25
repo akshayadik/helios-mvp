@@ -76,3 +76,16 @@ All incidents use `evaluation_phase = exploratory` and are permanently excluded 
 ---
 
 *Last updated: 2026-05-15 — 20 entries from Milestone 1 corpus*
+
+---
+
+## Imported corpora — RCAEval (S1.1, 2026-10-24/25)
+
+Recorded by the RCAEval authors, not captured here; imported with `bin/import_rcaeval.py` from the Hugging Face copy at pinned revision `afeacb11bcc94dadfd1c8f483ee4377b2b8b614e` (every file checked against its published hash). **No per-case rows in this log:** the per-case columns above (fault service, fault type) are labels, and for the confirmatory pool they must not sit beside opaque incident IDs outside the signed ground-truth file. Per-case details: `data/rcaeval/ground_truth_<corpus>.json` (signed); label-free case order and seal hashes: `data/rcaeval/<corpus>_manifest.json`.
+
+| Corpus | Datasets | Cases | Phase | Streams | Manifest digest | Notes |
+|---|---|---|---|---|---|---|
+| Build | RE1-OB/SS/TT, RE2-SS, RE3-SS | 495 | exploratory | P1 all; P3 in 120; no traces | `158e108859e50fbdf1cb708ce0c27237f47e4330145b79b9d49921f923e2f7e9` | 375 logs_missing are RE1 (metrics only); one injection-signature hit is a false positive (`javax.inject`); one Sock Shop case holds sparse Online Boutique series |
+| Pool (confirmatory) | RE2-OB, RE2-TT, RE3-OB, RE3-TT | 240 | confirmatory | P1, P2 all; P3 in 239 | `8f68dfd9b50de365549b9889b181e43a8f89b7155c7a81ac16c908f56c7286b1` | Trace times in microseconds; 1 logs_missing (known RE2-TT case); 0 injection-tool strings; Online Boutique cases hold 4 sparse Sock Shop metric columns, kept as distinct services. **Locked for runs until tag `build-freeze`** |
+
+Sealed windows live in `data/rcaeval/{build,pool}/` (git-ignored, 0.5 GB and 5.7 GB). The seals bind these exact bytes: **back up `data/rcaeval/pool/`** — re-converting with different library versions may produce different bytes and therefore different seals.

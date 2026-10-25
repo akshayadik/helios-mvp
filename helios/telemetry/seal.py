@@ -59,11 +59,15 @@ def _sign(key: bytes, fields: dict[str, Any]) -> str:
     return hmac.new(key, payload, hashlib.sha256).hexdigest()
 
 
-def seal_fields(incident_dir: Path, window: TelemetryWindow) -> dict[str, Any]:
+def seal_fields(
+    incident_dir: Path, window: TelemetryWindow, base: Path | None = None
+) -> dict[str, Any]:
     """Hash the manifest and every declared Parquet stream as they are on disk.
 
     Streams are hashed at the path the window declares — the file the pipelines
-    will read. A declared stream whose file is missing raises FileNotFoundError.
+    will read. A relative path resolves against ``base`` when given, else the
+    working directory (repo-relative paths keep window_hash machine-independent).
+    A declared stream whose file is missing raises FileNotFoundError.
     """
     pillars: dict[str, str] = {}
     for stream, attr in _STREAM_ATTRS:
@@ -71,6 +75,8 @@ def seal_fields(incident_dir: Path, window: TelemetryWindow) -> dict[str, Any]:
         if path_val is None:
             continue
         path = Path(str(path_val))
+        if base is not None and not path.is_absolute():
+            path = base / path
         if not path.is_file():
             raise FileNotFoundError(f"{stream} declared at {path} but not on disk")
         pillars[stream] = _sha256_file(path)
@@ -83,12 +89,14 @@ def seal_fields(incident_dir: Path, window: TelemetryWindow) -> dict[str, Any]:
     }
 
 
-def write_seal(incident_dir: Path, window: TelemetryWindow, key: bytes) -> Path:
+def write_seal(
+    incident_dir: Path, window: TelemetryWindow, key: bytes, base: Path | None = None
+) -> Path:
     """Write the signed seal for a final capture. Refuses to overwrite."""
     seal_path = incident_dir / SEAL_FILENAME
     if seal_path.exists():
         raise FileExistsError(f"{seal_path} already exists; seals are write-once.")
-    fields = seal_fields(incident_dir, window)
+    fields = seal_fields(incident_dir, window, base)
     seal = {**fields, _SIGNATURE_KEY: _sign(key, fields)}
     tmp = seal_path.with_name(seal_path.name + ".tmp")
     tmp.write_text(json.dumps(seal, sort_keys=True, indent=2) + "\n", "utf-8")
@@ -96,7 +104,9 @@ def write_seal(incident_dir: Path, window: TelemetryWindow, key: bytes) -> Path:
     return seal_path
 
 
-def check_seal(incident_dir: Path, window: TelemetryWindow, key: bytes) -> str | None:
+def check_seal(
+    incident_dir: Path, window: TelemetryWindow, key: bytes, base: Path | None = None
+) -> str | None:
     """Return why the capture fails its seal, or None if sealed and unchanged."""
     seal_path = incident_dir / SEAL_FILENAME
     if not seal_path.exists():
@@ -114,7 +124,7 @@ def check_seal(incident_dir: Path, window: TelemetryWindow, key: bytes) -> str |
     ):
         return f"unsupported seal {stored.get('seal_kind')!r} v{stored.get('seal_version')!r}"
     try:
-        current = seal_fields(incident_dir, window)
+        current = seal_fields(incident_dir, window, base)
     except FileNotFoundError as exc:
         return str(exc)
     if stored.get("incident_id") != current["incident_id"]:

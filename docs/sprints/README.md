@@ -11,7 +11,7 @@ One folder per sprint for the whole product: Stage A (S0–S5, evidence, analysi
 | Sprint | Folder | Planned window | Milestone | Exit tag | Status |
 |---|---|---|---|---|---|
 | S0 Foundation | [`s0-foundation/`](s0-foundation/) | 2–13 Nov 2026 | S2-M5 | `rb-s0-exit` | **Closed 2026-10-24** · [exit report](s0-foundation/exit_report.md) |
-| S1 Data and graph | [`s1-data-graph/`](s1-data-graph/) | 16 Nov – 4 Dec 2026 | S2-M6 | `rb-s1-exit` | Next |
+| S1 Data and graph | [`s1-data-graph/`](s1-data-graph/) | 16 Nov – 4 Dec 2026 | S2-M6 | `rb-s1-exit` | **In progress** (started early, 2026-10-24) |
 | S2 Reasoning, consensus, narratives | [`s2-reasoning/`](s2-reasoning/) | 7–25 Dec 2026 | S2-M7 | `rb-s2-exit` | Planned |
 | S3 Routing and learning | [`s3-routing/`](s3-routing/) | 4–15 Jan 2027 | S2-M8 | `rb-s3-exit` | Planned |
 | S4 Product shell and evaluation tooling | [`s4-product-eval-tooling/`](s4-product-eval-tooling/) | 18–29 Jan 2027 | S2-M9 | `rb-s4-exit` | Planned |
@@ -28,7 +28,7 @@ Effort is the sum of the breakdown's task estimates, in working days, against th
 
 | Sprint | Planned effort | Working days | Note |
 |---|---|---|---|
-| S1 | 16 | 15 | Over by one day. S0 closed three weeks early, so S1 can start early (owner to confirm) |
+| S1 | 16 | 15 | Over by one day; started early on 2026-10-24 (owner), so about 30 working days are available |
 | S2 | 15½ | 15 | Tight; S2.9 rater training also needs the raters' time |
 | S3 | 9 | 10 | Four of the five tasks are Tier 2 |
 | S4 | 13½ | 10 | Over by 3½ days; Tier-2 items (S4.4–S4.7) are the first to move to Stage B |
