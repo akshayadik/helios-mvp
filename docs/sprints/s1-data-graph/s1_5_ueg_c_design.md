@@ -70,7 +70,7 @@ A path's class is the composition of its edge classes; its weight is the product
 
 ## Not in S1.5
 
-The `ueg_structural` OFF behaviour (one untyped class, full-graph training, ARS as flat text) is S1.6; until then OFF drops structural edges as before. Subgraph-aware training is S2. The pool is not built or inspected (pool lock).
+The `ueg_structural` OFF behaviour (one untyped class, full-graph training, ARS as flat text) is S1.6 — implemented in `helios/graph/structural_bundle.py` (see `ablation_architecture.md` §2.6). Subgraph-aware training is S2. The pool is not built or inspected (pool lock).
 
 ## Build-data check (2026-10-25)
 

@@ -1,6 +1,6 @@
 # HELIOS Ablation Architecture — Living ADR
 
-**Document Version:** v0.9
+**Document Version:** v0.10
 **Date:** 2026-10-25
 **Status:** §1 frozen at Stage 0; flag and variant names synced to the D2 registry (2026-10-23, deviation entry 31). §2 schemas frozen at Stage 0; §2.6 UEG-C Builder implemented and frozen at Milestone 2. §3.0 frozen at Stage 0 (registry + stubs). §3.1 D-pipe implemented and frozen at Milestone 2. §3.2 G-pipe implemented and frozen at Milestone 3. §3.3 L-pipe implemented and frozen at Milestone 3. §4 frozen at Milestone 1. §5 Consensus design frozen at Milestone 4. §6–§7 stubs. UEG-C (§2.1–§2.3, §2.6) at schema-draft-v0.2 since S1.5.
 **Canonical Reference:** `docs/memos/spine_freeze_memo_v0.md`
@@ -158,7 +158,7 @@ Every node has a `tenant` (*v0.2*, default `prod`; `self` for HELIOS's own telem
 | Class | EdgeType value | Meaning | Gated by flag |
 |---|---|---|---|
 | structural | `structural` | Parent → child span, different services | `ueg_structural` |
-| structural | `precedes` | Reasoning step → next step | `ueg_structural` (S1.6) |
+| structural | `precedes` | Reasoning step → next step | `ueg_structural` |
 | behavioural | `call` | Observed call traffic; weight = share of traces; `correlation` = caller vs callee latency | `l2b_graph` |
 | behavioural | `invokes` | Reasoning step → service it acted on | `l2b_graph` |
 | causal | `anomaly_leads` | Anomaly intensity of source leads target (`correlation`, `lag_seconds`) | `l2b_graph` |
@@ -248,7 +248,7 @@ Graph construction is implemented in `helios/graph/ueg_c_builder.py` (`build_ueg
 - **Agent-Reasoning-Step nodes**: added when `reasoning_steps` are passed (none before the S2 L-pipe).
 - The snapshot is deterministic (window end as `captured_at_iso`, sorted nodes and edges); the inputs are only the window's own streams.
 
-`HELIOS-noStructural` (flag `ueg_structural=False`) drops structural edges until S1.6 implements the full OFF bundle (one untyped edge class, full-graph training, reasoning steps as flat text).
+**Structural bundle (S1.6, `helios/graph/structural_bundle.py`).** The builder always produces the typed graph; `apply_structural_bundle()` then gives the view for the current variant. ON (HELIOS-Full): `typed_view()` — the gated component (`@gated_by(VCLFlag.UEG_STRUCTURAL)`) — keeps the four classes, structured reasoning-step nodes and subgraph-aware training (training scope = pruned subgraph). OFF (HELIOS-noStructural, Ch3 p. 51, A-H8): `flatten()` merges every edge between the same two nodes into one `untyped` edge (largest weight), removes reasoning-step nodes and returns them as flat text lines for the L-pipe, and sets the training scope to the full graph. Untyped edges compose only with each other; the pruner and D-pipe propagation treat all of them as topology. The orchestrator applies the bundle before pruning. Check: the noStructural view changes the snapshot hash on 20/20 OTel captures.
 
 *Deviation §2.2 (sig `5655ff9fbeeabfaf`) recorded that the May captures had no `parent_span_id`, so structural edges came from temporal containment. That gap is closed: the builder links parent and child spans (commit `b82cb90`), and both trace writers store `parent_span_id` (OTel captures, and the RCAEval adapter from S1.1). Temporal containment remains only as a fallback, with a warning, for trace files without the column.*
 
@@ -578,3 +578,4 @@ AIOpsLab is a Tier 2 recording spike (S1.3), not the confirmatory corpus.
 - v0.7 (2026-05-21): §3.3 L-pipe written and frozen (Milestone 3) — Protocol A parameters, PromptRegistry tamper-guard, ResponseHandler retry/fallback, ablation gating, deviation entries 15–16. §5 Consensus design notes added (Milestone 4). Section header updated to reflect implementation status.
 - v0.8 (2026-10-25, S2-M6-RES03): §1.2–§1.3 synced to the D2 registry (17 flags; deviation entry 31); §1.5 had been regenerated from `variants.py` on 2026-10-24. §2.2 and §2.6 use `ueg_structural` and say how the orchestrator applies it; §2.6 records that structural edges now use `parent_span_id` linkage. §5 names the RCAEval pool as the confirmatory corpus. §2.1–§2.3 (UEG-C schema) are left for the S1.5 schema bump.
 - v0.9 (2026-10-25, S2-M6-ENG03): §2.1–§2.3 and §2.6 rewritten for UEG-C schema-draft-v0.2 (S1.5): four edge classes from traces, metrics and logs, KPI and reasoning-step nodes, tenant, composition rules, deterministic snapshot; pruner note for v0.2 graphs (deviation entry 39).
+- v0.10 (2026-10-25, S2-M6-ENG04): §2.6 structural bundle (S1.6): ueg_structural OFF = one untyped edge kind, full-graph training scope, reasoning steps as flat text; gated typed_view; applied by the orchestrator before pruning.
