@@ -1,8 +1,8 @@
 # HELIOS Ablation Architecture — Living ADR
 
-**Document Version:** v0.7
-**Date:** 2026-05-21
-**Status:** §1 frozen at Stage 0. §2 schemas frozen at Stage 0; §2.6 UEG-C Builder implemented and frozen at Milestone 2. §3.0 frozen at Stage 0 (registry + stubs). §3.1 D-pipe implemented and frozen at Milestone 2. §3.2 G-pipe implemented and frozen at Milestone 3. §3.3 L-pipe implemented and frozen at Milestone 3. §4 frozen at Milestone 1. §5 Consensus design frozen at Milestone 4. §6–§7 stubs.
+**Document Version:** v0.8
+**Date:** 2026-10-25
+**Status:** §1 frozen at Stage 0; flag and variant names synced to the D2 registry (2026-10-23, deviation entry 31). §2 schemas frozen at Stage 0; §2.6 UEG-C Builder implemented and frozen at Milestone 2. §3.0 frozen at Stage 0 (registry + stubs). §3.1 D-pipe implemented and frozen at Milestone 2. §3.2 G-pipe implemented and frozen at Milestone 3. §3.3 L-pipe implemented and frozen at Milestone 3. §4 frozen at Milestone 1. §5 Consensus design frozen at Milestone 4. §6–§7 stubs. The UEG-C tables (§2.1–§2.3) are rewritten with the S1.5 schema bump.
 **Canonical Reference:** `docs/memos/spine_freeze_memo_v0.md`
 **Update Cadence:** After every pipeline-stage change.
 
@@ -35,11 +35,30 @@ This satisfies the requirements of Design Science Research (DSR) construct valid
 
 ### 1.2 Flag Registry (`helios/vcl/registry.py`)
 
-**14 binding flags** (12 from proposal Table 12 + `router` + `ingest_mode`):
+**17 flags** (owner decision D2, 2026-10-23, deviation entry 31): 13 Chapter 3 flags, 3 implementation flags and `ingest_mode`.
 
-**Boolean flags (13)** — eligible for `@gated_by`:
-- `l2c_llm`, `p4_cognitive`, `mahc`, `cbr`, `l2b_graph`, `acp`, `reconcile`,
-- `ueg_c_structural`, `dpipe`, `dpipe_propagation`, `gpipe`, `lpipe`, `router`
+**Boolean flags (16)** — eligible for `@gated_by`; iterate them with `VCLFlag.bool_flags()`:
+
+| Flag | Component | OFF means |
+|---|---|---|
+| `l2c_llm` | L-pipe (multi-agent LLM reasoning) | no L-pipe (HELIOS-noLLM) |
+| `p4_cognitive` | Cognitive telemetry visible to the L-pipe | HELIOS-noCogni |
+| `mahc_hierarchical` | MAHC consensus | vote-only fusion (HELIOS-noConsensus) |
+| `cbr_routing` | Cost-based router (ORAR) | uniform routing (HELIOS-noRouter) |
+| `l2b_graph` | UEG-C graph construction feeding the G-pipe | no graph |
+| `acp_stateful` | Action-Class Predictor | uniform prior (HELIOS-noACP) |
+| `reconcile_terminal` | Two-stage reward reconciliation | HELIOS-noReconcile |
+| `fgsv_ks_gate` | Shadow validation behind the KS fidelity gate | HELIOS-noFGSV |
+| `iol_self_telemetry` | HELIOS self-telemetry (tenant=self) | HELIOS-noIOL |
+| `coe_narrative` | Chain-of-Evidence narrative | ranked list only (HELIOS-noExpl) |
+| `his_tier` | Design-committed hardware isolation | HIS-3 (HELIOS-HIS3) |
+| `sampling_regime_tag` | Tiered adaptive sampling and its covariate | not switched off by any of the 15 variants |
+| `ueg_structural` | Typed structural edges, subgraph-aware training, ARS nodes | HELIOS-noStructural |
+| `dpipe` | D-pipe entry point (implementation flag) | no D-pipe |
+| `dpipe_propagation` | D-pipe graph propagation stage (implementation flag) | D-pipe without propagation |
+| `gpipe` | G-pipe entry point (implementation flag) | no G-pipe |
+
+The first 13 are the Chapter 3 flags (twelve on pp. 137–138, plus `ueg_structural`, p. 142). The May 2026 names `mahc`, `cbr`, `router`, `acp`, `reconcile`, `ueg_c_structural` and `lpipe` no longer exist: `cbr_routing` is the router, and the L-pipe is gated by `l2c_llm`.
 
 **Operational flag (1)**:
 - `ingest_mode` ∈ {`"recorded"`, `"live"`} (checked directly, never via decorator)
@@ -52,7 +71,7 @@ See full registry and `bool_flags()` / `all_flags()` methods in `helios/vcl/regi
 class VCLManifest(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    # 13 boolean flags + ingest_mode (see spine_freeze_memo_v0.md §2.1)
+    # 16 boolean flags + ingest_mode (D2 registry, deviation entry 31)
     ...
 
     def compute_variant_config_hash(self) -> str:
@@ -133,14 +152,17 @@ to 6 decimal places, and emits no whitespace.
 
 | EdgeType value | Meaning | Gated by flag |
 |---|---|---|
-| `structural` | Topology edge from K8s/service mesh config | `ueg_c_structural` |
+| `structural` | Topology edge from K8s/service mesh config | `ueg_structural` |
 | `call` | Observed RPC call (trace-derived) | `l2b_graph` |
 | `metric` | Metric-correlation edge (D-pipe output) | `dpipe` |
 | `log` | Log co-occurrence edge | `l2b_graph` |
 
 `weight: float` is constrained to `[0, 1]`. Structural edges are enabled only when
-`VCLFlag.UEG_C_STRUCTURAL` is active, maintaining the ablation boundary between
-topology-aware and topology-agnostic graph variants.
+`VCLFlag.UEG_STRUCTURAL` is active, maintaining the ablation boundary between
+topology-aware and topology-agnostic graph variants. The gate is applied by the
+orchestrator, not by `@gated_by`: `RunOrchestrator` passes `manifest.ueg_structural`
+to `build_ueg_c(enable_structural=...)` (`helios/orchestrator/runner.py`), while
+`build_ueg_c` itself is gated by `l2b_graph`.
 
 ### 2.3 UEGCSnapshot Contract (`helios/schemas/ueg_c.py`)   [FROZEN — Stage 0]
 
@@ -207,13 +229,13 @@ Graph construction is implemented in `helios/graph/ueg_c_builder.py` (`build_ueg
 
 #### Edge Construction (`build_ueg_c`)
 
-Edges are derived from OTEL traces Parquet (`p2_traces_path`) using **temporal containment**:
-- **STRUCTURAL edge** (`ueg_c_structural` flag): span A contains span B's time window → A structurally calls B. Weight = 1 (binary topology signal).
+Edges are derived from the traces Parquet (`p2_traces_path`):
+- **STRUCTURAL edge** (`ueg_structural` flag): the parent span's service calls the child span's service, linked by `parent_span_id` within the same trace. Weight = 1 (binary topology signal).
 - **CALL edge** (`l2b_graph` flag): span A contains span B and both share the same trace → A calls B in observed traffic. Weight = call-proportion (normalised by span count).
 
-Both edge types are gated independently — `HELIOS-noStructural` (flag `ueg_c_structural=False`) runs with CALL-only edges, removing topology from PPR seeding.
+Both edge types are gated independently — `HELIOS-noStructural` (flag `ueg_structural=False`) runs with CALL-only edges, removing topology from PPR seeding.
 
-*Deviation §2.2 (sig `5655ff9fbeeabfaf`): `parent_span_id` is absent from the Parquet schema; temporal containment is the only available heuristic. Misattribution risk bounded to deeply nested same-service call stacks. Pre-M3 gate requires replacement with `parent_span_id` linkage.*
+*Deviation §2.2 (sig `5655ff9fbeeabfaf`) recorded that the May captures had no `parent_span_id`, so structural edges came from temporal containment. That gap is closed: the builder links parent and child spans (commit `b82cb90`), and both trace writers store `parent_span_id` (OTel captures, and the RCAEval adapter from S1.1). Temporal containment remains only as a fallback, with a warning, for trace files without the column.*
 
 #### K-hop PPR Pruner (`prune_graph`)
 
@@ -507,7 +529,9 @@ with docstrings stripped. It is stored in every `ConsensusVerdict` row and verif
 `result_row` (schema-draft-v0.2) is unchanged; the two schemas coexist in the same DuckDB file.
 
 **Two-environment firewall:** All M4 runs use the OTEL Demo corpus (exploratory).
-AIOpsLab corpus runs (confirmatory, Phase 2) must never share a DuckDB file with OTEL results.
+Confirmatory runs use the 240-case RCAEval pool (D11, OSF deposit 1), which stays locked until
+tag `build-freeze`; they must never share a DuckDB file with build or exploratory results.
+AIOpsLab is a Tier 2 recording spike (S1.3), not the confirmatory corpus.
 
 ---
 
@@ -535,3 +559,4 @@ AIOpsLab corpus runs (confirmatory, Phase 2) must never share a DuckDB file with
 - v0.5 (2026-05-18): §2.6 UEG-C Builder written and frozen (Milestone 2) — edge construction algorithm, PPR pruner, entry-point detection fix, gate values. §3.1 D-pipe written and frozen (Milestone 2) — four-stage pipeline, calibrated parameters, LOO-CV results.
 - v0.6 (2026-05-19): §3.2 G-pipe written and frozen (Milestone 3) — conditional PPR-traversal pipeline, disagreement gate, sequential dispatch rationale, sentinel filter mandate, calibrated parameters.
 - v0.7 (2026-05-21): §3.3 L-pipe written and frozen (Milestone 3) — Protocol A parameters, PromptRegistry tamper-guard, ResponseHandler retry/fallback, ablation gating, deviation entries 15–16. §5 Consensus design notes added (Milestone 4). Section header updated to reflect implementation status.
+- v0.8 (2026-10-25, S2-M6-RES03): §1.2–§1.3 synced to the D2 registry (17 flags; deviation entry 31); §1.5 had been regenerated from `variants.py` on 2026-10-24. §2.2 and §2.6 use `ueg_structural` and say how the orchestrator applies it; §2.6 records that structural edges now use `parent_span_id` linkage. §5 names the RCAEval pool as the confirmatory corpus. §2.1–§2.3 (UEG-C schema) are left for the S1.5 schema bump.
