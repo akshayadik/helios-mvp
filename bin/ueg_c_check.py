@@ -24,6 +24,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from helios.graph.structural_bundle import flatten
 from helios.graph.ueg_c_builder import build_ueg_c
 from helios.schemas.telemetry import TelemetryWindow
 from helios.schemas.ueg_c import EdgeClass, NodeType
@@ -70,6 +71,7 @@ def check(corpus: str, limit: int | None) -> int:
         base = data / corpus
     hashes: list[str] = []
     unstable = 0
+    off_differs = 0
     services: list[float] = []
     seconds: list[float] = []
     per_class: dict[str, list[float]] = {c.value: [] for c in EdgeClass}
@@ -86,6 +88,8 @@ def check(corpus: str, limit: int | None) -> int:
         if first.compute_snapshot_hash() != again.compute_snapshot_hash():
             unstable += 1
         hashes.append(first.compute_snapshot_hash())
+        if flatten(first).snapshot.compute_snapshot_hash() != hashes[-1]:
+            off_differs += 1
         nodes = [n for n in first.nodes if n.node_type == NodeType.SERVICE]
         services.append(len(nodes))
         for n in nodes:
@@ -96,6 +100,10 @@ def check(corpus: str, limit: int | None) -> int:
     digest = hashlib.sha256("\n".join(hashes).encode("utf-8")).hexdigest()
     print(f"[ueg-c] {corpus}: {len(case_order)} windows, {len(hashes)} graphs")
     print(f"[ueg-c] rebuilds identical: {len(hashes) - unstable}/{len(hashes)}")
+    print(
+        "[ueg-c] noStructural (S1.6) changes the snapshot hash: "
+        f"{off_differs}/{len(hashes)}"
+    )
     print(f"[ueg-c] {_summary('services per graph', services)}")
     for cls, values in per_class.items():
         print(f"[ueg-c] {_summary(cls + ' edges per graph', values)}")

@@ -15,7 +15,8 @@ from helios.schemas.ueg_c import (
 )
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
 
-_TOPOLOGY = frozenset({EdgeClass.STRUCTURAL, EdgeClass.BEHAVIOURAL})
+# Untyped edges (ueg_structural OFF) cannot be told apart, so all of them count.
+_TOPOLOGY = frozenset({EdgeClass.STRUCTURAL, EdgeClass.BEHAVIOURAL, EdgeClass.UNTYPED})
 
 
 @dataclass

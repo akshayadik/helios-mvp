@@ -129,6 +129,10 @@ def _lagged(a: np.ndarray, b: np.ndarray, lag: int) -> float | None:
 
 
 class UEGCBuilder:
+    """Builds one snapshot. ``enable_structural=False`` omits structural edges;
+    it is a unit-level option only — the HELIOS-noStructural variant is the
+    structural bundle (helios.graph.structural_bundle), not this switch."""
+
     def __init__(self, *, enable_structural: bool = True) -> None:
         self._enable_structural = enable_structural
 
@@ -428,14 +432,15 @@ def build_ueg_c(
     window: TelemetryWindow,
     variant_config_hash: str,
     *,
-    enable_structural: bool = True,
     root: Path | None = None,
     reasoning_steps: Sequence[ReasoningStep] = (),
 ) -> UEGCSnapshot | None:
     """UEG-C snapshot of a window; None when it has no traces, metrics or logs.
 
     ``root`` resolves relative window paths (None: as given). Confirmatory
-    windows pass the pool lock when their logs are read.
+    windows pass the pool lock when their logs are read. The graph is always
+    fully typed; ueg_structural OFF is applied afterwards by
+    helios.graph.structural_bundle.apply_structural_bundle.
     """
     paths = (window.p1_metrics_path, window.p2_traces_path, window.p3_logs_path)
     if all(p is None for p in paths):
@@ -461,7 +466,7 @@ def build_ueg_c(
             modalities[service].add("logs")
         parts.append(part)
 
-    return UEGCBuilder(enable_structural=enable_structural).build(
+    return UEGCBuilder().build(
         spans,
         incident_id=window.incident_id,
         variant_config_hash=variant_config_hash,

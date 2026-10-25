@@ -45,6 +45,7 @@ class EdgeClass(StrEnum):
     BEHAVIOURAL = "behavioural"
     CAUSAL = "causal"
     ECONOMIC = "economic"
+    UNTYPED = "untyped"  # ueg_structural OFF (HELIOS-noStructural): no typing
 
 
 class EdgeType(StrEnum):
@@ -60,6 +61,7 @@ class EdgeType(StrEnum):
     ANOMALY_LEADS = "anomaly_leads"  # anomaly intensity of source leads target
     ANOMALY_CO_MOVES = "anomaly_co_moves"  # same, without a lead
     SERVES_KPI = "serves_kpi"  # service -> transaction/KPI node
+    UNTYPED = "untyped"  # any relation, typing removed (ueg_structural OFF)
 
 
 _EDGE_TYPE_TO_CLASS: dict[EdgeType, EdgeClass] = {
@@ -70,6 +72,7 @@ _EDGE_TYPE_TO_CLASS: dict[EdgeType, EdgeClass] = {
     EdgeType.ANOMALY_LEADS: EdgeClass.CAUSAL,
     EdgeType.ANOMALY_CO_MOVES: EdgeClass.CAUSAL,
     EdgeType.SERVES_KPI: EdgeClass.ECONOMIC,
+    EdgeType.UNTYPED: EdgeClass.UNTYPED,
 }
 
 

@@ -7,7 +7,9 @@ follow an economic edge (Transaction/KPI nodes are sinks):
     compose(a, b) = None        if a is economic or either side is None
                   = max(a, b)   otherwise
 
-The rule is associative, so a path's class does not depend on grouping. A
+Untyped edges (ueg_structural OFF) compose only with each other: there are
+no typed rules to apply. The rule is associative, so a path's class does not
+depend on grouping. A
 path's weight is the product of its edge weights. Design:
 docs/sprints/s1-data-graph/s1_5_ueg_c_design.md.
 """
@@ -40,6 +42,8 @@ def compose(a: EdgeClass | None, b: EdgeClass | None) -> EdgeClass | None:
     """Class of a path made of a path of class ``a`` followed by one of ``b``."""
     if a is None or b is None or a == EdgeClass.ECONOMIC:
         return None
+    if EdgeClass.UNTYPED in (a, b):
+        return a if a == b else None
     return a if _RANK[a] >= _RANK[b] else b
 
 
