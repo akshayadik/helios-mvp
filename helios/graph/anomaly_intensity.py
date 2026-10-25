@@ -139,7 +139,10 @@ def log_intensity(
         for source in (lines, novel):
             part = source.loc[service]
             idx = (
-                (pd.to_datetime(part.index, utc=True) - start).total_seconds()
+                (
+                    pd.to_datetime(part.index, utc=True, format="%Y-%m-%dT%H:%M:%SZ")
+                    - start
+                ).total_seconds()
                 // bucket_seconds
             ).astype(int)
             dense = np.zeros(n_buckets)

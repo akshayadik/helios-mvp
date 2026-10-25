@@ -1,6 +1,6 @@
 # S1.5 — Typed incident graph (UEG-C) · design
 
-**Task:** S1.5 (tracking S2-M6-ENG03) · **Date:** 2026-10-25 · **Schema:** UEG-C `schema-draft-v0.1` → `schema-draft-v0.2` (deviation entry before merge) · **Flags:** graph construction gated by `VCLFlag.L2B_GRAPH`; structural edges by `VCLFlag.UEG_STRUCTURAL`
+**Task:** S1.5 (tracking S2-M6-ENG03) · **Date:** 2026-10-25 · **Schema:** UEG-C `schema-draft-v0.1` → `schema-draft-v0.2` (deviation entry 39) · **Flags:** graph construction gated by `VCLFlag.L2B_GRAPH`; structural edges by `VCLFlag.UEG_STRUCTURAL`
 
 ## Why a redesign
 
@@ -71,3 +71,12 @@ A path's class is the composition of its edge classes; its weight is the product
 ## Not in S1.5
 
 The `ueg_structural` OFF behaviour (one untyped class, full-graph training, ARS as flat text) is S1.6; until then OFF drops structural edges as before. Subgraph-aware training is S2. The pool is not built or inspected (pool lock).
+
+## Build-data check (2026-10-25)
+
+| Corpus | Graphs | Rebuilds identical | Services per graph | Edges per graph (median) |
+|---|---|---|---|---|
+| RCAEval build (RE1, RE2-SS, RE3-SS) | 495 | 495/495 | 13–64 (median 15) | causal 27 (max 1224); structural, behavioural, economic 0 |
+| OTel captures (exploratory) | 20 | 20/20 | 16 | structural 15, behavioural 15, causal 3, economic 17 |
+
+**The RCAEval build corpus has no traces** (none of the 495 windows), while every pool window has them. Trace-derived edges are therefore checked on the OTel captures, and the S1.2 captures (about 60 new incidents) are the trace-bearing build data for calibrating them. Causal edges are dense on the 64-service build graphs; S1.7 (Algorithm 5, r = 0.7 cut) addresses it. Command: `poetry run python bin/ueg_c_check.py --corpus build|captures` (counts only).

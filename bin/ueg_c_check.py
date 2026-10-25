@@ -3,6 +3,7 @@
 
 Usage (from repo root):
     poetry run python bin/ueg_c_check.py --corpus build [--limit N]
+    poetry run python bin/ueg_c_check.py --corpus captures   (OTel Demo, with traces)
 
 Checks that each snapshot hash is identical across two builds and prints
 counts only: nodes per graph, edges per class, services per modality, time per
@@ -32,6 +33,7 @@ from helios.vcl.variants import get_variant
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DATA_ROOT = Path("data/rcaeval")
+CAPTURES_ROOT = Path("data/captures")  # OTel Demo captures (exploratory)
 
 
 def _window(case_dir: Path) -> TelemetryWindow:
@@ -54,9 +56,18 @@ def check(corpus: str, limit: int | None) -> int:
     manifest = get_variant("HELIOS-Full")
     set_current_manifest(manifest)
     variant_hash = manifest.compute_variant_config_hash()
-    data = REPO_ROOT / DATA_ROOT
-    index = json.loads((data / f"{corpus}_manifest.json").read_text(encoding="utf-8"))
-    case_order: list[str] = index["case_order"][:limit]
+    if corpus == "captures":
+        base = REPO_ROOT / CAPTURES_ROOT
+        case_order = sorted(
+            d.name for d in base.iterdir() if (d / "manifest.json").is_file()
+        )[:limit]
+    else:
+        data = REPO_ROOT / DATA_ROOT
+        index = json.loads(
+            (data / f"{corpus}_manifest.json").read_text(encoding="utf-8")
+        )
+        case_order = index["case_order"][:limit]
+        base = data / corpus
     hashes: list[str] = []
     unstable = 0
     services: list[float] = []
@@ -64,7 +75,7 @@ def check(corpus: str, limit: int | None) -> int:
     per_class: dict[str, list[float]] = {c.value: [] for c in EdgeClass}
     modalities: Counter[str] = Counter()
     for incident_id in case_order:
-        window = _window(data / corpus / incident_id)
+        window = _window(base / incident_id)
         started = time.perf_counter()
         first = build_ueg_c(window, variant_hash, root=REPO_ROOT)
         seconds.append(round(time.perf_counter() - started, 1))
@@ -96,7 +107,9 @@ def check(corpus: str, limit: int | None) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--corpus", choices=("build", "pool"), required=True)
+    parser.add_argument(
+        "--corpus", choices=("build", "pool", "captures"), required=True
+    )
     parser.add_argument("--limit", type=int, default=None)
     args = parser.parse_args(argv)
     return check(args.corpus, args.limit)

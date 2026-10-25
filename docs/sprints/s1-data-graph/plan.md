@@ -61,5 +61,6 @@ S1.1–S1.10 DONE (or S1.3 recorded as moved to Stage B); leakage test passes on
 |---|---|
 | Label leakage through case names, paths or fault strings (S0.1 F1) | Opaque IDs from the register; leakage test over every input, snapshot, prompt and stored text |
 | Pool data touched before the freeze | Adapter refuses pool cases before tag `build-freeze`; pool is only sealed, never run |
+| RCAEval build corpus has no traces (found in S1.5; every pool window has them), so trace-derived graph edges cannot be calibrated on it | Calibrate them on OTel captures: the 20 existing ones now, the ~60 new S1.2 captures next (S1.2 moves up; needs Docker at 16 GB) |
 | Service names differ across modalities (F4, F5) | Per-system normalisation table; metric/log-only services kept as nodes |
 | RCAEval download size (~3.4 GB Parquet) | Per-case download outside git, with checksums |
