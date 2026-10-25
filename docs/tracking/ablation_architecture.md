@@ -1,8 +1,8 @@
 # HELIOS Ablation Architecture — Living ADR
 
-**Document Version:** v0.8
+**Document Version:** v0.9
 **Date:** 2026-10-25
-**Status:** §1 frozen at Stage 0; flag and variant names synced to the D2 registry (2026-10-23, deviation entry 31). §2 schemas frozen at Stage 0; §2.6 UEG-C Builder implemented and frozen at Milestone 2. §3.0 frozen at Stage 0 (registry + stubs). §3.1 D-pipe implemented and frozen at Milestone 2. §3.2 G-pipe implemented and frozen at Milestone 3. §3.3 L-pipe implemented and frozen at Milestone 3. §4 frozen at Milestone 1. §5 Consensus design frozen at Milestone 4. §6–§7 stubs. The UEG-C tables (§2.1–§2.3) are rewritten with the S1.5 schema bump.
+**Status:** §1 frozen at Stage 0; flag and variant names synced to the D2 registry (2026-10-23, deviation entry 31). §2 schemas frozen at Stage 0; §2.6 UEG-C Builder implemented and frozen at Milestone 2. §3.0 frozen at Stage 0 (registry + stubs). §3.1 D-pipe implemented and frozen at Milestone 2. §3.2 G-pipe implemented and frozen at Milestone 3. §3.3 L-pipe implemented and frozen at Milestone 3. §4 frozen at Milestone 1. §5 Consensus design frozen at Milestone 4. §6–§7 stubs. UEG-C (§2.1–§2.3, §2.6) at schema-draft-v0.2 since S1.5.
 **Canonical Reference:** `docs/memos/spine_freeze_memo_v0.md`
 **Update Cadence:** After every pipeline-stage change.
 
@@ -138,24 +138,34 @@ All models enforce `extra="forbid"` and `frozen=True` (Pydantic v2). Hash identi
 `SHA-256(canonical_json(model.model_dump()))` where `canonical_json` sorts keys, rounds floats
 to 6 decimal places, and emits no whitespace.
 
-### 2.1 UEG-C Node Taxonomy (`helios/schemas/ueg_c.py`)   [FROZEN — Stage 0]
+### 2.1 UEG-C Node Taxonomy (`helios/schemas/ueg_c.py`)   [schema-draft-v0.2 — S1.5]
+
+UEG-C moved from `schema-draft-v0.1` to `schema-draft-v0.2` in S1.5 (design: `docs/sprints/s1-data-graph/s1_5_ueg_c_design.md`; deviation entry 39). The other schemas in §2 are unchanged.
 
 | NodeType value | Meaning | Used in |
 |---|---|---|
-| `service` | Microservice-level entity | D-pipe, G-pipe |
-| `operation` | RPC/HTTP operation on a service | G-pipe edge endpoints |
-| `pod` | Kubernetes pod instance | D-pipe anomaly source |
-| `database` | Persistent store (SQL, Redis, etc.) | G-pipe causal paths |
-| `external` | Third-party or out-of-mesh dependency | G-pipe boundary nodes |
+| `service` | Microservice seen in any modality (metadata `modalities`); the only root-cause candidates (`candidate_ids()`, tenant `prod`) | D-pipe, G-pipe |
+| `operation`, `pod`, `database`, `external` | Kept from v0.1; not built for RCAEval | — |
+| `transaction_kpi` *(v0.2)* | User-facing transaction of an entry service (`kpi:<service>`) | economic edges |
+| `agent_reasoning_step` *(v0.2)* | One agent reasoning step (P4), tenant `self` | L-pipe (S2) |
 
-### 2.2 UEG-C Edge Taxonomy (`helios/schemas/ueg_c.py`)   [FROZEN — Stage 0]
+Every node has a `tenant` (*v0.2*, default `prod`; `self` for HELIOS's own telemetry and reasoning steps, C5).
 
-| EdgeType value | Meaning | Gated by flag |
-|---|---|---|
-| `structural` | Topology edge from K8s/service mesh config | `ueg_structural` |
-| `call` | Observed RPC call (trace-derived) | `l2b_graph` |
-| `metric` | Metric-correlation edge (D-pipe output) | `dpipe` |
-| `log` | Log co-occurrence edge | `l2b_graph` |
+### 2.2 UEG-C Edge Taxonomy (`helios/schemas/ueg_c.py`)   [schema-draft-v0.2 — S1.5]
+
+`edge_type` is the relation; `edge_class` is derived from it and never stored apart from it.
+
+| Class | EdgeType value | Meaning | Gated by flag |
+|---|---|---|---|
+| structural | `structural` | Parent → child span, different services | `ueg_structural` |
+| structural | `precedes` | Reasoning step → next step | `ueg_structural` (S1.6) |
+| behavioural | `call` | Observed call traffic; weight = share of traces; `correlation` = caller vs callee latency | `l2b_graph` |
+| behavioural | `invokes` | Reasoning step → service it acted on | `l2b_graph` |
+| causal | `anomaly_leads` | Anomaly intensity of source leads target (`correlation`, `lag_seconds`) | `l2b_graph` |
+| causal | `anomaly_co_moves` | Same without a lead; both directions | `l2b_graph` |
+| economic | `serves_kpi` | Service → KPI node; weight = share of the entry's traces through the service | `l2b_graph` |
+
+Composition rules (`helios/graph/composition.py`): classes ordered structural < behavioural < causal < economic; composing two edges gives the larger class, and nothing may follow an economic edge. The rule is associative; a path's weight is the product of its edge weights; `typed_paths()` answers cross-domain path queries.
 
 `weight: float` is constrained to `[0, 1]`. Structural edges are enabled only when
 `VCLFlag.UEG_STRUCTURAL` is active, maintaining the ablation boundary between
@@ -164,16 +174,16 @@ orchestrator, not by `@gated_by`: `RunOrchestrator` passes `manifest.ueg_structu
 to `build_ueg_c(enable_structural=...)` (`helios/orchestrator/runner.py`), while
 `build_ueg_c` itself is gated by `l2b_graph`.
 
-### 2.3 UEGCSnapshot Contract (`helios/schemas/ueg_c.py`)   [FROZEN — Stage 0]
+### 2.3 UEGCSnapshot Contract (`helios/schemas/ueg_c.py`)   [schema-draft-v0.2 — S1.5]
 
 | Field | Type | Required | Notes |
 |---|---|---|---|
 | `incident_id` | `str` | Yes | Links to fault event |
 | `variant_config_hash` | `str` (64-char hex) | Yes | VCLManifest identity |
-| `nodes` | `list[UEGCNode]` | Yes | May be empty list |
-| `edges` | `list[UEGCEdge]` | Yes | May be empty list |
-| `captured_at_iso` | `str` (ISO 8601 UTC) | Yes | Capture timestamp |
-| `schema_version` | `str` | Default `schema-draft-v0.1` | Bumped at OSF Stage 5 freeze |
+| `nodes` | `list[UEGCNode]` | Yes | Sorted by (type, id) |
+| `edges` | `list[UEGCEdge]` | Yes | Sorted by (relation, source, target); optional `correlation`, `lag_seconds` |
+| `captured_at_iso` | `str` (ISO 8601 UTC) | Yes | Window end (v0.2; v0.1 used the build time, so its hash changed on every build) |
+| `schema_version` | `str` | Default `schema-draft-v0.2` | Bumped at OSF Stage 5 freeze |
 
 `compute_snapshot_hash()` produces a SHA-256 snapshot identity used by `PipelineVerdict.snapshot_hash`
 for deduplication and C1 run-level inclusion (§5.1). The snapshot itself does **not** store its own
@@ -229,11 +239,16 @@ Graph construction is implemented in `helios/graph/ueg_c_builder.py` (`build_ueg
 
 #### Edge Construction (`build_ueg_c`)
 
-Edges are derived from the traces Parquet (`p2_traces_path`):
-- **STRUCTURAL edge** (`ueg_structural` flag): the parent span's service calls the child span's service, linked by `parent_span_id` within the same trace. Weight = 1 (binary topology signal).
-- **CALL edge** (`l2b_graph` flag): span A contains span B and both share the same trace → A calls B in observed traffic. Weight = call-proportion (normalised by span count).
+*S1.5 (schema-draft-v0.2) extends the builder to all three modalities; the design is in `docs/sprints/s1-data-graph/s1_5_ueg_c_design.md`.*
 
-Both edge types are gated independently — `HELIOS-noStructural` (flag `ueg_structural=False`) runs with CALL-only edges, removing topology from PPR seeding.
+- **STRUCTURAL edge** (`ueg_structural` flag): the parent span's service calls the child span's service, linked by `parent_span_id` within the same trace. Weight = 1 (binary topology signal).
+- **CALL edge** (`l2b_graph` flag): the same parent/child calls as observed traffic. Weight = share of traces containing the call; `correlation` = Pearson r of caller and callee mean span duration per 30 s bucket.
+- **Causal edges**: per-service anomaly intensity per bucket (`helios/graph/anomaly_intensity.py`: robust z-scores of the service's metric series, counters differenced, and of its S1.4 log-line and new-template counts); lagged Pearson r up to four buckets; kept at r ≥ 0.6. Metric-only and log-only services are nodes and get their edges here.
+- **Economic edges**: each entry service (owner of root spans) gets a `transaction_kpi` node; every service on its traces links to it with its share of those traces.
+- **Agent-Reasoning-Step nodes**: added when `reasoning_steps` are passed (none before the S2 L-pipe).
+- The snapshot is deterministic (window end as `captured_at_iso`, sorted nodes and edges); the inputs are only the window's own streams.
+
+`HELIOS-noStructural` (flag `ueg_structural=False`) drops structural edges until S1.6 implements the full OFF bundle (one untyped edge class, full-graph training, reasoning steps as flat text).
 
 *Deviation §2.2 (sig `5655ff9fbeeabfaf`) recorded that the May captures had no `parent_span_id`, so structural edges came from temporal containment. That gap is closed: the builder links parent and child spans (commit `b82cb90`), and both trace writers store `parent_span_id` (OTel captures, and the RCAEval adapter from S1.1). Temporal containment remains only as a fallback, with a warning, for trace files without the column.*
 
@@ -247,6 +262,8 @@ Personalized PageRank (alpha=0.85) seeded from structural entry points identifie
 - Hub fallback: if no valid structural root exists (e.g., graph has only CALL edges), seed from the highest out-degree node
 
 Nodes with PPR score below `PRUNER_THRESHOLD = 0.02` are removed from the snapshot before D-pipe / G-pipe dispatch.
+
+*v0.2 graphs (S1.5):* PageRank runs over the structural and behavioural edges between production services only. Services without traces, the KPI nodes of kept services and tenant-`self` nodes are always kept; causal and economic edges between kept nodes stay. S1.7 replaces this pruner with Algorithm 5.
 
 **Gate values (calibrated on 15-incident OTEL demo corpus):**
 
@@ -560,3 +577,4 @@ AIOpsLab is a Tier 2 recording spike (S1.3), not the confirmatory corpus.
 - v0.6 (2026-05-19): §3.2 G-pipe written and frozen (Milestone 3) — conditional PPR-traversal pipeline, disagreement gate, sequential dispatch rationale, sentinel filter mandate, calibrated parameters.
 - v0.7 (2026-05-21): §3.3 L-pipe written and frozen (Milestone 3) — Protocol A parameters, PromptRegistry tamper-guard, ResponseHandler retry/fallback, ablation gating, deviation entries 15–16. §5 Consensus design notes added (Milestone 4). Section header updated to reflect implementation status.
 - v0.8 (2026-10-25, S2-M6-RES03): §1.2–§1.3 synced to the D2 registry (17 flags; deviation entry 31); §1.5 had been regenerated from `variants.py` on 2026-10-24. §2.2 and §2.6 use `ueg_structural` and say how the orchestrator applies it; §2.6 records that structural edges now use `parent_span_id` linkage. §5 names the RCAEval pool as the confirmatory corpus. §2.1–§2.3 (UEG-C schema) are left for the S1.5 schema bump.
+- v0.9 (2026-10-25, S2-M6-ENG03): §2.1–§2.3 and §2.6 rewritten for UEG-C schema-draft-v0.2 (S1.5): four edge classes from traces, metrics and logs, KPI and reasoning-step nodes, tenant, composition rules, deterministic snapshot; pruner note for v0.2 graphs (deviation entry 39).

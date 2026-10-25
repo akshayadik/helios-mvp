@@ -79,9 +79,10 @@ def test_structural_disabled_emits_no_structural_edges() -> None:
         _span("t1", "a", 0, 1000),
         _span("t1", "b", 1_00, 800),
     ]
-    snap = UEGCBuilder(enable_structural=False).build(
-        spans, incident_id="inc", variant_config_hash=_HASH, captured_at_iso=_AT
-    )
+    with pytest.warns(UserWarning, match="parent_span_id absent"):
+        snap = UEGCBuilder(enable_structural=False).build(
+            spans, incident_id="inc", variant_config_hash=_HASH, captured_at_iso=_AT
+        )
     assert not any(e.edge_type == EdgeType.STRUCTURAL for e in snap.edges)
 
 
@@ -93,9 +94,10 @@ def test_call_edge_weight_equals_fraction_of_traces() -> None:
         _span("t2", "frontend", 0, 1000),
         _span("t2", "checkout", 1_00, 800),
     ]
-    snap = UEGCBuilder(enable_structural=False).build(
-        spans, incident_id="inc", variant_config_hash=_HASH, captured_at_iso=_AT
-    )
+    with pytest.warns(UserWarning, match="parent_span_id absent"):
+        snap = UEGCBuilder(enable_structural=False).build(
+            spans, incident_id="inc", variant_config_hash=_HASH, captured_at_iso=_AT
+        )
     c_edges = [e for e in snap.edges if e.edge_type == EdgeType.CALL]
     fe_co = next(
         e for e in c_edges if e.source == "frontend" and e.target == "checkout"
@@ -110,9 +112,10 @@ def test_call_edge_partial_trace_coverage() -> None:
         _span("t1", "checkout", 1_00, 800),
         _span("t2", "frontend", 0, 1000),
     ]
-    snap = UEGCBuilder(enable_structural=False).build(
-        spans, incident_id="inc", variant_config_hash=_HASH, captured_at_iso=_AT
-    )
+    with pytest.warns(UserWarning, match="parent_span_id absent"):
+        snap = UEGCBuilder(enable_structural=False).build(
+            spans, incident_id="inc", variant_config_hash=_HASH, captured_at_iso=_AT
+        )
     c_edges = [e for e in snap.edges if e.edge_type == EdgeType.CALL]
     fe_co = next(
         (e for e in c_edges if e.source == "frontend" and e.target == "checkout"), None

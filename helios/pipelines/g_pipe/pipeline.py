@@ -53,7 +53,7 @@ def should_run_gpipe(dpipe_verdict: dict[str, Any], manifest: Any) -> bool:
 def _build_nx_graph(snapshot: UEGCSnapshot) -> nx.DiGraph:
     graph: nx.DiGraph = nx.DiGraph()
     for node in snapshot.nodes:
-        graph.add_node(node.service_name)
+        graph.add_node(node.node_id)
     for edge in snapshot.edges:
         graph.add_edge(edge.source, edge.target, weight=edge.weight)
     return graph
@@ -72,8 +72,12 @@ def _ppr_traverse(
     raw_scores: dict[str, float] = nx.pagerank(
         graph, alpha=GPIPE_PPR_ALPHA, personalization=personalization
     )
-    ranked = sorted(raw_scores, key=raw_scores.__getitem__, reverse=True)
-    return ranked, raw_scores
+    # Only production services are root-cause candidates (KPI and reasoning-step
+    # nodes take part in the walk but are never ranked).
+    candidates = set(snapshot.candidate_ids())
+    scores = {k: v for k, v in raw_scores.items() if k in candidates}
+    ranked = sorted(scores, key=scores.__getitem__, reverse=True)
+    return ranked, scores
 
 
 def _sentinel_verdict(

@@ -138,7 +138,7 @@ class TestUEGCSnapshot:
         assert h1 != h2
 
     def test_schema_version_is_draft(self) -> None:
-        assert _make_snapshot().schema_version == "schema-draft-v0.1"
+        assert _make_snapshot().schema_version == "schema-draft-v0.2"
 
     def test_node_type_service(self) -> None:
         assert NodeType.SERVICE.value == "service"
@@ -161,11 +161,33 @@ class TestUEGCSnapshot:
     def test_edge_type_call(self) -> None:
         assert EdgeType.CALL.value == "call"
 
-    def test_edge_type_metric(self) -> None:
-        assert EdgeType.METRIC.value == "metric"
+    def test_edge_type_anomaly_leads(self) -> None:
+        assert EdgeType.ANOMALY_LEADS.value == "anomaly_leads"
 
-    def test_edge_type_log(self) -> None:
-        assert EdgeType.LOG.value == "log"
+    def test_edge_type_serves_kpi(self) -> None:
+        assert EdgeType.SERVES_KPI.value == "serves_kpi"
+
+    def test_node_types_added_in_v02(self) -> None:
+        assert NodeType.TRANSACTION_KPI.value == "transaction_kpi"
+        assert NodeType.AGENT_REASONING_STEP.value == "agent_reasoning_step"
+
+    def test_node_tenant_defaults_to_prod(self) -> None:
+        n = UEGCNode(node_id="x", node_type=NodeType.SERVICE, service_name="x")
+        assert n.tenant == "prod"
+
+    def test_edge_correlation_bounds(self) -> None:
+        with pytest.raises(ValidationError):
+            UEGCEdge(
+                source="a", target="b", edge_type=EdgeType.CALL, weight=1, correlation=2
+            )
+        with pytest.raises(ValidationError):
+            UEGCEdge(
+                source="a",
+                target="b",
+                edge_type=EdgeType.CALL,
+                weight=1,
+                lag_seconds=-30,
+            )
 
     def test_extra_fields_forbidden(self) -> None:
         with pytest.raises(ValidationError):
@@ -193,20 +215,20 @@ class TestUEGCSnapshot:
             )
 
     def test_edge_weight_zero_allowed(self) -> None:
-        e = UEGCEdge(source="a", target="b", edge_type=EdgeType.METRIC, weight=0)
+        e = UEGCEdge(source="a", target="b", edge_type=EdgeType.CALL, weight=0)
         assert e.weight == 0
 
     def test_edge_weight_one_allowed(self) -> None:
-        e = UEGCEdge(source="a", target="b", edge_type=EdgeType.METRIC, weight=1)
+        e = UEGCEdge(source="a", target="b", edge_type=EdgeType.CALL, weight=1)
         assert e.weight == 1
 
     def test_edge_weight_negative_rejected(self) -> None:
         with pytest.raises(ValidationError):
-            UEGCEdge(source="a", target="b", edge_type=EdgeType.METRIC, weight=-0.1)
+            UEGCEdge(source="a", target="b", edge_type=EdgeType.CALL, weight=-0.1)
 
     def test_edge_weight_over_max_rejected(self) -> None:
         with pytest.raises(ValidationError):
-            UEGCEdge(source="a", target="b", edge_type=EdgeType.METRIC, weight=1.1)
+            UEGCEdge(source="a", target="b", edge_type=EdgeType.CALL, weight=1.1)
 
     def test_metadata_defaults_to_empty_dict(self) -> None:
         n = UEGCNode(node_id="x", node_type=NodeType.POD, service_name="svc")
@@ -505,7 +527,7 @@ class TestSchemaVersion:
     def test_all_schemas_tagged_draft_v01(self) -> None:
         from helios.schemas.verdict import VERDICT_SCHEMA_VERSION
 
-        assert _make_snapshot().schema_version == "schema-draft-v0.1"
+        assert _make_snapshot().schema_version == "schema-draft-v0.2"
         assert _make_verdict().schema_version == VERDICT_SCHEMA_VERSION
         assert _make_window().schema_version == "schema-draft-v0.1"
 
