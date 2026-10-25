@@ -6,8 +6,16 @@ from dataclasses import dataclass
 
 import networkx as nx
 
-from helios.schemas.ueg_c import EdgeType, UEGCSnapshot
+from helios.schemas.ueg_c import (
+    TENANT_PROD,
+    EdgeClass,
+    EdgeType,
+    NodeType,
+    UEGCSnapshot,
+)
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
+
+_TOPOLOGY = frozenset({EdgeClass.STRUCTURAL, EdgeClass.BEHAVIOURAL})
 
 
 @dataclass
@@ -29,11 +37,21 @@ def prune_graph(
     *,
     pruner_threshold: float = 0.02,
 ) -> tuple[UEGCSnapshot, PruneResult]:
+    # PageRank runs over the call topology (structural + behavioural edges) of
+    # production services. Causal and economic edges, KPI nodes and agent
+    # reasoning steps do not steer pruning; S1.7 replaces this pruner with
+    # Algorithm 5.
     graph: nx.DiGraph = nx.DiGraph()
     for node in snapshot.nodes:
-        graph.add_node(node.service_name)
+        if node.node_type == NodeType.SERVICE and node.tenant == TENANT_PROD:
+            graph.add_node(node.node_id)
     for edge in snapshot.edges:
-        graph.add_edge(edge.source, edge.target, weight=edge.weight)
+        if (
+            edge.edge_class in _TOPOLOGY
+            and edge.source in graph
+            and edge.target in graph
+        ):
+            graph.add_edge(edge.source, edge.target, weight=edge.weight)
 
     # Entry points: structural in-degree == 0 AND at least one outgoing edge.
     # Nodes that are structurally unreachable AND have no outgoing edges (e.g., async
@@ -69,7 +87,20 @@ def prune_graph(
     )
 
     retained = {n for n, score in ppr.items() if score >= pruner_threshold}
-    kept_nodes = [n for n in snapshot.nodes if n.service_name in retained]
+    # Services without traces have no call edges and would always fall below
+    # the threshold; they stay (metric/log-only services are candidates).
+    retained |= {
+        n.node_id
+        for n in snapshot.nodes
+        if n.node_id in graph and "traces" not in n.metadata.get("modalities", "traces")
+    }
+    retained |= {
+        n.node_id
+        for n in snapshot.nodes
+        if n.tenant != TENANT_PROD
+        or (n.node_type == NodeType.TRANSACTION_KPI and n.service_name in retained)
+    }
+    kept_nodes = [n for n in snapshot.nodes if n.node_id in retained]
     kept_edges = [
         e for e in snapshot.edges if e.source in retained and e.target in retained
     ]

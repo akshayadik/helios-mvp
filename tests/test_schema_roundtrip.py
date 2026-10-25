@@ -20,15 +20,31 @@ class TestUEGCEdgeClass:
         edge = UEGCEdge(source="a", target="b", edge_type=EdgeType.CALL, weight=_WEIGHT)
         assert edge.edge_class == EdgeClass.BEHAVIOURAL
 
-    def test_metric_edge_derives_causal_class(self) -> None:
-        edge = UEGCEdge(
-            source="a", target="b", edge_type=EdgeType.METRIC, weight=_WEIGHT
-        )
-        assert edge.edge_class == EdgeClass.CAUSAL
+    def test_anomaly_edges_derive_causal_class(self) -> None:
+        for kind in (EdgeType.ANOMALY_LEADS, EdgeType.ANOMALY_CO_MOVES):
+            edge = UEGCEdge(source="a", target="b", edge_type=kind, weight=_WEIGHT)
+            assert edge.edge_class == EdgeClass.CAUSAL
 
-    def test_log_edge_derives_economic_class(self) -> None:
-        edge = UEGCEdge(source="a", target="b", edge_type=EdgeType.LOG, weight=_WEIGHT)
+    def test_serves_kpi_edge_derives_economic_class(self) -> None:
+        edge = UEGCEdge(
+            source="a", target="kpi:a", edge_type=EdgeType.SERVES_KPI, weight=_WEIGHT
+        )
         assert edge.edge_class == EdgeClass.ECONOMIC
+
+    def test_reasoning_edges_derive_structural_and_behavioural(self) -> None:
+        precedes = UEGCEdge(
+            source="s1", target="s2", edge_type=EdgeType.PRECEDES, weight=_WEIGHT
+        )
+        invokes = UEGCEdge(
+            source="s1", target="a", edge_type=EdgeType.INVOKES, weight=_WEIGHT
+        )
+        assert precedes.edge_class == EdgeClass.STRUCTURAL
+        assert invokes.edge_class == EdgeClass.BEHAVIOURAL
+
+    def test_every_edge_type_has_a_class(self) -> None:
+        for kind in EdgeType:
+            edge = UEGCEdge(source="a", target="b", edge_type=kind, weight=_WEIGHT)
+            assert edge.edge_class in EdgeClass
 
     def test_structural_edge_derives_structural_class(self) -> None:
         edge = UEGCEdge(
