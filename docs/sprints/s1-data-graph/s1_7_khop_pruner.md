@@ -46,7 +46,7 @@ top-n changes nothing in retention at any K (no neighbourhood exceeds 60 service
 
 **As the orchestrator runs it (K = 3, top-n = 50, floor 50):** root cause kept in **492 / 495** build graphs; services kept 13–50 (median 15). The 125 graphs with 64 services are cut to exactly 50; all others keep every service. The three losses are a ceiling on HR@k for those build cases. The 10,000-edge budget never binds (at most 861 edges kept).
 
-**OTel captures:** 16 of 20 labels are service nodes (the other four name `imageService`, which is not a service in the OTel graph); the root cause is within one hop of the seeds in 16/16, and the floor keeps every service (15 per graph).
+**OTel captures (void, see deviation entry 45):** the May captures label spans with the wrong service (S1.3 finding), so this check is not evidence; it is repeated on the S1.2 build corpus. As first reported: 16 of 20 labels are service nodes (the other four name `imageService`, which is not a service in the OTel graph); the root cause is within one hop of the seeds in 16/16, and the floor keeps every service (15 per graph).
 
 **Done-when.** "50–200 nodes on build incidents": met for every build graph with more than 50 services (125/125 cut to 50); graphs with fewer services cannot reach 50 and are kept whole. Calibration logged here and in deviation entry 40.
 
