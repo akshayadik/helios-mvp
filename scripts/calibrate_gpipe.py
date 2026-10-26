@@ -78,7 +78,7 @@ def _load_corpus() -> list[dict[str, Any]]:
             continue
         snapshot, _ = prune_graph(snapshot)
 
-        # Re-run D-pipe to obtain ppr_scores (score_final from anomaly/propagation stages).
+        # Re-run D-pipe to obtain candidate_scores (score_final from anomaly/propagation stages).
         d_out = run_dpipe(
             window=window,
             ueg_c=snapshot,
@@ -92,10 +92,10 @@ def _load_corpus() -> list[dict[str, Any]]:
             topology_boost_factor=TOPOLOGY_BOOST_DEFAULT,
             ground_truth_service=ground_truth_service,
         )
-        dpipe_scores: dict[str, float] = d_out.get("ppr_scores", {})
+        dpipe_scores: dict[str, float] = d_out.get("candidate_scores", {})
 
         if not dpipe_scores:
-            print(f"[skip] {incident_id}: empty dpipe ppr_scores")
+            print(f"[skip] {incident_id}: empty dpipe candidate_scores")
             continue
 
         corpus.append(

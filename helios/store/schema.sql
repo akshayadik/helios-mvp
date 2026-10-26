@@ -1,12 +1,16 @@
--- HELIOS result store — schema-draft-v0.4
+-- HELIOS result store — schema-draft-v0.5
 -- Source: execution plan §3.6.3 + §5.1 run-level inclusion criteria
--- Tagged: schema-draft-v0.4 (will become v1.0 at OSF Stage 5 freeze)
+-- Tagged: schema-draft-v0.5 (will become v1.0 at OSF Stage 5 freeze)
 --
--- All columns mirror PipelineVerdict fields. variant_config_hash and
--- snapshot_hash enforce C1 inclusion criteria at query time (§5.1).
+-- result_row mirrors PipelineVerdict (helios/schemas/verdict.py, S1.8).
+-- variant_config_hash and snapshot_hash enforce C1 inclusion criteria at
+-- query time (§5.1). Scores against ground truth (HR@k, MRR) are not stored
+-- here: they are computed after dispatch by the scoring path (S1.9).
 --
 -- PK is (run_id, pipeline): one row per pipeline per incident run.
 -- run_id is a per-incident UUID shared by all three pipeline verdicts.
+-- A database created before v0.5 keeps its rows in result_row_v04
+-- (ResultStore._archive_pre_v05); they are never rewritten.
 
 CREATE TABLE IF NOT EXISTS result_row (
     run_id              VARCHAR     NOT NULL,
@@ -15,13 +19,20 @@ CREATE TABLE IF NOT EXISTS result_row (
     snapshot_hash       VARCHAR     NOT NULL,   -- 64-char SHA-256 hex (UEGCSnapshot)
     pipeline            VARCHAR     NOT NULL,   -- dpipe | gpipe | lpipe
     evaluation_phase    VARCHAR     NOT NULL,   -- exploratory | confirmatory
+    status              VARCHAR     NOT NULL,   -- ranked | abstained | skipped | failed
     ranked_candidates   JSON        NOT NULL,   -- ordered list of service names
-    hr_at_3             DOUBLE      NOT NULL,
-    mrr                 DOUBLE      NOT NULL,   -- reciprocal rank (was cpr before schema-draft-v0.4)
+    candidate_scores    JSON        NOT NULL,   -- the pipeline's own score per candidate
+    mu                  DOUBLE,                 -- confidence in the top-1; NULL = no estimator
+    sigma               DOUBLE,                 -- standard deviation of mu; NULL = unknown
+    prompt_tokens       BIGINT      NOT NULL,
+    completion_tokens   BIGINT      NOT NULL,
+    cpu_ms              DOUBLE      NOT NULL,
+    gpu_ms              DOUBLE      NOT NULL,
     latency_ms          DOUBLE      NOT NULL,
-    token_count         BIGINT      NOT NULL,
     narrative           TEXT        NOT NULL,
-    schema_version      VARCHAR     NOT NULL    DEFAULT 'schema-draft-v0.4',
+    prompt_version      VARCHAR,
+    decision_hash       VARCHAR     NOT NULL,   -- PipelineVerdict.compute_decision_hash()
+    schema_version      VARCHAR     NOT NULL    DEFAULT 'schema-draft-v0.5',
     created_at          TIMESTAMP               DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (run_id, pipeline)
 );
@@ -66,4 +77,12 @@ CREATE TABLE IF NOT EXISTS consensus_verdict (
 -- Databases created before v0.4 are migrated by ResultStore._migrate_cpr_to_mrr.
 INSERT INTO schema_tag (tag)
 VALUES ('schema-draft-v0.4')
+ON CONFLICT (tag) DO NOTHING;
+
+-- schema-draft-v0.5 (S1.8): result_row carries the verdict contract — status,
+-- candidate scores, mu, sigma, cost (tokens, CPU and GPU time) and the
+-- decision hash; hr_at_3, mrr and token_count left the row (scores move to
+-- the S1.9 scoring path; tokens are split into prompt and completion).
+INSERT INTO schema_tag (tag)
+VALUES ('schema-draft-v0.5')
 ON CONFLICT (tag) DO NOTHING;

@@ -11,13 +11,21 @@ from __future__ import annotations
 
 import hashlib
 import random
+from typing import Any
 
 import pytest
 from pydantic import ValidationError
 
 from helios.schemas.telemetry import EvaluationPhase, TelemetryWindow
 from helios.schemas.ueg_c import EdgeType, NodeType, UEGCEdge, UEGCNode, UEGCSnapshot
-from helios.schemas.verdict import PipelineVerdict
+from helios.schemas.verdict import (
+    VERDICT_SCHEMA_VERSION,
+    PipelineName,
+    PipelineVerdict,
+    VerdictCost,
+    VerdictStatus,
+    top1_share,
+)
 from helios.vcl import VCLFlag, canonical_json
 
 # ---------------------------------------------------------------------------
@@ -48,21 +56,25 @@ def _make_snapshot(incident_id: str = "inc-001") -> UEGCSnapshot:
     )
 
 
-def _make_verdict(run_id: str = "run-001") -> PipelineVerdict:
-    return PipelineVerdict(
-        run_id=run_id,
-        incident_id="inc-001",
-        variant_config_hash=_FAKE_HASH,
-        snapshot_hash=_FAKE_SNAP_HASH,
-        pipeline="dpipe",
-        evaluation_phase=EvaluationPhase.EXPLORATORY,
-        ranked_candidates=["svc-A", "svc-B", "svc-C"],
-        hr_at_3=0.67,
-        mrr=0.33,
-        latency_ms=42.5,
-        token_count=512,
-        narrative="svc-A caused a database connection timeout",
-    )
+def _make_verdict(run_id: str = "run-001", **overrides: Any) -> PipelineVerdict:
+    fields: dict[str, Any] = {
+        "run_id": run_id,
+        "incident_id": "inc-001",
+        "variant_config_hash": _FAKE_HASH,
+        "snapshot_hash": _FAKE_SNAP_HASH,
+        "pipeline": PipelineName.DPIPE,
+        "evaluation_phase": EvaluationPhase.EXPLORATORY,
+        "status": VerdictStatus.RANKED,
+        "ranked_candidates": ["svc-A", "svc-B", "svc-C"],
+        "candidate_scores": {"svc-A": 0.6, "svc-B": 0.3, "svc-C": 0.1},
+        "mu": 0.6,
+        "sigma": 0.12,
+        "cost": VerdictCost(prompt_tokens=400, completion_tokens=112, cpu_ms=8.25),
+        "latency_ms": 42.5,
+        "narrative": "svc-A caused a database connection timeout",
+    }
+    fields.update(overrides)
+    return PipelineVerdict(**fields)
 
 
 def _make_window(incident_id: str = "inc-001") -> TelemetryWindow:
@@ -260,8 +272,6 @@ class TestPipelineVerdict:
         )
 
     def test_schema_version_is_draft(self) -> None:
-        from helios.schemas.verdict import VERDICT_SCHEMA_VERSION
-
         assert _make_verdict().schema_version == VERDICT_SCHEMA_VERSION
 
     def test_all_fields_required_missing_raises(self) -> None:
@@ -277,97 +287,134 @@ class TestPipelineVerdict:
     def test_ranked_candidates_preserved(self) -> None:
         v = _make_verdict()
         assert v.ranked_candidates == ["svc-A", "svc-B", "svc-C"]
+        assert v.top1 == "svc-A"
 
     def test_extra_fields_forbidden(self) -> None:
         with pytest.raises(ValidationError):
-            PipelineVerdict(  # type: ignore[call-arg]
-                run_id="run-001",
-                incident_id="inc-001",
-                variant_config_hash=_FAKE_HASH,
-                snapshot_hash=_FAKE_SNAP_HASH,
-                pipeline="dpipe",
-                evaluation_phase=EvaluationPhase.EXPLORATORY,
-                ranked_candidates=["svc-A"],
-                hr_at_3=0.67,
-                mrr=0.33,
-                latency_ms=42.5,
-                token_count=512,
-                narrative="ok",
-                _extra_forbidden="x",
-            )
+            _make_verdict(_extra_forbidden="x")
 
     def test_frozen_raises_on_mutation(self) -> None:
         v = _make_verdict()
         with pytest.raises(ValidationError):
             v.run_id = "mutated"  # type: ignore[misc]
 
-    def test_hr_at_3_negative_rejected(self) -> None:
+    @pytest.mark.parametrize(
+        "overrides",
+        [
+            {"mu": -0.1},
+            {"mu": 1.1},
+            {"sigma": -0.1},
+            {"latency_ms": -1},
+            {"cost": {"prompt_tokens": -1}},
+            {"cost": {"cpu_ms": -1}},
+            {"pipeline": "xpipe"},
+            {"status": "unknown"},
+        ],
+    )
+    def test_out_of_range_values_rejected(self, overrides: dict[str, Any]) -> None:
         with pytest.raises(ValidationError):
-            PipelineVerdict(
-                run_id="r",
-                incident_id="i",
-                variant_config_hash=_FAKE_HASH,
-                snapshot_hash=_FAKE_SNAP_HASH,
-                pipeline="dpipe",
-                evaluation_phase=EvaluationPhase.EXPLORATORY,
-                ranked_candidates=[],
-                hr_at_3=-0.1,
-                mrr=0.33,
-                latency_ms=42.5,
-                token_count=512,
-                narrative="x",
+            _make_verdict(**overrides)
+
+
+# ---------------------------------------------------------------------------
+# PipelineVerdict schema-draft-v0.5 — the verdict contract (S1.8)
+# ---------------------------------------------------------------------------
+
+
+class TestVerdictContract:
+    def test_contract_fields(self) -> None:
+        v = _make_verdict()
+        assert v.ranked_candidates == ["svc-A", "svc-B", "svc-C"]
+        assert v.mu == pytest.approx(0.6)
+        assert v.sigma == pytest.approx(0.12)
+        assert v.cost.total_tokens == 512
+        assert v.latency_ms == pytest.approx(42.5)
+        assert VERDICT_SCHEMA_VERSION == "schema-draft-v0.5"
+
+    def test_scores_are_not_verdict_fields(self) -> None:
+        # A pipeline never sees ground truth; HR@k and MRR are scored after
+        # dispatch (S1.9).
+        assert not {"hr_at_3", "mrr", "token_count", "ppr_scores"} & set(
+            PipelineVerdict.model_fields
+        )
+
+    @pytest.mark.parametrize(
+        "status", [VerdictStatus.SKIPPED, VerdictStatus.FAILED, VerdictStatus.ABSTAINED]
+    )
+    def test_non_ranked_verdicts_carry_no_candidates(
+        self, status: VerdictStatus
+    ) -> None:
+        v = _make_verdict(
+            status=status,
+            ranked_candidates=[],
+            candidate_scores={},
+            mu=None,
+            sigma=None,
+        )
+        assert v.top1 is None
+        with pytest.raises(ValidationError, match="carries no candidates"):
+            _make_verdict(status=status)
+        with pytest.raises(ValidationError, match="carries no candidates"):
+            _make_verdict(
+                status=status, ranked_candidates=[], candidate_scores={}, sigma=None
             )
 
-    def test_mrr_above_one_rejected(self) -> None:
-        with pytest.raises(ValidationError):
-            PipelineVerdict(
-                run_id="r",
-                incident_id="i",
-                variant_config_hash=_FAKE_HASH,
-                snapshot_hash=_FAKE_SNAP_HASH,
-                pipeline="dpipe",
-                evaluation_phase=EvaluationPhase.EXPLORATORY,
-                ranked_candidates=[],
-                hr_at_3=0.67,
-                mrr=1.1,
-                latency_ms=42.5,
-                token_count=512,
-                narrative="x",
-            )
+    def test_ranked_verdict_needs_a_candidate(self) -> None:
+        with pytest.raises(ValidationError, match="at least one candidate"):
+            _make_verdict(ranked_candidates=[], candidate_scores={})
 
-    def test_negative_latency_rejected(self) -> None:
-        with pytest.raises(ValidationError):
-            PipelineVerdict(
-                run_id="r",
-                incident_id="i",
-                variant_config_hash=_FAKE_HASH,
-                snapshot_hash=_FAKE_SNAP_HASH,
-                pipeline="dpipe",
-                evaluation_phase=EvaluationPhase.EXPLORATORY,
-                ranked_candidates=[],
-                hr_at_3=0.67,
-                mrr=0.33,
-                latency_ms=-1,
-                token_count=512,
-                narrative="x",
-            )
+    def test_mu_and_sigma_may_be_unknown(self) -> None:
+        v = _make_verdict(mu=None, sigma=None)
+        assert (v.mu, v.sigma) == (None, None)
 
-    def test_negative_token_count_rejected(self) -> None:
-        with pytest.raises(ValidationError):
-            PipelineVerdict(
-                run_id="r",
-                incident_id="i",
-                variant_config_hash=_FAKE_HASH,
-                snapshot_hash=_FAKE_SNAP_HASH,
-                pipeline="dpipe",
-                evaluation_phase=EvaluationPhase.EXPLORATORY,
-                ranked_candidates=[],
-                hr_at_3=0.67,
-                mrr=0.33,
-                latency_ms=42.5,
-                token_count=-1,
-                narrative="x",
-            )
+    def test_repeated_or_unranked_candidates_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="must not repeat"):
+            _make_verdict(ranked_candidates=["svc-A", "svc-A"], candidate_scores={})
+        with pytest.raises(ValidationError, match="not ranked"):
+            _make_verdict(candidate_scores={"svc-Z": 0.2})
+
+    def test_decision_hash_ignores_run_id_and_measured_time(self) -> None:
+        a = _make_verdict()
+        b = _make_verdict(
+            run_id="run-002",
+            latency_ms=9_000,
+            cost=VerdictCost(prompt_tokens=400, completion_tokens=112, cpu_ms=77),
+        )
+        assert a.compute_decision_hash() == b.compute_decision_hash()
+        assert a.compute_verdict_hash() != b.compute_verdict_hash()
+
+    @pytest.mark.parametrize(
+        "overrides",
+        [
+            {"ranked_candidates": ["svc-B", "svc-A", "svc-C"]},
+            {"mu": 0.61},
+            {"sigma": 0.2},
+            {"cost": VerdictCost(prompt_tokens=401, completion_tokens=112)},
+            {"narrative": "another narrative"},
+            {"snapshot_hash": "c" * 64},
+        ],
+    )
+    def test_decision_hash_covers_the_decision(self, overrides: dict[str, Any]) -> None:
+        assert (
+            _make_verdict().compute_decision_hash()
+            != _make_verdict(**overrides).compute_decision_hash()
+        )
+
+    def test_decision_hash_is_float_noise_stable(self) -> None:
+        # canonical_json rounds floats to six digits: rerun noise below that
+        # does not change the decision.
+        noisy = {"svc-A": 0.6 + 1e-12, "svc-B": 0.3, "svc-C": 0.1}
+        assert (
+            _make_verdict(candidate_scores=noisy).compute_decision_hash()
+            == _make_verdict().compute_decision_hash()
+        )
+
+    def test_top1_share(self) -> None:
+        assert top1_share({"a": 3, "b": 1}) == pytest.approx(0.75)
+        assert top1_share({"a": 1, "b": 2}) == pytest.approx(2 / 3, abs=1e-6)
+        assert top1_share({}) is None
+        assert top1_share({"a": 0, "b": 0}) is None
+        assert top1_share({"a": 2, "b": -1}) is None
 
 
 # ---------------------------------------------------------------------------
@@ -487,18 +534,14 @@ class TestHashCollisions:
         rng = random.Random(2027)
         hashes: set[str] = set()
         for i in range(200):
-            v = PipelineVerdict(
+            v = _make_verdict(
                 run_id=f"run-{i:04d}",
                 incident_id=f"inc-{i:04d}",
-                variant_config_hash=_FAKE_HASH,
-                snapshot_hash=_FAKE_SNAP_HASH,
-                pipeline="dpipe",
-                evaluation_phase=EvaluationPhase.EXPLORATORY,
                 ranked_candidates=[f"svc-{rng.randint(1, 99)}"],
-                hr_at_3=round(rng.uniform(0.01, 0.99), 6),
-                mrr=round(rng.uniform(0.01, 0.99), 6),
+                candidate_scores={},
+                mu=round(rng.uniform(0.01, 0.99), 6),
                 latency_ms=round(rng.uniform(10.5, 499.5), 6),
-                token_count=rng.randint(64, 2048),
+                cost=VerdictCost(prompt_tokens=rng.randint(64, 2048)),
                 narrative=f"narrative-{i}",
             )
             hashes.add(v.compute_verdict_hash())
@@ -525,8 +568,6 @@ class TestHashCollisions:
 
 class TestSchemaVersion:
     def test_all_schemas_tagged_draft_v01(self) -> None:
-        from helios.schemas.verdict import VERDICT_SCHEMA_VERSION
-
         assert _make_snapshot().schema_version == "schema-draft-v0.2"
         assert _make_verdict().schema_version == VERDICT_SCHEMA_VERSION
         assert _make_window().schema_version == "schema-draft-v0.1"
@@ -534,55 +575,3 @@ class TestSchemaVersion:
     def test_vclflag_is_importable(self) -> None:
         # Satisfies flag-guard: schemas feed into VCLManifest hash pipeline (§6.2).
         assert VCLFlag.DPIPE is not None
-
-
-# ---------------------------------------------------------------------------
-# PipelineVerdict v0.2 — new fields and schema version constant
-# ---------------------------------------------------------------------------
-
-
-def test_verdict_v0_2_has_ppr_scores_and_prompt_version() -> None:
-    from helios.schemas.verdict import VERDICT_SCHEMA_VERSION
-
-    v = PipelineVerdict(
-        run_id="run-001",
-        incident_id="inc-001",
-        variant_config_hash=_FAKE_HASH,
-        snapshot_hash=_FAKE_SNAP_HASH,
-        pipeline="gpipe",
-        evaluation_phase=EvaluationPhase.EXPLORATORY,
-        ranked_candidates=["svc-A"],
-        latency_ms=12.5,
-        token_count=0,
-        narrative="test",
-        ppr_scores={"svc-A": 0.75, "svc-B": 0.25},
-        prompt_version=None,
-    )
-    assert v.ppr_scores == {"svc-A": 0.75, "svc-B": 0.25}
-    assert v.prompt_version is None
-    assert v.schema_version == VERDICT_SCHEMA_VERSION
-    assert VERDICT_SCHEMA_VERSION == "schema-draft-v0.4"
-
-
-def test_verdict_v0_2_hr_at_3_defaults_to_zero() -> None:
-    v = PipelineVerdict(
-        run_id="run-001",
-        incident_id="inc-001",
-        variant_config_hash=_FAKE_HASH,
-        snapshot_hash=_FAKE_SNAP_HASH,
-        pipeline="gpipe",
-        evaluation_phase=EvaluationPhase.EXPLORATORY,
-        ranked_candidates=[],
-        latency_ms=0.00,
-        token_count=0,
-        narrative="gpipe-gated-or-skipped",
-    )
-    assert v.hr_at_3 == 0.00
-    assert v.mrr == 0.00
-
-
-def test_verdict_schema_version_constant_matches_default() -> None:
-    from helios.schemas.verdict import VERDICT_SCHEMA_VERSION
-
-    v = _make_verdict()
-    assert v.schema_version == VERDICT_SCHEMA_VERSION

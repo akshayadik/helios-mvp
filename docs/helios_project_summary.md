@@ -302,25 +302,30 @@ L1/L2 canonical graph snapshot.
 
 ### 5.3 PipelineVerdict (`helios/schemas/verdict.py`)
 
-Per-pipeline result row written to DuckDB.
+Per-pipeline result row written to DuckDB (schema-draft-v0.5, S1.8; field manifest maintained in `docs/tracking/ablation_architecture.md` §2.4).
 
 | Field | Type | Constraint | Notes |
 |---|---|---|---|
-| `run_id` | `str` | PRIMARY KEY | Unique per verdict — each incident gets 3 distinct UUIDs |
-| `incident_id` | `str` | FK | Links verdict to incident |
+| `run_id` | `str` | PK with `pipeline` | One UUID per incident run, shared by the three verdicts |
+| `incident_id` | `str` | FK to snapshot | Links verdict to incident |
 | `variant_config_hash` | `str` (64-char hex) | C1 invariant | Must match active manifest |
 | `snapshot_hash` | `str` (64-char hex) | C1 invariant | Cross-pipeline must agree |
-| `pipeline` | `str` | `dpipe\|gpipe\|lpipe` | Source pipeline |
-| `evaluation_phase` | `EvaluationPhase` | Enum | Exploratory or confirmatory |
-| `ranked_candidates` | `list[str]` | Ordered | Top-k service names (HR@3 source) |
-| `hr_at_3` | `float` | `[0–1]` | Hit-Rate@3 |
-| `mrr` | `float` | `[0–1]` | Reciprocal rank (descriptive; named `cpr` before schema-draft-v0.4) |
-| `latency_ms` | `float` | `>= 0` | Wall-clock latency |
-| `token_count` | `int` | `>= 0` | LLM tokens (L-pipe) or 0 |
-| `narrative` | `str` | Non-empty | Chain of Explanation (CoE) |
-| `schema_version` | `str` | Default `schema-draft-v0.1` | |
+| `pipeline` | `PipelineName` | `dpipe \| gpipe \| lpipe` | Source pipeline |
+| `evaluation_phase` | `EvaluationPhase` | Enum | `exploratory` or `confirmatory` |
+| `status` | `VerdictStatus` | `ranked \| abstained \| skipped \| failed` | Only `ranked` carries candidates, mu or sigma; a failure is never a placeholder candidate |
+| `ranked_candidates` | `list[str]` | Ordered, no repeats | The pipeline's full ranking (HR@k, Avg@5 and MRR are scored from it after dispatch, S1.9) |
+| `candidate_scores` | `dict[str, float]` | Keys are ranked candidates | The pipeline's own score per candidate (was `ppr_scores`) |
+| `mu` | `float \| None` | `[0, 1]` | Confidence that the top-1 is the root cause; `None` = no estimator yet |
+| `sigma` | `float \| None` | `>= 0` | Standard deviation of mu; `None` = unknown (MAHC weights a vote down as sigma grows) |
+| `cost` | `VerdictCost` | all `>= 0` | `prompt_tokens`, `completion_tokens`, `cpu_ms`, `gpu_ms`; priced afterwards by the price book (S1.10) |
+| `latency_ms` | `float` | `>= 0` | Wall clock, measured by the orchestrator the same way for every pipeline |
+| `narrative` | `str` | | Chain of Explanation (CoE) text |
+| `prompt_version` | `str \| None` | | L-pipe prompt registry version |
+| `schema_version` | `str` | `schema-draft-v0.5` | Bumped at OSF Stage 5 freeze |
 
-`compute_verdict_hash()` — SHA-256 of canonical JSON.
+Removed in schema-draft-v0.5: `hr_at_3`, `mrr` (scores against ground truth are computed after dispatch, never by a pipeline — S1.9), `token_count` (split into prompt and completion tokens), `ppr_scores` (renamed `candidate_scores`).
+
+`compute_verdict_hash()` produces a SHA-256 row identity for deduplication and audit; `compute_decision_hash()` leaves out `run_id` and the measured time (latency, CPU and GPU time), so two runs of the same pipeline on the same snapshot give the same decision hash (rerun equality, S2.1). Design: `docs/sprints/s1-data-graph/s1_8_verdict_contract.md`.
 
 ---
 

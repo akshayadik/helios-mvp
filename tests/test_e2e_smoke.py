@@ -22,7 +22,7 @@ import pytest
 
 from helios.pipelines.g_pipe.pipeline import run_gpipe
 from helios.pipelines.l_pipe.pipeline import run_lpipe
-from helios.schemas import EvaluationPhase, PipelineVerdict
+from helios.schemas import PipelineVerdict
 from helios.schemas.ueg_c import EdgeType, NodeType, UEGCEdge, UEGCNode, UEGCSnapshot
 from helios.store.result_store import ResultStore
 from helios.vcl import VCLFlag, get_variant, set_current_manifest
@@ -126,19 +126,8 @@ def test_full_pipeline_exploratory_row_inserted(
 
     # Build and insert PipelineVerdict rows
     for idx, result in enumerate([g_result, l_result]):
-        verdict = PipelineVerdict(
-            run_id=f"smoke-{result['pipeline']}-{idx}",
-            incident_id=result["incident_id"],
-            variant_config_hash=vch,
-            snapshot_hash=result["snapshot_hash"],
-            pipeline=result["pipeline"],
-            evaluation_phase=EvaluationPhase.EXPLORATORY,
-            ranked_candidates=result["ranked_candidates"],
-            hr_at_3=float(result.get("hr_at_3", 0.00)),
-            mrr=float(result.get("mrr", 0.00)),
-            latency_ms=result["latency_ms"],
-            token_count=result["token_count"],
-            narrative=result["narrative"],
+        verdict = PipelineVerdict.from_output(
+            {**result, "run_id": f"smoke-{result['pipeline']}-{idx}"}
         )
         store.insert(verdict)
 
@@ -214,20 +203,7 @@ def test_snapshot_registry_integration(
         evaluation_phase="exploratory",
         run_id="smoke-reg-test-gpipe",
     )
-    verdict = PipelineVerdict(
-        run_id="smoke-reg-test",
-        incident_id="inc-reg-test",
-        variant_config_hash=vch,
-        snapshot_hash=snap,
-        pipeline="gpipe",
-        evaluation_phase=EvaluationPhase.EXPLORATORY,
-        ranked_candidates=[],
-        hr_at_3=g_result["hr_at_3"],
-        mrr=g_result["mrr"],
-        latency_ms=g_result["latency_ms"],
-        token_count=g_result["token_count"],
-        narrative=g_result["narrative"],
-    )
+    verdict = PipelineVerdict.from_output({**g_result, "run_id": "smoke-reg-test"})
     store.insert(verdict)
     rows = store.fetch_all()
     assert any(r["snapshot_hash"] == snap for r in rows)

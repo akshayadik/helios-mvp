@@ -20,6 +20,7 @@ __all__ = ["ResultStore"]
 
 _PIPELINES = frozenset({"dpipe", "gpipe", "lpipe"})
 _SCHEMA_SQL = Path(__file__).parent / "schema.sql"
+_ARCHIVE_TABLE = "result_row_v04"
 
 
 class ResultStore:
@@ -38,7 +39,34 @@ class ResultStore:
 
     def _init_schema(self) -> None:
         self._migrate_cpr_to_mrr()
+        self._archive_pre_v05()
         self._con.execute(_SCHEMA_SQL.read_text(encoding="utf-8"))
+
+    def _result_row_columns(self, table: str = "result_row") -> set[str]:
+        return {
+            r[0]
+            for r in self._con.execute(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_schema = 'main' AND table_name = ?",
+                [table],
+            ).fetchall()
+        }
+
+    def _archive_pre_v05(self) -> None:
+        """Keep a pre-schema-draft-v0.5 result_row as result_row_v04, untouched.
+
+        Its rows lack the verdict contract (status, mu, sigma, cost), so they
+        are not converted; the new result_row is created empty beside them.
+        """
+        cols = self._result_row_columns()
+        if not cols or "status" in cols:
+            return
+        if self._result_row_columns(_ARCHIVE_TABLE):
+            raise RuntimeError(
+                f"result_row predates schema-draft-v0.5 and {_ARCHIVE_TABLE} "
+                "already exists; refusing to overwrite an archive"
+            )
+        self._con.execute(f"ALTER TABLE result_row RENAME TO {_ARCHIVE_TABLE}")
 
     def _migrate_cpr_to_mrr(self) -> None:
         """Rename result_row.cpr to mrr in databases created before schema-draft-v0.4.
@@ -46,13 +74,7 @@ class ResultStore:
         The column always held reciprocal rank; CpR is cost per resolution
         (docs/tracking/metric_contract.md). Values are unchanged.
         """
-        cols = {
-            r[0]
-            for r in self._con.execute(
-                "SELECT column_name FROM information_schema.columns "
-                "WHERE table_schema = 'main' AND table_name = 'result_row'"
-            ).fetchall()
-        }
+        cols = self._result_row_columns()
         if "cpr" in cols and "mrr" not in cols:
             self._con.execute("ALTER TABLE result_row RENAME COLUMN cpr TO mrr")
 
@@ -76,23 +98,32 @@ class ResultStore:
             """
             INSERT INTO result_row (
                 run_id, incident_id, variant_config_hash, snapshot_hash,
-                pipeline, evaluation_phase, ranked_candidates,
-                hr_at_3, mrr, latency_ms, token_count, narrative, schema_version
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                pipeline, evaluation_phase, status, ranked_candidates,
+                candidate_scores, mu, sigma, prompt_tokens, completion_tokens,
+                cpu_ms, gpu_ms, latency_ms, narrative, prompt_version,
+                decision_hash, schema_version
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             [
                 verdict.run_id,
                 verdict.incident_id,
                 verdict.variant_config_hash,
                 verdict.snapshot_hash,
-                verdict.pipeline,
+                verdict.pipeline.value,
                 verdict.evaluation_phase.value,
+                verdict.status.value,
                 json.dumps(verdict.ranked_candidates),
-                verdict.hr_at_3,
-                verdict.mrr,
+                json.dumps(verdict.candidate_scores, sort_keys=True),
+                verdict.mu,
+                verdict.sigma,
+                verdict.cost.prompt_tokens,
+                verdict.cost.completion_tokens,
+                verdict.cost.cpu_ms,
+                verdict.cost.gpu_ms,
                 verdict.latency_ms,
-                verdict.token_count,
                 verdict.narrative,
+                verdict.prompt_version,
+                verdict.compute_decision_hash(),
                 verdict.schema_version,
             ],
         )

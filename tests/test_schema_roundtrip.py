@@ -6,7 +6,12 @@ import json
 
 from helios.schemas.telemetry import EvaluationPhase
 from helios.schemas.ueg_c import EdgeClass, EdgeType, UEGCEdge, UEGCNode, UEGCSnapshot
-from helios.schemas.verdict import PipelineVerdict
+from helios.schemas.verdict import (
+    PipelineName,
+    PipelineVerdict,
+    VerdictCost,
+    VerdictStatus,
+)
 from helios.vcl import VCLFlag, canonical_json  # VCLFlag satisfies flag-guard
 
 _WEIGHT = 0.3  # arbitrary valid weight (ge=0, le=1)
@@ -83,16 +88,21 @@ class TestSchemaRoundTrip:
             incident_id="inc-1",
             variant_config_hash="a" * 64,
             snapshot_hash="b" * 64,
-            pipeline="dpipe",
+            pipeline=PipelineName.DPIPE,
             evaluation_phase=EvaluationPhase.EXPLORATORY,
-            ranked_candidates=[],
-            hr_at_3=0,
-            mrr=0,
-            latency_ms=0,
-            token_count=0,
+            status=VerdictStatus.RANKED,
+            ranked_candidates=["svc-a", "svc-b"],
+            candidate_scores={"svc-a": 0.8, "svc-b": 0.2},
+            mu=0.8,
+            sigma=0.15,
+            cost=VerdictCost(prompt_tokens=12, completion_tokens=3, cpu_ms=1.25),
+            latency_ms=3.75,
             narrative="stub",
         )
         h1 = v.compute_verdict_hash()
-        v2 = PipelineVerdict(**json.loads(canonical_json(v.model_dump())))
+        d1 = v.compute_decision_hash()
+        v2 = PipelineVerdict(**json.loads(canonical_json(v.model_dump(mode="json"))))
         h2 = v2.compute_verdict_hash()
         assert h1 == h2, "PipelineVerdict hash drifted after round-trip"
+        assert v2 == v
+        assert v2.compute_decision_hash() == d1
