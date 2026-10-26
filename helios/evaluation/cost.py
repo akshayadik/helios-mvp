@@ -38,6 +38,7 @@ __all__ = [
     "cpr",
     "incident_usage",
     "load_price_book",
+    "load_price_books",
     "window_bytes",
 ]
 
@@ -58,12 +59,34 @@ _STREAMS = (
 )
 
 
+_SHARED = (
+    "token_prompt_per_million",
+    "token_completion_per_million",
+    "storage_retention_months",
+    "human_per_hour",
+    "human_review_minutes",
+    "opportunity_per_minute",
+    "ttcd_censor_s",
+)
+_COMPONENTS = ("cpu", "gpu", "storage")
+
+
 @dataclass(frozen=True)
 class PriceBook:
-    """Coefficients of docs/tracking/price_book.md; ``digest`` identifies the file."""
+    """Coefficients of docs/tracking/price_book.md under one cloud profile.
+
+    ``digest`` identifies the file; ``provider``, ``region`` and the machine
+    labels say which price list each infrastructure and storage number is
+    from; ``unverified`` lists the components not yet checked against it.
+    """
 
     version: str
     currency: str
+    provider: str
+    region: str
+    cpu_machine: str
+    gpu_machine: str
+    storage_tier: str
     token_prompt_per_million: float
     token_completion_per_million: float
     cpu_per_vcpu_hour: float
@@ -74,29 +97,88 @@ class PriceBook:
     human_review_minutes: float
     opportunity_per_minute: float
     ttcd_censor_s: float
+    unverified: tuple[str, ...]
     digest: str
 
 
-def load_price_book(path: Path = PRICE_BOOK_PATH) -> PriceBook:
-    """Read the YAML front matter of the price book; every field is required."""
+def _front_matter(path: Path) -> tuple[dict[str, Any], str]:
     text = path.read_text(encoding="utf-8")
     parts = text.split("---", 2)
     if len(parts) < 3 or parts[0].strip():
         raise ValueError(f"{path}: no YAML front matter")
     raw: dict[str, Any] = yaml.safe_load(parts[1])
-    fields = [f for f in PriceBook.__dataclass_fields__ if f != "digest"]
-    missing = sorted(set(fields) - set(raw))
+    return raw, hashlib.sha256(text.encode()).hexdigest()
+
+
+def _price(path: Path, label: str, value: Any) -> float:
+    if value is None:
+        raise ValueError(f"{path}: price book lacks {label}")
+    number = float(value)
+    if number < 0:
+        raise ValueError(f"{path}: {label} must not be negative")
+    return number
+
+
+def _profile(path: Path, raw: dict[str, Any], provider: str, digest: str) -> PriceBook:
+    missing = sorted({"version", "currency", "providers", *_SHARED} - set(raw))
     if missing:
         raise ValueError(f"{path}: price book lacks {missing}")
-    values: dict[str, Any] = {f: raw[f] for f in fields}
-    for f in fields:
-        if f in ("version", "currency"):
-            values[f] = str(values[f])
-        else:
-            values[f] = float(values[f])
-            if values[f] < 0:
-                raise ValueError(f"{path}: {f} must not be negative")
-    return PriceBook(**values, digest=hashlib.sha256(text.encode()).hexdigest())
+    profiles: dict[str, Any] = raw["providers"]
+    if provider not in profiles:
+        raise ValueError(f"{path}: no provider profile {provider!r}")
+    prof = profiles[provider]
+    absent = [c for c in _COMPONENTS if c not in prof]
+    if absent:
+        raise ValueError(f"{path}: {provider} profile lacks {absent}")
+    cpu, gpu, storage = (prof[c] for c in _COMPONENTS)
+    vcpus = _price(path, f"{provider}.cpu.vcpus", cpu.get("vcpus"))
+    if vcpus <= 0:
+        raise ValueError(f"{path}: {provider}.cpu.vcpus must be positive")
+    shared = {f: _price(path, f, raw[f]) for f in _SHARED}
+    return PriceBook(
+        version=str(raw["version"]),
+        currency=str(raw["currency"]),
+        provider=provider,
+        region=str(prof.get("region", "")),
+        cpu_machine=f"{cpu.get('service', '')} {cpu.get('machine_type', '')}".strip(),
+        gpu_machine=f"{gpu.get('service', '')} {gpu.get('machine_type', '')}".strip(),
+        storage_tier=f"{storage.get('service', '')} {storage.get('tier', '')}".strip(),
+        cpu_per_vcpu_hour=_price(
+            path, f"{provider}.cpu.price_per_hour", cpu.get("price_per_hour")
+        )
+        / vcpus,
+        gpu_per_hour=_price(
+            path, f"{provider}.gpu.price_per_hour", gpu.get("price_per_hour")
+        ),
+        storage_per_gib_month=_price(
+            path,
+            f"{provider}.storage.price_per_gib_month",
+            storage.get("price_per_gib_month"),
+        ),
+        unverified=tuple(c for c in _COMPONENTS if prof[c].get("verified") is not True),
+        digest=digest,
+        **shared,
+    )
+
+
+def load_price_book(
+    path: Path = PRICE_BOOK_PATH, *, provider: str | None = None
+) -> PriceBook:
+    """The price book under one cloud profile (default: the primary provider)."""
+    raw, digest = _front_matter(path)
+    chosen = provider or raw.get("primary_provider")
+    if not chosen:
+        raise ValueError(f"{path}: price book lacks primary_provider")
+    return _profile(path, raw, str(chosen), digest)
+
+
+def load_price_books(path: Path = PRICE_BOOK_PATH) -> dict[str, PriceBook]:
+    """Every cloud profile of the price book (primary and sensitivity)."""
+    raw, digest = _front_matter(path)
+    return {
+        name: _profile(path, raw, name, digest)
+        for name in sorted(raw.get("providers") or {})
+    }
 
 
 @dataclass(frozen=True)
@@ -148,6 +230,7 @@ class CostBreakdown:
     ttcd_s: float
     censored: bool
     price_book_version: str
+    price_book_provider: str
     price_book_digest: str
 
     @property
@@ -217,5 +300,6 @@ def cpr(
         ttcd_s=ttcd,
         censored=censored,
         price_book_version=book.version,
+        price_book_provider=book.provider,
         price_book_digest=book.digest,
     )

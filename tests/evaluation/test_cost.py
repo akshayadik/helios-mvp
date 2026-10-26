@@ -15,6 +15,7 @@ from helios.evaluation.cost import (
     cpr,
     incident_usage,
     load_price_book,
+    load_price_books,
     window_bytes,
 )
 from helios.schemas.telemetry import EvaluationPhase, TelemetryWindow
@@ -34,16 +35,25 @@ _BOOK = """---
 version: test-book
 currency: USD
 as_of: "2026-10-26"
+primary_provider: round
 token_prompt_per_million: 2
 token_completion_per_million: 4
-cpu_per_vcpu_hour: 3.6
-gpu_per_hour: 36
-storage_per_gib_month: 2
 storage_retention_months: 3
 human_per_hour: 60
 human_review_minutes: 10
 opportunity_per_minute: 120
 ttcd_censor_s: 1800
+providers:
+  round:
+    region: test-1
+    cpu: {service: TestCloud VM, machine_type: t.cpu, vcpus: 2, price_per_hour: 7.2, verified: true}
+    gpu: {service: TestCloud VM, machine_type: t.gpu, price_per_hour: 36, verified: true}
+    storage: {service: TestCloud Store, tier: hot, price_per_gib_month: 2}
+  other:
+    region: test-2
+    cpu: {service: Other VM, machine_type: o.cpu, vcpus: 4, price_per_hour: 7.2}
+    gpu: {service: Other VM, machine_type: o.gpu, price_per_hour: 72}
+    storage: {service: Other Store, tier: hot, price_per_gib_month: 4}
 ---
 
 # Test price book
@@ -77,6 +87,25 @@ def test_hand_computed_cost(book: PriceBook) -> None:
     assert c.log_total == pytest.approx(math.log(195.032))
     assert not c.censored
     assert c.price_book_version == "test-book"
+    assert c.price_book_provider == "round"
+    assert book.cpu_per_vcpu_hour == pytest.approx(3.6)  # 7.2 / 2 vCPU
+    assert book.cpu_machine == "TestCloud VM t.cpu"
+    assert book.unverified == ("storage",)
+
+
+def test_sensitivity_profile(tmp_path: Path) -> None:
+    path = tmp_path / "price_book.md"
+    path.write_text(_BOOK, encoding="utf-8")
+    other = load_price_book(path, provider="other")
+    # 2 s x (7.2 / 4) / 3600 + 3 s x 72 / 3600 = 0.001 + 0.06
+    c = cpr(USAGE, requests_human=True, ttcd_s=90, book=other)
+    assert c.infrastructure == pytest.approx(0.061)
+    assert c.storage == pytest.approx(6)  # 1/2 GiB x 4 x 3 months
+    assert c.total == pytest.approx(2 + 0.061 + 6 + 10 + 180)
+    assert set(load_price_books(path)) == {"other", "round"}
+    assert other.unverified == ("cpu", "gpu", "storage")
+    with pytest.raises(ValueError, match="no provider profile 'nope'"):
+        load_price_book(path, provider="nope")
 
 
 def test_automatic_verdict_carries_no_human_time(book: PriceBook) -> None:
@@ -102,21 +131,29 @@ def test_zero_infrastructure_or_negative_ttcd_is_refused(book: PriceBook) -> Non
         cpr(USAGE, requests_human=False, ttcd_s=-1, book=book)
 
 
+REAL_USAGE = IncidentUsage(
+    prompt_tokens=2_000,
+    completion_tokens=300,
+    cpu_ms=4_000,
+    gpu_ms=12_000,
+    storage_bytes=3 * 2**30,
+)
+
+
 def test_frozen_price_book_and_a_hand_computed_incident() -> None:
     real = load_price_book()
-    assert real.version == "price-book-v1"
-    assert real.currency == "USD"
-    assert real.digest == hashlib.sha256(PRICE_BOOK_PATH.read_bytes()).hexdigest()
-    usage = IncidentUsage(
-        prompt_tokens=2_000,
-        completion_tokens=300,
-        cpu_ms=4_000,
-        gpu_ms=12_000,
-        storage_bytes=3 * 2**30,
+    assert (real.version, real.currency, real.provider) == (
+        "price-book-v2",
+        "USD",
+        "aws",
     )
-    c = cpr(usage, requests_human=True, ttcd_s=240, book=real)
+    assert real.cpu_machine == "Amazon EC2 m5.large"
+    assert real.gpu_machine == "Amazon EC2 g5.xlarge"
+    assert real.unverified == ("storage",)
+    assert real.digest == hashlib.sha256(PRICE_BOOK_PATH.read_bytes()).hexdigest()
+    c = cpr(REAL_USAGE, requests_human=True, ttcd_s=240, book=real)
     assert c.token == 0  # local inference
-    # 4 s x 0.048 / 3600 + 12 s x 1.006 / 3600
+    # 4 s x (0.096 / 2 vCPU) / 3600 + 12 s x 1.006 / 3600
     assert c.infrastructure == pytest.approx(4 * 0.048 / 3600 + 12 * 1.006 / 3600)
     assert c.storage == pytest.approx(3 * 0.023)
     assert c.human == pytest.approx(15 * 63.98 / 60)
@@ -124,17 +161,56 @@ def test_frozen_price_book_and_a_hand_computed_incident() -> None:
     assert c.total == pytest.approx(22416.0674067, rel=1e-9)
 
 
+@pytest.mark.parametrize(
+    ("provider", "cpu", "gpu", "storage", "machines"),
+    [
+        ("gcp", 0.0971 / 2, 0.7068, 0.020, ("n2-standard-2", "g2-standard-4")),
+        (
+            "azure",
+            0.096 / 2,
+            0.526,
+            0.0208,
+            ("Standard_D2s_v5", "Standard_NC4as_T4_v3"),
+        ),
+    ],
+)
+def test_sensitivity_profiles_of_the_frozen_book(
+    provider: str,
+    cpu: float,
+    gpu: float,
+    storage: float,
+    machines: tuple[str, str],
+) -> None:
+    book = load_price_books()[provider]
+    assert book.cpu_machine.endswith(machines[0])
+    assert book.gpu_machine.endswith(machines[1])
+    c = cpr(REAL_USAGE, requests_human=False, ttcd_s=240, book=book)
+    assert c.infrastructure == pytest.approx(4 * cpu / 3600 + 12 * gpu / 3600)
+    assert c.storage == pytest.approx(3 * storage)
+    assert c.opportunity == pytest.approx(4 * 5600)  # shared coefficients
+
+
 def test_price_book_must_be_complete_and_non_negative(tmp_path: Path) -> None:
     path = tmp_path / "b.md"
-    path.write_text(_BOOK.replace("gpu_per_hour: 36\n", ""), encoding="utf-8")
-    with pytest.raises(ValueError, match="gpu_per_hour"):
-        load_price_book(path)
-    path.write_text(_BOOK.replace("gpu_per_hour: 36", "gpu_per_hour: -1"))
-    with pytest.raises(ValueError, match="negative"):
-        load_price_book(path)
-    path.write_text("# no front matter\n")
-    with pytest.raises(ValueError, match="front matter"):
-        load_price_book(path)
+    cases = [
+        (_BOOK.replace("price_per_hour: 36,", ""), "round.gpu.price_per_hour"),
+        (_BOOK.replace("price_per_hour: 36,", "price_per_hour: -1,"), "negative"),
+        (_BOOK.replace("vcpus: 2,", "vcpus: 0,"), "vcpus must be positive"),
+        (_BOOK.replace("human_per_hour: 60\n", ""), "human_per_hour"),
+        (_BOOK.replace("primary_provider: round\n", ""), "primary_provider"),
+        (
+            _BOOK.replace(
+                "    storage: {service: TestCloud Store, tier: hot, price_per_gib_month: 2}\n",
+                "",
+            ),
+            "round profile lacks",
+        ),
+        ("# no front matter\n", "front matter"),
+    ]
+    for text, message in cases:
+        path.write_text(text, encoding="utf-8")
+        with pytest.raises(ValueError, match=message):
+            load_price_book(path)
 
 
 def _verdict(pipeline: PipelineName, run_id: str, cost: VerdictCost) -> PipelineVerdict:

@@ -1,6 +1,6 @@
 # S1.10 — Price book, token accounting, cost · design note
 
-**Task:** S1.10 (tracking S2-M6-ENG08) · **Date:** 2026-10-26 · **Code:** `helios/pipelines/l_pipe/gateway.py` (LLM gateway), `helios/evaluation/cost.py` (CpR), `docs/tracking/price_book.md` (price-book-v1) · **Deviation:** entry 42 (price-book values) · **Flags:** cost is computed after dispatch for every variant; the gateway sits inside the L-pipe (`l2c_llm`)
+**Task:** S1.10 (tracking S2-M6-ENG08) · **Date:** 2026-10-26 · **Code:** `helios/pipelines/l_pipe/gateway.py` (LLM gateway), `helios/evaluation/cost.py` (CpR), `docs/tracking/price_book.md` (price-book-v2) · **Deviation:** entries 42 (price-book values) and 43 (cloud provider profiles) · **Flags:** cost is computed after dispatch for every variant; the gateway sits inside the L-pipe (`l2c_llm`)
 
 ## Chapter 3 and the contract
 
@@ -22,20 +22,40 @@ CpR is "the five-component sum of token cost, infrastructure cost, storage cost,
 
 `load_price_book()` reads the YAML front matter of `price_book.md` (single source, every field required, none negative) and keeps its SHA-256; each `CostBreakdown` carries the price-book version and digest, plus `total` and `log_total` (the analysed form). `incident_usage()` sums one run's verdict usage; `window_bytes()` measures the incident's telemetry streams. A run with no CPU or GPU time is refused (the contract: infrastructure time is never zero, so zero means usage was not recorded).
 
-## Price book v1 (values and sources in `docs/tracking/price_book.md`)
+## Price book (values and sources in `docs/tracking/price_book.md`)
 
-USD. Tokens 0 (local inference; tokens still counted and their model time priced as GPU time); CPU 0.048 per vCPU-hour (AWS m5.large); GPU 1.006 per hour (AWS g5.xlarge, A10G); storage 0.023 per GiB-month (S3 Standard) × 1 month (*assumption*); human 63.98 per hour (BLS median, software developers, May 2024); review 15 minutes per human-requesting verdict (*assumption*); opportunity 5,600 per minute (the figure Ch2 already uses); censoring 1,800 s.
+USD. Shared coefficients:
+
+| Coefficient | Value |
+|---|---|
+| Tokens | 0 (local inference; tokens still counted, their model time priced as GPU time) |
+| Storage retention | 1 month (*assumption*) |
+| Human time | 63.98 per hour (BLS median, software developers, May 2024) |
+| Review time | 15 minutes per human-requesting verdict (*assumption*) |
+| Opportunity cost | 5,600 per minute (the figure Ch2 already uses) |
+| Censoring | 1,800 s |
+
+**Cloud profiles (price-book-v2, owner request 2026-10-26).** Infrastructure and storage are priced from one named machine per provider, with service, machine type, region, terms, source and a `verified` flag, so the owner can replace each value from the provider's own price list:
+
+| Provider | Role | Region | CPU | GPU | Storage |
+|---|---|---|---|---|---|
+| AWS | primary | us-east-1 | EC2 `m5.large`, 0.096/h for 2 vCPU | EC2 `g5.xlarge`, A10G, 1.006/h | S3 Standard, 0.023 |
+| GCP | sensitivity | us-central1 | `n2-standard-2`, 0.0971/h | `g2-standard-4`, L4, 0.7068/h | Cloud Storage Standard, 0.020 |
+| Azure | sensitivity | eastus | `Standard_D2s_v5`, 0.096/h | `Standard_NC4as_T4_v3`, T4, 0.526/h | Blob Hot LRS, 0.0208 |
+
+Both AWS EC2 prices were checked against AWS's public price data (`ec2-ondemand-without-sec-sel`, US East N. Virginia, Linux, published 2026-10-23); everything else is from third-party trackers, marked `verified: false`. `load_price_book(provider=...)` returns one profile (the primary by default) and `load_price_books()` returns all; each `CostBreakdown` names its provider. The GPUs differ (A10G, L4, T4), so per-hour GPU prices are not like-for-like. Per-token pricing from a throughput benchmark on each reference GPU is an open point.
 
 **For the chair call:**
 - Opportunity cost dominates CpR by orders of magnitude.
 - The 5,600 figure is weakly sourced; a sensitivity analysis at EMA's 14,056 per minute is proposed.
 - The two *assumptions* (retention, review minutes) are owner decisions to confirm before build-freeze.
+- Provider choice moves mainly the compute components, so a compute-only CpR is worth reporting descriptively.
 
 ## Done-when
 
 Hand-computed cost matches on a fixture (`tests/evaluation/test_cost.py`):
 - every component worked by hand under a round-number price book (total 195.032), plus the automatic, censored and refused cases;
-- one incident under the real price-book-v1 (total 22,416.0674067).
+- one incident under the frozen book's AWS profile (total 22,416.0674067) and under the GCP and Azure profiles.
 
 Retry metering is tested in `tests/pipelines/test_lpipe_gateway.py`: two attempts give 200 + 50 tokens and 750 ms of model time. GPU time reaching the result row is tested in `tests/test_orchestrator_runner.py`.
 
