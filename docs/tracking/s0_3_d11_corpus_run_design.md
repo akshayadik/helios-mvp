@@ -19,6 +19,7 @@
 - The one RE2-TT case without logs (`re2tt_ts-auth-service_cpu_1`) stays in the pool with a `logs_missing` covariate; the integrity gate never imputes.
 - The pool is **sealed** in S1: every case is converted to the HELIOS recorded format, sealed (deviation 23 mechanism), and listed with its seal hash in the corpus manifest. The adapter refuses to load a pool case before phase E.
 - **AIOpsLab**: if the S1 spike succeeds, its recorded problems join the pool as a third system under an addendum to this design, before the freeze.
+  - **Outcome (S1.3, owner decision 2026-10-27): no-go for the pool.** The recording works, but AIOpsLab's problems are fixed scenarios with about 6–8 root-cause services (four HotelReservation faults all hit `user`), so it would add concentrated, repeated cases. It moves to Stage B as an exploratory external-validity corpus. No addendum; the pool stays the 240 RCAEval cases. Report: `docs/sprints/s1-data-graph/s1_3_aiopslab_spike.md`.
 
 ---
 
