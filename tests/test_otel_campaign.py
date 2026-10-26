@@ -282,6 +282,10 @@ def test_campaign_capture_wiring(tmp_path: Path) -> None:
     )
     kinds = [type(f).__name__ for f in cap._fetchers]
     assert kinds == ["PrometheusMetricsFetcher", "SlicedFetcher", "SlicedFetcher"]
+    from helios.telemetry.otel_demo_capture import campaign_metric_queries
+
+    # The campaign records the container CPU and memory queries, not the May list.
+    assert cap._fetchers[0]._queries == campaign_metric_queries()  # type: ignore[attr-defined]
     assert cap._config.output_dir == tmp_path
 
 
@@ -313,3 +317,31 @@ def test_cli_status_verify_finalize_print_counts_only(
     assert manifest["case_order"] == [first.incident_id]
     assert manifest["evaluation_phase"] == "exploratory"
     assert "root_cause_service" not in json.dumps(manifest)
+
+
+def test_campaign_metrics_add_container_cpu_and_memory() -> None:
+    from helios.telemetry.otel_demo_capture import (
+        DEMO_CONTAINERS,
+        PrometheusMetricsFetcher,
+        campaign_metric_queries,
+    )
+
+    queries = campaign_metric_queries()
+    assert queries[:2] == (
+        "http_server_duration_milliseconds_bucket",
+        "rpc_server_duration_milliseconds_bucket",
+    )
+    for name in (
+        "container_cpu_utilization_ratio",
+        "container_memory_usage_total_bytes",
+    ):
+        q = next(q for q in queries if name in q)
+        assert q.startswith(f'label_replace({name}{{container_name=~"')
+        assert '"service_name", "$1", "container_name", "(.*)")' in q
+    assert {"ad", "email", "valkey-cart"} <= set(DEMO_CONTAINERS)
+    assert not any(c.startswith("tessera") for c in DEMO_CONTAINERS)
+    fetcher = PrometheusMetricsFetcher("http://p", queries)
+    assert fetcher._queries == queries
+    assert (
+        PrometheusMetricsFetcher("http://p")._queries[0] == "up"
+    )  # May list unchanged

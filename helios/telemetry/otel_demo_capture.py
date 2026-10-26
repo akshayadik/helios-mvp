@@ -40,6 +40,7 @@ if TYPE_CHECKING:
     from helios.vcl.config import VCLManifest
 
 __all__ = [
+    "DEMO_CONTAINERS",
     "CaptureConfig",
     "JaegerTracesFetcher",
     "OpenSearchLogsFetcher",
@@ -50,6 +51,7 @@ __all__ = [
     "TelemetryCapture",
     "build_campaign_capture",
     "build_default_capture",
+    "campaign_metric_queries",
 ]
 
 # ---------------------------------------------------------------------------
@@ -111,8 +113,9 @@ class PrometheusMetricsFetcher(StreamFetcher):
         "rpc_server_duration_milliseconds_bucket",
     )
 
-    def __init__(self, base_url: str) -> None:
+    def __init__(self, base_url: str, queries: Sequence[str] | None = None) -> None:
         self._base_url = base_url.rstrip("/")
+        self._queries = tuple(queries) if queries is not None else self._METRICS
 
     @property
     def stream_name(self) -> str:
@@ -124,7 +127,7 @@ class PrometheusMetricsFetcher(StreamFetcher):
         values: list[float] = []
         label_strs: list[str] = []
 
-        for metric in self._METRICS:
+        for metric in self._queries:
             params = urllib.parse.urlencode(
                 {
                     "query": metric,
@@ -494,6 +497,63 @@ def build_default_capture(incident_id: str, manifest: VCLManifest) -> TelemetryC
     return TelemetryCapture(config=config, fetchers=fetchers, writer=ParquetWriter())
 
 
+# OTel Demo 2.2.0 exports none of `up`, `process_cpu_seconds_total` or
+# `process_resident_memory_bytes` (the May list), so the May captures hold only
+# the two latency histograms. Resource faults need CPU and memory: the
+# collector's Docker stats receiver gives them per container, labelled
+# `container_name`. They are limited to the demo's own containers and given a
+# `service_name` label (the parser's service key); the raw labels stay.
+DEMO_CONTAINERS: tuple[str, ...] = (
+    "accounting",
+    "ad",
+    "cart",
+    "checkout",
+    "currency",
+    "email",
+    "flagd",
+    "flagd-ui",
+    "fraud-detection",
+    "frontend",
+    "frontend-proxy",
+    "grafana",
+    "image-provider",
+    "jaeger",
+    "kafka",
+    "llm",
+    "load-generator",
+    "opensearch",
+    "otel-collector",
+    "payment",
+    "postgresql",
+    "product-catalog",
+    "product-reviews",
+    "prometheus",
+    "quote",
+    "recommendation",
+    "shipping",
+    "valkey-cart",
+)
+_CONTAINER_METRICS = (
+    "container_cpu_utilization_ratio",
+    "container_memory_usage_total_bytes",
+)
+
+
+def campaign_metric_queries() -> tuple[str, ...]:
+    """PromQL of the S1.2 campaign: latency histograms plus per-container CPU and memory."""
+    containers = "|".join(DEMO_CONTAINERS)
+    resource = tuple(
+        f'label_replace({name}{{container_name=~"{containers}"}}, '
+        f'"service_name", "$1", "container_name", "(.*)")'
+        for name in _CONTAINER_METRICS
+    )
+    return (
+        "http_server_duration_milliseconds_bucket",
+        "rpc_server_duration_milliseconds_bucket",
+        *resource,
+    )
+
+
 def build_campaign_capture(
     incident_id: str,
     manifest: VCLManifest,
@@ -516,7 +576,7 @@ def build_campaign_capture(
         output_dir=output_dir,
     )
     fetchers: list[StreamFetcher] = [
-        PrometheusMetricsFetcher(prometheus_url),
+        PrometheusMetricsFetcher(prometheus_url, campaign_metric_queries()),
         SlicedFetcher(
             JaegerTracesFetcher(jaeger_url, api_prefix="/jaeger/ui"), slice_s
         ),

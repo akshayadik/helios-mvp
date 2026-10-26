@@ -26,6 +26,7 @@ The RCAEval build corpus has no traces (S1.5), so trace-derived graph edges, the
 **What changes from the May protocol:**
 - The window now holds the onset (5 minutes normal, then 5 minutes faulty), as RCAEval windows do. The May captures were 5 minutes, all faulty.
 - Traces and logs are fetched in slices. Jaeger returns at most 1,000 traces per service per query and OpenSearch 10,000 hits, so one 10-minute query would drop part of the window.
+- **Resource metrics are captured** (found in the first pilot). The May metric list asks for `up`, `process_cpu_seconds_total` and `process_resident_memory_bytes`, none of which OTel Demo 2.2.0 exports. So the May captures, all 20 of them, hold only the HTTP and RPC latency histograms, and resource faults (high CPU, GC, memory leak) leave no metric trace in them. The campaign adds the collector's per-container `container_cpu_utilization_ratio` and `container_memory_usage_total_bytes`, limited to the demo's 28 containers. Other projects' containers on the same Docker host are dropped. A `service_name` label is added at query time (`label_replace`; raw labels kept). The first pilot's capture was discarded and recorded again.
 
 ## Faults and labels
 
