@@ -90,7 +90,6 @@ def _load_corpus() -> list[dict[str, Any]]:
             w_error=W_ERROR_DEFAULT,
             rho_threshold=RHO_THRESHOLD_DEFAULT,
             topology_boost_factor=TOPOLOGY_BOOST_DEFAULT,
-            ground_truth_service=ground_truth_service,
         )
         dpipe_scores: dict[str, float] = d_out.get("candidate_scores", {})
 

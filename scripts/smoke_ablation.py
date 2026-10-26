@@ -10,6 +10,7 @@ import json
 import random
 from pathlib import Path
 
+from helios.evaluation.scoring import score_ranking
 from helios.pipelines.d_pipe.dpipe_config import RANDOM_BASELINE_SEED
 from helios.pipelines.d_pipe.pipeline import run_dpipe
 from helios.schemas.telemetry import EvaluationPhase, TelemetryWindow
@@ -81,9 +82,13 @@ def main() -> None:
             w_error=params["w_error"],
             rho_threshold=params["rho_threshold"],
             topology_boost_factor=params["topology_boost_factor"],
-            ground_truth_service=gt_svc,
         )
-        helios_hr.append(float(result.get("hr_at_3", 0)))
+        # Scored after dispatch (S1.9): the D-pipe never sees ground truth.
+        helios_hr.append(
+            float(score_ranking(result["ranked_candidates"], gt_svc).hr_at_3)
+            if gt_svc
+            else 0
+        )
         random_hr.append(_random_hr_at_3(gt_svc))
         indegree_hr.append(_indegree_hr_at_3(gt_svc, window))
 

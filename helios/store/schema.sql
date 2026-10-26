@@ -86,3 +86,33 @@ ON CONFLICT (tag) DO NOTHING;
 INSERT INTO schema_tag (tag)
 VALUES ('schema-draft-v0.5')
 ON CONFLICT (tag) DO NOTHING;
+
+-- eval-score-v1 (S1.9): accuracy scores, computed after dispatch by the
+-- scoring path (helios/evaluation/scoring.py) from result_row and
+-- consensus_verdict joined to the ground truth. Kept apart from the verdicts:
+-- no pipeline reads this table. The label itself is never stored, only the
+-- rank it was found at and the SHA-256 of the ground-truth file.
+CREATE TABLE IF NOT EXISTS eval_score (
+    run_id              VARCHAR     NOT NULL,
+    incident_id         VARCHAR     NOT NULL,
+    variant_config_hash VARCHAR,                -- NULL for fused lists (keyed by variant)
+    list_kind           VARCHAR     NOT NULL,   -- fused | pipeline
+    source              VARCHAR     NOT NULL,   -- variant name (fused) or dpipe | gpipe | lpipe
+    source_status       VARCHAR     NOT NULL,   -- fused, or the verdict status (ranked | abstained | failed)
+    list_length         INTEGER     NOT NULL,
+    ground_truth_rank   INTEGER,                -- 1-based; NULL = absent from the list
+    hr_at_1             INTEGER     NOT NULL,
+    hr_at_3             INTEGER     NOT NULL,
+    hr_at_10            INTEGER     NOT NULL,
+    avg_at_5            DOUBLE      NOT NULL,
+    mrr                 DOUBLE      NOT NULL,
+    corpus              VARCHAR     NOT NULL,   -- build | pool | captures
+    ground_truth_sha256 VARCHAR     NOT NULL,
+    scoring_version     VARCHAR     NOT NULL,
+    scored_at           TIMESTAMP               DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (run_id, list_kind, source)
+);
+
+INSERT INTO schema_tag (tag)
+VALUES ('eval-score-v1')
+ON CONFLICT (tag) DO NOTHING;

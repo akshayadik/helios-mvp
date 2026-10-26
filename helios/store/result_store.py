@@ -207,6 +207,31 @@ class ResultStore:
         return [dict(zip(cols, row, strict=False)) for row in cur.fetchall()]
 
     # ------------------------------------------------------------------
+    # Scores (S1.9) — written by the scoring path only, after dispatch
+    # ------------------------------------------------------------------
+
+    def replace_scores(self, rows: list[dict[str, object]]) -> None:
+        """Insert score rows, replacing any earlier score of the same list."""
+        if not rows:
+            return
+        cols = list(rows[0])
+        placeholders = ", ".join("?" for _ in cols)
+        self._con.executemany(
+            f"INSERT OR REPLACE INTO eval_score ({', '.join(cols)}) "
+            f"VALUES ({placeholders})",
+            [[row[c] for c in cols] for row in rows],
+        )
+
+    def fetch_scores(self) -> list[dict[str, object]]:
+        """Return all rows from eval_score as a list of dicts."""
+        cur = self._con.execute(
+            "SELECT * FROM eval_score ORDER BY list_kind, source, incident_id, run_id"
+        )
+        desc = cur.description or []
+        cols = [d[0] for d in desc]
+        return [dict(zip(cols, row, strict=False)) for row in cur.fetchall()]
+
+    # ------------------------------------------------------------------
     # Cleanup
     # ------------------------------------------------------------------
 

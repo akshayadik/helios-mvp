@@ -6,6 +6,7 @@ import json
 from typing import TYPE_CHECKING
 
 from bin import khop_calibrate as cli
+from helios.evaluation.scoring import service_key
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
 from tests.graph.test_ueg_c_check_cli import _corpus
 
@@ -36,6 +37,6 @@ def test_calibration_prints_counts_and_the_selected_setting(
 
 
 def test_capture_labels_match_short_service_names() -> None:
-    assert cli._key("adService") == cli._key("ad")
-    assert cli._key("product-catalog") == cli._key("productCatalogService")
-    assert cli._key("service") == "service"
+    assert service_key("adService") == service_key("ad")
+    assert service_key("product-catalog") == service_key("productCatalogService")
+    assert service_key("service") == "service"

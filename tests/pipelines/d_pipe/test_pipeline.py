@@ -46,10 +46,8 @@ def test_run_dpipe_with_no_p1_metrics_returns_verdict(manifest, tmp_path: Path) 
         evaluation_phase=EvaluationPhase.EXPLORATORY,
         run_id="run-001",
     )
-    assert "hr_at_3" in result
-    assert "mrr" in result
     assert "ranked_candidates" in result
-    assert isinstance(result["hr_at_3"], int | float)
+    assert not {"hr_at_3", "mrr"} & set(result)  # scored after dispatch (S1.9)
 
 
 def test_run_dpipe_deterministic(manifest) -> None:
@@ -73,7 +71,6 @@ def test_run_dpipe_deterministic(manifest) -> None:
         variant_config_hash="y" * 64,
         evaluation_phase=EvaluationPhase.EXPLORATORY,
         run_id="run-1",
-        ground_truth_service=None,
     )
     result2 = run_dpipe(
         window=window,
@@ -83,9 +80,7 @@ def test_run_dpipe_deterministic(manifest) -> None:
         variant_config_hash="y" * 64,
         evaluation_phase=EvaluationPhase.EXPLORATORY,
         run_id="run-2",
-        ground_truth_service=None,
     )
 
     assert result1["ranked_candidates"] == result2["ranked_candidates"]
-    assert result1["hr_at_3"] == result2["hr_at_3"]
-    assert result1["mrr"] == result2["mrr"]
+    assert result1["candidate_scores"] == result2["candidate_scores"]

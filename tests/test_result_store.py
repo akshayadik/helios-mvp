@@ -76,6 +76,8 @@ def test_schema_tag_row_present(store: ResultStore) -> None:
     assert "schema-draft-v0.1" in tags
     assert "schema-draft-v0.4" in tags
     assert "schema-draft-v0.5" in tags
+    assert "eval-score-v1" in tags  # S1.9 scores table
+    assert "eval_score" in store.table_names()
 
 
 def test_pre_v0_4_database_cpr_column_is_renamed_to_mrr(tmp_path: Path) -> None:
