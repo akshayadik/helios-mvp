@@ -16,6 +16,7 @@ import json
 import statistics
 from pathlib import Path
 
+from helios.evaluation.scoring import score_ranking
 from helios.graph.ppr_pruner import prune_graph
 from helios.graph.ueg_c_builder import build_ueg_c
 from helios.pipelines.d_pipe.dpipe_config import (
@@ -91,11 +92,15 @@ def _evaluate_params(
                 w_error=w_error,
                 rho_threshold=rho_threshold,
                 topology_boost_factor=topology_boost_factor,
-                ground_truth_service=gt_svc,
             )
-            hr_vals.append(float(result.get("hr_at_3", 0)))
-            mrr_val = result.get("mrr", 0.00)
-            mrr_vals.append(float(mrr_val) if mrr_val == mrr_val else 0.00)
+            # Scored after dispatch (S1.9): the D-pipe never sees ground truth.
+            # MRR follows the metric contract (0 when absent); before S1.9
+            # Stage D gave 1/(n+1) for an absent service.
+            case = (
+                score_ranking(result["ranked_candidates"], gt_svc) if gt_svc else None
+            )
+            hr_vals.append(float(case.hr_at_3) if case else 0)
+            mrr_vals.append(case.mrr if case else 0)
         except Exception:
             hr_vals.append(0.00)
             mrr_vals.append(0.00)

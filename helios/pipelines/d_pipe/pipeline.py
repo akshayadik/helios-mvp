@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 from typing import TYPE_CHECKING, Any
 
 import pandas as pd
@@ -39,7 +38,6 @@ def run_dpipe(
     w_error: float = W_ERROR_DEFAULT,
     rho_threshold: float = RHO_THRESHOLD_DEFAULT,
     topology_boost_factor: float = TOPOLOGY_BOOST_DEFAULT,
-    ground_truth_service: str | None = None,
 ) -> dict[str, Any]:
     """Run D-pipe Stages A-D and return a verdict dict."""
     # Stage A: parse metrics
@@ -83,19 +81,12 @@ def run_dpipe(
         score_final = dict(scores)
 
     # Stage D: verdict
-    verdict = DVerdict.compute(score_final, ground_truth_service=ground_truth_service)
-
-    # Normalise for PipelineVerdict schema: mrr must be in [0, 1]; narrative must be str.
-    mrr_raw = verdict.get("mrr", float("nan"))
-    mrr_norm: float = (
-        0.00 if (mrr_raw is None or math.isnan(mrr_raw)) else float(mrr_raw)
-    )
+    verdict = DVerdict.compute(score_final)
     narrative_raw = verdict.get("narrative")
     narrative_norm: str = "" if narrative_raw is None else str(narrative_raw)
 
     return {
         **verdict,
-        "mrr": mrr_norm,
         "narrative": narrative_norm,
         "incident_id": incident_id,
         "snapshot_hash": snapshot_hash,

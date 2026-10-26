@@ -2,32 +2,21 @@
 
 from __future__ import annotations
 
-import math
-
 import pytest
 
 from helios.pipelines.d_pipe.stages.d_verdict import DVerdict
 
 
-def test_ground_truth_ranked_first_gives_hr_and_cpr_one() -> None:
-    scores = {"svc-a": 0.9, "svc-b": 0.50, "svc-c": 0.3}
-    result = DVerdict.compute(scores, ground_truth_service="svc-a")
-    assert result["hr_at_3"] == 1
-    assert result["mrr"] == pytest.approx(1)
-
-
-def test_ground_truth_ranked_second_gives_half_cpr() -> None:
+def test_ranking_is_score_descending() -> None:
     scores = {"svc-a": 0.9, "svc-b": 0.8, "svc-c": 0.3}
-    result = DVerdict.compute(scores, ground_truth_service="svc-b")
-    assert result["hr_at_3"] == 1
-    assert result["mrr"] == pytest.approx(1 / 2)
+    assert DVerdict.compute(scores)["ranked_candidates"] == ["svc-a", "svc-b", "svc-c"]
 
 
-def test_ground_truth_outside_top_3_gives_hr_zero() -> None:
-    scores = {"a": 0.9, "b": 0.8, "c": 0.7, "d": 0.2}
-    result = DVerdict.compute(scores, ground_truth_service="d")
-    assert result["hr_at_3"] == 0
-    assert result["mrr"] == pytest.approx(1 / 4)
+def test_stage_d_takes_no_ground_truth() -> None:
+    # S1.9: accuracy is scored after dispatch, never inside a pipeline.
+    with pytest.raises(TypeError):
+        DVerdict.compute({"a": 0.9}, ground_truth_service="a")  # type: ignore[call-arg]
+    assert not {"hr_at_3", "mrr"} & set(DVerdict.compute({"a": 0.9}))
 
 
 def test_alphabetic_tiebreak_is_deterministic() -> None:
@@ -36,12 +25,6 @@ def test_alphabetic_tiebreak_is_deterministic() -> None:
     r2 = DVerdict.compute(scores)
     assert r1["ranked_candidates"] == r2["ranked_candidates"]
     assert r1["ranked_candidates"][0] == "alpha"  # alphabetically first
-
-
-def test_no_ground_truth_returns_nan_cpr() -> None:
-    result = DVerdict.compute({"x": 0.50})
-    assert math.isnan(result["mrr"])
-    assert result["hr_at_3"] == 0
 
 
 def test_ranked_candidates_cover_every_scored_service() -> None:

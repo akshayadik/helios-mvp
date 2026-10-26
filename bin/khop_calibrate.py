@@ -26,6 +26,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from helios.evaluation.scoring import service_key
 from helios.graph.khop_pruner import MIN_NODES, khop_prune
 from helios.graph.ueg_c_builder import build_ueg_c
 from helios.schemas.telemetry import TelemetryWindow
@@ -39,12 +40,6 @@ CAPTURES_ROOT = Path("data/captures")
 CAPTURES_TRUTH = Path("data/ground_truth.json")
 K_GRID = (0, 1, 2, 3)
 TOP_N_GRID = (50, 120, 200)
-
-
-def _key(name: str) -> str:
-    """Comparable service name: OTel labels say `adService`, nodes say `ad`."""
-    key = "".join(ch for ch in name.lower() if ch.isalnum())
-    return key.removesuffix("service") or key
 
 
 def _window(case_dir: Path) -> TelemetryWindow:
@@ -91,9 +86,11 @@ def calibrate(corpus: str, limit: int | None) -> int:
             _window(base / incident_id), variant_hash, root=REPO_ROOT
         )
         if snapshot is not None and incident_id in labels:
-            graphs.append((snapshot, _key(labels[incident_id])))
+            graphs.append((snapshot, service_key(labels[incident_id])))
     sizes = [len(s.candidate_ids()) for s, _ in graphs]
-    labelled = [g for g in graphs if g[1] in {_key(c) for c in g[0].candidate_ids()}]
+    labelled = [
+        g for g in graphs if g[1] in {service_key(c) for c in g[0].candidate_ids()}
+    ]
     large = sum(n > MIN_NODES for n in sizes)
     print(f"[khop] {corpus}: {len(order)} windows, {len(graphs)} graphs")
     print(f"[khop] services per graph: {_summary(sizes)}")
@@ -112,9 +109,9 @@ def calibrate(corpus: str, limit: int | None) -> int:
                 reach.append(res.services_in_reach)
                 cut_r.append(res.edges_below_r)
                 after.append(res.edges_after)
-                retained += root in {_key(c) for c in pruned.candidate_ids()}
+                retained += root in {service_key(c) for c in pruned.candidate_ids()}
                 if k == K_GRID[0] and top_n == TOP_N_GRID[0]:
-                    seed_hits += root in {_key(s) for s in res.seeds}
+                    seed_hits += root in {service_key(s) for s in res.seeds}
                     sources[res.seed_source.value] = (
                         sources.get(res.seed_source.value, 0) + 1
                     )
@@ -133,7 +130,7 @@ def calibrate(corpus: str, limit: int | None) -> int:
         print(f"[khop] selected by the rule: K={k}, top-n={top_n}")
         runs = [khop_prune(s, k=k, top_n=top_n) for s, _ in labelled]
         kept_root = sum(
-            root in {_key(c) for c in pruned.candidate_ids()}
+            root in {service_key(c) for c in pruned.candidate_ids()}
             for (pruned, _), (_, root) in zip(runs, labelled, strict=True)
         )
         print(

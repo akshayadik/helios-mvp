@@ -192,12 +192,12 @@
 ### S1.9 — Scoring path
 - **Goal:** Scores computed after dispatch, never fed to a pipeline.
 - **Tier:** T1 · **Tracking:** S2-M6-ENG07 · **Effort:** 1 · **Depends on:** S1.8
-- **Steps:** `helios/eval/scoring.py`: HR@1/3/10, Avg@5, MRR from per-pipeline and fused lists joined to ground truth; stored in a separate `eval_score` table; test that `run_dpipe` and others never receive ground truth.
+- **Steps:** `helios/evaluation/scoring.py` (the existing `helios/evaluation` package, not a new `helios/eval`): HR@1/3/10, Avg@5, MRR from per-pipeline and fused lists joined to ground truth; stored in a separate `eval_score` table; test that `run_dpipe` and others never receive ground truth.
 - **Done when:** fixture scores match hand-computed values.
 
 ### S1.10 — Price book, token accounting, cost
 - **Tier:** T1 · **Tracking:** S2-M6-ENG08 · **Effort:** 1 · **Depends on:** S1.8
-- **Steps:** LLM gateway counts tokens per episode; `docs/tracking/price_book.md` coefficients (local GPU seconds, storage, human-minute, opportunity) with sources; `helios/eval/cost.py` five-component CpR.
+- **Steps:** LLM gateway counts tokens per episode; `docs/tracking/price_book.md` coefficients (local GPU seconds, storage, human-minute, opportunity) with sources; `helios/evaluation/cost.py` five-component CpR.
 - **Done when:** hand-computed cost matches on a fixture.
 - **Deviation:** yes (price book values).
 
