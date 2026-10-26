@@ -211,7 +211,9 @@
 ### S2.1 — D-pipe completion
 - **Tier:** T1 · **Tracking:** S2-M7-ENG01 · **Effort:** 1 · **Depends on:** S1.8
 - **Steps:** σ estimate from score spread; deterministic settings; anomaly trigger for the graph neighbourhood.
-- **Done when:** bitwise rerun equality.
+  - **Detection trigger — owner decision (a), 2026-10-26 (S2-M6-RES04):** one frozen, label-free detector, tuned on build data only, gives every system — HELIOS and the five baselines — the same trigger time; no pipeline or baseline receives the true injection time (metric contract). The detector's parameters are frozen with a deviation entry before build-freeze. Its seeds feed the K-hop pruner (S1.7, `khop_prune(seeds=...)`); time to correct diagnosis (B-H6) is measured from this trigger.
+  - An exploratory run gives every system the true injection time, to bridge to published RCAEval scores; it is reported separately and never enters a confirmatory test.
+- **Done when:** bitwise rerun equality; trigger time identical for HELIOS and the baselines on a fixture.
 
 ### S2.2 — G-pipe learned ranker (D9)
 - **Goal:** "Graph machine-learning reasoning", trained, deterministic, service-agnostic.

@@ -32,12 +32,13 @@ The three peer pipelines produce calibrated verdicts; MAHC fuses them with calib
 
 ## Owner items
 
+- *Decided 2026-10-26:* detection trigger option (a) — one frozen, label-free detector gives HELIOS and the five baselines the same trigger time (S2.1; S2-M6-RES04). The detector's parameters need a deviation entry; the true-injection-time run is exploratory only.
 - Rater training with rater 2 (S2.9): the 50-narrative training set may run into early January.
 - Holiday week 28 Dec – 1 Jan is off.
 
 ## Expected deviation entries
 
-G-pipe model and parameters (S2.2); prompts and model version (S2.3); λ and calibration method (S2.5); presentation-order seed block for the labelling tool (S2.9); any rubric decision that changes what H_fact measures.
+Detector parameters for the trigger (S2.1); G-pipe model and parameters (S2.2); prompts and model version (S2.3); λ and calibration method (S2.5); presentation-order seed block for the labelling tool (S2.9); any rubric decision that changes what H_fact measures.
 
 ## Exit criteria
 
