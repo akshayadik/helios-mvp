@@ -167,6 +167,11 @@ class PrometheusMetricsFetcher(StreamFetcher):
 class JaegerTracesFetcher(StreamFetcher):
     """P2: Jaeger /api/traces, merged across all OTEL Demo application services.
 
+    A span's service is its own process's ``serviceName`` (S1.3 finding: until
+    2026-10-27 every span was labelled with the service the query asked for,
+    so one span appeared once per service its trace touched; the May captures
+    were recorded that way).
+
     api_prefix must match the jaeger_query.base_path in src/jaeger/config.yml.
     The OTEL Demo v2.2.0 sets base_path=/jaeger/ui, so the query API lives at
     {base_url}/jaeger/ui/api/traces rather than {base_url}/api/traces.
@@ -211,6 +216,7 @@ class JaegerTracesFetcher(StreamFetcher):
 
         start_us = int(start.timestamp() * 1_000_000)
         end_us = int(end.timestamp() * 1_000_000)
+        seen: set[tuple[str, str]] = set()
 
         for service in self._SERVICES:
             params = urllib.parse.urlencode(
@@ -231,7 +237,14 @@ class JaegerTracesFetcher(StreamFetcher):
                 raise
             for trace in payload.get("data", []):
                 tid: str = trace.get("traceID", "")
+                processes: dict[str, Any] = trace.get("processes", {})
                 for span in trace.get("spans", []):
+                    sid = str(span.get("spanID", ""))
+                    # Each per-service query returns whole traces, spans of every
+                    # service included: keep a span once, with its own service.
+                    if (tid, sid) in seen:
+                        continue
+                    seen.add((tid, sid))
                     status: str = next(
                         (
                             str(t["value"])
@@ -249,10 +262,11 @@ class JaegerTracesFetcher(StreamFetcher):
                             parent_id = str(ref.get("spanID", ""))
                             break
                     trace_ids.append(tid)
-                    span_ids.append(str(span.get("spanID", "")))
+                    span_ids.append(sid)
                     parent_ids.append(parent_id)
                     ops.append(str(span.get("operationName", "")))
-                    services.append(service)
+                    process = processes.get(str(span.get("processID", "")), {})
+                    services.append(str(process.get("serviceName") or service))
                     start_times.append(int(span.get("startTime", 0)))
                     durations.append(int(span.get("duration", 0)))
                     statuses.append(status)
