@@ -64,7 +64,17 @@ def run_dpipe(
             rho_threshold=rho_threshold,
             topology_boost_factor=topology_boost_factor,
         )
-        call_edges = [e for e in ueg_c.edges if e.edge_type == EdgeType.CALL]
+        # Propagate along calls between candidate services only (never onto KPI
+        # or reasoning-step nodes). Under ueg_structural OFF the graph is
+        # untyped, so every edge between two candidates counts.
+        candidates = set(ueg_c.candidate_ids())
+        call_edges = [
+            e
+            for e in ueg_c.edges
+            if e.edge_type in (EdgeType.CALL, EdgeType.UNTYPED)
+            and e.source in candidates
+            and e.target in candidates
+        ]
         score_final = engine.propagate(
             scores, parsed.error_deltas, call_edges, p1_services=parsed.p1_services
         )

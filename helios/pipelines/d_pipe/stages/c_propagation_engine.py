@@ -28,7 +28,7 @@ class PropagationEngine:
         boost: dict[str, float] = {}
 
         for edge in call_edges:
-            if edge.edge_type != EdgeType.CALL:
+            if edge.edge_type not in (EdgeType.CALL, EdgeType.UNTYPED):
                 continue
             caller, callee = edge.source, edge.target
             if caller not in p1_set:

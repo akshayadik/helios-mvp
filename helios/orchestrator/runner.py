@@ -12,6 +12,7 @@ import uuid
 from typing import TYPE_CHECKING, Any
 
 from helios.graph.ppr_pruner import prune_graph
+from helios.graph.structural_bundle import apply_structural_bundle
 from helios.graph.ueg_c_builder import build_ueg_c
 from helios.integrity_gate import AppendOnlyLedger, MetricIntegrityGate
 from helios.orchestrator.corpus import CorpusLoader
@@ -106,12 +107,11 @@ class RunOrchestrator:
         # Build UEG-C once per incident
         ueg_c = None
         if self._manifest.l2b_graph and window.p2_traces_path is not None:
-            ueg_c = build_ueg_c(
-                window,
-                self._config_hash,
-                enable_structural=self._manifest.ueg_structural,
-            )
+            ueg_c = build_ueg_c(window, self._config_hash)
             if ueg_c is not None:
+                # ueg_structural ON keeps the typed graph; OFF flattens it to one
+                # untyped edge kind (HELIOS-noStructural, S1.6).
+                ueg_c = apply_structural_bundle(ueg_c).snapshot
                 ueg_c, _prune_result = prune_graph(ueg_c)
 
         d_out = run_dpipe(

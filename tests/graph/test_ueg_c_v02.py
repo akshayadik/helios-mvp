@@ -315,7 +315,6 @@ def test_builder_inputs_are_only_the_window_and_variant() -> None:
     assert params == {
         "window",
         "variant_config_hash",
-        "enable_structural",
         "root",
         "reasoning_steps",
     }

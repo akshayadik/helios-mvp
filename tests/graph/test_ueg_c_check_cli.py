@@ -60,6 +60,7 @@ def test_check_reports_identical_rebuilds_and_counts_only(
     out = capsys.readouterr().out
     assert "2 windows, 1 graphs" in out
     assert "rebuilds identical: 1/1" in out
+    assert "noStructural (S1.6) changes the snapshot hash: 1/1" in out
     assert "causal edges per graph" in out
     for name in ("redis", "cart", "kafka", "logger", "frontend"):
         assert name not in out
