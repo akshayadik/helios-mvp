@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import datetime as dt
 import json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock
+
+import pytest
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -14,6 +16,7 @@ from helios.integrity_gate import AppendOnlyLedger
 from helios.orchestrator.ledger import ReconciliationLedger
 from helios.orchestrator.runner import RunOrchestrator
 from helios.schemas.telemetry import EvaluationPhase, TelemetryWindow
+from helios.schemas.verdict import PipelineName
 from helios.telemetry.seal import write_seal
 from helios.vcl import get_variant, set_current_manifest
 
@@ -132,3 +135,115 @@ class TestRunOrchestrator:
         rows = store.fetch_all_for_incident("inc-runid-001")
         run_ids = {r["run_id"] for r in rows}
         assert len(run_ids) == 1, f"Expected 1 run_id, got: {run_ids}"
+
+
+# ---------------------------------------------------------------------------
+# Verdict contract through the orchestrator (S1.8)
+# ---------------------------------------------------------------------------
+
+
+def _fake_lpipe(**kwargs: Any) -> dict[str, Any]:
+    return {
+        "pipeline": "lpipe",
+        "incident_id": kwargs["incident_id"],
+        "run_id": kwargs["run_id"],
+        "variant_config_hash": get_variant(_VARIANT).compute_variant_config_hash(),
+        "snapshot_hash": kwargs["snapshot_hash"],
+        "evaluation_phase": kwargs["evaluation_phase"],
+        "status": "ranked",
+        "ranked_candidates": ["svc-b", "svc-a"],
+        "candidate_scores": {},
+        "mu": None,
+        "sigma": None,
+        "prompt_tokens": 410,
+        "completion_tokens": 90,
+        "latency_ms": 987_654,  # the pipeline's own clock; the runner's wins
+        "narrative": "svc-b",
+        "prompt_version": "rca_v1",
+    }
+
+
+def _rows(tmp_path: Path) -> dict[str, dict[str, object]]:
+    from helios.store.result_store import ResultStore
+
+    store = ResultStore(tmp_path / "results.duckdb")
+    rows = {str(r["pipeline"]): r for r in store.fetch_all()}
+    store.close()
+    return rows
+
+
+class TestVerdictContract:
+    def test_every_pipeline_gives_a_contract_row(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr("helios.orchestrator.runner.run_lpipe", _fake_lpipe)
+        captures = tmp_path / "captures"
+        _make_capture(captures, "inc-001")
+        _make_orchestrator(tmp_path, captures).run(captures)
+
+        rows = _rows(tmp_path)
+        # No metrics in the capture: the D-pipe has nothing to rank; no graph,
+        # so the G-pipe is not dispatched.
+        assert rows["dpipe"]["status"] == "abstained"
+        assert rows["gpipe"]["status"] == "skipped"
+        assert rows["gpipe"]["narrative"] == "gpipe-gated-or-skipped"
+        lpipe = rows["lpipe"]
+        assert lpipe["status"] == "ranked"
+        assert json.loads(str(lpipe["ranked_candidates"])) == ["svc-b", "svc-a"]
+        assert (lpipe["prompt_tokens"], lpipe["completion_tokens"]) == (410, 90)
+        assert lpipe["prompt_version"] == "rca_v1"
+        # Latency and CPU time are measured by the runner, the same way for all.
+        assert 0 <= float(str(lpipe["latency_ms"])) < 987_654
+        assert float(str(lpipe["cpu_ms"])) >= 0
+        assert {str(r["schema_version"]) for r in rows.values()} == {
+            "schema-draft-v0.5"
+        }
+
+    def test_variant_without_dpipe_gives_a_skipped_dpipe_verdict(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # HELIOS-LLM-only turns the D-pipe off; the runner used to let
+        # GatedComponentInactiveError escape and abort the run.
+        manifest = get_variant("HELIOS-LLM-only")
+        assert not manifest.dpipe
+        set_current_manifest(manifest)
+        captures = tmp_path / "captures"
+        _make_capture(captures, "inc-001")
+        orch = RunOrchestrator(
+            manifest=manifest,
+            captures_dir=captures,
+            db_path=tmp_path / "results.duckdb",
+            registry_path=tmp_path / "registry.jsonl",
+            reconciliation_path=tmp_path / "reconciliation.jsonl",
+            exclusion_ledger=MagicMock(spec=AppendOnlyLedger),
+            hmac_key=_KEY,
+        )
+        monkeypatch.setattr(
+            "helios.orchestrator.runner.run_lpipe",
+            lambda **kw: {
+                **_fake_lpipe(**kw),
+                "variant_config_hash": manifest.compute_variant_config_hash(),
+            },
+        )
+        orch.run(captures)
+
+        rows = _rows(tmp_path)
+        assert rows["dpipe"]["status"] == "skipped"
+        assert rows["dpipe"]["narrative"] == "dpipe-gated-or-skipped"
+        assert (rows["dpipe"]["latency_ms"], rows["dpipe"]["cpu_ms"]) == (0, 0)
+        assert rows["lpipe"]["status"] == "ranked"
+
+    def test_output_for_another_pipeline_is_refused(self, tmp_path: Path) -> None:
+        captures = tmp_path / "captures"
+        orch = _make_orchestrator(tmp_path, captures)
+        base = {
+            "run_id": "r",
+            "incident_id": "i",
+            "variant_config_hash": "a" * 64,
+            "snapshot_hash": "b" * 64,
+            "evaluation_phase": EvaluationPhase.EXPLORATORY,
+        }
+        with pytest.raises(ValueError, match="returned a verdict for 'gpipe'"):
+            orch._dispatch(
+                PipelineName.DPIPE, base, lambda: {**base, "pipeline": "gpipe"}
+            )

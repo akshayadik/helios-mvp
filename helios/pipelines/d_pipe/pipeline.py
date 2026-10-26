@@ -16,6 +16,7 @@ from helios.pipelines.d_pipe.stages.a_metrics_parser import MetricsParser, Parse
 from helios.pipelines.d_pipe.stages.b_anomaly_scorer import AnomalyScorer
 from helios.pipelines.d_pipe.stages.c_propagation_engine import PropagationEngine
 from helios.pipelines.d_pipe.stages.d_verdict import DVerdict
+from helios.schemas.verdict import VerdictStatus, top1_share
 from helios.vcl import VCLFlag, gated_by, get_current_manifest
 
 __all__ = ["run_dpipe"]
@@ -102,7 +103,13 @@ def run_dpipe(
         "evaluation_phase": str(evaluation_phase),
         "run_id": run_id,
         "pipeline": "dpipe",
-        "latency_ms": 0.00,
-        "token_count": 0,
-        "ppr_scores": score_final,
+        "status": (
+            VerdictStatus.RANKED
+            if verdict["ranked_candidates"]
+            else VerdictStatus.ABSTAINED
+        ),
+        "candidate_scores": score_final,
+        # Label-free mu (top-1 share of the scores); sigma arrives with S2.1.
+        "mu": top1_share(score_final) if verdict["ranked_candidates"] else None,
+        "sigma": None,
     }

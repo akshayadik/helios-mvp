@@ -44,7 +44,8 @@ def test_no_ground_truth_returns_nan_cpr() -> None:
     assert result["hr_at_3"] == 0
 
 
-def test_ranked_candidates_limited_to_three() -> None:
+def test_ranked_candidates_cover_every_scored_service() -> None:
+    # S1.8: the full ranking (HR@10, Avg@5 and MRR need more than the top 3).
     scores = {c: float(i) for i, c in enumerate("abcdefg")}
     result = DVerdict.compute(scores)
-    assert len(result["ranked_candidates"]) == 3
+    assert result["ranked_candidates"] == list("gfedcba")

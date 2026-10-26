@@ -12,7 +12,7 @@ import networkx as nx
 
 from helios.pipelines.g_pipe.gpipe_config import DISAGREEMENT_THRESHOLD, GPIPE_PPR_ALPHA
 from helios.schemas.ueg_c import UEGCSnapshot  # noqa: TCH001
-from helios.schemas.verdict import VERDICT_SCHEMA_VERSION
+from helios.schemas.verdict import VERDICT_SCHEMA_VERSION, VerdictStatus, top1_share
 from helios.vcl import VCLFlag, gated_by
 from helios.vcl.decorators import get_current_manifest
 
@@ -46,7 +46,7 @@ def should_run_gpipe(dpipe_verdict: dict[str, Any], manifest: Any) -> bool:
         return False
     if not manifest.l2b_graph:
         return False
-    dpipe_scores = dpipe_verdict.get("ppr_scores", {})
+    dpipe_scores = dpipe_verdict.get("candidate_scores", {})
     return compute_ppr_disagreement(dpipe_scores) >= DISAGREEMENT_THRESHOLD
 
 
@@ -93,12 +93,12 @@ def _sentinel_verdict(
         "run_id": run_id,
         "variant_config_hash": manifest.compute_variant_config_hash(),
         "snapshot_hash": snapshot_hash,
+        "status": VerdictStatus.SKIPPED,
         "ranked_candidates": [],
-        "ppr_scores": {},
-        "hr_at_3": 0.00,
-        "mrr": 0.00,
+        "candidate_scores": {},
+        "mu": None,
+        "sigma": None,
         "latency_ms": 0.00,
-        "token_count": 0,
         "narrative": "gpipe-gated-or-skipped",
         "evaluation_phase": evaluation_phase,
         "schema_version": VERDICT_SCHEMA_VERSION,
@@ -121,12 +121,13 @@ def _build_gpipe_verdict(
         "run_id": run_id,
         "variant_config_hash": manifest.compute_variant_config_hash(),
         "snapshot_hash": snapshot_hash,
+        "status": VerdictStatus.RANKED if ranked else VerdictStatus.ABSTAINED,
         "ranked_candidates": ranked,
-        "ppr_scores": ppr_scores,
-        "hr_at_3": 0.00,
-        "mrr": 0.00,
+        "candidate_scores": ppr_scores,
+        # Label-free mu (top-1 share of the PPR mass); sigma arrives with S2.2.
+        "mu": top1_share(ppr_scores) if ranked else None,
+        "sigma": None,
         "latency_ms": latency_ms,
-        "token_count": 0,
         "narrative": "gpipe-traversal-complete",
         "evaluation_phase": evaluation_phase,
         "schema_version": VERDICT_SCHEMA_VERSION,

@@ -1,6 +1,6 @@
 """ConsensusVerdict schema and integrity gate.
 
-schema-draft-v0.3 — not to be confused with PipelineVerdict schema-draft-v0.2.
+schema-draft-v0.3 — not to be confused with PipelineVerdict (schema-draft-v0.5).
 CPR is a Stage 5 field; it is set to CPR_PENDING until cost data is available.
 """
 

@@ -1,4 +1,9 @@
-"""Stage D: deterministic verdict — ranked candidates + HR@3 + CpR."""
+"""Stage D: deterministic verdict — every scored service, ranked (S1.8: full list).
+
+hr_at_3 / mrr are only filled when a calibration script passes ground truth;
+the orchestrator never does, and they are not verdict fields (S1.9 scores
+after dispatch).
+"""
 
 from __future__ import annotations
 
@@ -26,6 +31,6 @@ class DVerdict:
         return {
             "hr_at_3": hr_at_3,
             "mrr": mrr,
-            "ranked_candidates": ranked[:3],
+            "ranked_candidates": ranked,
             "narrative": None,
         }

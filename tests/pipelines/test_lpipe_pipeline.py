@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from helios.schemas.ueg_c import NodeType, UEGCNode, UEGCSnapshot
+from helios.schemas.verdict import PipelineVerdict, VerdictStatus
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
 from helios.vcl.decorators import set_current_manifest
 from helios.vcl.variants import get_variant
@@ -70,7 +71,10 @@ def test_run_lpipe_returns_dict_with_required_fields() -> None:
     assert result["run_id"] == "run-abc"
     assert result["ranked_candidates"] == ["svcA"]
     assert result["prompt_version"] == "rca_v1"
-    assert "token_count" in result
+    assert {"prompt_tokens", "completion_tokens"} <= set(result)
+    verdict = PipelineVerdict.from_output(result)
+    assert verdict.status == VerdictStatus.RANKED
+    assert (verdict.mu, verdict.sigma) == (None, None)
     assert "latency_ms" in result
     assert "schema_version" in result
 
@@ -103,8 +107,11 @@ def test_connectivity_error_returns_failure_dict() -> None:
         )
 
     assert result["pipeline"] == "lpipe"
-    assert result["ranked_candidates"] == ["l-pipe-connectivity-error"]
+    # A failure is a FAILED verdict, never a placeholder candidate (S1.8).
+    assert result["ranked_candidates"] == []
+    assert result["status"] == VerdictStatus.FAILED
     assert "l-pipe-connectivity-error" in result["narrative"]
+    assert PipelineVerdict.from_output(result).top1 is None
 
 
 def test_expected_prompt_sha_matches_registry() -> None:

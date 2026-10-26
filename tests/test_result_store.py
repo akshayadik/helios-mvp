@@ -7,12 +7,14 @@ VCLManifest + VCLFlag imports satisfy flag-guard compliance.
 
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING
 
 import duckdb
 import pytest
 
 from helios.schemas import EvaluationPhase, PipelineVerdict
+from helios.schemas.verdict import PipelineName, VerdictCost, VerdictStatus
 from helios.store.result_store import ResultStore
 from helios.vcl import VCLFlag  # flag-guard; VCLManifest compliance via docstring
 
@@ -33,20 +35,23 @@ def _make_verdict(
     run_id: str = _RUN_A,
     pipeline: str = "gpipe",
     phase: EvaluationPhase = EvaluationPhase.EXPLORATORY,
+    variant_config_hash: str = _VCH,
 ) -> PipelineVerdict:
     return PipelineVerdict(
         run_id=run_id,
         incident_id="inc-001",
-        variant_config_hash=_VCH,
+        variant_config_hash=variant_config_hash,
         snapshot_hash=_SNAP,
-        pipeline=pipeline,
+        pipeline=PipelineName(pipeline),
         evaluation_phase=phase,
+        status=VerdictStatus.RANKED,
         ranked_candidates=["svc-a", "svc-b"],
-        hr_at_3=0.75,
-        mrr=0.6,
+        candidate_scores={"svc-b": 0.25, "svc-a": 0.75},
+        mu=0.75,
+        cost=VerdictCost(prompt_tokens=100 + 28, completion_tokens=32, cpu_ms=7.5),
         latency_ms=42.5,
-        token_count=128,
         narrative="stub narrative",
+        prompt_version="rca_v1",
     )
 
 
@@ -70,6 +75,7 @@ def test_schema_tag_row_present(store: ResultStore) -> None:
     tags = store.schema_tags()
     assert "schema-draft-v0.1" in tags
     assert "schema-draft-v0.4" in tags
+    assert "schema-draft-v0.5" in tags
 
 
 def test_pre_v0_4_database_cpr_column_is_renamed_to_mrr(tmp_path: Path) -> None:
@@ -90,11 +96,61 @@ def test_pre_v0_4_database_cpr_column_is_renamed_to_mrr(tmp_path: Path) -> None:
     con.close()
 
     migrated = ResultStore(db)
-    migrated.insert(_make_verdict())
-    rows = migrated._con.execute(
-        "SELECT run_id, mrr FROM result_row ORDER BY run_id"
+    # Renamed to mrr, then archived whole as result_row_v04 (schema-draft-v0.5).
+    archived = migrated._con.execute(
+        "SELECT run_id, mrr FROM result_row_v04 ORDER BY run_id"
     ).fetchall()
-    assert rows == [("r0", 0.25), (_RUN_A, 0.6)]
+    assert archived == [("r0", 0.25)]
+    migrated.insert(_make_verdict())
+    assert [r["run_id"] for r in migrated.fetch_all()] == [_RUN_A]
+
+
+def test_pre_v0_5_result_row_is_archived_not_rewritten(tmp_path: Path) -> None:
+    db = tmp_path / "v04.db"
+    con = duckdb.connect(str(db))
+    con.execute(
+        "CREATE TABLE result_row (run_id VARCHAR, pipeline VARCHAR, hr_at_3 DOUBLE,"
+        " mrr DOUBLE, token_count BIGINT)"
+    )
+    con.execute("INSERT INTO result_row VALUES ('r0', 'dpipe', 1, 1, 7)")
+    con.close()
+
+    store = ResultStore(db)
+    assert store._con.execute("SELECT * FROM result_row_v04").fetchall() == [
+        ("r0", "dpipe", 1, 1, 7)
+    ]
+    assert store.fetch_all() == []
+    store.close()
+    # Reopening a migrated database changes nothing.
+    again = ResultStore(db)
+    assert again._con.execute("SELECT count(*) FROM result_row_v04").fetchone() == (1,)
+    again.close()
+
+
+def test_archive_is_never_overwritten(tmp_path: Path) -> None:
+    db = tmp_path / "both.db"
+    con = duckdb.connect(str(db))
+    con.execute("CREATE TABLE result_row (run_id VARCHAR, mrr DOUBLE)")
+    con.execute("CREATE TABLE result_row_v04 (run_id VARCHAR, mrr DOUBLE)")
+    con.close()
+    with pytest.raises(RuntimeError, match="refusing to overwrite"):
+        ResultStore(db)
+
+
+def test_insert_stores_the_verdict_contract(store: ResultStore) -> None:
+    v = _make_verdict()
+    store.insert(v)
+    row = store.fetch_all()[0]
+    assert row["status"] == "ranked"
+    assert json.loads(str(row["ranked_candidates"])) == ["svc-a", "svc-b"]
+    assert json.loads(str(row["candidate_scores"])) == {"svc-a": 0.75, "svc-b": 0.25}
+    assert (row["mu"], row["sigma"]) == (0.75, None)
+    assert (row["prompt_tokens"], row["completion_tokens"]) == (128, 32)
+    assert (row["cpu_ms"], row["gpu_ms"]) == (7.5, 0)
+    assert row["prompt_version"] == "rca_v1"
+    assert row["decision_hash"] == v.compute_decision_hash()
+    assert row["schema_version"] == "schema-draft-v0.5"
+    assert not {"hr_at_3", "mrr", "token_count"} & set(row)
 
 
 # ------------------------------------------------------------------
@@ -154,20 +210,7 @@ def test_inclusion_rate_all_three_pipelines_is_full(store: ResultStore) -> None:
 
 def test_inclusion_rate_filters_by_variant_hash(store: ResultStore) -> None:
     other_vch = "c" * 64
-    v_other = PipelineVerdict(
-        run_id="run-other",
-        incident_id="inc-001",
-        variant_config_hash=other_vch,
-        snapshot_hash=_SNAP,
-        pipeline="dpipe",
-        evaluation_phase=EvaluationPhase.EXPLORATORY,
-        ranked_candidates=[],
-        hr_at_3=0.4,
-        mrr=0.4,
-        latency_ms=10.0,
-        token_count=0,
-        narrative="other",
-    )
+    v_other = _make_verdict("run-other", "dpipe", variant_config_hash=other_vch)
     store.insert(v_other)
     # _VCH has no rows
     assert store.inclusion_rate(_VCH) == 0

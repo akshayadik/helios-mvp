@@ -23,7 +23,7 @@ from helios.pipelines.l_pipe.ollama_client import (
 )
 from helios.pipelines.l_pipe.prompt_registry import PROMPT_PATH, PromptRegistry
 from helios.pipelines.l_pipe.response_handler import ResponseHandler
-from helios.schemas.verdict import VERDICT_SCHEMA_VERSION
+from helios.schemas.verdict import VERDICT_SCHEMA_VERSION, VerdictStatus
 from helios.vcl import VCLFlag, gated_by
 from helios.vcl.decorators import get_current_manifest
 
@@ -81,31 +81,47 @@ def run_lpipe(
             "run_id": run_id,
             "variant_config_hash": manifest.compute_variant_config_hash(),
             "snapshot_hash": snapshot_hash,
-            "ranked_candidates": ["l-pipe-connectivity-error"],
-            "ppr_scores": {},
+            "status": VerdictStatus.FAILED,
+            "ranked_candidates": [],
+            "candidate_scores": {},
+            "mu": None,
+            "sigma": None,
             "prompt_version": registry.prompt_version,
-            "token_count": 0,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
             "narrative": f"l-pipe-connectivity-error: {type(exc).__name__}",
             "latency_ms": latency_ms,
             "evaluation_phase": evaluation_phase,
             "schema_version": VERDICT_SCHEMA_VERSION,
         }
     latency_ms = (time.monotonic() - t0) * 1_000.00
-    token_count = (
-        ollama_result.prompt_tokens + ollama_result.completion_tokens
+    # A model can name a service twice; the verdict keeps its first position.
+    # No result means every retry failed schema validation: the handler's
+    # fallback placeholder is not a candidate, so the verdict is FAILED.
+    ranked = (
+        list(dict.fromkeys(response.ranked_candidates))
         if ollama_result is not None
-        else 0
+        else []
     )
+    if ollama_result is None:
+        status = VerdictStatus.FAILED
+    else:
+        status = VerdictStatus.RANKED if ranked else VerdictStatus.ABSTAINED
     return {
         "pipeline": "lpipe",
         "incident_id": incident_id,
         "run_id": run_id,
         "variant_config_hash": manifest.compute_variant_config_hash(),
         "snapshot_hash": snapshot_hash,
-        "ranked_candidates": response.ranked_candidates,
-        "ppr_scores": {},
+        "status": status,
+        "ranked_candidates": ranked,
+        "candidate_scores": {},
+        # mu and sigma come from the S2.3 workers; a single prompt has neither.
+        "mu": None,
+        "sigma": None,
         "prompt_version": registry.prompt_version,
-        "token_count": token_count,
+        "prompt_tokens": ollama_result.prompt_tokens if ollama_result else 0,
+        "completion_tokens": ollama_result.completion_tokens if ollama_result else 0,
         "narrative": response.narrative,
         "latency_ms": latency_ms,
         "evaluation_phase": evaluation_phase,

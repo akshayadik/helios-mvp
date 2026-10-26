@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
+from helios.schemas.verdict import PipelineVerdict, VerdictStatus, top1_share
 from helios.vcl import VCLFlag, get_variant, set_current_manifest  # noqa: F401
 
 if TYPE_CHECKING:
@@ -69,7 +70,7 @@ class TestComputePprDisagreement:
 
 class TestShouldRunGpipe:
     def _dpipe_dict(self, scores: dict) -> dict:
-        return {"ppr_scores": scores, "pipeline": "dpipe"}
+        return {"candidate_scores": scores, "pipeline": "dpipe"}
 
     def test_gpipe_flag_off_returns_false(self) -> None:
         from helios.pipelines.g_pipe.pipeline import should_run_gpipe
@@ -212,6 +213,11 @@ class TestRunGpipe:
         # 3rd/top = 0.36/0.90 = 0.40 — above threshold
         assert result["narrative"] != "gpipe-gated-or-skipped"
         assert len(result["ranked_candidates"]) > 0
+        verdict = PipelineVerdict.from_output(result)
+        assert verdict.status == VerdictStatus.RANKED
+        assert set(verdict.ranked_candidates) == set(result["candidate_scores"])
+        assert verdict.mu == top1_share(result["candidate_scores"])
+        assert verdict.sigma is None
 
     def test_sentinel_has_all_required_fields(self) -> None:
         from helios.pipelines.g_pipe.pipeline import run_gpipe
@@ -232,12 +238,12 @@ class TestRunGpipe:
             "run_id",
             "variant_config_hash",
             "snapshot_hash",
+            "status",
             "ranked_candidates",
-            "ppr_scores",
-            "hr_at_3",
-            "mrr",
+            "candidate_scores",
+            "mu",
+            "sigma",
             "latency_ms",
-            "token_count",
             "narrative",
             "evaluation_phase",
             "schema_version",
@@ -245,6 +251,9 @@ class TestRunGpipe:
             assert field in result, f"missing field: {field}"
         assert result["evaluation_phase"] == "confirmatory"
         assert result["run_id"] == "run-xyz"
+        verdict = PipelineVerdict.from_output(result)
+        assert verdict.status == VerdictStatus.SKIPPED
+        assert verdict.mu is None
 
     def test_raises_when_gpipe_flag_off(self) -> None:
         from helios.pipelines.g_pipe.pipeline import run_gpipe

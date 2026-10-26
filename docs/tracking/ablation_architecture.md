@@ -1,8 +1,8 @@
 # HELIOS Ablation Architecture — Living ADR
 
-**Document Version:** v0.11
+**Document Version:** v0.12
 **Date:** 2026-10-26
-**Status:** §1 frozen at Stage 0; flag and variant names synced to the D2 registry (2026-10-23, deviation entry 31). §2 schemas frozen at Stage 0; §2.6 UEG-C Builder implemented and frozen at Milestone 2. §3.0 frozen at Stage 0 (registry + stubs). §3.1 D-pipe implemented and frozen at Milestone 2. §3.2 G-pipe implemented and frozen at Milestone 3. §3.3 L-pipe implemented and frozen at Milestone 3. §4 frozen at Milestone 1. §5 Consensus design frozen at Milestone 4. §6–§7 stubs. UEG-C (§2.1–§2.3, §2.6) at schema-draft-v0.2 since S1.5; pruner replaced by Algorithm 5 in S1.7 (§2.6).
+**Status:** §1 frozen at Stage 0; flag and variant names synced to the D2 registry (2026-10-23, deviation entry 31). §2 schemas frozen at Stage 0; §2.6 UEG-C Builder implemented and frozen at Milestone 2. §3.0 frozen at Stage 0 (registry + stubs). §3.1 D-pipe implemented and frozen at Milestone 2. §3.2 G-pipe implemented and frozen at Milestone 3. §3.3 L-pipe implemented and frozen at Milestone 3. §4 frozen at Milestone 1. §5 Consensus design frozen at Milestone 4. §6–§7 stubs. UEG-C (§2.1–§2.3, §2.6) at schema-draft-v0.2 since S1.5; pruner replaced by Algorithm 5 in S1.7 (§2.6). §2.4 PipelineVerdict at schema-draft-v0.5 since S1.8 (verdict contract).
 **Canonical Reference:** `docs/memos/spine_freeze_memo_v0.md`
 **Update Cadence:** After every pipeline-stage change.
 
@@ -189,28 +189,32 @@ to `build_ueg_c(enable_structural=...)` (`helios/orchestrator/runner.py`), while
 for deduplication and C1 run-level inclusion (§5.1). The snapshot itself does **not** store its own
 hash (avoids circular dependency); callers inject the result into verdict rows.
 
-### 2.4 PipelineVerdict Field Manifest (`helios/schemas/verdict.py`)   [FROZEN — Stage 0]
+### 2.4 PipelineVerdict Field Manifest (`helios/schemas/verdict.py`)   [schema-draft-v0.5 — S1.8]
 
-Per-pipeline result row for dpipe, gpipe, and lpipe. All fields required by the metric integrity gate
-and result store (`helios/store/schema.sql`).
+The typed verdict every reasoning pipeline emits — Chapter 3's `(ranked_RCA_list, μ, σ, cost, latency)` — one result row per pipeline per incident run (`helios/store/schema.sql`). The orchestrator builds it with `PipelineVerdict.from_output` from each pipeline's output; a pipeline gated off by its flag, or not dispatched, gives a `skipped` verdict.
 
 | Field | Type | Constraint | Notes |
 |---|---|---|---|
-| `run_id` | `str` | PK | Unique run identifier |
+| `run_id` | `str` | PK with `pipeline` | One UUID per incident run, shared by the three verdicts |
 | `incident_id` | `str` | FK to snapshot | Links verdict to incident |
 | `variant_config_hash` | `str` (64-char hex) | C1 invariant | Must match active manifest |
-| `snapshot_hash` | `str` (64-char hex) | C1 invariant | SHA-256 of UEGCSnapshot |
-| `pipeline` | `str` | `dpipe | gpipe | lpipe` | Source pipeline label |
+| `snapshot_hash` | `str` (64-char hex) | C1 invariant | Cross-pipeline must agree |
+| `pipeline` | `PipelineName` | `dpipe \| gpipe \| lpipe` | Source pipeline |
 | `evaluation_phase` | `EvaluationPhase` | Enum | `exploratory` or `confirmatory` |
-| `ranked_candidates` | `list[str]` | Ordered | Top-k service names (HR@3 source) |
-| `hr_at_3` | `float` | `[0, 1]` | Hit-Rate@3 |
-| `mrr` | `float` | `[0, 1]` | Reciprocal rank of the ground-truth service (descriptive; named `cpr` before schema-draft-v0.4) |
-| `latency_ms` | `float` | `>= 0` | Pipeline wall-clock latency |
-| `token_count` | `int` | `>= 0` | LLM tokens consumed (L-pipe) or 0 |
-| `narrative` | `str` | Non-empty | Chain of Explanation (CoE) text |
-| `schema_version` | `str` | Default `schema-draft-v0.1` | Bumped at OSF Stage 5 freeze |
+| `status` | `VerdictStatus` | `ranked \| abstained \| skipped \| failed` | Only `ranked` carries candidates, mu or sigma; a failure is never a placeholder candidate |
+| `ranked_candidates` | `list[str]` | Ordered, no repeats | The pipeline's full ranking (HR@k, Avg@5 and MRR are scored from it after dispatch, S1.9) |
+| `candidate_scores` | `dict[str, float]` | Keys are ranked candidates | The pipeline's own score per candidate (was `ppr_scores`) |
+| `mu` | `float \| None` | `[0, 1]` | Confidence that the top-1 is the root cause; `None` = no estimator yet |
+| `sigma` | `float \| None` | `>= 0` | Standard deviation of mu; `None` = unknown (MAHC weights a vote down as sigma grows) |
+| `cost` | `VerdictCost` | all `>= 0` | `prompt_tokens`, `completion_tokens`, `cpu_ms`, `gpu_ms`; priced afterwards by the price book (S1.10) |
+| `latency_ms` | `float` | `>= 0` | Wall clock, measured by the orchestrator the same way for every pipeline |
+| `narrative` | `str` | | Chain of Explanation (CoE) text |
+| `prompt_version` | `str \| None` | | L-pipe prompt registry version |
+| `schema_version` | `str` | `schema-draft-v0.5` | Bumped at OSF Stage 5 freeze |
 
-`compute_verdict_hash()` produces a SHA-256 row identity for deduplication and audit.
+Removed in schema-draft-v0.5: `hr_at_3`, `mrr` (scores against ground truth are computed after dispatch, never by a pipeline — S1.9), `token_count` (split into prompt and completion tokens), `ppr_scores` (renamed `candidate_scores`).
+
+`compute_verdict_hash()` produces a SHA-256 row identity for deduplication and audit; `compute_decision_hash()` leaves out `run_id` and the measured time (latency, CPU and GPU time), so two runs of the same pipeline on the same snapshot give the same decision hash (rerun equality, S2.1). Design: `docs/sprints/s1-data-graph/s1_8_verdict_contract.md`.
 
 ### 2.5 TelemetryWindow Contract (`helios/schemas/telemetry.py`)   [FROZEN — Stage 0]
 
@@ -373,6 +377,8 @@ D-pipe is a four-stage statistical anomaly detection pipeline frozen at Mileston
 
 **Gating:** Stage C propagation is independently gated by `VCLFlag.DPIPE_PROPAGATION`. When `dpipe_propagation=False` (e.g., ablation study), propagation is skipped and raw Stage B scores are ranked directly.
 
+> **S1.8 (2026-10-26):** Stage D now ranks every scored service (no top-3 cut), the output carries `status`, `candidate_scores` (was `ppr_scores`) and a label-free `mu` (top-1 share of the scores); `hr_at_3`/`mrr` are filled only when a calibration script passes ground truth and are not verdict fields (§2.4).
+
 #### Calibrated Parameters (Milestone 2)
 
 Calibrated via LOO-CV on the 15-incident OTEL Demo exploratory corpus (250-cell joint grid: 5×5×10).
@@ -420,6 +426,8 @@ scripts MUST filter sentinel rows for A-H6 metric queries:
 ```sql
 WHERE pipeline = 'gpipe' AND narrative != 'gpipe-gated-or-skipped'
 ```
+
+> **S1.8 (2026-10-26):** sentinel rows now carry `status = 'skipped'` and no score fields; filter with `status = 'ranked'`. The D-pipe scores G-pipe reads are `candidate_scores`.
 
 Failure to filter produces a methodologically invalid A-H6 result. This filter is
 baked into `analysis_plan.json` (A-H6 filter field) and must appear in
@@ -476,6 +484,8 @@ The rendered prompt injects `incident_id`, `service_list`, and `anomaly_summary`
 - Markdown fence stripping (`sanitize_llm_output`)
 - Pydantic schema validation against `LPipeResponse` (`ranked_candidates`, `narrative`, `confidence`)
 - One retry on validation failure, then fallback to `ranked_candidates=["l-pipe-fallback"]`
+
+> **S1.8 (2026-10-26):** a schema fallback or a connectivity error is now a `failed` verdict with an empty ranking — the placeholders `l-pipe-fallback` and `l-pipe-connectivity-error` no longer enter consensus as candidates. A model answer that repeats a service keeps its first position. Tokens are recorded as prompt and completion tokens.
 
 #### Ablation Gating
 
@@ -583,3 +593,4 @@ AIOpsLab is a Tier 2 recording spike (S1.3), not the confirmatory corpus.
 - v0.8 (2026-10-25, S2-M6-RES03): §1.2–§1.3 synced to the D2 registry (17 flags; deviation entry 31); §1.5 had been regenerated from `variants.py` on 2026-10-24. §2.2 and §2.6 use `ueg_structural` and say how the orchestrator applies it; §2.6 records that structural edges now use `parent_span_id` linkage. §5 names the RCAEval pool as the confirmatory corpus. §2.1–§2.3 (UEG-C schema) are left for the S1.5 schema bump.
 - v0.9 (2026-10-25, S2-M6-ENG03): §2.1–§2.3 and §2.6 rewritten for UEG-C schema-draft-v0.2 (S1.5): four edge classes from traces, metrics and logs, KPI and reasoning-step nodes, tenant, composition rules, deterministic snapshot; pruner note for v0.2 graphs (deviation entry 39).
 - v0.10 (2026-10-25, S2-M6-ENG04): §2.6 structural bundle (S1.6): ueg_structural OFF = one untyped edge kind, full-graph training scope, reasoning steps as flat text; gated typed_view; applied by the orchestrator before pruning.
+- v0.12 (2026-10-26, S2-M6-ENG06): §2.4 PipelineVerdict schema-draft-v0.5 (S1.8 verdict contract): status, candidate scores, mu, sigma, cost, decision hash; scores leave the verdict for the S1.9 scoring path; S1.8 notes in §3.1–§3.3.
