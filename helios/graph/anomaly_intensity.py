@@ -135,6 +135,8 @@ def log_intensity(
     novel = features.novelty.set_index(["service", "bucket_start"])["novel_lines"]
     out: dict[str, np.ndarray] = {}
     for service in sorted(features.novelty["service"].unique()):
+        if not str(service).strip():
+            continue  # lines without a service name are not a service (as metrics)
         rows: list[np.ndarray] = []
         for source in (lines, novel):
             part = source.loc[service]

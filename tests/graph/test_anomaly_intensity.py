@@ -113,6 +113,14 @@ def test_log_intensity_uses_line_counts_and_novelty() -> None:
     assert log_intensity(empty, START, 20, 30) == {}
 
 
+def test_log_lines_without_a_service_are_not_a_service() -> None:
+    rows = [(f"2026-10-25T10:0{m}:05Z", "", "GET /cart took 3 ms") for m in range(6)]
+    rows.append(("2026-10-25T10:01:05Z", "cart", "GET /cart took 3 ms"))
+    logs = pd.DataFrame(rows, columns=["timestamp", "service_name", "body"])
+    features = extract_templates(logs, START, bucket_seconds=30)
+    assert set(log_intensity(features, START, 20, 30)) == {"cart"}
+
+
 def test_combine_takes_the_bucket_wise_max() -> None:
     a = {"x": np.array([1, 5, 2], dtype="float64")}
     b = {

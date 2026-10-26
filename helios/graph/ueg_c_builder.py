@@ -46,6 +46,7 @@ if TYPE_CHECKING:
     from helios.schemas.telemetry import TelemetryWindow
 
 __all__ = [
+    "ANOMALY_PEAK_KEY",
     "BUCKET_SECONDS",
     "CAUSAL_MIN_R",
     "MAX_LAG_BUCKETS",
@@ -62,6 +63,8 @@ BUCKET_SECONDS = 30
 MAX_LAG_BUCKETS = 4
 CAUSAL_MIN_R = 0.6
 MIN_POINTS = 8
+
+ANOMALY_PEAK_KEY = "anomaly_peak"  # service node metadata: max intensity in window
 
 
 def kpi_node_id(entry_service: str) -> str:
@@ -128,6 +131,14 @@ def _lagged(a: np.ndarray, b: np.ndarray, lag: int) -> float | None:
     return _pearson(a[-lag:], b[: len(b) + lag])
 
 
+def _service_metadata(kinds: set[str], series: np.ndarray | None) -> dict[str, str]:
+    """Modalities, and the peak anomaly intensity (S1.7 pruner seeds; label-free)."""
+    meta = {"modalities": ",".join(sorted(kinds))} if kinds else {}
+    if series is not None and series.size:
+        meta[ANOMALY_PEAK_KEY] = f"{float(np.max(series)):.6f}"
+    return meta
+
+
 class UEGCBuilder:
     """Builds one snapshot. ``enable_structural=False`` omits structural edges;
     it is a unit-level option only — the HELIOS-noStructural variant is the
@@ -160,7 +171,7 @@ class UEGCBuilder:
                 node_id=svc,
                 node_type=NodeType.SERVICE,
                 service_name=svc,
-                metadata={"modalities": ",".join(sorted(kinds))} if kinds else {},
+                metadata=_service_metadata(kinds, (intensity or {}).get(svc)),
             )
             for svc, kinds in modalities.items()
         ]
