@@ -1,6 +1,6 @@
 # S1.3 — AIOpsLab recording spike · report
 
-**Task:** S1.3 (tracking S2-M6-RES02) · **Date:** 2026-10-27 · **Question:** does AIOpsLab join the Stage A confirmatory pool? Go means a D11 addendum before the freeze; no-go means Stage B, recorded. · **Recommendation: no-go for the pool; AIOpsLab moves to Stage B as an exploratory external-validity corpus** (owner to confirm) · **Feature flags:** none; recording only (`HELIOS_ENABLE_*` unaffected)
+**Task:** S1.3 (tracking S2-M6-RES02) · **Date:** 2026-10-27 · **Question:** does AIOpsLab join the Stage A confirmatory pool? Go means a D11 addendum before the freeze; no-go means Stage B, recorded. · **Decision (owner, 2026-10-27): no-go for the pool; AIOpsLab moves to Stage B as an exploratory external-validity corpus** · **Feature flags:** none; recording only (`HELIOS_ENABLE_*` unaffected)
 
 ## What was done
 

@@ -23,7 +23,7 @@ Every case sealed in the HELIOS recorded format with no label leakage; the typed
 |---|---|---|---|---|---|
 | S1.1 RCAEval adapter with sealing and leakage controls | T1 | S2-M6-ENG01 | 3 | S0.8 | 240 pool + 495 build cases sealed; leakage test passes; pool manifest hash recorded |
 | S1.2 New OTel Demo captures (~60) | T1 | S2-M6-RES01 | 2 | — | ~80 OTel incidents sealed, all verify |
-| S1.3 AIOpsLab recording spike | T2 | S2-M6-RES02 | 2 | — | Go → D11 addendum before the freeze; no-go → Stage B, recorded |
+| S1.3 AIOpsLab recording spike | T2 | S2-M6-RES02 | 2 | — | Go → D11 addendum before the freeze; no-go → Stage B, recorded. **Done 2026-10-27: no-go → Stage B** |
 | S1.4 Log templates (Drain3) | T1 | S2-M6-ENG02 | 1 | S1.1 | Templates stable across reruns |
 | S1.5 Typed incident graph (UEG-C), four edge kinds | T1 | S2-M6-ENG03 | 3 | S1.1, S1.4 | Cross-domain path test; stable snapshot hash; partial-trace test |
 | S1.6 Structural bundle (`ueg_structural`) | T1 | S2-M6-ENG04 | 1 | S1.5 | noStructural changes the snapshot hash |

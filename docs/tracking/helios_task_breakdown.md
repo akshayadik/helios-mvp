@@ -157,6 +157,7 @@
 - **Tier:** T2 · **Tracking:** S2-M6-RES02 · **Effort:** 2 · **Depends on:** —
 - **Steps:** install `kind` and `helm`; deploy one app; inject one problem; export and convert telemetry to the sealed format.
 - **Done when:** go → addendum to D11 before the freeze; no-go → Stage B, recorded.
+- **Outcome (2026-10-27, owner): no-go → Stage B** (exploratory corpus: DeathStarBench HotelReservation/SocialNetwork, Kubernetes-level faults). Spike driver and converter work end to end; see `docs/sprints/s1-data-graph/s1_3_aiopslab_spike.md`.
 
 ### S1.4 — Log templates
 - **Tier:** T1 · **Tracking:** S2-M6-ENG02 · **Effort:** 1 · **Depends on:** S1.1
