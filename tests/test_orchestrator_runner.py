@@ -157,6 +157,7 @@ def _fake_lpipe(**kwargs: Any) -> dict[str, Any]:
         "sigma": None,
         "prompt_tokens": 410,
         "completion_tokens": 90,
+        "gpu_ms": 640,  # model compute time from the LLM gateway (S1.10)
         "latency_ms": 987_654,  # the pipeline's own clock; the runner's wins
         "narrative": "svc-b",
         "prompt_version": "rca_v1",
@@ -191,6 +192,7 @@ class TestVerdictContract:
         assert lpipe["status"] == "ranked"
         assert json.loads(str(lpipe["ranked_candidates"])) == ["svc-b", "svc-a"]
         assert (lpipe["prompt_tokens"], lpipe["completion_tokens"]) == (410, 90)
+        assert lpipe["gpu_ms"] == 640
         assert lpipe["prompt_version"] == "rca_v1"
         # Latency and CPU time are measured by the runner, the same way for all.
         assert 0 <= float(str(lpipe["latency_ms"])) < 987_654

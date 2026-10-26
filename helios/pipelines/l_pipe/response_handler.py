@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from helios.vcl import VCLFlag  # noqa: F401 — satisfies flag-guard
 
 if TYPE_CHECKING:
+    from helios.pipelines.l_pipe.gateway import LLMGateway
     from helios.pipelines.l_pipe.ollama_client import (
         OllamaClient,
         OllamaGenerateResult,
@@ -44,7 +45,7 @@ _FALLBACK = LPipeResponse(
 
 
 class ResponseHandler:
-    def __init__(self, client: OllamaClient, max_retries: int) -> None:
+    def __init__(self, client: OllamaClient | LLMGateway, max_retries: int) -> None:
         self._client = client
         self._max_retries = max_retries
 

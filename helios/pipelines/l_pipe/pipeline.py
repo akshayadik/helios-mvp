@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 
 __all__ = ["run_lpipe"]
 
+from helios.pipelines.l_pipe.gateway import LLMGateway, LLMUsage
 from helios.pipelines.l_pipe.lpipe_config import (
     EXPECTED_PROMPT_SHA,
     LPIPE_MAX_RETRIES,
@@ -44,6 +45,16 @@ def _anomaly_summary(snapshot: UEGCSnapshot) -> str:
     return f"Anomalies detected across {len(services)} services: {', '.join(services)}"
 
 
+def _usage_fields(usage: LLMUsage) -> dict[str, Any]:
+    return {
+        "prompt_tokens": usage.prompt_tokens,
+        "completion_tokens": usage.completion_tokens,
+        "gpu_ms": usage.accelerator_ms,
+        "llm_calls": usage.calls,
+        "llm_failed_calls": usage.failed_calls,
+    }
+
+
 @gated_by(VCLFlag.L2C_LLM)
 def run_lpipe(
     incident_id: str,
@@ -63,8 +74,9 @@ def run_lpipe(
             "lpipe: EXPECTED_PROMPT_SHA not frozen — prompt tamper-guard disabled. "
             "Freeze after committing rca_v1.txt (see lpipe_config.py)."
         )
-    client = OllamaClient(OLLAMA_BASE_URL, MODEL_NAME)
-    handler = ResponseHandler(client, max_retries=LPIPE_MAX_RETRIES)
+    # Every model call of the episode, retries included, is metered (S1.10).
+    gateway = LLMGateway(OllamaClient(OLLAMA_BASE_URL, MODEL_NAME))
+    handler = ResponseHandler(gateway, max_retries=LPIPE_MAX_RETRIES)
     prompt = registry.render(
         incident_id=incident_id,
         service_list=_service_list_from_snapshot(snapshot),
@@ -87,8 +99,7 @@ def run_lpipe(
             "mu": None,
             "sigma": None,
             "prompt_version": registry.prompt_version,
-            "prompt_tokens": 0,
-            "completion_tokens": 0,
+            **_usage_fields(gateway.usage),
             "narrative": f"l-pipe-connectivity-error: {type(exc).__name__}",
             "latency_ms": latency_ms,
             "evaluation_phase": evaluation_phase,
@@ -120,8 +131,7 @@ def run_lpipe(
         "mu": None,
         "sigma": None,
         "prompt_version": registry.prompt_version,
-        "prompt_tokens": ollama_result.prompt_tokens if ollama_result else 0,
-        "completion_tokens": ollama_result.completion_tokens if ollama_result else 0,
+        **_usage_fields(gateway.usage),
         "narrative": response.narrative,
         "latency_ms": latency_ms,
         "evaluation_phase": evaluation_phase,
