@@ -64,7 +64,7 @@ A path's class is the composition of its edge classes; its weight is the product
 ## Effect on existing code
 
 - D-pipe propagation reads `call` edges (unchanged relation name).
-- The May pruner computes PageRank over structural and behavioural edges only and keeps trace-less service nodes and the KPI nodes of kept services; S1.7 replaces it with Algorithm 5.
+- The May pruner computes PageRank over structural and behavioural edges only and keeps trace-less service nodes and the KPI nodes of kept services; S1.7 replaced it with Algorithm 5 (`s1_7_khop_pruner.md`, deviation entry 40), which also added `anomaly_peak` service metadata and dropped the empty-named log service node, so the digests below changed.
 - G-pipe ranks only candidate nodes.
 - The M4 OTel results (exploratory, May) are not re-created; their graphs were built with v0.1.
 

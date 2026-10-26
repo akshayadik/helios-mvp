@@ -1,8 +1,8 @@
 # HELIOS Ablation Architecture — Living ADR
 
-**Document Version:** v0.10
-**Date:** 2026-10-25
-**Status:** §1 frozen at Stage 0; flag and variant names synced to the D2 registry (2026-10-23, deviation entry 31). §2 schemas frozen at Stage 0; §2.6 UEG-C Builder implemented and frozen at Milestone 2. §3.0 frozen at Stage 0 (registry + stubs). §3.1 D-pipe implemented and frozen at Milestone 2. §3.2 G-pipe implemented and frozen at Milestone 3. §3.3 L-pipe implemented and frozen at Milestone 3. §4 frozen at Milestone 1. §5 Consensus design frozen at Milestone 4. §6–§7 stubs. UEG-C (§2.1–§2.3, §2.6) at schema-draft-v0.2 since S1.5.
+**Document Version:** v0.11
+**Date:** 2026-10-26
+**Status:** §1 frozen at Stage 0; flag and variant names synced to the D2 registry (2026-10-23, deviation entry 31). §2 schemas frozen at Stage 0; §2.6 UEG-C Builder implemented and frozen at Milestone 2. §3.0 frozen at Stage 0 (registry + stubs). §3.1 D-pipe implemented and frozen at Milestone 2. §3.2 G-pipe implemented and frozen at Milestone 3. §3.3 L-pipe implemented and frozen at Milestone 3. §4 frozen at Milestone 1. §5 Consensus design frozen at Milestone 4. §6–§7 stubs. UEG-C (§2.1–§2.3, §2.6) at schema-draft-v0.2 since S1.5; pruner replaced by Algorithm 5 in S1.7 (§2.6).
 **Canonical Reference:** `docs/memos/spine_freeze_memo_v0.md`
 **Update Cadence:** After every pipeline-stage change.
 
@@ -264,6 +264,10 @@ Personalized PageRank (alpha=0.85) seeded from structural entry points identifie
 Nodes with PPR score below `PRUNER_THRESHOLD = 0.02` are removed from the snapshot before D-pipe / G-pipe dispatch.
 
 *v0.2 graphs (S1.5):* PageRank runs over the structural and behavioural edges between production services only. Services without traces, the KPI nodes of kept services and tenant-`self` nodes are always kept; causal and economic edges between kept nodes stay. S1.7 replaces this pruner with Algorithm 5.
+
+#### K-hop Pruner, Algorithm 5 (`khop_prune`, S1.7) — replaces `prune_graph` in the orchestrator
+
+`helios/graph/khop_pruner.py`; design and calibration in `docs/sprints/s1-data-graph/s1_7_khop_pruner.md`. Seeds are label-free: the three services with the highest peak anomaly intensity (builder metadata `anomaly_peak`), else call-graph entry points, else every service; the D-pipe trigger (S2.1) may pass its own. The seeds are expanded by K hops over structural, behavioural (untyped when `VCLFlag.UEG_STRUCTURAL` is OFF) and — beyond Chapter 3, so trace-less services stay reachable — causal edges with \|r\| ≥ 0.7. Services are kept seeds first, then the K-hop neighbourhood by personalized PageRank (restart 0.15), filled to Chapter 3's 50-service floor when the neighbourhood is smaller and capped at top-n. Causal and behavioural edges with \|r\| below 0.7 are dropped, at most 10,000 edges stay (strongest first), and the result carries its snapshot hash. K = 3, top-n = 50, calibrated on the 495 build windows (deviation entry 40). `prune_graph` and its frozen `PRUNER_THRESHOLD` stay for the Milestone 2 evidence only; the pruner serves every variant and is not itself a flag.
 
 **Gate values (calibrated on 15-incident OTEL demo corpus):**
 
