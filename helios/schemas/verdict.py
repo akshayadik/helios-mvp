@@ -150,6 +150,7 @@ class PipelineVerdict(BaseModel):
                 prompt_tokens=int(out.get("prompt_tokens", 0)),
                 completion_tokens=int(out.get("completion_tokens", 0)),
                 cpu_ms=cpu_ms,
+                gpu_ms=float(out.get("gpu_ms", 0)),
             ),
             latency_ms=(
                 float(out.get("latency_ms", 0)) if latency_ms is None else latency_ms

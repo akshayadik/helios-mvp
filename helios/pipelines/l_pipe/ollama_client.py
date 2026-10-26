@@ -30,11 +30,16 @@ class OllamaResponseError(Exception):
     pass
 
 
+_NS_PER_MS = 1_000_000
+
+
 @dataclass(frozen=True)
 class OllamaGenerateResult:
     text: str
     prompt_tokens: int
     completion_tokens: int
+    # Server-side prompt evaluation + generation time (the model's compute).
+    compute_ms: float = 0
 
 
 class OllamaClient:
@@ -72,4 +77,8 @@ class OllamaClient:
             text=body["response"],
             prompt_tokens=body.get("prompt_eval_count", 0),
             completion_tokens=body.get("eval_count", 0),
+            compute_ms=(
+                body.get("prompt_eval_duration", 0) + body.get("eval_duration", 0)
+            )
+            / _NS_PER_MS,
         )
