@@ -71,6 +71,7 @@ GROUND_TRUTH_FILES: dict[str, str] = {
     "build": "data/rcaeval/ground_truth_build.json",
     "pool": "data/rcaeval/ground_truth_pool.json",
     "captures": "data/ground_truth.json",
+    "otel_build": "data/otel/ground_truth_build.json",
 }
 
 
@@ -80,6 +81,7 @@ class Corpus(StrEnum):
     BUILD = "build"  # RCAEval build/calibration corpus (signed)
     POOL = "pool"  # RCAEval confirmatory pool (signed; locked until build-freeze)
     CAPTURES = "captures"  # OTel Demo captures (exploratory)
+    OTEL_BUILD = "otel_build"  # OTel Demo build captures (S1.2; signed)
 
 
 class ListKind(StrEnum):

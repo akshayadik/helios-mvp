@@ -24,6 +24,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field
+from datetime import timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -44,8 +45,10 @@ __all__ = [
     "OpenSearchLogsFetcher",
     "ParquetWriter",
     "PrometheusMetricsFetcher",
+    "SlicedFetcher",
     "StreamFetcher",
     "TelemetryCapture",
+    "build_campaign_capture",
     "build_default_capture",
 ]
 
@@ -349,6 +352,51 @@ class OpenSearchLogsFetcher(StreamFetcher):
 
 
 # ---------------------------------------------------------------------------
+# Time-sliced fetching (S1.2): long windows exceed backend result limits
+# ---------------------------------------------------------------------------
+
+
+class SlicedFetcher(StreamFetcher):
+    """Fetches [start, end] in fixed slices and merges them without duplicates.
+
+    Jaeger returns at most ``limit`` traces per service and OpenSearch at most
+    ``size`` hits per query, newest or arbitrary first; over a 10-minute window
+    that silently drops part of the window. Slicing keeps every minute
+    represented. Rows repeated across a slice boundary (a trace returned by
+    two slices, a log line at an inclusive bound) are kept once, in first-seen
+    order, so the merged table is deterministic for a given backend state.
+    """
+
+    def __init__(self, inner: StreamFetcher, slice_s: float) -> None:
+        if slice_s <= 0:
+            raise ValueError("slice_s must be positive")
+        self._inner = inner
+        self._slice = timedelta(seconds=slice_s)
+
+    @property
+    def stream_name(self) -> str:
+        return self._inner.stream_name
+
+    def fetch(self, start: datetime, end: datetime) -> pa.Table:
+        tables = []
+        lo = start
+        while lo < end:
+            hi = min(lo + self._slice, end)
+            tables.append(self._inner.fetch(lo, hi))
+            lo = hi
+        if not tables:
+            return self._inner.fetch(start, end)
+        merged = pa.concat_tables(tables)
+        seen: set[tuple[object, ...]] = set()
+        keep: list[int] = []
+        for i, row in enumerate(zip(*merged.to_pydict().values(), strict=True)):
+            if row not in seen:
+                seen.add(row)
+                keep.append(i)
+        return merged.take(pa.array(keep, type=pa.int64()))
+
+
+# ---------------------------------------------------------------------------
 # Parquet writer (SOLID-S)
 # ---------------------------------------------------------------------------
 
@@ -442,5 +490,36 @@ def build_default_capture(incident_id: str, manifest: VCLManifest) -> TelemetryC
         PrometheusMetricsFetcher(config.prometheus_url),
         JaegerTracesFetcher(config.jaeger_url, api_prefix="/jaeger/ui"),
         OpenSearchLogsFetcher(config.opensearch_url),
+    ]
+    return TelemetryCapture(config=config, fetchers=fetchers, writer=ParquetWriter())
+
+
+def build_campaign_capture(
+    incident_id: str,
+    manifest: VCLManifest,
+    *,
+    output_dir: Path,
+    prometheus_url: str,
+    jaeger_url: str,
+    opensearch_url: str,
+    slice_s: float = 60,
+) -> TelemetryCapture:
+    """TelemetryCapture for the S1.2 build campaign: explicit backends and
+    output directory, traces and logs fetched in ``slice_s`` slices."""
+    config = CaptureConfig(
+        incident_id=incident_id,
+        manifest=manifest,
+        evaluation_phase=EvaluationPhase.EXPLORATORY,
+        prometheus_url=prometheus_url,
+        jaeger_url=jaeger_url,
+        opensearch_url=opensearch_url,
+        output_dir=output_dir,
+    )
+    fetchers: list[StreamFetcher] = [
+        PrometheusMetricsFetcher(prometheus_url),
+        SlicedFetcher(
+            JaegerTracesFetcher(jaeger_url, api_prefix="/jaeger/ui"), slice_s
+        ),
+        SlicedFetcher(OpenSearchLogsFetcher(opensearch_url), slice_s),
     ]
     return TelemetryCapture(config=config, fetchers=fetchers, writer=ParquetWriter())
