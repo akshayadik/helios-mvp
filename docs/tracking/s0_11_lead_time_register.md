@@ -12,7 +12,7 @@ Items with a long lead time that only the owner can start, each with the date it
 
 | # | Item | Owner | Needed by | Blocks | Status |
 |---|---|---|---|---|---|
-| L1 | IRB application for the RQ4 user study (D12) | AA | Submit by 2026-12-04 *(assumed: about eight weeks' turnaround over the holidays)*; approval by 2027-02-05 | E4 (runs 15 Feb – 12 Mar only if approved by early February) | Submission date not yet set (2026-10-24) |
+| L1 | IRB application for the RQ4 user study (D12) | AA | Submit by 2026-12-04 *(assumed: about eight weeks' turnaround over the holidays)*; approval by 2027-02-05 | E4 (runs 15 Feb – 12 Mar only if approved by early February) | **In progress** (owner, 2026-10-27): application being prepared, about one more week; submission expected around 2026-11-03, a month ahead of the 4 Dec date |
 | L2 | Second rater for H_fact (two raters, blind to variant, κ ≥ 0.7) | AA | Confirmed by 2026-11-30 | S2.9 training (January), E5 | Not started |
 | L3 | Standby adjudicator (re-labels when κ < 0.7) | AA | Confirmed by 2026-11-30 | E5 | Not started |
 | L4 | Rating rubric, blind labelling tool, rubric in OSF deposit 2 | Claude (S2.9) | Rubric drafted by 2026-12-23; frozen after training; deposited at S5.7 | Rater training, E5 | Added as task S2.9 |
@@ -20,8 +20,8 @@ Items with a long lead time that only the owner can start, each with the date it
 | L6 | Budget decision: 70B sensitivity subset (RB2, E6) | AA | 2027-02-05 | E6 | Open; options in §3 |
 | L7 | Budget decision: judge models for FAE (optional, E5) | AA | 2027-02-05 | E5 (optional part only) | Open |
 | L8 | Baseline environments for B1–B5 and the alternates | Claude | Before S4.8 (2027-01-18) | S4.8, E2 | Spike done 2026-10-24: both environments build and every agreed method imports; B4 needs an adapter (§4) |
-| L9 | Docker Desktop memory raised to at least 16 GB | AA | Before S4.8 (2027-01-18) | S4.8, E2 | Currently about 8 GB |
-| L10 | Backups: `DEVIATION_ED25519_PRIVATE_KEY` and `DEVIATION_HMAC_SECRET` in the password manager; `osf_deposit_1.zip` moved out of the repo and kept | AA | Now | Every future deviation entry; deposit-1 audit trail | Open |
+| L9 | Docker Desktop memory raised to at least 16 GB | AA | Before S4.8 (2027-01-18) | S4.8, E2 | **Done** (owner, during S1): raised to 16 GB; the S1.2 campaign ran on it |
+| L10 | Backups: `DEVIATION_ED25519_PRIVATE_KEY` and `DEVIATION_HMAC_SECRET` in the password manager; `osf_deposit_1.zip` moved out of the repo and kept | AA | Now | Every future deviation entry; deposit-1 audit trail | **Partly done:** `osf_deposit_1.zip` (SHA-256 87717b6d5d9b…) stored outside the repository and removed from the working tree (owner, 2026-10-27); key backups in the password manager not yet confirmed |
 
 ---
 
