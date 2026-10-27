@@ -21,7 +21,7 @@ Items with a long lead time that only the owner can start, each with the date it
 | L7 | Budget decision: judge models for FAE (optional, E5) | AA | 2027-02-05 | E5 (optional part only) | Open |
 | L8 | Baseline environments for B1–B5 and the alternates | Claude | Before S4.8 (2027-01-18) | S4.8, E2 | Spike done 2026-10-24: both environments build and every agreed method imports; B4 needs an adapter (§4) |
 | L9 | Docker Desktop memory raised to at least 16 GB | AA | Before S4.8 (2027-01-18) | S4.8, E2 | **Done** (owner, during S1): raised to 16 GB; the S1.2 campaign ran on it |
-| L10 | Backups: `DEVIATION_ED25519_PRIVATE_KEY` and `DEVIATION_HMAC_SECRET` in the password manager; `osf_deposit_1.zip` moved out of the repo and kept | AA | Now | Every future deviation entry; deposit-1 audit trail | **Partly done:** `osf_deposit_1.zip` stored outside the repository (owner, 2026-10-27); the copy in the working tree (SHA-256 87717b6d5d9b…, matches the deposit) is still to be deleted; key backups in the password manager not yet confirmed |
+| L10 | Backups: `DEVIATION_ED25519_PRIVATE_KEY` and `DEVIATION_HMAC_SECRET` in the password manager; `osf_deposit_1.zip` moved out of the repo and kept | AA | Now | Every future deviation entry; deposit-1 audit trail | **Partly done:** `osf_deposit_1.zip` (SHA-256 87717b6d5d9b…) stored outside the repository and removed from the working tree (owner, 2026-10-27); key backups in the password manager not yet confirmed |
 
 ---
 
