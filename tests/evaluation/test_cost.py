@@ -149,7 +149,7 @@ def test_frozen_price_book_and_a_hand_computed_incident() -> None:
     )
     assert real.cpu_machine == "Amazon EC2 m5.large"
     assert real.gpu_machine == "Amazon EC2 g5.xlarge"
-    assert real.unverified == ("storage",)
+    assert real.unverified == ()
     assert real.digest == hashlib.sha256(PRICE_BOOK_PATH.read_bytes()).hexdigest()
     c = cpr(REAL_USAGE, requests_human=True, ttcd_s=240, book=real)
     assert c.token == 0  # local inference

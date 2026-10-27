@@ -43,7 +43,10 @@ The three peer pipelines produce calibrated verdicts; MAHC fuses them with calib
 - **K-hop check from the repository:** add an `otel_build` corpus to `bin/khop_calibrate.py` (S2.2). The exit check (K = 3, top-n = 50 kept; 63/63 with the floor) was run from a scratch wrapper.
 - **σ** is `None` in every verdict until S2.1–S2.3 fill it (S1.8).
 - `metric_contract.md` §9 correction waits for the next OSF deposit addendum (S1.8, S1.9).
-- Owner, not blocking S2 tasks: unverified price-book entries (before `build-freeze`); chair-call items (opportunity-cost figure, retention and review minutes, disclosure of the May capture defects T13 and T17).
+- Owner, not blocking S2 tasks:
+  - **Price book:** the AWS primary profile is fully verified (S3 Standard checked against the AWS price list on 2026-10-27, value unchanged). The GCP and Azure sensitivity profiles are still unverified; any changed value is a deviation entry before `build-freeze`.
+  - **Chair call, mid-November 2026:** opportunity-cost figure, retention and review minutes, disclosure of the May capture defects (T13, T17). A call-reference doc with an outcomes table is prepared before the call.
+  - **IRB (L1):** in progress, submission expected around 2026-11-03.
 
 ## Expected deviation entries
 

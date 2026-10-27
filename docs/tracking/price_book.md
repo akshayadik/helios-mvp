@@ -33,8 +33,8 @@ providers:
       service: Amazon S3
       tier: S3 Standard, first 50 TB per month
       price_per_gib_month: 0.023
-      verified: false
-      source: third-party guides (Cloudchipr, Cloudian), retrieved 2026-10-26
+      verified: true
+      source: AWS public S3 price list (AmazonS3 offer file, US East N. Virginia, TimedStorage-ByteHrs, first 50 TB), published 2026-10-15, checked 2026-10-27
   gcp:
     region: us-central1 (Iowa)
     cpu:
@@ -102,7 +102,7 @@ Each profile names the exact service, machine type, region and pricing terms, so
 |---|---|---|---|---|---|---|---|
 | **AWS** (us-east-1) — primary | CPU | Amazon EC2 | `m5.large` (2 vCPU, 8 GiB) | on-demand, Linux | 0.096 / h | 0.048 per vCPU-hour | ✅ AWS price data, 2026-10-23 |
 | | GPU | Amazon EC2 | `g5.xlarge` (1× NVIDIA A10G 24 GB, 4 vCPU) | on-demand, Linux | 1.006 / h | 1.006 per GPU-hour | ✅ AWS price data, 2026-10-23 |
-| | Storage | Amazon S3 | S3 Standard, first 50 TB | — | 0.023 / GiB-month | | ❌ third-party |
+| | Storage | Amazon S3 | S3 Standard, first 50 TB | — | 0.023 / GiB-month | | ✅ AWS price list, 2026-10-15 |
 | **GCP** (us-central1) | CPU | Compute Engine | `n2-standard-2` (2 vCPU, 8 GiB) | on-demand, no CUD/SUD | 0.0971 / h | 0.04855 per vCPU-hour | ❌ trackers disagree (0.0971 vs 0.0777) |
 | | GPU | Compute Engine | `g2-standard-4` (1× NVIDIA L4 24 GB, 4 vCPU) | on-demand | 0.7068 / h | | ❌ Google page, region not shown |
 | | Storage | Cloud Storage | Standard, single region | — | 0.020 / GiB-month | | ❌ |
