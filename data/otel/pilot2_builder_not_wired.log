@@ -1,0 +1,8 @@
+[campaign] case 1/63: normal period (300s)
+[campaign] case 1/63: fault active (300s)
+[campaign] case 1/63: captured and labelled
+[campaign] captured 1 case(s) this run
+[status] 1/63 cases captured and labelled
+[status]   adHighCpu                    1
+[status] about 13.4 h left
+exit=0
