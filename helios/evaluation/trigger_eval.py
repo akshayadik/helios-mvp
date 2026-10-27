@@ -4,9 +4,15 @@ Every trigger is treated as genuine while systems run. Afterwards, outside the
 pipelines, each one is labelled against the true injection time from the
 signed ground truth:
 
-- TRUE: a threshold trigger at or after the injection;
-- FALSE: a threshold trigger before the injection;
+- TRUE: a threshold trigger whose bucket ends after the injection (it fired in
+  the bucket holding the injection, or later);
+- FALSE: a threshold trigger whose whole bucket ends at or before the injection;
 - NO_TRIGGER: the detector fell back (nothing crossed the threshold).
+
+A trigger is stamped with the start of its bucket, and the detector cannot
+resolve time finer than a bucket; without ``bucket_seconds`` the stamp itself
+is compared (an instantaneous trigger). Delay runs to the end of the trigger
+bucket, when the detector can first know.
 
 Nothing here is on the run path: the pipelines never see these labels.
 """
@@ -43,20 +49,27 @@ class TriggerLabel(StrEnum):
     NO_TRIGGER = "no_trigger"
 
 
-def classify_trigger(record: TriggerRecord, inject_time_s: float) -> TriggerLabel:
+def classify_trigger(
+    record: TriggerRecord, inject_time_s: float, *, bucket_seconds: float | None = None
+) -> TriggerLabel:
     """Label one trigger against the true injection time."""
     if record.source == TriggerSource.FALLBACK:
         return TriggerLabel.NO_TRIGGER
-    if record.trigger_time_s < inject_time_s:
-        return TriggerLabel.FALSE
-    return TriggerLabel.TRUE
+    if bucket_seconds is None:
+        early = record.trigger_time_s < inject_time_s
+    else:
+        early = record.trigger_time_s + bucket_seconds <= inject_time_s
+    return TriggerLabel.FALSE if early else TriggerLabel.TRUE
 
 
-def trigger_delay_s(record: TriggerRecord, inject_time_s: float) -> float | None:
-    """Seconds from the injection to a true trigger; None otherwise."""
-    if classify_trigger(record, inject_time_s) != TriggerLabel.TRUE:
+def trigger_delay_s(
+    record: TriggerRecord, inject_time_s: float, *, bucket_seconds: float | None = None
+) -> float | None:
+    """Seconds from the injection to when a true trigger is known; None otherwise."""
+    label = classify_trigger(record, inject_time_s, bucket_seconds=bucket_seconds)
+    if label != TriggerLabel.TRUE:
         return None
-    return record.trigger_time_s - inject_time_s
+    return record.trigger_time_s + (bucket_seconds or 0) - inject_time_s
 
 
 def injection_inside_window(window: TelemetryWindow, inject_time_s: float) -> bool:

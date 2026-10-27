@@ -161,7 +161,10 @@ def load_cases(corpus: str, *, root: Path, key: bytes) -> list[CalibrationCase]:
 
 
 def evaluate(
-    records: Sequence[TriggerRecord], cases: Sequence[CalibrationCase]
+    records: Sequence[TriggerRecord],
+    cases: Sequence[CalibrationCase],
+    *,
+    bucket_seconds: float | None = None,
 ) -> CorpusResult:
     """Counts of true, false and missed triggers over the usable cases."""
     labels: dict[TriggerLabel, int] = dict.fromkeys(TriggerLabel, 0)
@@ -172,9 +175,13 @@ def evaluate(
         if not injection_inside_window(case.window, case.inject_time_s):
             excluded += 1
             continue
-        label = classify_trigger(record, case.inject_time_s)
+        label = classify_trigger(
+            record, case.inject_time_s, bucket_seconds=bucket_seconds
+        )
         labels[label] += 1
-        delay = trigger_delay_s(record, case.inject_time_s)
+        delay = trigger_delay_s(
+            record, case.inject_time_s, bucket_seconds=bucket_seconds
+        )
         if delay is not None:
             delays.append(delay)
         root = scope_key(case.root_cause)

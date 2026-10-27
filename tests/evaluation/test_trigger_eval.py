@@ -61,3 +61,20 @@ def test_injection_inside_window() -> None:
     assert injection_inside_window(window, T0 + 300)
     assert not injection_inside_window(window, T0 - 1)
     assert not injection_inside_window(window, T0 + 601)
+
+
+def test_trigger_in_the_bucket_containing_the_injection_is_true() -> None:
+    # Bucket [T0+240, T0+300) holds the injection at T0+270: the detector fired on it.
+    assert (
+        classify_trigger(_rec(T0 + 240), T0 + 270, bucket_seconds=60)
+        == TriggerLabel.TRUE
+    )
+    assert (
+        classify_trigger(_rec(T0 + 180), T0 + 270, bucket_seconds=60)
+        == TriggerLabel.FALSE
+    )
+
+
+def test_delay_runs_to_the_end_of_the_trigger_bucket() -> None:
+    assert trigger_delay_s(_rec(T0 + 240), T0 + 270, bucket_seconds=60) == 30
+    assert trigger_delay_s(_rec(T0 + 300), T0 + 300, bucket_seconds=30) == 30

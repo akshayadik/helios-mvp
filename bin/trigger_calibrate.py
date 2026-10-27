@@ -101,9 +101,17 @@ def _audit(
             if (starts := crop_starts(c, params.bucket_seconds))
         ]
         subset = [c for _, c, _ in usable]
-        uncropped = evaluate([full[i] for i, _, _ in usable], subset)
+        uncropped = evaluate(
+            [full[i] for i, _, _ in usable],
+            subset,
+            bucket_seconds=params.bucket_seconds,
+        )
         scores = _scores(pool, [(c, params.bucket_seconds, s) for _, c, s in usable])
-        cropped = evaluate(_records(scores, subset, params), subset)
+        cropped = evaluate(
+            _records(scores, subset, params),
+            subset,
+            bucket_seconds=params.bucket_seconds,
+        )
         passes = audit_passes(
             uncropped, {fraction: cropped}, bucket_seconds=params.bucket_seconds
         )
@@ -150,7 +158,11 @@ def main(argv: list[str] | None = None) -> int:
                     for corpus, items in cases.items()
                 }
                 results[params] = {
-                    corpus: evaluate(records[params][corpus], items)
+                    corpus: evaluate(
+                        records[params][corpus],
+                        items,
+                        bucket_seconds=params.bucket_seconds,
+                    )
                     for corpus, items in cases.items()
                 }
         selected = select(results)
