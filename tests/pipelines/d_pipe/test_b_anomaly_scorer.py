@@ -7,6 +7,7 @@ import math
 import numpy as np
 import pytest
 
+from helios.pipelines.d_pipe.stages.a_metrics_parser import ParsedMetrics
 from helios.pipelines.d_pipe.stages.b_anomaly_scorer import AnomalyScorer, wm90
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
 
@@ -59,3 +60,52 @@ def test_anomaly_scorer_higher_errors_rank_first() -> None:
     scorer = AnomalyScorer(w_error=0.9)
     result = scorer.score(error_deltas, latency_means, p1_services=["high", "low"])
     assert result["high"] > result["low"]
+
+
+# ── trigger split (S2.1, S2-M7-ENG09) ────────────────────────────────────────
+
+
+def _parsed(latency: dict[str, list[float]], steps: int = 12) -> ParsedMetrics:
+    return ParsedMetrics(
+        error_deltas={},
+        latency_means=latency,
+        steps=[float(t) for t in range(steps)],
+        p1_services=sorted(latency),
+    )
+
+
+def test_split_scores_only_the_shift_after_the_trigger() -> None:
+    always_high: list[float] = [80 + t % 3 for t in range(12)]
+    rises: list[float] = [float(40 + t % 3) for t in range(6)] + [
+        float(80 + t % 3) for t in range(6)
+    ]
+    scored = AnomalyScorer(w_error=0, w_resource=0).score_split(
+        _parsed({"steady": always_high, "rises": rises}), split_s=6
+    )
+    assert scored.scores["rises"] > scored.scores["steady"]
+    assert scored.evidence["steady"] < 1
+
+
+def test_evidence_is_the_raw_shift_before_normalisation() -> None:
+    small: list[float] = [float(40 + t % 3) for t in range(6)] + [
+        float(42 + t % 3) for t in range(6)
+    ]
+    scored = AnomalyScorer(w_error=0, w_resource=0).score_split(
+        _parsed({"cart": small}), split_s=6
+    )
+    assert scored.scores["cart"] > 0  # alone, it still normalises to the top
+    assert scored.evidence["cart"] < 2  # but its raw shift is small
+
+
+def test_resource_channel_counts_with_its_weight() -> None:
+    parsed = ParsedMetrics(
+        error_deltas={},
+        latency_means={"a": [10.0] * 12, "b": [10.0] * 12},
+        steps=[float(t) for t in range(12)],
+        p1_services=["a", "b"],
+        resource_values={"a": {"cpu": [5.0 + t % 2 for t in range(6)] + [90.0] * 6}},
+    )
+    with_res = AnomalyScorer(w_error=0, w_resource=0.3).score_split(parsed, split_s=6)
+    without = AnomalyScorer(w_error=0, w_resource=0).score_split(parsed, split_s=6)
+    assert with_res.scores["a"] > with_res.scores["b"]
+    assert without.scores["a"] == without.scores["b"]

@@ -69,6 +69,7 @@ __all__ = [
     "detector_hash",
     "load_detector_params",
     "load_external_triggers",
+    "robust_scale",
     "service_scores",
 ]
 
@@ -135,15 +136,31 @@ class ServiceScores:
     start_s: float
 
 
+def robust_scale(history: np.ndarray, *, count_series: bool) -> float:
+    """Scale of a reference sample: robust spread with floors (0 = no scale).
+
+    Spread = 1.4826 MAD, else std; floored at ``REL_FLOOR`` of the median and,
+    for count series, at the Poisson noise sqrt(max(median, 1)). Shared by the
+    trigger and D-pipe's trigger split, so both judge a shift the same way.
+    """
+    centre = float(np.median(history))
+    spread = _MAD_TO_SIGMA * float(np.median(np.abs(history - centre)))
+    if spread == 0:
+        spread = float(np.std(history))
+    floor = REL_FLOOR * abs(centre)
+    if count_series:
+        floor = max(floor, float(np.sqrt(max(centre, 1))))
+    return max(spread, floor)
+
+
 def causal_z(
     values: np.ndarray, *, count_series: bool, warmup: int = WARMUP_BUCKETS
 ) -> np.ndarray:
     """|z| of each bucket against the finite buckets before it (never after).
 
-    Scale = robust spread of the past (1.4826 MAD, else std), floored at
-    ``REL_FLOOR`` of the level and, for count series, at the Poisson noise
-    sqrt(max(level, 1)). With no scale (a gauge flat at zero) a bucket gives no
-    evidence (NaN). Buckets before ``warmup`` past values are NaN.
+    Scale = ``robust_scale`` of the past. With no scale (a gauge flat at zero)
+    a bucket gives no evidence (NaN). Buckets before ``warmup`` past values
+    are NaN.
     """
     out = np.full(values.shape, np.nan, dtype="float64")
     for i in range(values.size):
@@ -153,15 +170,9 @@ def causal_z(
         history = values[:i][np.isfinite(values[:i])]
         if history.size < warmup:
             continue
-        centre = float(np.median(history))
-        spread = _MAD_TO_SIGMA * float(np.median(np.abs(history - centre)))
-        if spread == 0:
-            spread = float(np.std(history))
-        floor = REL_FLOOR * abs(centre)
-        if count_series:
-            floor = max(floor, float(np.sqrt(max(centre, 1))))
-        scale = max(spread, floor)
+        scale = robust_scale(history, count_series=count_series)
         if scale > 0:
+            centre = float(np.median(history))
             out[i] = min(abs(float(current) - centre) / scale, Z_CAP)
     return out
 

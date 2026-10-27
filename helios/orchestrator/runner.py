@@ -23,6 +23,7 @@ from helios.graph.ueg_c_builder import build_ueg_c
 from helios.integrity_gate import AppendOnlyLedger, MetricIntegrityGate
 from helios.orchestrator.corpus import CorpusLoader
 from helios.orchestrator.ledger import ReconciliationLedger
+from helios.pipelines.d_pipe.params import DPipeParams, load_dpipe_params
 from helios.pipelines.d_pipe.pipeline import run_dpipe
 from helios.pipelines.g_pipe.pipeline import run_gpipe, should_run_gpipe
 from helios.pipelines.l_pipe.pipeline import run_lpipe
@@ -83,9 +84,11 @@ class RunOrchestrator:
         hmac_key: bytes,
         detector_params: DetectorParams | None = None,
         external_triggers: Path | None = None,
+        dpipe_params: DPipeParams | None = None,
     ) -> None:
-        """``detector_params`` default to the frozen file; ``external_triggers``
-        (exploratory only) replaces the detector with supplied records."""
+        """``detector_params`` and ``dpipe_params`` default to the frozen files;
+        ``external_triggers`` (exploratory only) replaces the detector with
+        supplied records."""
         set_current_manifest(manifest)
         self._manifest = manifest
         self._reader = CaptureReader(captures_dir, seal_key=hmac_key)
@@ -99,6 +102,7 @@ class RunOrchestrator:
         self._detector = (
             detector_params if detector_params is not None else load_detector_params()
         )
+        self._dpipe = dpipe_params if dpipe_params is not None else load_dpipe_params()
         self._external = (
             load_external_triggers(external_triggers)
             if external_triggers is not None
@@ -112,9 +116,9 @@ class RunOrchestrator:
                 raise ExternalTriggerRefusedError(
                     "externally supplied triggers are refused in confirmatory runs"
                 )
-            if self._detector.provisional:
+            if self._detector.provisional or self._dpipe.provisional:
                 raise ProvisionalParametersError(
-                    "detector parameters are provisional; freeze them first"
+                    "detector or D-pipe parameters are provisional; freeze them first"
                 )
         if self._external is not None:
             if window.incident_id not in self._external:
@@ -206,6 +210,11 @@ class RunOrchestrator:
                 evaluation_phase=window.evaluation_phase,
                 run_id=run_id,
                 trigger=trigger,
+                evidence_ref=self._detector.threshold,
+                w_error=self._dpipe.w_error,
+                w_resource=self._dpipe.w_resource,
+                rho_threshold=self._dpipe.rho_threshold,
+                topology_boost_factor=self._dpipe.topology_boost_factor,
             ),
         )
         # Routing sees what the stored D-pipe verdict shows: in-scope only (D-f).
