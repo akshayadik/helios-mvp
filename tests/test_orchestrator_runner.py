@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import time
 import types
 from dataclasses import replace
 from typing import TYPE_CHECKING, Any
@@ -521,3 +522,77 @@ class TestSharedTrigger:
         orch._reader._pool_lock = lambda _incident: None
         with pytest.raises(ProvisionalParametersError):
             orch.run(captures)
+
+
+class TestSharedTriggerReviewFixes:
+    def test_ranking_entirely_out_of_scope_becomes_abstained(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        def lpipe(**kw: Any) -> dict[str, Any]:
+            return {**_fake_lpipe(**kw), "ranked_candidates": ["jaeger"]}
+
+        monkeypatch.setattr(runner_module, "run_lpipe", lpipe)
+        captures = tmp_path / "captures"
+        _make_capture(captures, "inc-001")
+        _make_orchestrator(tmp_path, captures).run(captures)
+        lpipe_row = _rows(tmp_path)["lpipe"]
+        assert lpipe_row["status"] == "abstained"
+        assert json.loads(str(lpipe_row["ranked_candidates"])) == []
+        assert lpipe_row["mu"] is None
+
+    def test_handover_is_taken_before_the_graph_is_built(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        spy = _Spy(_record("cart"))
+        spy.install(monkeypatch)
+        built_at: list[float] = []
+
+        def build(*_a: Any, **_k: Any) -> UEGCSnapshot:
+            built_at.append(time.time())
+            return _graph()
+
+        monkeypatch.setattr(runner_module, "build_ueg_c", build)
+        captures = tmp_path / "captures"
+        _capture_with_traces(captures, "inc-001")
+        _make_orchestrator(tmp_path, captures).run(captures)
+        row = (
+            _store(tmp_path)
+            ._con.execute("SELECT handover_unix FROM trigger_row")
+            .fetchone()
+        )
+        assert row is not None
+        assert row[0] <= built_at[0]
+
+    def test_gpipe_routing_sees_only_in_scope_dpipe_scores(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        spy = _Spy(_record("cart"))
+        spy.install(monkeypatch)
+        seen: dict[str, Any] = {}
+
+        def dpipe(**kw: Any) -> dict[str, Any]:
+            return {
+                "pipeline": "dpipe",
+                "incident_id": kw["incident_id"],
+                "run_id": kw["run_id"],
+                "variant_config_hash": kw["variant_config_hash"],
+                "snapshot_hash": kw["snapshot_hash"],
+                "evaluation_phase": kw["evaluation_phase"],
+                "status": "ranked",
+                "ranked_candidates": ["jaeger", "cart"],
+                "candidate_scores": {"jaeger": 6, "cart": 3},
+                "mu": 6 / 9,
+                "sigma": None,
+                "narrative": "",
+            }
+
+        def should_run(d_out: dict[str, Any], _manifest: Any) -> bool:
+            seen["routing"] = dict(d_out["candidate_scores"])
+            return False
+
+        monkeypatch.setattr(runner_module, "run_dpipe", dpipe)
+        monkeypatch.setattr(runner_module, "should_run_gpipe", should_run)
+        captures = tmp_path / "captures"
+        _capture_with_traces(captures, "inc-001")
+        _make_orchestrator(tmp_path, captures).run(captures)
+        assert seen["routing"] == {"cart": 3}

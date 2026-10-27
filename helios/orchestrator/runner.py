@@ -154,6 +154,9 @@ class RunOrchestrator:
         window = verification.window
         snapshot_hash = window.compute_window_hash()
         trigger = self._trigger_for(window)
+        # TTCD/TTT start here (deviation entry 46): graph build and pruning use
+        # the trigger, so they are measured analysis, not start-up.
+        handover_unix = time.time()
 
         if not self._registry.contains(snapshot_hash):
             with contextlib.suppress(DuplicateSnapshotError):
@@ -180,7 +183,7 @@ class RunOrchestrator:
             run_id=run_id,
             variant_config_hash=self._config_hash,
             seeds_from_trigger=bool(seeds),
-            handover_unix=time.time(),
+            handover_unix=handover_unix,
         )
 
         base: dict[str, Any] = {
@@ -205,9 +208,11 @@ class RunOrchestrator:
                 trigger=trigger,
             ),
         )
-        dpipe_scores: dict[str, float] = d_out.get("candidate_scores", {})
+        # Routing sees what the stored D-pipe verdict shows: in-scope only (D-f).
+        d_routed = _in_scope_output(d_out) if d_out else d_out
+        dpipe_scores: dict[str, float] = d_routed.get("candidate_scores", {})
         graph = ueg_c
-        if graph is not None and should_run_gpipe(d_out, self._manifest):
+        if graph is not None and should_run_gpipe(d_routed, self._manifest):
             g_verdict, _ = self._dispatch(
                 PipelineName.GPIPE,
                 base,
@@ -316,16 +321,7 @@ class RunOrchestrator:
             raise ValueError(
                 f"{pipeline.value} returned a verdict for {out.get('pipeline')!r}"
             )
-        # Out-of-scope services never appear in a ranking (D-f); mu is the
-        # top-1 share of what remains.
-        out = dict(out)
-        scores = dict(out.get("candidate_scores", {}))
-        kept = {k: v for k, v in scores.items() if in_scope(k)}
-        if len(kept) != len(scores):
-            out["candidate_scores"] = kept
-            if out.get("mu") is not None:
-                out["mu"] = top1_share(kept)
-        out["ranked_candidates"] = filter_in_scope(out.get("ranked_candidates", []))
+        out = _in_scope_output(out)
         # Identity fields come from the pipeline when it reports them, so the
         # integrity gate can catch a pipeline that ran on another snapshot.
         return PipelineVerdict.from_output(
@@ -333,3 +329,22 @@ class RunOrchestrator:
             latency_ms=latency_ms,
             cpu_ms=cpu_ms,
         )
+
+
+def _in_scope_output(out: dict[str, Any]) -> dict[str, Any]:
+    """A pipeline output without out-of-scope services (D-f).
+
+    mu becomes the top-1 share of the remaining scores; a ranked output left
+    with no candidate becomes ABSTAINED (it named only out-of-scope services).
+    """
+    out = dict(out)
+    scores = dict(out.get("candidate_scores", {}))
+    kept = {k: v for k, v in scores.items() if in_scope(k)}
+    if len(kept) != len(scores):
+        out["candidate_scores"] = kept
+        if out.get("mu") is not None:
+            out["mu"] = top1_share(kept)
+    out["ranked_candidates"] = filter_in_scope(out.get("ranked_candidates", []))
+    if out.get("status") == VerdictStatus.RANKED.value and not out["ranked_candidates"]:
+        out.update(status=VerdictStatus.ABSTAINED.value, mu=None, sigma=None)
+    return out
