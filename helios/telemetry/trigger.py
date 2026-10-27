@@ -65,6 +65,7 @@ __all__ = [
     "TriggerRecord",
     "TriggerSource",
     "causal_z",
+    "decide",
     "detect",
     "detector_hash",
     "load_detector_params",
@@ -273,6 +274,15 @@ def detect(
     scores = service_scores(
         window, params.bucket_seconds, root=root, crop_start_s=crop_start_s
     )
+    return decide(scores, params, incident_id=window.incident_id)
+
+
+def decide(
+    scores: ServiceScores, params: DetectorParams, *, incident_id: str
+) -> TriggerRecord:
+    """The firing rule on precomputed scores (``scores`` must use
+    ``params.bucket_seconds``); lets calibration sweep threshold and
+    persistence without rescoring."""
     inside = [i for i, s in enumerate(scores.services) if in_scope(s)]
     outside = [i for i, s in enumerate(scores.services) if not in_scope(s)]
     n = scores.z.shape[1]
@@ -301,7 +311,7 @@ def detect(
     if source == TriggerSource.FALLBACK and not finite.any():
         context = []
     return TriggerRecord(
-        incident_id=window.incident_id,
+        incident_id=incident_id,
         trigger_time_s=round(
             scores.start_s + bucket * params.bucket_seconds, _TIME_DIGITS
         ),
