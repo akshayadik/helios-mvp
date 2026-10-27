@@ -214,3 +214,16 @@ About five days in total. S2 started early with about eight weeks before 25 Dec,
 ## 9. Left to the builder
 
 Module placement; bucket size candidates and grid; the σ formula (within §5.5); the RCAEval suffix table; how the trigger record is stored in the result store; the fixture for the shared-trigger test; the format of the calibration report.
+
+## 10. Results
+
+### Row S2-M7-ENG01 (2026-10-27) — provisional parameters
+
+Detector `trigger-v1` with the **provisional** parameters in `data/frozen/trigger_detector.json` (30 s buckets, threshold 6, persistence 2; refused in confirmatory runs until S2-M7-EVAL01 freezes calibrated values). `bin/trigger_check.py`, each corpus run twice in separate processes:
+
+| Corpus | Windows | Threshold triggers | Fallbacks | Records digest (both runs) |
+|---|---|---|---|---|
+| OTel build (S1.2) | 63 | 63 | 0 | `ef3a45e84c90b4fb1b9c13651dc67ba9fd429c226b1ba281aa57452695e7f1a9` |
+| RCAEval build | 495 | 494 | 1 | `8cd38e256ab93e17992c3712009f57192a366cacf6a3735dc64cc5a592fbd71c` |
+
+Whether these triggers are true or false (before the fault) is measured in the calibration (S2-M7-EVAL01), not here: this row does not read labels. The UEG-C captures digest is unchanged by the refactor of `anomaly_intensity` (`945df66330a0`, as recorded in S1.7).
