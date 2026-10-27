@@ -279,3 +279,7 @@ def test_scoring_drops_out_of_scope_candidates_before_ranking() -> None:
 def test_scoring_refuses_an_out_of_scope_label() -> None:
     with pytest.raises(OutOfScopeLabelError):
         score_ranking(["cart"], "otel-collector")
+
+
+def test_otel_build_v2_is_a_scoring_corpus() -> None:
+    assert Corpus("otel_build_v2") == Corpus.OTEL_BUILD_V2

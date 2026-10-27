@@ -12,10 +12,14 @@ import pytest
 
 import bin.capture_campaign as cli
 from helios.adapters.otel_campaign import (
+    CORPUS_V2,
     FAULTS,
     INGEST_LAG_S,
     POST_S,
     PRE_S,
+    PRE_S_MAX,
+    PRE_S_MIN,
+    PRE_S_STEP,
     RECOVERY_S,
     Campaign,
     FlagdFile,
@@ -23,6 +27,7 @@ from helios.adapters.otel_campaign import (
     PlannedCase,
     opaque_id,
     plan,
+    pre_s_for,
 )
 from helios.evaluation.scoring import Corpus, load_ground_truth
 from helios.telemetry.otel_demo_capture import (
@@ -345,3 +350,68 @@ def test_campaign_metrics_add_container_cpu_and_memory() -> None:
     assert (
         PrometheusMetricsFetcher("http://p")._queries[0] == "up"
     )  # May list unchanged
+
+
+# ── v2: varied normal period (S2.1 recapture, 2026-10-27) ───────────────────
+
+
+def test_v1_plan_is_unchanged() -> None:
+    cases = plan(7)
+    assert {c.pre_s for c in cases} == {PRE_S}
+    assert all(c.case.startswith("otel_build/") for c in cases)
+
+
+def test_v2_plan_varies_the_normal_period_deterministically() -> None:
+    v2 = plan(7, corpus=CORPUS_V2)
+    assert plan(7, corpus=CORPUS_V2) == v2
+    assert all(c.case.startswith(f"{CORPUS_V2}/") for c in v2)
+    assert {c.incident_id for c in v2}.isdisjoint({c.incident_id for c in plan(7)})
+    pre = [c.pre_s for c in v2]
+    assert min(pre) >= PRE_S_MIN and max(pre) <= PRE_S_MAX
+    assert all((p - PRE_S_MIN) % PRE_S_STEP == 0 for p in pre)
+    assert len(set(pre)) >= 10  # position no longer reveals the onset
+    assert all(c.pre_s == pre_s_for(c.incident_id) for c in v2)
+
+
+def test_v2_case_uses_its_own_normal_period(tmp_path: Path) -> None:
+    cases = plan(1, corpus=CORPUS_V2)
+    campaign, clock, events = _campaign(
+        tmp_path,
+        cases,
+        ground_truth=GroundTruthFile(
+            tmp_path / "gt.json", KEY, demo_commit="c", corpus=CORPUS_V2
+        ),
+    )
+    campaign.run(limit=1)
+    pre = cases[0].pre_s
+    assert clock.slept == [RECOVERY_S + pre, POST_S, INGEST_LAG_S]
+    inject = T0 + timedelta(seconds=RECOVERY_S + pre)
+    label = campaign.ground_truth.cases()[cases[0].incident_id]
+    assert label["window_start"] == (inject - timedelta(seconds=pre)).isoformat()
+    assert json.loads((tmp_path / "gt.json").read_text())["corpus"] == CORPUS_V2
+    assert f"[campaign] case 1/9: normal period ({pre}s)" in events
+
+
+def test_cli_v2_corpus_has_its_own_files(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(cli, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(cli, "_demo_commit", lambda: "b74a7bc")
+    monkeypatch.setattr(cli, "load_key", lambda: KEY)
+    captures, truth, manifest = cli._paths(CORPUS_V2)
+    assert captures.name == "build_v2"
+    assert truth.name == "ground_truth_build_v2.json"
+    (tmp_path / truth).parent.mkdir(parents=True)
+    first = plan(1, corpus=CORPUS_V2)[0]
+    GroundTruthFile(tmp_path / truth, KEY, demo_commit="b74a7bc", corpus=CORPUS_V2).add(
+        first.incident_id, {"root_cause_service": "ad", "case": first.case}
+    )
+    assert cli.main(["status", "--corpus", CORPUS_V2]) == 0
+    out = capsys.readouterr().out
+    assert "1/63 cases captured and labelled" in out
+    assert cli.main(["finalize", "--corpus", CORPUS_V2]) == 0
+    written = json.loads((tmp_path / manifest).read_text())
+    assert written["corpus"] == CORPUS_V2
+    assert written["protocol"]["pre_s"] == {"min": 480, "max": 900, "step": 15}
+    assert cli.main(["status"]) == 0  # v1 still the default
+    assert "0/63" in capsys.readouterr().out

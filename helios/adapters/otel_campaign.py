@@ -19,6 +19,13 @@ variants rotated across repetitions, so a stopped campaign stays balanced.
 
 All side effects (clock, sleep, flag file, flag check, capture, container
 restart) are injected, so the schedule is testable without the demo running.
+
+Corpus v2 (``otel_build_v2``, S2.1 recapture, 2026-10-27): the normal period
+varies per case between ``PRE_S_MIN`` and ``PRE_S_MAX`` (15 s steps), derived
+from the case's opaque ID — deterministic and label-free — so the onset no
+longer sits at a fixed position in the window (validity threat T19) and the
+label-free detector has enough history. The v1 corpus (fixed ``PRE_S``) is
+kept unchanged.
 """
 
 from __future__ import annotations
@@ -41,11 +48,15 @@ if TYPE_CHECKING:
 
 __all__ = [
     "CORPUS",
+    "CORPUS_V2",
     "DEFAULT_REPS",
     "FAULTS",
     "INGEST_LAG_S",
     "POST_S",
     "PRE_S",
+    "PRE_S_MAX",
+    "PRE_S_MIN",
+    "PRE_S_STEP",
     "RECOVERY_S",
     "SLICE_S",
     "Campaign",
@@ -55,16 +66,21 @@ __all__ = [
     "PlannedCase",
     "opaque_id",
     "plan",
+    "pre_s_for",
 ]
 
 HELIOS_ENABLE_OTEL_CAMPAIGN: bool = True
 
 CORPUS = "otel_build"
+CORPUS_V2 = "otel_build_v2"
 # The OTel Demo's registered opaque-ID slot. Adding a slot would change the
 # seed register deposited at OSF (deposit 1); case names carry the corpus.
 _OPAQUE_SLOT = "otel_exploratory"
 DEFAULT_REPS = 7
-PRE_S = 300  # normal traffic before the onset
+PRE_S = 300  # normal traffic before the onset (v1)
+PRE_S_MIN = 480  # v2: varied normal period, 8 to 15 minutes in 15 s steps
+PRE_S_MAX = 900
+PRE_S_STEP = 15
 POST_S = 300  # fault active
 RECOVERY_S = 60  # flag off (and restart) before the next case's normal period
 INGEST_LAG_S = 60  # let exporters and scrapes catch up before querying
@@ -107,6 +123,13 @@ class PlannedCase:
     fault: FaultSpec
     variant: str
     repetition: int
+    pre_s: int = PRE_S
+
+
+def pre_s_for(incident_id: str) -> int:
+    """v2 normal period of a case, from its opaque ID (label-free, deterministic)."""
+    steps = (PRE_S_MAX - PRE_S_MIN) // PRE_S_STEP + 1
+    return PRE_S_MIN + (int(incident_id[:8], 16) % steps) * PRE_S_STEP
 
 
 def opaque_id(case: str) -> str:
@@ -115,16 +138,23 @@ def opaque_id(case: str) -> str:
     return hashlib.sha256(f"{seed}:{case}".encode()).hexdigest()[:32]
 
 
-def plan(reps: int = DEFAULT_REPS) -> list[PlannedCase]:
-    """Rep-major schedule: every fault once per repetition, variants rotated."""
+def plan(reps: int = DEFAULT_REPS, *, corpus: str = CORPUS) -> list[PlannedCase]:
+    """Rep-major schedule: every fault once per repetition, variants rotated.
+
+    ``corpus`` v2 gives each case its own normal period (``pre_s_for``).
+    """
     if reps < 1:
         raise ValueError("reps must be >= 1")
+    if corpus not in (CORPUS, CORPUS_V2):
+        raise ValueError(f"unknown campaign corpus {corpus!r}")
     cases = []
     for r in range(1, reps + 1):
         for f in FAULTS:
             variant = f.variants[(r - 1) % len(f.variants)]
-            case = f"{CORPUS}/{f.flag}/{variant}/r{r:02d}"
-            cases.append(PlannedCase(case, opaque_id(case), f, variant, r))
+            case = f"{corpus}/{f.flag}/{variant}/r{r:02d}"
+            incident_id = opaque_id(case)
+            pre = pre_s_for(incident_id) if corpus == CORPUS_V2 else PRE_S
+            cases.append(PlannedCase(case, incident_id, f, variant, r, pre))
     return cases
 
 
@@ -179,10 +209,13 @@ class GroundTruthFile:
     the scoring path read it unchanged.
     """
 
-    def __init__(self, path: Path, key: bytes, *, demo_commit: str) -> None:
+    def __init__(
+        self, path: Path, key: bytes, *, demo_commit: str, corpus: str = CORPUS
+    ) -> None:
         self._path = path
         self._key = key
         self._demo_commit = demo_commit
+        self._corpus = corpus
 
     def cases(self) -> dict[str, Any]:
         if not self._path.exists():
@@ -196,7 +229,7 @@ class GroundTruthFile:
         cases[incident_id] = entry
         body = {
             "kind": "otel-ground-truth",
-            "corpus": CORPUS,
+            "corpus": self._corpus,
             "demo_commit": self._demo_commit,
             "cases": cases,
         }
@@ -241,8 +274,8 @@ class Campaign:
         partial = self.captures_dir / case.incident_id
         if partial.exists():  # an interrupted, unlabelled capture: start again
             shutil.rmtree(partial)
-        self.log(f"[campaign] case {position}/{total}: normal period ({PRE_S}s)")
-        self.sleep(RECOVERY_S + PRE_S)
+        self.log(f"[campaign] case {position}/{total}: normal period ({case.pre_s}s)")
+        self.sleep(RECOVERY_S + case.pre_s)
         self.flagd.set(f.flag, case.variant)
         self._wait_for_flag(f.flag, case.variant)
         inject = self.clock()
@@ -251,7 +284,7 @@ class Campaign:
         self.flagd.set(f.flag, _OFF)
         self._wait_for_flag(f.flag, _OFF)
         self.sleep(INGEST_LAG_S)
-        start = inject - timedelta(seconds=PRE_S)
+        start = inject - timedelta(seconds=case.pre_s)
         end = inject + timedelta(seconds=POST_S)
         self.capture(case, start, end)
         self.ground_truth.add(

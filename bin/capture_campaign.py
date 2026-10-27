@@ -4,10 +4,14 @@
 Usage (from repo root, with the pinned demo running; needs the ledger key):
     set -a; source .env; set +a
     poetry run python bin/capture_campaign.py preflight
-    poetry run python bin/capture_campaign.py run [--limit N] [--reps 7]
-    poetry run python bin/capture_campaign.py status
-    poetry run python bin/capture_campaign.py verify
-    poetry run python bin/capture_campaign.py finalize
+    poetry run python bin/capture_campaign.py run [--limit N] [--reps 7] [--corpus C]
+    poetry run python bin/capture_campaign.py status [--corpus C]
+    poetry run python bin/capture_campaign.py verify [--corpus C]
+    poetry run python bin/capture_campaign.py finalize [--corpus C]
+
+``--corpus`` is ``otel_build`` (S1.2, default) or ``otel_build_v2`` (S2.1
+recapture: normal period varied per case, 8 to 15 minutes; each case then
+takes about 20 minutes).
 
 ``run`` resumes where it stopped: cases already in the signed ground truth are
 skipped, an interrupted capture is recorded again. Each case takes about
@@ -35,10 +39,14 @@ from bin.log_deviation import load_key
 from bin.run_capture import _write_snapshot_hash
 from helios.adapters.otel_campaign import (
     CORPUS,
+    CORPUS_V2,
     DEFAULT_REPS,
     INGEST_LAG_S,
     POST_S,
     PRE_S,
+    PRE_S_MAX,
+    PRE_S_MIN,
+    PRE_S_STEP,
     RECOVERY_S,
     SLICE_S,
     Campaign,
@@ -64,6 +72,18 @@ FLAGD_PATH = DEMO_DIR / "src/flagd/demo.flagd.json"
 CAPTURES_DIR = Path("data/otel/build")
 GROUND_TRUTH = Path("data/otel/ground_truth_build.json")
 CORPUS_MANIFEST = Path("data/otel/build_manifest.json")
+CAPTURES_DIR_V2 = Path("data/otel/build_v2")
+GROUND_TRUTH_V2 = Path("data/otel/ground_truth_build_v2.json")
+CORPUS_MANIFEST_V2 = Path("data/otel/build_v2_manifest.json")
+
+
+def _paths(corpus: str) -> tuple[Path, Path, Path]:
+    """Captures directory, signed ground truth and corpus manifest of a corpus."""
+    if corpus == CORPUS_V2:
+        return CAPTURES_DIR_V2, GROUND_TRUTH_V2, CORPUS_MANIFEST_V2
+    return CAPTURES_DIR, GROUND_TRUTH, CORPUS_MANIFEST
+
+
 PROMETHEUS_URL = "http://localhost:9090"
 # Container ports from the demo's .env; host ports are looked up at run time
 # because Docker assigns them anew on every start.
@@ -130,8 +150,10 @@ def _get(url: str) -> bool:
         return False
 
 
-def _ground_truth(key: bytes, commit: str) -> GroundTruthFile:
-    return GroundTruthFile(REPO_ROOT / GROUND_TRUTH, key, demo_commit=commit)
+def _ground_truth(key: bytes, commit: str, corpus: str = CORPUS) -> GroundTruthFile:
+    return GroundTruthFile(
+        REPO_ROOT / _paths(corpus)[1], key, demo_commit=commit, corpus=corpus
+    )
 
 
 def cmd_preflight() -> int:
@@ -159,21 +181,22 @@ def cmd_preflight() -> int:
     return 0 if ok else 1
 
 
-def cmd_status(key: bytes, reps: int) -> int:
-    cases = plan(reps)
-    done = _ground_truth(key, _demo_commit()).cases()
+def cmd_status(key: bytes, reps: int, corpus: str = CORPUS) -> int:
+    cases = plan(reps, corpus=corpus)
+    done = _ground_truth(key, _demo_commit(), corpus).cases()
     by_fault = Counter(c.fault.flag for c in cases if c.incident_id in done)
     print(f"[status] {len(done)}/{len(cases)} cases captured and labelled")
     for flag, n in sorted(by_fault.items()):
         print(f"[status]   {flag:28s} {n}")
-    remaining = len(cases) - len(done)
-    per_case_min = (RECOVERY_S + PRE_S + POST_S + INGEST_LAG_S) / 60 + 1
-    print(f"[status] about {remaining * per_case_min / 60:.1f} h left")
+    left = [c for c in cases if c.incident_id not in done]
+    seconds = sum(RECOVERY_S + c.pre_s + POST_S + INGEST_LAG_S + 60 for c in left)
+    print(f"[status] about {seconds / 3600:.1f} h left")
     return 0
 
 
-def cmd_run(key: bytes, reps: int, limit: int | None) -> int:
+def cmd_run(key: bytes, reps: int, limit: int | None, corpus: str = CORPUS) -> int:
     commit = _demo_commit()
+    captures_dir = _paths(corpus)[0]
     manifest = get_variant("HELIOS-Full")
     set_current_manifest(manifest)
     jaeger = _host_url("jaeger", JAEGER_UI_PORT)
@@ -184,14 +207,14 @@ def cmd_run(key: bytes, reps: int, limit: int | None) -> int:
         cap = build_campaign_capture(
             case.incident_id,
             manifest,
-            output_dir=CAPTURES_DIR,
+            output_dir=captures_dir,
             prometheus_url=PROMETHEUS_URL,
             jaeger_url=jaeger,
             opensearch_url=opensearch,
             slice_s=SLICE_S,
         )
         window = cap.run(start, end)
-        incident_dir = CAPTURES_DIR / case.incident_id
+        incident_dir = captures_dir / case.incident_id
         _write_snapshot_hash(window, incident_dir / "manifest.json")
         write_seal(incident_dir, window, key)
 
@@ -200,10 +223,10 @@ def cmd_run(key: bytes, reps: int, limit: int | None) -> int:
         print(f"[campaign] restarted {service}")
 
     campaign = Campaign(
-        cases=plan(reps),
-        captures_dir=CAPTURES_DIR,
+        cases=plan(reps, corpus=corpus),
+        captures_dir=captures_dir,
         flagd=FlagdFile(REPO_ROOT / FLAGD_PATH),
-        ground_truth=_ground_truth(key, commit),
+        ground_truth=_ground_truth(key, commit, corpus),
         capture=capture,
         confirm_flag=lambda flag, variant: _flag_variant(ofrep, flag) == variant,
         restart=restart,
@@ -211,12 +234,12 @@ def cmd_run(key: bytes, reps: int, limit: int | None) -> int:
     )
     captured = campaign.run(limit)
     print(f"[campaign] captured {captured} case(s) this run")
-    return cmd_status(key, reps)
+    return cmd_status(key, reps, corpus)
 
 
-def cmd_verify(key: bytes) -> int:
-    done = _ground_truth(key, _demo_commit()).cases()
-    reader = CaptureReader(CAPTURES_DIR, seal_key=key)
+def cmd_verify(key: bytes, corpus: str = CORPUS) -> int:
+    done = _ground_truth(key, _demo_commit(), corpus).cases()
+    reader = CaptureReader(_paths(corpus)[0], seal_key=key)
     bad = 0
     for incident_id in sorted(done):
         try:
@@ -230,16 +253,21 @@ def cmd_verify(key: bytes) -> int:
     return 0 if bad == 0 and done else 1
 
 
-def cmd_finalize(key: bytes) -> int:
+def cmd_finalize(key: bytes, corpus: str = CORPUS) -> int:
     commit = _demo_commit()
-    done = _ground_truth(key, commit).cases()
+    done = _ground_truth(key, commit, corpus).cases()
+    manifest = _paths(corpus)[2]
     body = {
         "kind": "otel-build-corpus",
-        "corpus": CORPUS,
+        "corpus": corpus,
         "evaluation_phase": "exploratory",
         "demo_commit": commit,
         "protocol": {
-            "pre_s": PRE_S,
+            "pre_s": (
+                {"min": PRE_S_MIN, "max": PRE_S_MAX, "step": PRE_S_STEP}
+                if corpus == CORPUS_V2
+                else PRE_S
+            ),
             "post_s": POST_S,
             "recovery_s": RECOVERY_S,
             "ingest_lag_s": INGEST_LAG_S,
@@ -249,8 +277,8 @@ def cmd_finalize(key: bytes) -> int:
         "case_order": sorted(done),
     }
     text = json.dumps(body, sort_keys=True, indent=2) + "\n"
-    (REPO_ROOT / CORPUS_MANIFEST).write_text(text, encoding="utf-8")
-    print(f"[finalize] {len(done)} cases written to {CORPUS_MANIFEST}")
+    (REPO_ROOT / manifest).write_text(text, encoding="utf-8")
+    print(f"[finalize] {len(done)} cases written to {manifest}")
     return 0
 
 
@@ -263,19 +291,22 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--reps", type=int, default=DEFAULT_REPS)
         if name == "run":
             p.add_argument("--limit", type=int, default=None)
-    sub.add_parser("verify")
-    sub.add_parser("finalize")
+    for name in ("verify", "finalize"):
+        sub.add_parser(name)
+    for p in sub.choices.values():
+        if p.prog.split()[-1] != "preflight":
+            p.add_argument("--corpus", choices=(CORPUS, CORPUS_V2), default=CORPUS)
     args = parser.parse_args(argv)
     if args.cmd == "preflight":
         return cmd_preflight()
     key = load_key()
     if args.cmd == "status":
-        return cmd_status(key, args.reps)
+        return cmd_status(key, args.reps, args.corpus)
     if args.cmd == "run":
-        return cmd_run(key, args.reps, args.limit)
+        return cmd_run(key, args.reps, args.limit, args.corpus)
     if args.cmd == "verify":
-        return cmd_verify(key)
-    return cmd_finalize(key)
+        return cmd_verify(key, args.corpus)
+    return cmd_finalize(key, args.corpus)
 
 
 if __name__ == "__main__":
