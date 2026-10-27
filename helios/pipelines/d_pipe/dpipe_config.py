@@ -28,6 +28,24 @@ LE_BOUNDARIES: list[float] = [
 K_INF_MIDPOINT: int = 3
 INF_MIDPOINT: float = K_INF_MIDPOINT * 10000  # 30_000 ms representative cap
 
+# Plain per-service metric names (S2.1, S2-M7-ENG09): RCAEval writes one series
+# per service and metric under the service_name label; OTel adds per-container
+# resource series. First present latency name wins; error values are per step.
+RCAEVAL_LATENCY_NAMES: tuple[str, ...] = ("latency-90", "latency-50", "latency")
+RCAEVAL_ERROR_NAMES: tuple[str, ...] = ("error",)
+RCAEVAL_RESOURCE_NAMES: tuple[str, ...] = (
+    "cpu",
+    "mem",
+    "diskio",
+    "socket",
+    "load",
+    "workload",
+)
+OTEL_RESOURCE_NAMES: tuple[str, ...] = (
+    "container_cpu_utilization_ratio",
+    "container_memory_usage_total_bytes",
+)
+
 # Stage B error weight (calibrated; default before grid search)
 W_ERROR_DEFAULT: float = 0.50
 

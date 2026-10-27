@@ -77,3 +77,72 @@ def test_non_error_status_not_counted() -> None:
     result = MetricsParser().parse(df)
     # No error status codes -> error_deltas should not include svc-a
     assert "svc-a" not in result.error_deltas
+
+
+# ── format-neutral parsing (S2.1, S2-M7-ENG09) ──────────────────────────────
+
+
+def _plain(ts: float, svc: str, metric: str, value: float) -> dict[str, object]:
+    return {
+        "timestamp": ts,
+        "metric_name": metric,
+        "value": value,
+        "labels": json.dumps({"service_name": svc}),
+    }
+
+
+def test_rcaeval_metrics_give_services() -> None:
+    rows = [
+        _plain(t, svc, m, v)
+        for t in (1, 2, 3)
+        for svc in ("cart", "ad")
+        for m, v in (
+            ("latency-90", 40 + t),
+            ("latency-50", 9),
+            ("error", t),
+            ("cpu", 7),
+        )
+    ]
+    parsed = MetricsParser().parse(_make_df(rows))
+    assert parsed.p1_services == ["ad", "cart"]
+    assert parsed.steps == [2, 3]
+    assert parsed.latency_means["cart"] == [42, 43]  # latency-90 wins
+    assert parsed.error_deltas["cart"] == [2, 3]  # per-step values, not differenced
+    assert parsed.resource_values["cart"] == {"cpu": [7, 7]}
+
+
+def test_latency_falls_back_to_median_then_plain() -> None:
+    rows = [_plain(t, "cart", "latency-50", 11) for t in (1, 2)] + [
+        _plain(t, "ad", "latency", 13) for t in (1, 2)
+    ]
+    parsed = MetricsParser().parse(_make_df(rows))
+    assert parsed.latency_means == {"ad": [13], "cart": [11]}
+
+
+def test_otel_container_metrics_fill_resource_channel() -> None:
+    rows = [
+        _plain(t, "cart", "container_cpu_utilization_ratio", 3) for t in (1, 2, 3)
+    ] + [_plain(t, "cart", "container_memory_usage_total_bytes", 64) for t in (1, 2, 3)]
+    parsed = MetricsParser().parse(_make_df(rows))
+    assert parsed.resource_values["cart"] == {
+        "container_cpu_utilization_ratio": [3, 3],
+        "container_memory_usage_total_bytes": [64, 64],
+    }
+    assert parsed.p1_services == ["cart"]
+
+
+def test_otel_histogram_parsing_unchanged_with_resource_rows_present() -> None:
+    hist = [
+        _make_http_row(1, "svc-a", "500", "+Inf", 5),
+        _make_http_row(2, "svc-a", "500", "+Inf", 8),
+    ]
+    alone = MetricsParser().parse(_make_df(hist))
+    mixed = MetricsParser().parse(
+        _make_df(
+            hist
+            + [_plain(t, "svc-a", "container_cpu_utilization_ratio", 2) for t in (1, 2)]
+        )
+    )
+    assert mixed.error_deltas == alone.error_deltas
+    assert mixed.steps == alone.steps
+    assert mixed.resource_values == {"svc-a": {"container_cpu_utilization_ratio": [2]}}
