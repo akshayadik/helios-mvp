@@ -59,6 +59,8 @@ __all__ = [
     "WARMUP_BUCKETS",
     "Z_CAP",
     "DetectorParams",
+    "ExternalTriggerRefusedError",
+    "ProvisionalParametersError",
     "ServiceScores",
     "TriggerRecord",
     "TriggerSource",
@@ -66,6 +68,7 @@ __all__ = [
     "detect",
     "detector_hash",
     "load_detector_params",
+    "load_external_triggers",
     "service_scores",
 ]
 
@@ -82,6 +85,14 @@ DETECTOR_PARAMS_PATH = (
     Path(__file__).resolve().parents[2] / "data" / "frozen" / "trigger_detector.json"
 )
 _PARAM_KEYS = frozenset({"bucket_seconds", "threshold", "persistence", "provisional"})
+
+
+class ExternalTriggerRefusedError(RuntimeError):
+    """A confirmatory run was given externally supplied triggers (D-a)."""
+
+
+class ProvisionalParametersError(RuntimeError):
+    """A confirmatory run was given parameters not yet frozen by calibration."""
 
 
 class TriggerSource(StrEnum):
@@ -291,3 +302,23 @@ def load_detector_params(path: Path = DETECTOR_PARAMS_PATH) -> DetectorParams:
     if params.bucket_seconds < 1 or params.persistence < 1 or params.threshold <= 0:
         raise ValueError("bucket_seconds and persistence must be >= 1; threshold > 0")
     return params
+
+
+def load_external_triggers(path: Path) -> dict[str, TriggerRecord]:
+    """Externally supplied triggers (JSON lines), by incident ID.
+
+    The plug-in for the exploratory run that gives every system another anchor
+    (decision D-a); the runner refuses it in confirmatory runs. Every record
+    must be marked ``external``.
+    """
+    records: dict[str, TriggerRecord] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        record = TriggerRecord.model_validate_json(line)
+        if record.source != TriggerSource.EXTERNAL:
+            raise ValueError("every supplied trigger must have source 'external'")
+        if record.incident_id in records:
+            raise ValueError("an incident appears twice in the trigger file")
+        records[record.incident_id] = record
+    return records

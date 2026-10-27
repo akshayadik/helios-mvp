@@ -23,6 +23,7 @@ __all__ = ["run_dpipe"]
 if TYPE_CHECKING:
     from helios.schemas.telemetry import EvaluationPhase, TelemetryWindow
     from helios.schemas.ueg_c import UEGCSnapshot
+    from helios.telemetry.trigger import TriggerRecord
 
 
 @gated_by(VCLFlag.DPIPE)
@@ -35,11 +36,16 @@ def run_dpipe(
     variant_config_hash: str,
     evaluation_phase: EvaluationPhase,
     run_id: str,
+    trigger: TriggerRecord | None = None,
     w_error: float = W_ERROR_DEFAULT,
     rho_threshold: float = RHO_THRESHOLD_DEFAULT,
     topology_boost_factor: float = TOPOLOGY_BOOST_DEFAULT,
 ) -> dict[str, Any]:
-    """Run D-pipe Stages A-D and return a verdict dict."""
+    """Run D-pipe Stages A-D and return a verdict dict.
+
+    ``trigger`` is the shared detection trigger (S2.1); D-pipe uses it to split
+    the window from S2-M7-ENG09 on.
+    """
     # Stage A: parse metrics
     if window.p1_metrics_path is not None:
         df = pd.read_parquet(window.p1_metrics_path)

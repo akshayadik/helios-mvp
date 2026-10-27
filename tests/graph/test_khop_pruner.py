@@ -233,3 +233,24 @@ def test_builder_records_the_peak_anomaly_intensity() -> None:
     meta = {n.node_id: n.metadata for n in snap.nodes}
     assert meta["a"][ANOMALY_PEAK_KEY] == "4.250000"
     assert ANOMALY_PEAK_KEY not in meta["b"]
+
+
+# ── out-of-scope services are never seeds (S2.1, D-f) ────────────────────────
+
+
+def test_pruner_never_seeds_out_of_scope_services() -> None:
+    snap = _snap(
+        [_service("prometheus", 9), _service("cart", 3), _service("ad", 2)],
+        [],
+    )
+    seeds, _ = seed_nodes(snap, exclude={"prometheus"})
+    assert "prometheus" not in seeds
+    assert set(seeds) == {"cart", "ad"}
+    _, result = khop_prune(snap, exclude={"prometheus"})
+    assert "prometheus" not in result.seeds
+
+
+def test_given_out_of_scope_seeds_are_dropped() -> None:
+    snap = _snap([_service("prometheus", 9), _service("cart", 3)], [])
+    _, result = khop_prune(snap, seeds=["prometheus", "cart"], exclude={"prometheus"})
+    assert result.seeds == ("cart",)
