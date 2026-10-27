@@ -116,3 +116,34 @@ CREATE TABLE IF NOT EXISTS eval_score (
 INSERT INTO schema_tag (tag)
 VALUES ('eval-score-v1')
 ON CONFLICT (tag) DO NOTHING;
+
+-- trigger-v1 (S2.1): the shared detection trigger each run handed to every
+-- system (helios/telemetry/trigger.py), and per-pipeline wall-clock times.
+-- TTCD and TTT are measured from handover_unix (deviation entry 46). The
+-- baseline harness (S4.8) reads the same trigger_row, so every system gets
+-- the identical trigger.
+CREATE TABLE IF NOT EXISTS trigger_row (
+    run_id              VARCHAR     PRIMARY KEY,
+    incident_id         VARCHAR     NOT NULL,
+    variant_config_hash VARCHAR     NOT NULL,
+    trigger_time_s      DOUBLE      NOT NULL,   -- recorded-time instant, epoch seconds
+    suspects            VARCHAR     NOT NULL,   -- JSON list, strongest first
+    context             VARCHAR     NOT NULL,   -- JSON list of out-of-scope services
+    source              VARCHAR     NOT NULL,   -- threshold | fallback | external
+    detector_hash       VARCHAR     NOT NULL,
+    seeds_from_trigger  BOOLEAN     NOT NULL,
+    handover_unix       DOUBLE      NOT NULL,
+    stored_at           TIMESTAMP               DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS timing_row (
+    run_id              VARCHAR     NOT NULL,
+    pipeline            VARCHAR     NOT NULL,
+    started_unix        DOUBLE      NOT NULL,
+    published_unix      DOUBLE      NOT NULL,
+    PRIMARY KEY (run_id, pipeline)
+);
+
+INSERT INTO schema_tag (tag)
+VALUES ('trigger-v1')
+ON CONFLICT (tag) DO NOTHING;

@@ -16,6 +16,7 @@ import pytest
 from helios.schemas import EvaluationPhase, PipelineVerdict
 from helios.schemas.verdict import PipelineName, VerdictCost, VerdictStatus
 from helios.store.result_store import ResultStore
+from helios.telemetry.trigger import TriggerRecord, TriggerSource
 from helios.vcl import VCLFlag  # flag-guard; VCLManifest compliance via docstring
 
 if TYPE_CHECKING:
@@ -280,3 +281,62 @@ def test_insert_consensus_idempotent_guard(tmp_path: Path) -> None:
     rows = store.fetch_all_consensus_rows()
     assert len(rows) == 1
     store.close()
+
+
+# ------------------------------------------------------------------
+# Trigger and timings (S2.1)
+# ------------------------------------------------------------------
+
+
+def _trigger() -> TriggerRecord:
+    return TriggerRecord(
+        incident_id="otel-001",
+        trigger_time_s=1_790_000_300,
+        suspects=("cart", "ad"),
+        context=("otel-collector",),
+        source=TriggerSource.THRESHOLD,
+        detector_hash="d" * 64,
+    )
+
+
+def test_trigger_round_trips_exactly(store: ResultStore) -> None:
+    store.insert_trigger(
+        _trigger(),
+        run_id="r1",
+        variant_config_hash="v" * 64,
+        seeds_from_trigger=True,
+        handover_unix=1_800_000_000,
+    )
+    assert store.fetch_trigger("otel-001", "v" * 64) == _trigger()
+    assert store.fetch_trigger("other", "v" * 64) is None
+
+
+def test_trigger_and_timing_tables_are_tagged(store: ResultStore) -> None:
+    assert {"trigger_row", "timing_row"} <= set(store.table_names())
+    assert "trigger-v1" in store.schema_tags()
+
+
+def test_timing_rows_one_per_pipeline(store: ResultStore) -> None:
+    store.insert_timing("r1", PipelineName.DPIPE, 10, 12)
+    store.insert_timing("r1", PipelineName.GPIPE, 12, 15)
+    rows = store.fetch_timings("r1")
+    assert [(r["pipeline"], r["published_unix"]) for r in rows] == [
+        ("dpipe", 12),
+        ("gpipe", 15),
+    ]
+    with pytest.raises(duckdb.ConstraintException):
+        store.insert_timing("r1", PipelineName.DPIPE, 20, 21)
+
+
+def test_existing_store_gains_the_new_tables(tmp_path: Path) -> None:
+    path = tmp_path / "old.db"
+    first = ResultStore(path)
+    first.insert(_make_verdict())
+    first.close()
+    con = duckdb.connect(str(path))
+    con.execute("DROP TABLE trigger_row")
+    con.execute("DROP TABLE timing_row")
+    con.close()
+    reopened = ResultStore(path)
+    assert {"trigger_row", "timing_row"} <= set(reopened.table_names())
+    assert len(reopened.fetch_all_pipeline_rows()) == 1
