@@ -90,6 +90,8 @@ Recorded by the RCAEval authors, not captured here; imported with `bin/import_rc
 
 Sealed windows live in `data/rcaeval/{build,pool}/` (git-ignored, 0.5 GB and 5.7 GB). The seals bind these exact bytes: **back up `data/rcaeval/pool/`** — re-converting with different library versions may produce different bytes and therefore different seals.
 
+**Data note (found in S2.1, 2026-10-27).** Two RCAEval build cases (both RE1-OB) have an injection time outside their window (one before the start, one after the end). They are excluded from the S2.1 trigger calibration and listed in its report; the same check runs on the pool after build-freeze. In 489 of the other 493 build windows the injection is at the exact midpoint (RCAEval convention), recorded as validity threat T19.
+
 ## Build corpus — OTel Demo campaign (S1.2, 2026-10-26/27)
 
 Recorded here with `bin/capture_campaign.py` on the pinned OTel Demo 2.2.0 (`b74a7bc`); protocol in `docs/sprints/s1-data-graph/s1_2_otel_build_captures.md`, deviation entries 44 (protocol) and 45 (span labels). **No per-case rows:** incident IDs are opaque and the capture order would reveal the fault rotation, so the corpus is recorded as a summary.
