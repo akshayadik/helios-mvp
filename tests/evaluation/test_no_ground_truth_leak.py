@@ -32,6 +32,7 @@ from helios.pipelines.g_pipe.pipeline import run_gpipe, should_run_gpipe
 from helios.pipelines.l_pipe.pipeline import run_lpipe
 from helios.schemas.telemetry import EvaluationPhase, TelemetryWindow
 from helios.telemetry.seal import write_seal
+from helios.telemetry.trigger import detect
 from helios.vcl import VCLFlag, get_variant, set_current_manifest  # noqa: F401
 
 if TYPE_CHECKING:
@@ -57,6 +58,7 @@ ENTRY_POINTS: tuple[Callable[..., Any], ...] = (
     build_ueg_c,
     apply_structural_bundle,
     khop_prune,
+    detect,
     RunOrchestrator.__init__,
     RunOrchestrator.run,
 )
