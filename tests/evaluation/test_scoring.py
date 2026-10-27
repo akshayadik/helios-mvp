@@ -14,6 +14,7 @@ from helios.evaluation.scoring import (
     SCORING_VERSION,
     Corpus,
     GroundTruth,
+    OutOfScopeLabelError,
     avg_at_k,
     hr_at,
     load_ground_truth,
@@ -265,3 +266,16 @@ def test_confirmatory_runs_are_scored_only_after_build_freeze(tmp_path: Path) ->
     with pytest.raises(PoolLockedError, match="build-freeze"):
         score_store(store, GT, frozen=lambda: False)
     assert score_store(store, GT, frozen=lambda: True).scored == 1
+
+
+# ── out-of-scope services (S2.1, D-f) ────────────────────────────────────────
+
+
+def test_scoring_drops_out_of_scope_candidates_before_ranking() -> None:
+    case = score_ranking(["jaeger", "cart", "ad"], "cart")
+    assert case.rank == 1
+
+
+def test_scoring_refuses_an_out_of_scope_label() -> None:
+    with pytest.raises(OutOfScopeLabelError):
+        score_ranking(["cart"], "otel-collector")
