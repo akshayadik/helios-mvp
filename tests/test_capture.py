@@ -348,6 +348,57 @@ class TestJaegerTracesFetcher:
         assert expected == set(table.column_names)
         assert table.num_rows > 0
 
+    def test_spans_keep_their_own_service_and_appear_once(self, window_bounds):
+        """Every per-service query returns the whole trace; each span is kept
+        once, labelled with its own process's service (S1.3 finding)."""
+        start, end = window_bounds
+        payload = {
+            "data": [
+                {
+                    "traceID": "t1",
+                    "processes": {
+                        "p1": {"serviceName": "frontend"},
+                        "p2": {"serviceName": "ad"},
+                    },
+                    "spans": [
+                        {
+                            "spanID": "s1",
+                            "processID": "p1",
+                            "operationName": "GET /",
+                            "startTime": 1,
+                            "duration": 9,
+                            "references": [],
+                        },
+                        {
+                            "spanID": "s2",
+                            "processID": "p2",
+                            "operationName": "GetAds",
+                            "startTime": 2,
+                            "duration": 5,
+                            "references": [
+                                {"refType": "CHILD_OF", "traceID": "t1", "spanID": "s1"}
+                            ],
+                        },
+                    ],
+                }
+            ]
+        }
+        # urlopen returns the same trace for each of the 14 service queries.
+        with patch(
+            "urllib.request.urlopen", side_effect=lambda *a, **k: _http_mock(payload)
+        ):
+            table = JaegerTracesFetcher("http://jaeger:16686").fetch(start, end)
+
+        rows = sorted(
+            zip(
+                table.column("span_id").to_pylist(),
+                table.column("service_name").to_pylist(),
+                strict=True,
+            )
+        )
+        assert rows == [("s1", "frontend"), ("s2", "ad")]
+        assert table.column("parent_span_id").to_pylist()[1] == "s1"
+
     def test_fetch_404_responses_skipped_silently(self, window_bounds):
         """Services returning HTTP 404 are skipped; result is an empty table."""
         start, end = window_bounds

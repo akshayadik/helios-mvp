@@ -44,3 +44,6 @@ external/otel-demo-pinned/*
 data/rcaeval/raw/
 data/rcaeval/build/
 data/rcaeval/pool/
+# OTel Demo build corpus (S1.2): live recordings, not regenerable, so the sealed
+# captures are committed (about 22 MB), as data/captures/ is.
+!data/otel/build/

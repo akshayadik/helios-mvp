@@ -24,6 +24,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field
+from datetime import timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -39,14 +40,18 @@ if TYPE_CHECKING:
     from helios.vcl.config import VCLManifest
 
 __all__ = [
+    "DEMO_CONTAINERS",
     "CaptureConfig",
     "JaegerTracesFetcher",
     "OpenSearchLogsFetcher",
     "ParquetWriter",
     "PrometheusMetricsFetcher",
+    "SlicedFetcher",
     "StreamFetcher",
     "TelemetryCapture",
+    "build_campaign_capture",
     "build_default_capture",
+    "campaign_metric_queries",
 ]
 
 # ---------------------------------------------------------------------------
@@ -108,8 +113,9 @@ class PrometheusMetricsFetcher(StreamFetcher):
         "rpc_server_duration_milliseconds_bucket",
     )
 
-    def __init__(self, base_url: str) -> None:
+    def __init__(self, base_url: str, queries: Sequence[str] | None = None) -> None:
         self._base_url = base_url.rstrip("/")
+        self._queries = tuple(queries) if queries is not None else self._METRICS
 
     @property
     def stream_name(self) -> str:
@@ -121,7 +127,7 @@ class PrometheusMetricsFetcher(StreamFetcher):
         values: list[float] = []
         label_strs: list[str] = []
 
-        for metric in self._METRICS:
+        for metric in self._queries:
             params = urllib.parse.urlencode(
                 {
                     "query": metric,
@@ -160,6 +166,11 @@ class PrometheusMetricsFetcher(StreamFetcher):
 
 class JaegerTracesFetcher(StreamFetcher):
     """P2: Jaeger /api/traces, merged across all OTEL Demo application services.
+
+    A span's service is its own process's ``serviceName`` (S1.3 finding: until
+    2026-10-27 every span was labelled with the service the query asked for,
+    so one span appeared once per service its trace touched; the May captures
+    were recorded that way).
 
     api_prefix must match the jaeger_query.base_path in src/jaeger/config.yml.
     The OTEL Demo v2.2.0 sets base_path=/jaeger/ui, so the query API lives at
@@ -205,6 +216,7 @@ class JaegerTracesFetcher(StreamFetcher):
 
         start_us = int(start.timestamp() * 1_000_000)
         end_us = int(end.timestamp() * 1_000_000)
+        seen: set[tuple[str, str]] = set()
 
         for service in self._SERVICES:
             params = urllib.parse.urlencode(
@@ -225,7 +237,14 @@ class JaegerTracesFetcher(StreamFetcher):
                 raise
             for trace in payload.get("data", []):
                 tid: str = trace.get("traceID", "")
+                processes: dict[str, Any] = trace.get("processes", {})
                 for span in trace.get("spans", []):
+                    sid = str(span.get("spanID", ""))
+                    # Each per-service query returns whole traces, spans of every
+                    # service included: keep a span once, with its own service.
+                    if (tid, sid) in seen:
+                        continue
+                    seen.add((tid, sid))
                     status: str = next(
                         (
                             str(t["value"])
@@ -243,10 +262,11 @@ class JaegerTracesFetcher(StreamFetcher):
                             parent_id = str(ref.get("spanID", ""))
                             break
                     trace_ids.append(tid)
-                    span_ids.append(str(span.get("spanID", "")))
+                    span_ids.append(sid)
                     parent_ids.append(parent_id)
                     ops.append(str(span.get("operationName", "")))
-                    services.append(service)
+                    process = processes.get(str(span.get("processID", "")), {})
+                    services.append(str(process.get("serviceName") or service))
                     start_times.append(int(span.get("startTime", 0)))
                     durations.append(int(span.get("duration", 0)))
                     statuses.append(status)
@@ -349,6 +369,51 @@ class OpenSearchLogsFetcher(StreamFetcher):
 
 
 # ---------------------------------------------------------------------------
+# Time-sliced fetching (S1.2): long windows exceed backend result limits
+# ---------------------------------------------------------------------------
+
+
+class SlicedFetcher(StreamFetcher):
+    """Fetches [start, end] in fixed slices and merges them without duplicates.
+
+    Jaeger returns at most ``limit`` traces per service and OpenSearch at most
+    ``size`` hits per query, newest or arbitrary first; over a 10-minute window
+    that silently drops part of the window. Slicing keeps every minute
+    represented. Rows repeated across a slice boundary (a trace returned by
+    two slices, a log line at an inclusive bound) are kept once, in first-seen
+    order, so the merged table is deterministic for a given backend state.
+    """
+
+    def __init__(self, inner: StreamFetcher, slice_s: float) -> None:
+        if slice_s <= 0:
+            raise ValueError("slice_s must be positive")
+        self._inner = inner
+        self._slice = timedelta(seconds=slice_s)
+
+    @property
+    def stream_name(self) -> str:
+        return self._inner.stream_name
+
+    def fetch(self, start: datetime, end: datetime) -> pa.Table:
+        tables = []
+        lo = start
+        while lo < end:
+            hi = min(lo + self._slice, end)
+            tables.append(self._inner.fetch(lo, hi))
+            lo = hi
+        if not tables:
+            return self._inner.fetch(start, end)
+        merged = pa.concat_tables(tables)
+        seen: set[tuple[object, ...]] = set()
+        keep: list[int] = []
+        for i, row in enumerate(zip(*merged.to_pydict().values(), strict=True)):
+            if row not in seen:
+                seen.add(row)
+                keep.append(i)
+        return merged.take(pa.array(keep, type=pa.int64()))
+
+
+# ---------------------------------------------------------------------------
 # Parquet writer (SOLID-S)
 # ---------------------------------------------------------------------------
 
@@ -442,5 +507,93 @@ def build_default_capture(incident_id: str, manifest: VCLManifest) -> TelemetryC
         PrometheusMetricsFetcher(config.prometheus_url),
         JaegerTracesFetcher(config.jaeger_url, api_prefix="/jaeger/ui"),
         OpenSearchLogsFetcher(config.opensearch_url),
+    ]
+    return TelemetryCapture(config=config, fetchers=fetchers, writer=ParquetWriter())
+
+
+# OTel Demo 2.2.0 exports none of `up`, `process_cpu_seconds_total` or
+# `process_resident_memory_bytes` (the May list), so the May captures hold only
+# the two latency histograms. Resource faults need CPU and memory: the
+# collector's Docker stats receiver gives them per container, labelled
+# `container_name`. They are limited to the demo's own containers and given a
+# `service_name` label (the parser's service key); the raw labels stay.
+DEMO_CONTAINERS: tuple[str, ...] = (
+    "accounting",
+    "ad",
+    "cart",
+    "checkout",
+    "currency",
+    "email",
+    "flagd",
+    "flagd-ui",
+    "fraud-detection",
+    "frontend",
+    "frontend-proxy",
+    "grafana",
+    "image-provider",
+    "jaeger",
+    "kafka",
+    "llm",
+    "load-generator",
+    "opensearch",
+    "otel-collector",
+    "payment",
+    "postgresql",
+    "product-catalog",
+    "product-reviews",
+    "prometheus",
+    "quote",
+    "recommendation",
+    "shipping",
+    "valkey-cart",
+)
+_CONTAINER_METRICS = (
+    "container_cpu_utilization_ratio",
+    "container_memory_usage_total_bytes",
+)
+
+
+def campaign_metric_queries() -> tuple[str, ...]:
+    """PromQL of the S1.2 campaign: latency histograms plus per-container CPU and memory."""
+    containers = "|".join(DEMO_CONTAINERS)
+    resource = tuple(
+        f'label_replace({name}{{container_name=~"{containers}"}}, '
+        f'"service_name", "$1", "container_name", "(.*)")'
+        for name in _CONTAINER_METRICS
+    )
+    return (
+        "http_server_duration_milliseconds_bucket",
+        "rpc_server_duration_milliseconds_bucket",
+        *resource,
+    )
+
+
+def build_campaign_capture(
+    incident_id: str,
+    manifest: VCLManifest,
+    *,
+    output_dir: Path,
+    prometheus_url: str,
+    jaeger_url: str,
+    opensearch_url: str,
+    slice_s: float = 60,
+) -> TelemetryCapture:
+    """TelemetryCapture for the S1.2 build campaign: explicit backends and
+    output directory, traces and logs fetched in ``slice_s`` slices."""
+    config = CaptureConfig(
+        incident_id=incident_id,
+        manifest=manifest,
+        evaluation_phase=EvaluationPhase.EXPLORATORY,
+        prometheus_url=prometheus_url,
+        jaeger_url=jaeger_url,
+        opensearch_url=opensearch_url,
+        output_dir=output_dir,
+    )
+    fetchers: list[StreamFetcher] = [
+        PrometheusMetricsFetcher(prometheus_url, campaign_metric_queries()),
+        SlicedFetcher(
+            JaegerTracesFetcher(jaeger_url, api_prefix="/jaeger/ui"), slice_s
+        ),
+        SlicedFetcher(OpenSearchLogsFetcher(opensearch_url), slice_s),
     ]
     return TelemetryCapture(config=config, fetchers=fetchers, writer=ParquetWriter())
