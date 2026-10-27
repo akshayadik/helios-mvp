@@ -167,3 +167,62 @@ def test_dpipe_never_ranks_out_of_scope_services(manifest, tmp_path: Path) -> No
 def test_dpipe_without_trigger_has_no_sigma(manifest, tmp_path: Path) -> None:
     out = _run(_rcaeval_window(tmp_path), None)
     assert out["sigma"] is None
+
+
+# ── review fixes (PR 2) ──────────────────────────────────────────────────────
+
+
+def test_trigger_before_all_steps_uses_the_whole_window(
+    manifest, tmp_path: Path
+) -> None:
+    out = _run(_rcaeval_window(tmp_path), _trigger_at(1_790_000_000 - 600))
+    assert out["status"] == "ranked"
+    assert out["ranked_candidates"][0] == "cart"
+    assert out["sigma"] is None  # no reference part, so no evidence
+
+
+def test_trigger_after_all_steps_uses_the_whole_window(
+    manifest, tmp_path: Path
+) -> None:
+    out = _run(_rcaeval_window(tmp_path), _trigger_at(1_790_000_000 + 6000))
+    assert out["status"] == "ranked"
+    assert out["ranked_candidates"][0] == "cart"  # not alphabetical ("ad")
+    assert out["sigma"] is None
+
+
+def test_all_zero_scores_abstain_instead_of_ranking_by_name(
+    manifest, tmp_path: Path
+) -> None:
+    import json
+
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    t0 = 1_790_000_000
+    rows = [
+        (t0 + 15 * step, svc, 40 + step % 3)
+        for step in range(40)
+        for svc in ("ad", "cart")
+    ]
+    pq.write_table(
+        pa.table(
+            {
+                "timestamp": [float(r[0]) for r in rows],
+                "metric_name": ["latency-90"] * len(rows),
+                "value": [float(r[2]) for r in rows],
+                "labels": [json.dumps({"service_name": r[1]}) for r in rows],
+            }
+        ),
+        tmp_path / "p1.parquet",
+    )
+    window = TelemetryWindow(
+        incident_id="opaque",
+        variant_config_hash="a" * 64,
+        window_start_iso=dt.datetime.fromtimestamp(t0, dt.UTC).isoformat(),
+        window_end_iso=dt.datetime.fromtimestamp(t0 + 600, dt.UTC).isoformat(),
+        evaluation_phase=EvaluationPhase.EXPLORATORY,
+        p1_metrics_path=str(tmp_path / "p1.parquet"),
+    )
+    out = _run(window, _trigger_at(t0 + 300))
+    assert out["status"] == "abstained"
+    assert out["ranked_candidates"] == []

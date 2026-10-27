@@ -109,3 +109,21 @@ def test_resource_channel_counts_with_its_weight() -> None:
     without = AnomalyScorer(w_error=0, w_resource=0).score_split(parsed, split_s=6)
     assert with_res.scores["a"] > with_res.scores["b"]
     assert without.scores["a"] == without.scores["b"]
+
+
+def test_out_of_scope_services_do_not_set_the_normalisation_scale() -> None:
+    base: list[float] = [float(40 + t % 3) for t in range(6)]
+    parsed = ParsedMetrics(
+        error_deltas={},
+        latency_means={
+            "cart": base + [float(60 + t % 3) for t in range(6)],
+            "jaeger": base + [float(4000 + t % 3) for t in range(6)],
+        },
+        steps=[float(t) for t in range(12)],
+        p1_services=["cart", "jaeger"],
+    )
+    scored = AnomalyScorer(w_error=0, w_resource=0).score_split(parsed, split_s=6)
+    assert (
+        abs(scored.scores["cart"] - 1) < 1e-6
+    )  # the top in-scope shift sets the scale
+    assert scored.evidence["jaeger"] > scored.evidence["cart"]  # raw evidence kept

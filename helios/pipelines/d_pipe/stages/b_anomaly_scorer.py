@@ -15,7 +15,8 @@ from typing import TYPE_CHECKING
 import numpy as np
 import scipy.stats.mstats
 
-from helios.pipelines.d_pipe.dpipe_config import RCAEVAL_ERROR_NAMES, W_ERROR_DEFAULT
+from helios.pipelines.d_pipe.dpipe_config import W_ERROR_DEFAULT
+from helios.telemetry.scope import in_scope
 from helios.telemetry.trigger import robust_scale
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
 
@@ -58,7 +59,9 @@ def _shift(series: list[float], before: np.ndarray, *, count_series: bool) -> fl
 
 
 def _normalised(raw: dict[str, float]) -> dict[str, float]:
-    top = max(raw.values(), default=0)
+    """Divide by the largest in-scope value: out-of-scope services (D-f) keep
+    their raw shift as evidence but never set the scale for the others."""
+    top = max((v for s, v in raw.items() if in_scope(s)), default=0)
     return {s: min(v / (top + _NORM_EPS), 1) for s, v in raw.items()}
 
 
@@ -84,8 +87,8 @@ class AnomalyScorer:
             )
             res[s] = max(
                 (
-                    _shift(v, before, count_series=m in RCAEVAL_ERROR_NAMES)
-                    for m, v in sorted(parsed.resource_values.get(s, {}).items())
+                    _shift(v, before, count_series=False)
+                    for _m, v in sorted(parsed.resource_values.get(s, {}).items())
                 ),
                 default=0,
             )

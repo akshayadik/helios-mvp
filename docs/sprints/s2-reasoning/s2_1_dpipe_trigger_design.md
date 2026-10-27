@@ -235,6 +235,6 @@ D-pipe reads both metric formats (RCAEval plain series; OTel histograms plus con
 | Corpus | Windows | D-pipe ranked | σ reported |
 |---|---|---|---|
 | OTel build | 63 | 63 | 63 |
-| RCAEval build | 495 | 495 (before S2.1: none, every RCAEval window abstained) | 494 |
+| RCAEval build | 495 | 495 (before S2.1: none, every RCAEval window abstained). One window has its trigger at the window start (fallback), so no reference part exists: it is scored over the whole window and gets no σ | 494 |
 
-Accuracy on build data is measured in the calibration (S2-M7-EVAL01). Two separate processes give byte-identical D-pipe verdicts (`tests/test_trigger_check_cli.py::test_dpipe_verdict_identical_across_processes`).
+Rules added in review: a split without a reference or an incident part falls back to the whole-window score; all-zero in-scope scores give ABSTAINED, never a by-name order; each channel is normalised by its largest **in-scope** shift, so out-of-scope services keep their raw evidence but never set the scale. Accuracy on build data is measured in the calibration (S2-M7-EVAL01). Two separate processes give byte-identical D-pipe verdicts (`tests/test_trigger_check_cli.py::test_dpipe_verdict_identical_across_processes`).

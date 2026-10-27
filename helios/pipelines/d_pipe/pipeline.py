@@ -63,7 +63,12 @@ def run_dpipe(
     # Stage B: anomaly scoring
     scorer = AnomalyScorer(w_error=w_error, w_resource=w_resource)
     evidence: dict[str, float] = {}
-    if trigger is not None:
+    steps = parsed.steps
+    split_usable = trigger is not None and (
+        any(t < trigger.trigger_time_s for t in steps)
+        and any(t >= trigger.trigger_time_s for t in steps)
+    )
+    if trigger is not None and split_usable:
         scored = scorer.score_split(parsed, split_s=trigger.trigger_time_s)
         scores, evidence = scored.scores, scored.evidence
     else:
@@ -98,8 +103,11 @@ def run_dpipe(
     else:
         score_final = dict(scores)
 
-    # Stage D: verdict over in-scope services only (D-f)
+    # Stage D: verdict over in-scope services only (D-f). With no positive score
+    # there is no evidence to rank on: abstain rather than order by name.
     score_final = {s: v for s, v in score_final.items() if in_scope(s)}
+    if not any(v > 0 for v in score_final.values()):
+        score_final = {}
     verdict = DVerdict.compute(score_final)
     narrative_raw = verdict.get("narrative")
     narrative_norm: str = "" if narrative_raw is None else str(narrative_raw)
