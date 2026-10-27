@@ -1,6 +1,6 @@
 # Sprint S2 — Reasoning, consensus, narratives · plan
 
-**Window:** 7–25 Dec 2026 (15 working days); may start early once the owner confirms, as S1 did (S1 closed 2026-10-27, about five weeks ahead) · **Milestone:** S2-M7 · **Exit tag:** `rb-s2-exit` · **Status:** next — plan refreshed at the S1 exit (2026-10-27)
+**Window:** 7–25 Dec 2026 (15 working days); may start early once the owner confirms, as S1 did (S1 closed 2026-10-27, about five weeks ahead) · **Milestone:** S2-M7 · **Exit tag:** `rb-s2-exit` · **Status:** in progress — started early on 2026-10-27 (owner); end date unchanged
 
 Task details: `docs/tracking/helios_task_breakdown.md` § Sprint S2 (authoritative).
 
@@ -20,7 +20,7 @@ The three peer pipelines produce calibrated verdicts; MAHC fuses them with calib
 
 | Task | Tier | Tracking | Effort | Depends on | Done when |
 |---|---|---|---|---|---|
-| S2.1 D-pipe completion (σ, determinism, anomaly trigger) | T1 | S2-M7-ENG01 | 1 | S1.8 | Bitwise rerun equality |
+| S2.1 D-pipe completion (σ, determinism, anomaly trigger) | T1 | S2-M7-ENG01, ENG09, EVAL01, RES02 | 5 (was 1; design [s2_1_dpipe_trigger_design.md](s2_1_dpipe_trigger_design.md) §6a) | S1.8 | Bitwise rerun equality; shared trigger identical for every system; ≤5% false triggers on each build corpus |
 | S2.2 G-pipe learned ranker (D9) | T1 | S2-M7-ENG02 | 3 | S1.5, S1.7, S1.2 | Rerun equality; build-data HR@3 reported (exploratory) |
 | S2.3 Lean multi-agent L-pipe | T1 | S2-M7-ENG03 | 3 | S1.8 | Worker verdicts logged; leakage test passes; prompt SHAs frozen |
 | S2.4 H_struct records | T1 | S2-M7-ENG04 | ½ | S2.3 | Counts stored per run |
