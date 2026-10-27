@@ -78,3 +78,19 @@ def test_trigger_in_the_bucket_containing_the_injection_is_true() -> None:
 def test_delay_runs_to_the_end_of_the_trigger_bucket() -> None:
     assert trigger_delay_s(_rec(T0 + 240), T0 + 270, bucket_seconds=60) == 30
     assert trigger_delay_s(_rec(T0 + 300), T0 + 300, bucket_seconds=30) == 30
+
+
+def test_onset_tolerance_of_one_bucket() -> None:
+    # Bucket [T0+180, T0+240) ends 30 s before the injection at T0+270.
+    rec = _rec(T0 + 180)
+    assert classify_trigger(rec, T0 + 270, bucket_seconds=60) == TriggerLabel.FALSE
+    assert (
+        classify_trigger(rec, T0 + 270, bucket_seconds=60, tolerance_s=60)
+        == TriggerLabel.TRUE
+    )
+    # Two buckets early stays false.
+    assert (
+        classify_trigger(_rec(T0 + 120), T0 + 270, bucket_seconds=60, tolerance_s=60)
+        == TriggerLabel.FALSE
+    )
+    assert trigger_delay_s(rec, T0 + 270, bucket_seconds=60, tolerance_s=60) == 0

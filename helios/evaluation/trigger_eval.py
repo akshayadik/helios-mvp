@@ -12,7 +12,10 @@ signed ground truth:
 A trigger is stamped with the start of its bucket, and the detector cannot
 resolve time finer than a bucket; without ``bucket_seconds`` the stamp itself
 is compared (an instantaneous trigger). Delay runs to the end of the trigger
-bucket, when the detector can first know.
+bucket, when the detector can first know. ``tolerance_s`` (owner decision,
+deviation entry 49) accepts a trigger whose bucket ends up to that many seconds
+before the recorded injection: RCAEval's recorded injection times lag the
+visible onset by up to about a minute. Delay is then never negative.
 
 Nothing here is on the run path: the pipelines never see these labels.
 """
@@ -50,26 +53,37 @@ class TriggerLabel(StrEnum):
 
 
 def classify_trigger(
-    record: TriggerRecord, inject_time_s: float, *, bucket_seconds: float | None = None
+    record: TriggerRecord,
+    inject_time_s: float,
+    *,
+    bucket_seconds: float | None = None,
+    tolerance_s: float = 0,
 ) -> TriggerLabel:
     """Label one trigger against the true injection time."""
     if record.source == TriggerSource.FALLBACK:
         return TriggerLabel.NO_TRIGGER
+    onset = inject_time_s - tolerance_s
     if bucket_seconds is None:
-        early = record.trigger_time_s < inject_time_s
+        early = record.trigger_time_s < onset
     else:
-        early = record.trigger_time_s + bucket_seconds <= inject_time_s
+        early = record.trigger_time_s + bucket_seconds <= onset
     return TriggerLabel.FALSE if early else TriggerLabel.TRUE
 
 
 def trigger_delay_s(
-    record: TriggerRecord, inject_time_s: float, *, bucket_seconds: float | None = None
+    record: TriggerRecord,
+    inject_time_s: float,
+    *,
+    bucket_seconds: float | None = None,
+    tolerance_s: float = 0,
 ) -> float | None:
     """Seconds from the injection to when a true trigger is known; None otherwise."""
-    label = classify_trigger(record, inject_time_s, bucket_seconds=bucket_seconds)
+    label = classify_trigger(
+        record, inject_time_s, bucket_seconds=bucket_seconds, tolerance_s=tolerance_s
+    )
     if label != TriggerLabel.TRUE:
         return None
-    return record.trigger_time_s + (bucket_seconds or 0) - inject_time_s
+    return max(0, record.trigger_time_s + (bucket_seconds or 0) - inject_time_s)
 
 
 def injection_inside_window(window: TelemetryWindow, inject_time_s: float) -> bool:

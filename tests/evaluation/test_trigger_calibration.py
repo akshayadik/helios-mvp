@@ -179,3 +179,14 @@ def test_calibration_cli_refuses_pool() -> None:
     )
     assert result.returncode == 2
     assert "pool" in result.stderr
+
+
+def test_calibration_uses_a_fixed_sixty_second_onset_tolerance() -> None:
+    from helios.evaluation.trigger_calibration import ONSET_TOLERANCE_S
+
+    assert ONSET_TOLERANCE_S == 60
+    cases = [_case(0, inject=T0 + 620)]
+    # 30 s bucket [540, 570) ends 50 s before the injection: within tolerance.
+    assert evaluate([_rec(0, T0 + 540)], cases, bucket_seconds=30).false == 0
+    # bucket [480, 510) ends 110 s before: false.
+    assert evaluate([_rec(0, T0 + 480)], cases, bucket_seconds=30).false == 1

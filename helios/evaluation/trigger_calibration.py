@@ -51,6 +51,7 @@ __all__ = [
     "CROP_FRACTIONS",
     "FALSE_RATE_LIMIT",
     "GRID",
+    "ONSET_TOLERANCE_S",
     "CalibrationCase",
     "CorpusResult",
     "audit_passes",
@@ -69,6 +70,10 @@ GRID: dict[str, tuple[float, ...]] = {
     "persistence": (1, 2, 3),
 }
 CROP_FRACTIONS: tuple[float, ...] = (0.25, 0.4, 0.6)
+# A trigger whose bucket ends up to 60 s before the recorded injection counts
+# as true (owner decision 2026-10-27, deviation entry 49): RCAEval's recorded
+# injection times lag the visible onset by up to about a minute.
+ONSET_TOLERANCE_S = 60
 CORPORA: dict[str, tuple[str, str, str]] = {
     # corpus: (captures dir, label-free manifest, signed ground truth)
     "rcaeval_build": (
@@ -176,11 +181,17 @@ def evaluate(
             excluded += 1
             continue
         label = classify_trigger(
-            record, case.inject_time_s, bucket_seconds=bucket_seconds
+            record,
+            case.inject_time_s,
+            bucket_seconds=bucket_seconds,
+            tolerance_s=ONSET_TOLERANCE_S,
         )
         labels[label] += 1
         delay = trigger_delay_s(
-            record, case.inject_time_s, bucket_seconds=bucket_seconds
+            record,
+            case.inject_time_s,
+            bucket_seconds=bucket_seconds,
+            tolerance_s=ONSET_TOLERANCE_S,
         )
         if delay is not None:
             delays.append(delay)
