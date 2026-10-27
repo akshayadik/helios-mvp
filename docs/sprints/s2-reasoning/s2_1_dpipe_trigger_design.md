@@ -26,6 +26,8 @@ S2.1 also finishes D-pipe so it can take part in the confirmatory runs at all: t
 | D-g | **OTel `_sum` series are gauges, not counts.** They are summed durations, so a Poisson floor would make their scale depend on the unit (seconds vs milliseconds); they get the relative gauge floor. The Poisson floor stays for event counts only: `_total`, `_count`, `_bucket` counters, RCAEval `error`, log line counts | owner, 2026-10-27 (before calibration) |
 | D-h | **Direction of resource signals.** Workload and socket count in both directions (a drop means a crash, starvation or a broken connection). CPU and memory count rises only: a drop is a secondary symptom of a workload collapse, and tracking it would inflate false triggers during upstream outages. Applies to the trigger and to D-pipe. Other metrics keep their previous behaviour (trigger: both directions; D-pipe: rises) | owner, 2026-10-27 (before calibration) |
 
+| D-i | **Short-history and many-series corrections.** The first calibration (grid fixed in advance) found no setting at or below 5% false triggers on both corpora (best: about 20% on each, with 41 of 63 OTel faults missed); most false triggers fired just after the four-bucket warm-up, where a scale from four points is noisy. Fix, approved by the owner: each bucket's z is shrunk by a Student-t prediction-interval factor for its number of past points (about 3.7 with four points, near 1 with many), and a service's largest score is divided by the Bonferroni factor for its number of series; both at tail probability 0.001, fixed before the rerun. No parameter refers to a position | owner, 2026-10-27 (after the first calibration) |
+
 ## 3. Goals, non-goals, anti-goals
 
 **Goals**

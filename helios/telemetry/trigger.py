@@ -29,12 +29,14 @@ import hashlib
 import json
 from dataclasses import asdict, dataclass
 from enum import StrEnum
+from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
 from pydantic import BaseModel, ConfigDict
+from scipy import stats
 
 from helios.graph.anomaly_intensity import (
     Series,
@@ -68,9 +70,11 @@ __all__ = [
     "decide",
     "detect",
     "detector_hash",
+    "history_discount",
     "load_detector_params",
     "load_external_triggers",
     "robust_scale",
+    "series_correction",
     "service_scores",
 ]
 
@@ -80,6 +84,12 @@ DETECTOR_VERSION = "trigger-v1"
 WARMUP_BUCKETS = 4  # fixed before calibration, never tuned (design §5.3)
 REL_FLOOR = 0.05  # a gauge's scale is at least 5% of its level
 Z_CAP = 50  # numeric guard only; never stands in for a missing scale
+# Tail probability behind both corrections (owner decision D-i, 2026-10-27):
+# a short history is judged with a Student-t prediction interval, and a
+# service's largest score is divided by the Bonferroni factor for its number
+# of series, so z stays in normal-tail units however few points or many
+# series there are.
+TAIL_PROB = 0.001
 SUSPECT_COUNT = SEED_COUNT
 _MAD_TO_SIGMA = 1.4826
 _TIME_DIGITS = 6
@@ -154,6 +164,27 @@ def robust_scale(history: np.ndarray, *, count_series: bool) -> float:
     return max(spread, floor)
 
 
+@cache
+def history_discount(n: int) -> float:
+    """Factor by which a z from ``n`` past points is shrunk (>= 1, -> 1 as n grows).
+
+    Student-t prediction interval for one new value from n points, relative to
+    the normal quantile: t(1 - TAIL_PROB; n - 1) * sqrt(1 + 1/n) / z(1 - TAIL_PROB).
+    """
+    if n < 2:
+        return float("inf")
+    t = float(stats.t.isf(TAIL_PROB, n - 1)) * float(np.sqrt(1 + 1 / n))
+    return max(1, t / float(stats.norm.isf(TAIL_PROB)))
+
+
+@cache
+def series_correction(m: int) -> float:
+    """Bonferroni factor for the largest of ``m`` series scores (1 for one series)."""
+    if m <= 1:
+        return 1
+    return float(stats.norm.isf(TAIL_PROB / m)) / float(stats.norm.isf(TAIL_PROB))
+
+
 def causal_z(
     values: np.ndarray,
     *,
@@ -164,7 +195,8 @@ def causal_z(
     """|z| of each bucket against the finite buckets before it (never after).
 
     ``upward_only`` series (CPU, memory; owner decision D-h) score rises only:
-    a drop gives 0.
+    a drop gives 0. The z of a short history is shrunk by ``history_discount``
+    (D-i), so a few noisy points cannot set off the trigger.
 
     Scale = ``robust_scale`` of the past. With no scale (a gauge flat at zero)
     a bucket gives no evidence (NaN). Buckets before ``warmup`` past values
@@ -183,7 +215,7 @@ def causal_z(
             delta = float(current) - float(np.median(history))
             if upward_only:
                 delta = max(delta, 0)
-            out[i] = min(abs(delta) / scale, Z_CAP)
+            out[i] = min(abs(delta) / scale / history_discount(history.size), Z_CAP)
     return out
 
 
@@ -229,7 +261,7 @@ def service_scores(
                         upward_only=series.upward_only,
                     )
                 )
-        stacked = np.vstack(scored)
+        stacked = np.vstack(scored) / series_correction(len(scored))
         has = np.isfinite(stacked).any(axis=0)
         z[row, has] = np.nanmax(np.where(np.isfinite(stacked), stacked, -1), axis=0)[
             has

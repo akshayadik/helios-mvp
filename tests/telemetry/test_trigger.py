@@ -102,12 +102,6 @@ def test_causal_z_uses_only_the_past() -> None:
     assert causal_z(v[:6], count_series=False, warmup=4)[5] == z[5]
 
 
-def test_one_event_on_a_flat_count_series_is_noise_not_a_cap() -> None:
-    z = causal_z(np.array([0, 0, 0, 0, 0, 1], dtype=float), count_series=True, warmup=4)
-    assert z[5] == 1
-    assert z[4] == 0
-
-
 def test_flat_gauge_small_move_scores_against_its_level() -> None:
     v = np.array([200, 200, 200, 200, 200, 202], dtype=float)
     z = causal_z(v, count_series=False, warmup=4)
@@ -278,3 +272,31 @@ def test_cpu_drop_does_not_trigger_but_workload_drop_does(tmp_path: Path) -> Non
     rec = detect(workload_drop, PARAMS, root=other)
     assert rec.source == TriggerSource.THRESHOLD
     assert rec.suspects[0] == "cart"
+
+
+# ── short-history and many-series corrections (owner, 2026-10-27, D-i) ──────
+
+
+def test_short_history_is_discounted() -> None:
+    from helios.telemetry.trigger import history_discount
+
+    noise = [40, 41, 42, 40]
+    short = causal_z(np.array([*noise, 60], dtype=float), count_series=False, warmup=4)
+    long_ = causal_z(
+        np.array([*(noise * 5), 60], dtype=float), count_series=False, warmup=4
+    )
+    assert short[-1] < long_[-1]
+    assert history_discount(4) > history_discount(20) > history_discount(400) >= 1
+    assert history_discount(400) < 1.01
+
+
+def test_one_event_on_a_flat_count_series_stays_below_one() -> None:
+    z = causal_z(np.array([0, 0, 0, 0, 0, 1], dtype=float), count_series=True, warmup=4)
+    assert 0 < z[5] < 1
+
+
+def test_many_series_raise_the_bar() -> None:
+    from helios.telemetry.trigger import series_correction
+
+    assert series_correction(1) == 1
+    assert series_correction(300) > series_correction(10) > 1
