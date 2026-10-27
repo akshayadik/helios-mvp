@@ -82,4 +82,55 @@ About 80 OTel incidents sealed (20 exploratory + the build cases), all verifying
 
 ## Results
 
-*(filled in after the campaign)*
+**Run.** 2026-10-26 22:55 IST to 2026-10-27 11:36 IST (first window start 17:26 UTC, last window end 06:05 UTC), one uninterrupted run under `caffeinate`, with no other workload on the Docker host. All 63 cases were captured and labelled with no retries or redone cases. The run log is `data/otel/campaign.log` (counts and positions only). The only non-progress lines are the 7 planned `email` restarts, one after each `emailMemoryLeak` case. All flags were off at the end.
+
+**Pilots (all discarded, logs kept).** Three pilots ran before the campaign. Each found a defect, and its captures were deleted before the full run.
+
+| Log | Defect found | Fix |
+|---|---|---|
+| `pilot1_metrics_gap.log` | the May metric names do not exist in demo 2.2.0, so there were no resource metrics | per-container CPU and memory queries (commit e60c5fb) |
+| `pilot2_builder_not_wired.log` | the new queries were not passed to the campaign builder | wired, with a test on the fetcher's queries |
+| `pilot3_span_labels.log` | spans labelled with the queried service (found in S1.3) | fetcher fix, deviation entry 45 (commit 805c1eb) |
+
+**Integrity.**
+- `bin/capture_campaign.py verify`: the ground-truth signature is OK, 63 labelled cases, and all 63 are intact (window hash and content seal).
+- `finalize` wrote `data/otel/build_manifest.json` with 63 sorted IDs.
+
+**Corpus.**
+
+| | Value |
+|---|---|
+| Cases | 63: 7 per fault; root causes ad 21, cart 7, checkout 7, email 7, payment 7, product-catalog 7, recommendation 7 |
+| paymentFailure variants | 90% ×3, 75% ×2, 50% ×2 |
+| Size | 22 MB (`p1_metrics`, `p2_traces`, `p3_logs` per case) |
+| Rows per case (median) | metrics 11,480, spans 3,966, log lines 3,303 |
+| Rows in total | metrics 704,104, spans 247,743, log lines 207,851 |
+| Empty streams | none |
+
+**Span check (fix confirmed on live data).** Across all 63 cases:
+- No span appears twice.
+- Of 230,910 parent→child span links, 73,170 (32%) cross a service boundary. Under the old fetcher every span of a trace carried one service, so no link could cross.
+- About 17 services appear in each case's traces, and every case's root-cause service is among them.
+
+**Fault visibility at the root-cause service** (medians over the 7 cases; normal period → fault period). Exploratory build data, reported to show what each fault leaves in the telemetry:
+
+| Fault | Error-span share | Median span latency | Container CPU |
+|---|---|---|---|
+| adFailure | none → 0.04 | ×10.1 | ×0.84 |
+| adHighCpu | none → none | ×1.49 | ×2,180 |
+| adManualGc | none → none | ×20.0 | ×13.2 |
+| cartFailure | none → 0.03 | ×1.12 | ×1.80 |
+| emailMemoryLeak | none → none | ×1.12 | ×1.19 |
+| paymentFailure | none → 0.38 | ×1.33 | ×0.96 |
+| paymentUnreachable (label checkout) | none → 0.20 | ×0.87 | ×1.44 |
+| productCatalogFailure | none → 0.04 | ×0.93 | ×0.89 |
+| recommendationCacheFailure | none → 0.38 | ×0.66 | ×0.97 |
+
+Eight of the nine faults show a clear signal in at least one modality at the labelled service. **`emailMemoryLeak` is near-silent within the 5-minute fault period:** email memory rises only 1–2 MiB (47 → 48 MiB in 6 of 7 cases) and latency ×1.12. The leak grows per order, and the load generator's order rate is too low for it to build up in 5 minutes. These cases are kept as hard cases and reported per fault (validity T14); a longer fault period for this flag is a Stage B option, not a protocol change here.
+
+**Warm-up in repetition 1.** 8 of the 9 first-repetition cases hold fewer latency-histogram rows (7,544–11,016 rows against 11,480). The demo had just been started, and a histogram series exists only once its endpoint has received traffic. Container CPU and memory are complete in every case. This is recorded, not corrected; detectors trained on the corpus must not assume a fixed series set.
+
+**Done-when.**
+- 63 build cases plus the 20 exploratory captures make 83 sealed OTel incidents, against a target of about 80.
+- The 20 exploratory captures verify with `bin/verify_captures.py`, and the 63 build cases with `bin/capture_campaign.py verify`.
+- The trace-dependent checks that S1.7 had to void (deviation entry 45) can now run on this corpus. That rerun is S2 work, listed in the S1 exit report.
