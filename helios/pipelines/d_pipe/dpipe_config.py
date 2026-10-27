@@ -41,6 +41,9 @@ RCAEVAL_RESOURCE_NAMES: tuple[str, ...] = (
     "load",
     "workload",
 )
+# Resource series whose drop is also a signal (a crash, starvation or a broken
+# connection; owner decision D-h). Every other channel scores rises only.
+TWO_SIDED_RESOURCE_NAMES: frozenset[str] = frozenset({"workload", "socket"})
 OTEL_RESOURCE_NAMES: tuple[str, ...] = (
     "container_cpu_utilization_ratio",
     "container_memory_usage_total_bytes",

@@ -30,6 +30,7 @@ if TYPE_CHECKING:
 __all__ = [
     "COUNTER_SUFFIXES",
     "COUNT_METRICS",
+    "UPWARD_ONLY_METRICS",
     "Series",
     "bucket_count",
     "combine",
@@ -43,14 +44,28 @@ __all__ = [
 
 COUNTER_SUFFIXES: tuple[str, ...] = ("_total", "_count", "_sum", "_bucket")
 # Plain per-step counts (RCAEval ``error``): event counts, like differenced counters.
+# Differenced ``_sum`` counters are summed durations, not events: gauges (owner
+# decision D-g, 2026-10-27), so their scale does not depend on the unit.
 COUNT_METRICS: frozenset[str] = frozenset({"error"})
+# Only a rise is a signal for CPU and memory: a drop is a secondary symptom of a
+# workload collapse and would inflate false triggers (owner decision D-h).
+UPWARD_ONLY_METRICS: frozenset[str] = frozenset(
+    {
+        "cpu",
+        "mem",
+        "container_cpu_utilization_ratio",
+        "container_memory_usage_total_bytes",
+    }
+)
 
 
 class Series(NamedTuple):
-    """One raw bucket series; ``is_count`` marks event counts (Poisson noise)."""
+    """One raw bucket series; ``is_count`` marks event counts (Poisson noise),
+    ``upward_only`` a series whose drops are not a signal (D-h)."""
 
     values: np.ndarray
     is_count: bool
+    upward_only: bool = False
 
 
 _MAD_TO_SIGMA = 1.4826  # MAD of a normal distribution in units of sigma
@@ -136,8 +151,13 @@ def metric_series(
         counter = str(metric).endswith(COUNTER_SUFFIXES)
         if counter:
             dense = np.concatenate(([np.nan], np.diff(dense)))
+        name = str(metric)
         per_service.setdefault(str(service), []).append(
-            Series(dense, counter or str(metric) in COUNT_METRICS)
+            Series(
+                dense,
+                (counter and not name.endswith("_sum")) or name in COUNT_METRICS,
+                name in UPWARD_ONLY_METRICS,
+            )
         )
     return dict(sorted(per_service.items()))
 

@@ -236,3 +236,45 @@ def test_missing_or_incomplete_parameter_file_is_an_error(tmp_path: Path) -> Non
     path.write_text(json.dumps({"bucket_seconds": 30, "threshold": 6}))
     with pytest.raises(ValueError, match="keys"):
         load_detector_params(path)
+
+
+# ── owner signal rules D-g, D-h (2026-10-27) ─────────────────────────────────
+
+
+def test_sum_series_are_gauges_and_counts_keep_the_poisson_floor() -> None:
+    import pandas as pd
+
+    from helios.graph.anomaly_intensity import metric_series
+
+    rows = [
+        (T0 + b * BUCKET, name, float(b * 10), json.dumps({"service_name": "cart"}))
+        for b in range(6)
+        for name in ("rpc_duration_sum", "rpc_duration_count", "cpu", "error")
+    ]
+    frame = pd.DataFrame(rows, columns=["timestamp", "metric_name", "value", "labels"])
+    series = metric_series(frame, START, 6, BUCKET)["cart"]
+    # order is by metric name: cpu, error, rpc_duration_count, rpc_duration_sum
+    assert [s.is_count for s in series] == [False, True, True, False]
+    assert [s.upward_only for s in series] == [True, False, False, False]
+
+
+def test_upward_only_series_ignore_drops() -> None:
+    v = np.array([40, 41, 42, 40, 41, 5], dtype=float)
+    assert causal_z(v, count_series=False, upward_only=True, warmup=4)[5] == 0
+    assert causal_z(v, count_series=False, warmup=4)[5] > 6
+
+
+def test_cpu_drop_does_not_trigger_but_workload_drop_does(tmp_path: Path) -> None:
+    services = ("cart", "ad")
+    cpu_drop = _window(
+        tmp_path, {("cart", "cpu"): _step(10, 6, value=1)}, services=services
+    )
+    assert detect(cpu_drop, PARAMS, root=tmp_path).source == TriggerSource.FALLBACK
+    other = tmp_path / "other"
+    other.mkdir()
+    workload_drop = _window(
+        other, {("cart", "workload"): _step(10, 6, value=1)}, services=services
+    )
+    rec = detect(workload_drop, PARAMS, root=other)
+    assert rec.source == TriggerSource.THRESHOLD
+    assert rec.suspects[0] == "cart"

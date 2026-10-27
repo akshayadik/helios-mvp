@@ -15,7 +15,10 @@ from typing import TYPE_CHECKING
 import numpy as np
 import scipy.stats.mstats
 
-from helios.pipelines.d_pipe.dpipe_config import W_ERROR_DEFAULT
+from helios.pipelines.d_pipe.dpipe_config import (
+    TWO_SIDED_RESOURCE_NAMES,
+    W_ERROR_DEFAULT,
+)
 from helios.telemetry.scope import in_scope
 from helios.telemetry.trigger import robust_scale
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
@@ -45,8 +48,18 @@ class ScoredServices:
     evidence: dict[str, float] = field(default_factory=dict)
 
 
-def _shift(series: list[float], before: np.ndarray, *, count_series: bool) -> float:
-    """Robust shift of the part after the split over the part before it (>= 0)."""
+def _shift(
+    series: list[float],
+    before: np.ndarray,
+    *,
+    count_series: bool,
+    two_sided: bool = False,
+) -> float:
+    """Robust shift of the part after the split over the part before it (>= 0).
+
+    Rises only, unless ``two_sided`` (workload, socket: D-h), where a drop
+    counts as much as a rise.
+    """
     values = np.asarray(series, dtype="float64")
     ref = values[before][np.isfinite(values[before])]
     inc = values[~before][np.isfinite(values[~before])]
@@ -55,7 +68,8 @@ def _shift(series: list[float], before: np.ndarray, *, count_series: bool) -> fl
     scale = robust_scale(ref, count_series=count_series)
     if scale <= 0:
         return 0
-    return max(0, (wm90(inc) - float(np.median(ref))) / scale)
+    delta = (wm90(inc) - float(np.median(ref))) / scale
+    return abs(delta) if two_sided else max(0, delta)
 
 
 def _normalised(raw: dict[str, float]) -> dict[str, float]:
@@ -87,8 +101,13 @@ class AnomalyScorer:
             )
             res[s] = max(
                 (
-                    _shift(v, before, count_series=False)
-                    for _m, v in sorted(parsed.resource_values.get(s, {}).items())
+                    _shift(
+                        v,
+                        before,
+                        count_series=False,
+                        two_sided=m in TWO_SIDED_RESOURCE_NAMES,
+                    )
+                    for m, v in sorted(parsed.resource_values.get(s, {}).items())
                 ),
                 default=0,
             )

@@ -154,9 +154,16 @@ def robust_scale(history: np.ndarray, *, count_series: bool) -> float:
 
 
 def causal_z(
-    values: np.ndarray, *, count_series: bool, warmup: int = WARMUP_BUCKETS
+    values: np.ndarray,
+    *,
+    count_series: bool,
+    upward_only: bool = False,
+    warmup: int = WARMUP_BUCKETS,
 ) -> np.ndarray:
     """|z| of each bucket against the finite buckets before it (never after).
+
+    ``upward_only`` series (CPU, memory; owner decision D-h) score rises only:
+    a drop gives 0.
 
     Scale = ``robust_scale`` of the past. With no scale (a gauge flat at zero)
     a bucket gives no evidence (NaN). Buckets before ``warmup`` past values
@@ -172,8 +179,10 @@ def causal_z(
             continue
         scale = robust_scale(history, count_series=count_series)
         if scale > 0:
-            centre = float(np.median(history))
-            out[i] = min(abs(float(current) - centre) / scale, Z_CAP)
+            delta = float(current) - float(np.median(history))
+            if upward_only:
+                delta = max(delta, 0)
+            out[i] = min(abs(delta) / scale, Z_CAP)
     return out
 
 
@@ -212,7 +221,13 @@ def service_scores(
             for series in part.get(service, []):
                 values = series.values.astype("float64", copy=True)
                 values[:first] = np.nan
-                scored.append(causal_z(values, count_series=series.is_count))
+                scored.append(
+                    causal_z(
+                        values,
+                        count_series=series.is_count,
+                        upward_only=series.upward_only,
+                    )
+                )
         stacked = np.vstack(scored)
         has = np.isfinite(stacked).any(axis=0)
         z[row, has] = np.nanmax(np.where(np.isfinite(stacked), stacked, -1), axis=0)[
