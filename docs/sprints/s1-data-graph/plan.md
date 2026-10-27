@@ -1,6 +1,6 @@
 # Sprint S1 — Data and graph · plan
 
-**Window:** planned 16 Nov – 4 Dec 2026 (15 working days); **started early on 2026-10-24** at the owner's request, end date unchanged (about 30 working days available) · **Milestone:** S2-M6 · **Exit tag:** `rb-s1-exit` · **Status:** in progress
+**Window:** planned 16 Nov – 4 Dec 2026 (15 working days); **started early on 2026-10-24** at the owner's request, end date unchanged (about 30 working days available) · **Milestone:** S2-M6 · **Exit tag:** `rb-s1-exit` · **Status:** closed 2026-10-27 ([exit report](exit_report.md))
 
 Task details: `docs/tracking/helios_task_breakdown.md` § Sprint S1 (authoritative).
 

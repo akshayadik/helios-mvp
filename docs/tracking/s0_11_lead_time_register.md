@@ -20,7 +20,7 @@ Items with a long lead time that only the owner can start, each with the date it
 | L6 | Budget decision: 70B sensitivity subset (RB2, E6) | AA | 2027-02-05 | E6 | Open; options in §3 |
 | L7 | Budget decision: judge models for FAE (optional, E5) | AA | 2027-02-05 | E5 (optional part only) | Open |
 | L8 | Baseline environments for B1–B5 and the alternates | Claude | Before S4.8 (2027-01-18) | S4.8, E2 | Spike done 2026-10-24: both environments build and every agreed method imports; B4 needs an adapter (§4) |
-| L9 | Docker Desktop memory raised to at least 16 GB | AA | Before S4.8 (2027-01-18) | S4.8, E2 | Currently about 8 GB |
+| L9 | Docker Desktop memory raised to at least 16 GB | AA | Before S4.8 (2027-01-18) | S4.8, E2 | **Done** (owner, during S1): raised to 16 GB; the S1.2 campaign ran on it |
 | L10 | Backups: `DEVIATION_ED25519_PRIVATE_KEY` and `DEVIATION_HMAC_SECRET` in the password manager; `osf_deposit_1.zip` moved out of the repo and kept | AA | Now | Every future deviation entry; deposit-1 audit trail | Open |
 
 ---

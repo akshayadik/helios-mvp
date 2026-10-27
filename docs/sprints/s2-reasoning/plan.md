@@ -1,6 +1,6 @@
 # Sprint S2 — Reasoning, consensus, narratives · plan
 
-**Window:** 7–25 Dec 2026 (15 working days) · **Milestone:** S2-M7 · **Exit tag:** `rb-s2-exit` · **Status:** planned
+**Window:** 7–25 Dec 2026 (15 working days); may start early once the owner confirms, as S1 did (S1 closed 2026-10-27, about five weeks ahead) · **Milestone:** S2-M7 · **Exit tag:** `rb-s2-exit` · **Status:** next — plan refreshed at the S1 exit (2026-10-27)
 
 Task details: `docs/tracking/helios_task_breakdown.md` § Sprint S2 (authoritative).
 
@@ -10,11 +10,11 @@ The three peer pipelines produce calibrated verdicts; MAHC fuses them with calib
 
 ## Entry conditions
 
-`rb-s1-exit`: sealed build data (S1.1, S1.2), UEG-C and pruner (S1.5, S1.7), verdict contract (S1.8). Second rater and adjudicator confirmed (S0.11 L2–L3) before S2.9 training.
+`rb-s1-exit` — **met 2026-10-27**: sealed build data (RCAEval 495 build cases, S1.1; 63 trace-bearing OTel build cases, S1.2), UEG-C and pruner (S1.5, S1.7), verdict contract (S1.8), scoring path (S1.9), price book and cost (S1.10). Second rater and adjudicator confirmed (S0.11 L2–L3) before S2.9 training — **open, due 30 Nov**.
 
 ## Capacity
 
-15½ days of tasks in 15 working days, plus the raters' training time for S2.9.
+15½ days of tasks in 15 working days, plus the raters' training time for S2.9. With an early start the sprint has about eight weeks before 25 Dec; any time left over moves S3 forward to protect the over-committed S4. S2.9 training cannot start before rater 2 is confirmed.
 
 ## Tasks
 
@@ -35,6 +35,15 @@ The three peer pipelines produce calibrated verdicts; MAHC fuses them with calib
 - *Decided 2026-10-26:* detection trigger option (a) — one frozen, label-free detector gives HELIOS and the five baselines the same trigger time (S2.1; S2-M6-RES04). The detector's parameters need a deviation entry; the true-injection-time run is exploratory only.
 - Rater training with rater 2 (S2.9): the 50-narrative training set may run into early January.
 - Holiday week 28 Dec – 1 Jan is off.
+
+## Carried in from S1 (exit report §5)
+
+- **Build data for S2.1 and S2.2.** The 63 OTel build cases (`data/otel/`) are the only build data with traces; the RCAEval build corpus has none. Fault visibility varies (S1.2 results): `emailMemoryLeak` is near-silent, and the first repetition has fewer latency-histogram series, so the detector must not assume a fixed series set.
+- **Candidate set on OTel graphs** includes demo infrastructure containers (Prometheus, Jaeger, OpenSearch, the collector, the load generator, flagd). Decide in S2.1–S2.2 whether candidates are filtered; a filter is a deviation entry.
+- **K-hop check from the repository:** add an `otel_build` corpus to `bin/khop_calibrate.py` (S2.2). The exit check (K = 3, top-n = 50 kept; 63/63 with the floor) was run from a scratch wrapper.
+- **σ** is `None` in every verdict until S2.1–S2.3 fill it (S1.8).
+- `metric_contract.md` §9 correction waits for the next OSF deposit addendum (S1.8, S1.9).
+- Owner, not blocking S2 tasks: unverified price-book entries (before `build-freeze`); chair-call items (opportunity-cost figure, retention and review minutes, disclosure of the May capture defects T13 and T17).
 
 ## Expected deviation entries
 

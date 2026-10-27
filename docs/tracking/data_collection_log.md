@@ -75,7 +75,7 @@ All incidents use `evaluation_phase = exploratory` and are permanently excluded 
 
 ---
 
-*Last updated: 2026-05-15 — 20 entries from Milestone 1 corpus*
+*Last updated: 2026-10-27 — 20 entries from Milestone 1 corpus; RCAEval imports (S1.1) and the OTel build corpus (S1.2) recorded as summaries below*
 
 ---
 
@@ -89,3 +89,13 @@ Recorded by the RCAEval authors, not captured here; imported with `bin/import_rc
 | Pool (confirmatory) | RE2-OB, RE2-TT, RE3-OB, RE3-TT | 240 | confirmatory | P1, P2 all; P3 in 239 | `8f68dfd9b50de365549b9889b181e43a8f89b7155c7a81ac16c908f56c7286b1` | Trace times in microseconds; 1 logs_missing (known RE2-TT case); 0 injection-tool strings; Online Boutique cases hold 4 sparse Sock Shop metric columns, kept as distinct services. **Locked for runs until tag `build-freeze`** |
 
 Sealed windows live in `data/rcaeval/{build,pool}/` (git-ignored, 0.5 GB and 5.7 GB). The seals bind these exact bytes: **back up `data/rcaeval/pool/`** — re-converting with different library versions may produce different bytes and therefore different seals.
+
+## Build corpus — OTel Demo campaign (S1.2, 2026-10-26/27)
+
+Recorded here with `bin/capture_campaign.py` on the pinned OTel Demo 2.2.0 (`b74a7bc`); protocol in `docs/sprints/s1-data-graph/s1_2_otel_build_captures.md`, deviation entries 44 (protocol) and 45 (span labels). **No per-case rows:** incident IDs are opaque and the capture order would reveal the fault rotation, so the corpus is recorded as a summary.
+
+| Corpus | Cases | Phase | Streams | Manifest SHA-256 | Notes |
+|---|---|---|---|---|---|
+| otel_build | 63 (9 faults × 7 repetitions) | exploratory (build) | P1 (latency histograms + per-container CPU and memory), P2, P3 in all 63 | `953c8814296785240036ef46f5e0602fda86b69f9de765c70a49144d85cac60d` | One run, 2026-10-26 22:55 – 2026-10-27 11:36 IST; all 63 intact (window hash + content seal); 22 MB, committed in `data/otel/build/`; three pilots discarded; first repetition has fewer latency-histogram series (warm-up) |
+
+Labels: `data/otel/ground_truth_build.json` (signed, SHA-256 `d2791ac034ef187ce410f68755defbed15e63bb05b24ac5fecb6752bc4354f7d`). Verify with `poetry run python bin/capture_campaign.py verify`.

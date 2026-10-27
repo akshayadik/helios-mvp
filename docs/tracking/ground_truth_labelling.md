@@ -59,8 +59,12 @@ All `evaluation_phase = exploratory`. These labels are NOT used for confirmatory
 
 ## Future Entries
 
-`[PENDING: Stage 2 — AIOpsLab confirmatory corpus (174 incidents); labels from AIOpsLab published benchmark catalogue; root_cause_service may differ from fault_injected_service; two-labeller agreement check required per OSF §2.4]`
+**Other corpora (signed label files, not listed per case):**
+
+- RCAEval build (495) and confirmatory pool (240): `data/rcaeval/ground_truth_build.json`, `data/rcaeval/ground_truth_pool.json` (S1.1). The pool labels are locked until tag `build-freeze`.
+- OTel build corpus (63, S1.2): `data/otel/ground_truth_build.json`. The label is the service whose code reads the fault flag (`paymentUnreachable` → checkout); rule and exclusions in deviation entry 44 and `helios/adapters/otel_campaign.py` (FAULTS); validity T14.
+- AIOpsLab: no-go for the confirmatory pool (S1.3); an exploratory corpus is a Stage B item.
 
 ---
 
-*Last updated: 2026-05-15 — 20 exploratory labels from Milestone 1 corpus (OTEL Demo only)*
+*Last updated: 2026-10-27 — 20 exploratory labels from the Milestone 1 corpus listed above; RCAEval (S1.1) and OTel build (S1.2) labels are signed files*

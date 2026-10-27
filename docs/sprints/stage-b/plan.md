@@ -27,6 +27,13 @@ Build every remaining part of the product, so that nothing in the approved scope
 
 Plus every Tier-2 item recorded as moved to Stage B during S1–S5.
 
+## Carried in from Stage A
+
+| Item | From | Module |
+|---|---|---|
+| AIOpsLab exploratory corpus: conversion into the sealed format works (one HotelReservation window, S1.3); pin its images and charts, record a set of problems, and evaluate exploratorily | S1.3 (no-go for the pool) | B5, recorded during B1 |
+| Longer fault period for `emailMemoryLeak` (near-silent within 5 minutes in the S1.2 corpus) | S1.2 | B5 (OTel exploratory runs) |
+
 ## Risks
 
 | Risk | Mitigation |
