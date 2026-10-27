@@ -1,8 +1,13 @@
 """RunOrchestrator — wires full C1 pipeline dispatch for a corpus run (§3.6.8, §5.1).
 
 For each incident: CaptureReader verifies hash → SnapshotRegistry registers snapshot
-→ three pipelines dispatch, each giving a PipelineVerdict (S1.8) → MetricIntegrityGate checks consistency
-→ ResultStore inserts passing verdicts → ReconciliationLedger records outcome.
+→ the shared detection trigger is computed and stored (S2.1) → the UEG-C is built and
+pruned around the trigger's suspects → three pipelines dispatch, each giving a
+PipelineVerdict (S1.8) → MetricIntegrityGate checks consistency → ResultStore inserts
+passing verdicts → ReconciliationLedger records outcome.
+
+Out-of-scope services (helios.telemetry.scope, D-f) are dropped from every
+pipeline's ranking here, the same way for every pipeline.
 """
 
 from __future__ import annotations
@@ -21,14 +26,26 @@ from helios.orchestrator.ledger import ReconciliationLedger
 from helios.pipelines.d_pipe.pipeline import run_dpipe
 from helios.pipelines.g_pipe.pipeline import run_gpipe, should_run_gpipe
 from helios.pipelines.l_pipe.pipeline import run_lpipe
+from helios.schemas.telemetry import EvaluationPhase
 from helios.schemas.ueg_c import UEGCSnapshot
 from helios.schemas.verdict import (
     PipelineName,
     PipelineVerdict,
     VerdictStatus,
+    top1_share,
 )
 from helios.store.result_store import ResultStore
 from helios.telemetry.reader import CaptureReader
+from helios.telemetry.scope import OUT_OF_SCOPE_SERVICES, filter_in_scope, in_scope
+from helios.telemetry.trigger import (
+    DetectorParams,
+    ExternalTriggerRefusedError,
+    ProvisionalParametersError,
+    TriggerRecord,
+    detect,
+    load_detector_params,
+    load_external_triggers,
+)
 from helios.vcl.decorators import GatedComponentInactiveError, set_current_manifest
 from helios.vcl.snapshot_registry import DuplicateSnapshotError, SnapshotRegistry
 
@@ -36,6 +53,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
 
+    from helios.schemas.telemetry import TelemetryWindow
     from helios.vcl.config import VCLManifest
 
 __all__ = ["RunOrchestrator"]
@@ -63,7 +81,11 @@ class RunOrchestrator:
         reconciliation_path: Path,
         exclusion_ledger: AppendOnlyLedger,
         hmac_key: bytes,
+        detector_params: DetectorParams | None = None,
+        external_triggers: Path | None = None,
     ) -> None:
+        """``detector_params`` default to the frozen file; ``external_triggers``
+        (exploratory only) replaces the detector with supplied records."""
         set_current_manifest(manifest)
         self._manifest = manifest
         self._reader = CaptureReader(captures_dir, seal_key=hmac_key)
@@ -74,6 +96,31 @@ class RunOrchestrator:
         )
         self._exclusion_ledger = exclusion_ledger
         self._config_hash = manifest.compute_variant_config_hash()
+        self._detector = (
+            detector_params if detector_params is not None else load_detector_params()
+        )
+        self._external = (
+            load_external_triggers(external_triggers)
+            if external_triggers is not None
+            else None
+        )
+
+    def _trigger_for(self, window: TelemetryWindow) -> TriggerRecord:
+        """The shared trigger of a window; refusals come before anything runs."""
+        if window.evaluation_phase == EvaluationPhase.CONFIRMATORY:
+            if self._external is not None:
+                raise ExternalTriggerRefusedError(
+                    "externally supplied triggers are refused in confirmatory runs"
+                )
+            if self._detector.provisional:
+                raise ProvisionalParametersError(
+                    "detector parameters are provisional; freeze them first"
+                )
+        if self._external is not None:
+            if window.incident_id not in self._external:
+                raise ValueError("no supplied trigger for this incident")
+            return self._external[window.incident_id]
+        return detect(window, self._detector)
 
     def run(self, corpus: Path) -> None:
         """Process every incident in corpus through the full C1 path."""
@@ -106,6 +153,10 @@ class RunOrchestrator:
 
         window = verification.window
         snapshot_hash = window.compute_window_hash()
+        trigger = self._trigger_for(window)
+        # TTCD/TTT start here (deviation entry 46): graph build and pruning use
+        # the trigger, so they are measured analysis, not start-up.
+        handover_unix = time.time()
 
         if not self._registry.contains(snapshot_hash):
             with contextlib.suppress(DuplicateSnapshotError):
@@ -113,14 +164,27 @@ class RunOrchestrator:
 
         # Build UEG-C once per incident
         ueg_c = None
+        seeds: list[str] = []
         if self._manifest.l2b_graph and window.p2_traces_path is not None:
             ueg_c = build_ueg_c(window, self._config_hash)
             if ueg_c is not None:
                 # ueg_structural ON keeps the typed graph; OFF flattens it to one
                 # untyped edge kind (HELIOS-noStructural, S1.6).
                 ueg_c = apply_structural_bundle(ueg_c).snapshot
-                # Incident-local subgraph, Algorithm 5 (S1.7).
-                ueg_c, _prune_result = khop_prune(ueg_c)
+                # Incident-local subgraph, Algorithm 5 (S1.7), seeded by the
+                # trigger's suspects that are services of the graph.
+                candidates = set(ueg_c.candidate_ids())
+                seeds = [s for s in trigger.suspects if s in candidates]
+                ueg_c, _prune_result = khop_prune(
+                    ueg_c, seeds=seeds or None, exclude=OUT_OF_SCOPE_SERVICES
+                )
+        self._store.insert_trigger(
+            trigger,
+            run_id=run_id,
+            variant_config_hash=self._config_hash,
+            seeds_from_trigger=bool(seeds),
+            handover_unix=handover_unix,
+        )
 
         base: dict[str, Any] = {
             "run_id": run_id,
@@ -141,11 +205,14 @@ class RunOrchestrator:
                 variant_config_hash=self._config_hash,
                 evaluation_phase=window.evaluation_phase,
                 run_id=run_id,
+                trigger=trigger,
             ),
         )
-        dpipe_scores: dict[str, float] = d_out.get("candidate_scores", {})
+        # Routing sees what the stored D-pipe verdict shows: in-scope only (D-f).
+        d_routed = _in_scope_output(d_out) if d_out else d_out
+        dpipe_scores: dict[str, float] = d_routed.get("candidate_scores", {})
         graph = ueg_c
-        if graph is not None and should_run_gpipe(d_out, self._manifest):
+        if graph is not None and should_run_gpipe(d_routed, self._manifest):
             g_verdict, _ = self._dispatch(
                 PipelineName.GPIPE,
                 base,
@@ -220,6 +287,7 @@ class RunOrchestrator:
         """Run one pipeline; latency and CPU time are measured here, the same way
         for every pipeline. A pipeline gated off by its flag gives a SKIPPED
         verdict."""
+        started = time.time()
         wall, cpu = time.perf_counter(), time.process_time()
         try:
             out = call()
@@ -227,7 +295,9 @@ class RunOrchestrator:
             return self._skipped(pipeline, base), {}
         latency_ms = (time.perf_counter() - wall) * _MS_PER_S
         cpu_ms = (time.process_time() - cpu) * _MS_PER_S
-        return self._build_verdict(pipeline, base, out, latency_ms, cpu_ms), out
+        verdict = self._build_verdict(pipeline, base, out, latency_ms, cpu_ms)
+        self._store.insert_timing(base["run_id"], pipeline, started, time.time())
+        return verdict, out
 
     @staticmethod
     def _skipped(pipeline: PipelineName, base: dict[str, Any]) -> PipelineVerdict:
@@ -251,6 +321,7 @@ class RunOrchestrator:
             raise ValueError(
                 f"{pipeline.value} returned a verdict for {out.get('pipeline')!r}"
             )
+        out = _in_scope_output(out)
         # Identity fields come from the pipeline when it reports them, so the
         # integrity gate can catch a pipeline that ran on another snapshot.
         return PipelineVerdict.from_output(
@@ -258,3 +329,22 @@ class RunOrchestrator:
             latency_ms=latency_ms,
             cpu_ms=cpu_ms,
         )
+
+
+def _in_scope_output(out: dict[str, Any]) -> dict[str, Any]:
+    """A pipeline output without out-of-scope services (D-f).
+
+    mu becomes the top-1 share of the remaining scores; a ranked output left
+    with no candidate becomes ABSTAINED (it named only out-of-scope services).
+    """
+    out = dict(out)
+    scores = dict(out.get("candidate_scores", {}))
+    kept = {k: v for k, v in scores.items() if in_scope(k)}
+    if len(kept) != len(scores):
+        out["candidate_scores"] = kept
+        if out.get("mu") is not None:
+            out["mu"] = top1_share(kept)
+    out["ranked_candidates"] = filter_in_scope(out.get("ranked_candidates", []))
+    if out.get("status") == VerdictStatus.RANKED.value and not out["ranked_candidates"]:
+        out.update(status=VerdictStatus.ABSTAINED.value, mu=None, sigma=None)
+    return out

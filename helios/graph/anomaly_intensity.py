@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import json
 import math
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 import numpy as np
 import pandas as pd
@@ -29,15 +29,30 @@ if TYPE_CHECKING:
 
 __all__ = [
     "COUNTER_SUFFIXES",
+    "COUNT_METRICS",
+    "Series",
     "bucket_count",
     "combine",
     "log_intensity",
+    "log_series",
     "metric_intensity",
+    "metric_series",
     "robust_z",
     "service_of",
 ]
 
 COUNTER_SUFFIXES: tuple[str, ...] = ("_total", "_count", "_sum", "_bucket")
+# Plain per-step counts (RCAEval ``error``): event counts, like differenced counters.
+COUNT_METRICS: frozenset[str] = frozenset({"error"})
+
+
+class Series(NamedTuple):
+    """One raw bucket series; ``is_count`` marks event counts (Poisson noise)."""
+
+    values: np.ndarray
+    is_count: bool
+
+
 _MAD_TO_SIGMA = 1.4826  # MAD of a normal distribution in units of sigma
 
 
@@ -81,13 +96,16 @@ def _max_over(series: list[np.ndarray], n: int) -> np.ndarray:
     return np.where(np.isfinite(out), out, 0).astype("float64")
 
 
-def metric_intensity(
+def metric_series(
     metrics: pd.DataFrame,
     window_start_iso: str,
     n_buckets: int,
     bucket_seconds: int,
-) -> dict[str, np.ndarray]:
-    """Metric intensity per service from P1 rows (timestamp, metric_name, value, labels)."""
+) -> dict[str, list[Series]]:
+    """Raw bucket means per series (metric name + labels), counters differenced.
+
+    Services and series are in sorted order; buckets with no sample are NaN.
+    """
     if metrics.empty:
         return {}
     start = _ts(window_start_iso).timestamp()
@@ -111,33 +129,50 @@ def metric_intensity(
     means = frame.groupby(["service", "metric", "labels", "bucket"], sort=True)[
         "value"
     ].mean()
-    per_service: dict[str, list[np.ndarray]] = {}
+    per_service: dict[str, list[Series]] = {}
     for (service, metric, _labels), series in means.groupby(level=[0, 1, 2], sort=True):
         dense = np.full(n_buckets, np.nan)
         dense[series.index.get_level_values("bucket").astype(int)] = series.to_numpy()
-        if str(metric).endswith(COUNTER_SUFFIXES):
+        counter = str(metric).endswith(COUNTER_SUFFIXES)
+        if counter:
             dense = np.concatenate(([np.nan], np.diff(dense)))
-        per_service.setdefault(str(service), []).append(robust_z(dense))
-    return {s: _max_over(v, n_buckets) for s, v in sorted(per_service.items())}
+        per_service.setdefault(str(service), []).append(
+            Series(dense, counter or str(metric) in COUNT_METRICS)
+        )
+    return dict(sorted(per_service.items()))
 
 
-def log_intensity(
-    features: LogTemplateFeatures,
+def metric_intensity(
+    metrics: pd.DataFrame,
     window_start_iso: str,
     n_buckets: int,
     bucket_seconds: int,
 ) -> dict[str, np.ndarray]:
-    """Log intensity per service from S1.4 template features (same buckets)."""
+    """Metric intensity per service from P1 rows (timestamp, metric_name, value, labels)."""
+    per_service = metric_series(metrics, window_start_iso, n_buckets, bucket_seconds)
+    return {
+        s: _max_over([robust_z(x.values) for x in v], n_buckets)
+        for s, v in per_service.items()
+    }
+
+
+def log_series(
+    features: LogTemplateFeatures,
+    window_start_iso: str,
+    n_buckets: int,
+    bucket_seconds: int,
+) -> dict[str, list[Series]]:
+    """Per service: lines and novel-template lines per bucket (both counts; 0 if none)."""
     if features.novelty.empty:
         return {}
     start = _ts(window_start_iso)
     lines = features.counts.groupby(["service", "bucket_start"])["count"].sum()
     novel = features.novelty.set_index(["service", "bucket_start"])["novel_lines"]
-    out: dict[str, np.ndarray] = {}
+    out: dict[str, list[Series]] = {}
     for service in sorted(features.novelty["service"].unique()):
         if not str(service).strip():
             continue  # lines without a service name are not a service (as metrics)
-        rows: list[np.ndarray] = []
+        rows: list[Series] = []
         for source in (lines, novel):
             part = source.loc[service]
             idx = (
@@ -150,9 +185,23 @@ def log_intensity(
             dense = np.zeros(n_buckets)
             keep = (idx >= 0) & (idx < n_buckets)
             dense[idx[keep]] = part.to_numpy(dtype="float64")[keep]
-            rows.append(robust_z(dense))
-        out[str(service)] = _max_over(rows, n_buckets)
+            rows.append(Series(dense, True))
+        out[str(service)] = rows
     return out
+
+
+def log_intensity(
+    features: LogTemplateFeatures,
+    window_start_iso: str,
+    n_buckets: int,
+    bucket_seconds: int,
+) -> dict[str, np.ndarray]:
+    """Log intensity per service from S1.4 template features (same buckets)."""
+    per_service = log_series(features, window_start_iso, n_buckets, bucket_seconds)
+    return {
+        s: _max_over([robust_z(x.values) for x in v], n_buckets)
+        for s, v in per_service.items()
+    }
 
 
 def combine(*parts: dict[str, np.ndarray]) -> dict[str, np.ndarray]:

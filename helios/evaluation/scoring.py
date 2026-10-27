@@ -33,6 +33,7 @@ from typing import TYPE_CHECKING, Any
 
 from helios.adapters.rcaeval import verify_ground_truth
 from helios.telemetry.pool_lock import BUILD_FREEZE_TAG, PoolLockedError, build_frozen
+from helios.telemetry.scope import filter_in_scope, in_scope
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
 
 if TYPE_CHECKING:
@@ -49,6 +50,7 @@ __all__ = [
     "Corpus",
     "GroundTruth",
     "ListKind",
+    "OutOfScopeLabelError",
     "ScoringReport",
     "avg_at_k",
     "hr_at",
@@ -63,7 +65,7 @@ __all__ = [
 
 HELIOS_ENABLE_SCORING: bool = True
 
-SCORING_VERSION = "scoring-v1"
+SCORING_VERSION = "scoring-v2"  # v2: out-of-scope services dropped (S2.1, D-f)
 HR_KS: tuple[int, ...] = (1, 3, 10)
 AVG_K = 5
 
@@ -129,6 +131,10 @@ def reciprocal_rank(rank: int | None) -> float:
     return 0 if rank is None else 1 / rank
 
 
+class OutOfScopeLabelError(ValueError):
+    """A ground-truth label names an out-of-scope service (never injected; D-f)."""
+
+
 @dataclass(frozen=True)
 class CaseScore:
     """Scores of one ranked list for one case."""
@@ -144,8 +150,14 @@ class CaseScore:
 def score_ranking(
     ranked: Sequence[str], truth: str, *, stem: bool = False
 ) -> CaseScore:
-    """Every contract accuracy score of one ranked list."""
-    rank = rank_of(ranked, truth, stem=stem)
+    """Every contract accuracy score of one ranked list.
+
+    Out-of-scope services (helios.telemetry.scope, D-f) are dropped from the
+    list first, for every system alike; a label on that list is refused.
+    """
+    if not in_scope(truth):
+        raise OutOfScopeLabelError("ground-truth label is an out-of-scope service")
+    rank = rank_of(filter_in_scope(ranked), truth, stem=stem)
     hr1, hr3, hr10 = (hr_at(rank, k) for k in HR_KS)
     return CaseScore(
         rank=rank,

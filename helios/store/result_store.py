@@ -14,7 +14,8 @@ import duckdb
 
 if TYPE_CHECKING:
     from helios.consensus.verdict import ConsensusVerdict
-    from helios.schemas.verdict import PipelineVerdict
+    from helios.schemas.verdict import PipelineName, PipelineVerdict
+    from helios.telemetry.trigger import TriggerRecord
 
 __all__ = ["ResultStore"]
 
@@ -229,6 +230,95 @@ class ResultStore:
         )
         desc = cur.description or []
         cols = [d[0] for d in desc]
+        return [dict(zip(cols, row, strict=False)) for row in cur.fetchall()]
+
+    # ------------------------------------------------------------------
+    # Trigger and timings (S2.1) — written by the runner, read by scoring,
+    # TTCD/TTT tooling and the baseline harness
+    # ------------------------------------------------------------------
+
+    def insert_trigger(
+        self,
+        record: TriggerRecord,
+        *,
+        run_id: str,
+        variant_config_hash: str,
+        seeds_from_trigger: bool,
+        handover_unix: float,
+    ) -> None:
+        """Store the trigger a run handed to every system."""
+        self._con.execute(
+            """
+            INSERT INTO trigger_row (
+                run_id, incident_id, variant_config_hash, trigger_time_s,
+                suspects, context, source, detector_hash, seeds_from_trigger,
+                handover_unix
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            [
+                run_id,
+                record.incident_id,
+                variant_config_hash,
+                record.trigger_time_s,
+                json.dumps(list(record.suspects)),
+                json.dumps(list(record.context)),
+                record.source.value,
+                record.detector_hash,
+                seeds_from_trigger,
+                handover_unix,
+            ],
+        )
+
+    def fetch_trigger(
+        self, incident_id: str, variant_config_hash: str
+    ) -> TriggerRecord | None:
+        """The latest stored trigger of an incident under a variant, or None."""
+        from helios.telemetry.trigger import TriggerRecord, TriggerSource
+
+        row = self._con.execute(
+            """
+            SELECT incident_id, trigger_time_s, suspects, context, source,
+                   detector_hash
+            FROM trigger_row
+            WHERE incident_id = ? AND variant_config_hash = ?
+            ORDER BY stored_at DESC, run_id DESC
+            LIMIT 1
+            """,
+            [incident_id, variant_config_hash],
+        ).fetchone()
+        if row is None:
+            return None
+        return TriggerRecord(
+            incident_id=row[0],
+            trigger_time_s=row[1],
+            suspects=tuple(json.loads(row[2])),
+            context=tuple(json.loads(row[3])),
+            source=TriggerSource(row[4]),
+            detector_hash=row[5],
+        )
+
+    def insert_timing(
+        self,
+        run_id: str,
+        pipeline: PipelineName,
+        started_unix: float,
+        published_unix: float,
+    ) -> None:
+        """Wall-clock start and publication of one pipeline's verdict."""
+        self._con.execute(
+            "INSERT INTO timing_row (run_id, pipeline, started_unix, published_unix) "
+            "VALUES (?, ?, ?, ?)",
+            [run_id, pipeline.value, started_unix, published_unix],
+        )
+
+    def fetch_timings(self, run_id: str) -> list[dict[str, object]]:
+        """Timing rows of a run, in order of publication."""
+        cur = self._con.execute(
+            "SELECT * FROM timing_row WHERE run_id = ? "
+            "ORDER BY published_unix, pipeline",
+            [run_id],
+        )
+        cols = [d[0] for d in cur.description or []]
         return [dict(zip(cols, row, strict=False)) for row in cur.fetchall()]
 
     # ------------------------------------------------------------------

@@ -1,0 +1,6 @@
+{
+  "bucket_seconds": 30,
+  "threshold": 6,
+  "persistence": 2,
+  "provisional": true
+}

@@ -42,10 +42,11 @@ from helios.schemas.ueg_c import (
     UEGCEdge,
     UEGCSnapshot,
 )
+from helios.telemetry.scope import scope_key
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Collection, Sequence
 
 __all__ = [
     "EDGE_BUDGET",
@@ -120,12 +121,25 @@ def _peak(snapshot: UEGCSnapshot) -> dict[str, float]:
     }
 
 
+def _excluder(exclude: Collection[str]) -> Callable[[str], bool]:
+    keys = {scope_key(x) for x in exclude}
+    return lambda name: scope_key(name) in keys
+
+
 def seed_nodes(
-    snapshot: UEGCSnapshot, count: int = SEED_COUNT
+    snapshot: UEGCSnapshot,
+    count: int = SEED_COUNT,
+    *,
+    exclude: Collection[str] = (),
 ) -> tuple[tuple[str, ...], SeedSource]:
-    """Label-free seeds: top peak anomaly intensity, else entry points, else all."""
-    services = set(_services(snapshot))
-    peak = _peak(snapshot)
+    """Label-free seeds: top peak anomaly intensity, else entry points, else all.
+
+    Services in ``exclude`` (out-of-scope, D-f) are never seeds; they stay in
+    the graph as context.
+    """
+    excluded = _excluder(exclude)
+    services = {s for s in _services(snapshot) if not excluded(s)}
+    peak = {s: v for s, v in _peak(snapshot).items() if s in services}
     if any(v > 0 for v in peak.values()):
         ranked = sorted(peak, key=lambda s: (-peak[s], s))
         return tuple(sorted(ranked[:count])), SeedSource.ANOMALY
@@ -208,18 +222,21 @@ def khop_prune(
     min_nodes: int = MIN_NODES,
     min_r: float = PEARSON_MIN_R,
     edge_budget: int = EDGE_BUDGET,
+    exclude: Collection[str] = (),
 ) -> tuple[UEGCSnapshot, KHopResult]:
     """Algorithm 5: the incident-local subgraph of ``snapshot`` and what was cut."""
     if k < 0 or top_n < 1 or min_nodes < 0 or edge_budget < 0:
         raise ValueError("k, min_nodes and edge_budget must be >= 0; top_n >= 1")
     services = _services(snapshot)
-    if seeds is None:
-        chosen, source = seed_nodes(snapshot)
+    excluded = _excluder(exclude)
+    given = None if seeds is None else [s for s in seeds if not excluded(s)]
+    if not given:
+        chosen, source = seed_nodes(snapshot, exclude=exclude)
     else:
-        unknown = sorted(set(seeds) - set(services))
+        unknown = sorted(set(given) - set(services))
         if unknown:
             raise ValueError(f"{len(unknown)} seed(s) are not production services")
-        chosen, source = tuple(sorted(set(seeds))), SeedSource.GIVEN
+        chosen, source = tuple(sorted(set(given))), SeedSource.GIVEN
 
     graph = _expansion_graph(snapshot, services, min_r)
     reach = _reach(graph, chosen, k) if chosen else set(services)
