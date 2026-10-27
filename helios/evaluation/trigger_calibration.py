@@ -113,6 +113,9 @@ class CorpusResult:
     median_delay_s: float | None
     root_among_suspects: int
     false_by_fault: dict[str, int] = field(default_factory=dict)
+    false_untolerated: int = (
+        0  # without the onset tolerance (entry 49), reported beside
+    )
 
     @property
     def false_rate(self) -> float:
@@ -129,6 +132,7 @@ class CorpusResult:
             "median_delay_s": self.median_delay_s,
             "root_among_suspects": self.root_among_suspects,
             "false_by_fault": dict(sorted(self.false_by_fault.items())),
+            "false_untolerated": self.false_untolerated,
         }
 
 
@@ -174,7 +178,7 @@ def evaluate(
     """Counts of true, false and missed triggers over the usable cases."""
     labels: dict[TriggerLabel, int] = dict.fromkeys(TriggerLabel, 0)
     delays: list[float] = []
-    hits = excluded = 0
+    hits = excluded = untolerated = 0
     false_by_fault: dict[str, int] = {}
     for record, case in zip(records, cases, strict=True):
         if not injection_inside_window(case.window, case.inject_time_s):
@@ -187,6 +191,10 @@ def evaluate(
             tolerance_s=ONSET_TOLERANCE_S,
         )
         labels[label] += 1
+        untolerated += (
+            classify_trigger(record, case.inject_time_s, bucket_seconds=bucket_seconds)
+            == TriggerLabel.FALSE
+        )
         delay = trigger_delay_s(
             record,
             case.inject_time_s,
@@ -212,6 +220,7 @@ def evaluate(
         ),
         root_among_suspects=hits,
         false_by_fault=false_by_fault,
+        false_untolerated=untolerated,
     )
 
 

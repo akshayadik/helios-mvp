@@ -190,3 +190,10 @@ def test_calibration_uses_a_fixed_sixty_second_onset_tolerance() -> None:
     assert evaluate([_rec(0, T0 + 540)], cases, bucket_seconds=30).false == 0
     # bucket [480, 510) ends 110 s before: false.
     assert evaluate([_rec(0, T0 + 480)], cases, bucket_seconds=30).false == 1
+
+
+def test_untolerated_false_count_is_reported_beside() -> None:
+    cases = [_case(0, inject=T0 + 620)]
+    result = evaluate([_rec(0, T0 + 540)], cases, bucket_seconds=30)
+    assert (result.false, result.false_untolerated) == (0, 1)
+    assert result.as_dict()["false_untolerated"] == 1
