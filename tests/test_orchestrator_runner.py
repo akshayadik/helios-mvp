@@ -22,6 +22,7 @@ from helios.integrity_gate import AppendOnlyLedger
 from helios.orchestrator import runner as runner_module
 from helios.orchestrator.ledger import ReconciliationLedger
 from helios.orchestrator.runner import RunOrchestrator
+from helios.pipelines.d_pipe.params import load_dpipe_params
 from helios.pipelines.d_pipe.pipeline import run_dpipe as run_dpipe_unpatched
 from helios.schemas.telemetry import EvaluationPhase, TelemetryWindow
 from helios.schemas.ueg_c import NodeType, UEGCNode, UEGCSnapshot
@@ -34,6 +35,7 @@ from helios.telemetry.trigger import (
     ProvisionalParametersError,
     TriggerRecord,
     TriggerSource,
+    load_detector_params,
     load_external_triggers,
 )
 from helios.vcl import get_variant, set_current_manifest
@@ -596,3 +598,45 @@ class TestSharedTriggerReviewFixes:
         _capture_with_traces(captures, "inc-001")
         _make_orchestrator(tmp_path, captures).run(captures)
         assert seen["routing"] == {"cart": 3}
+
+
+class TestDPipeParameters:
+    def test_runner_uses_frozen_dpipe_params_not_defaults(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        seen: dict[str, Any] = {}
+
+        def dpipe(**kw: Any) -> dict[str, Any]:
+            seen.update(kw)
+            return dict(run_dpipe_unpatched(**kw))
+
+        monkeypatch.setattr(runner_module, "run_dpipe", dpipe)
+        monkeypatch.setattr(runner_module, "run_lpipe", _fake_lpipe)
+        captures = tmp_path / "captures"
+        _make_capture(captures, "inc-001")
+        _make_orchestrator(tmp_path, captures).run(captures)
+        frozen = load_dpipe_params()
+        assert seen["w_error"] == frozen.w_error
+        assert seen["w_resource"] == frozen.w_resource
+        assert seen["rho_threshold"] == frozen.rho_threshold
+        assert seen["topology_boost_factor"] == frozen.topology_boost_factor
+        assert seen["evidence_ref"] == load_detector_params().threshold
+
+    def test_confirmatory_run_refuses_provisional_dpipe_params(
+        self, tmp_path: Path
+    ) -> None:
+        captures = tmp_path / "captures"
+        _capture_with_traces(captures, "inc-001", EvaluationPhase.CONFIRMATORY)
+        orch = _make_orchestrator(
+            tmp_path,
+            captures,
+            detector_params=_FINAL_PARAMS,
+            dpipe_params=replace(load_dpipe_params(), provisional=True),
+        )
+        orch._reader._pool_lock = lambda _incident: None
+        with pytest.raises(ProvisionalParametersError):
+            orch.run(captures)
+
+    def test_missing_dpipe_parameter_file_is_an_error(self, tmp_path: Path) -> None:
+        with pytest.raises(FileNotFoundError):
+            load_dpipe_params(tmp_path / "absent.json")

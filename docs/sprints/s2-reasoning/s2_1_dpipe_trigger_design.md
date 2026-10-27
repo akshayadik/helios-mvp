@@ -227,3 +227,14 @@ Detector `trigger-v1` with the **provisional** parameters in `data/frozen/trigge
 | RCAEval build | 495 | 494 | 1 | `8cd38e256ab93e17992c3712009f57192a366cacf6a3735dc64cc5a592fbd71c` |
 
 Whether these triggers are true or false (before the fault) is measured in the calibration (S2-M7-EVAL01), not here: this row does not read labels. The UEG-C captures digest is unchanged by the refactor of `anomaly_intensity` (`945df66330a0`, as recorded in S1.7).
+
+### Row S2-M7-ENG09 (2026-10-27) — D-pipe completion, provisional parameters
+
+D-pipe reads both metric formats (RCAEval plain series; OTel histograms plus container CPU and memory), scores the shift after the trigger against the part before it (robust scale shared with the trigger), adds a resource channel, ranks in-scope services only, and reports σ = 1 − gap × strength (strength = top raw shift relative to the trigger threshold). Parameters come from `data/frozen/dpipe_params.json` (**provisional**: the May values w_error 0.3, ρ 0.2, boost 1, plus w_resource 0.2; refused in confirmatory runs until S2-M7-EVAL01). With the provisional trigger:
+
+| Corpus | Windows | D-pipe ranked | σ reported |
+|---|---|---|---|
+| OTel build | 63 | 63 | 63 |
+| RCAEval build | 495 | 495 (before S2.1: none, every RCAEval window abstained). One window has its trigger at the window start (fallback), so no reference part exists: it is scored over the whole window and gets no σ | 494 |
+
+Rules added in review: a split without a reference or an incident part falls back to the whole-window score; all-zero in-scope scores give ABSTAINED, never a by-name order; each channel is normalised by its largest **in-scope** shift, so out-of-scope services keep their raw evidence but never set the scale. Accuracy on build data is measured in the calibration (S2-M7-EVAL01). Two separate processes give byte-identical D-pipe verdicts (`tests/test_trigger_check_cli.py::test_dpipe_verdict_identical_across_processes`).

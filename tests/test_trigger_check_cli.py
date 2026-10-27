@@ -84,3 +84,16 @@ def test_counts_mode_prints_only_counts_and_a_digest(tmp_path: Path) -> None:
     out = _run("--window", str(case)).stdout
     assert "opaque-case" not in out
     assert "digest" in out
+
+
+def test_dpipe_verdict_identical_across_processes(tmp_path: Path) -> None:
+    case = _case(tmp_path)
+    first = _run("--window", str(case), "--json", "--with-dpipe")
+    second = _run("--window", str(case), "--json", "--with-dpipe")
+    assert first.returncode == 0, first.stderr
+    assert first.stdout == second.stdout
+    lines = first.stdout.splitlines()
+    verdict = json.loads(lines[1])
+    assert verdict["pipeline"] == "dpipe"
+    assert verdict["ranked_candidates"][0] == "cart"
+    assert verdict["sigma"] is not None

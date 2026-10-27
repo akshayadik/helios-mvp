@@ -43,6 +43,7 @@ __all__ = [
     "PipelineVerdict",
     "VerdictCost",
     "VerdictStatus",
+    "sigma_from_scores",
     "top1_share",
 ]
 
@@ -200,3 +201,30 @@ def top1_share(scores: dict[str, float]) -> float | None:
     if total <= 0:
         return None
     return round(max(scores.values()) / total, MU_DIGITS)
+
+
+def sigma_from_scores(
+    scores: Mapping[str, float],
+    evidence: Mapping[str, float],
+    *,
+    evidence_ref: float,
+) -> float | None:
+    """Label-free sigma (S2.1): how unsure a ranking is, between 0 and 1.
+
+    gap = (s1 - s2) / s1 from the (max-normalised) scores, s2 = 0 for a single
+    candidate; strength = the top candidate's raw shift (robust-z units, before
+    normalisation) relative to ``evidence_ref`` (the frozen trigger threshold),
+    capped at 1. sigma = 1 - gap * strength: weak raw evidence pushes sigma
+    towards 1 whatever the gap, because max-normalisation always produces a
+    "winner". None without a positive top score. Rounded like mu.
+    """
+    if not scores or evidence_ref <= 0:
+        return None
+    ranked = sorted(scores.items(), key=lambda kv: (-kv[1], kv[0]))
+    top, s1 = ranked[0]
+    if s1 <= 0:
+        return None
+    s2 = ranked[1][1] if len(ranked) > 1 else 0
+    gap = (s1 - max(s2, 0)) / s1
+    strength = min(1, max(evidence.get(top, 0), 0) / evidence_ref)
+    return round(1 - gap * strength, MU_DIGITS)
