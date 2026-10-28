@@ -517,8 +517,8 @@ class TestOpenSearchLogsFetcher:
                     {
                         "_source": {
                             "@timestamp": "2026-05-14T10:00:00Z",
-                            "serviceName": "cartservice",
-                            "severityText": "ERROR",
+                            "resource": {"service.name": "cart"},
+                            "severity": {"number": 17, "text": "ERROR"},
                             "body": "connection refused",
                             "traceId": "abc123",
                             "spanId": "def456",
@@ -539,6 +539,55 @@ class TestOpenSearchLogsFetcher:
             "span_id",
         }
         assert table.num_rows == 1
+
+    def test_fetch_reads_the_exporter_service_and_severity_fields(self, window_bounds):
+        """The OpenSearch exporter nests the service under resource["service.name"]
+        and the level under severity.text (S2.1 finding: the flat names it used
+        before gave every OTel log line an empty service and severity)."""
+        start, end = window_bounds
+        payload = {
+            "hits": {
+                "hits": [
+                    {
+                        "_source": {
+                            "@timestamp": "2026-10-26T23:51:59.932Z",
+                            "resource": {"service.name": "cart", "host.name": "h"},
+                            "severity": {"number": 17, "text": "Error"},
+                            "body": "connection refused",
+                            "traceId": "abc123",
+                            "spanId": "def456",
+                        }
+                    },
+                    {
+                        "_source": {
+                            "@timestamp": "2026-10-26T23:52:00.000Z",
+                            "resource": {"service.name": "payment"},
+                            "severity": {"number": 13},
+                            "body": "slow",
+                        }
+                    },
+                    {
+                        "_source": {
+                            "@timestamp": "2026-10-26T23:52:01.000Z",
+                            "resource": {"service.name": "frontend-proxy"},
+                            "severity": {},
+                            "body": "GET /",
+                        }
+                    },
+                ]
+            }
+        }
+        with patch("urllib.request.urlopen", return_value=_http_mock(payload)):
+            table = OpenSearchLogsFetcher("http://opensearch:9200").fetch(start, end)
+
+        assert table.column("service_name").to_pylist() == [
+            "cart",
+            "payment",
+            "frontend-proxy",
+        ]
+        # text kept as written (upper-cased); a number alone maps to its OTel level
+        assert table.column("severity").to_pylist() == ["ERROR", "WARN", ""]
+        assert table.column("trace_id").to_pylist() == ["abc123", "", ""]
 
     def test_fetch_empty_hits_produces_empty_table(self, window_bounds):
         """OpenSearch returning no hits yields a valid zero-row table."""
@@ -726,3 +775,43 @@ def test_manifest_snapshot_hash_absent_when_graph_disabled(config, window_bounds
 
     assert "snapshot_hash" not in data
     assert data.get("schema_version") == MANIFEST_SCHEMA_VERSION
+
+
+# ---------------------------------------------------------------------------
+# S2.1 guards (S2-M7-ENG10): refuse logs that cannot be attributed, refuse
+# a capped OpenSearch slice — both used to pass silently
+# ---------------------------------------------------------------------------
+
+
+def test_capture_refuses_logs_without_any_service(config, window_bounds):
+    from helios.telemetry.otel_demo_capture import UnattributedLogsError
+
+    logs = _logs_table().set_column(1, "service_name", pa.array([""], type=pa.string()))
+    stubs = [*_three_stubs()[:2], _StubFetcher("p3_logs", logs)]
+    with pytest.raises(UnattributedLogsError):
+        TelemetryCapture(config=config, fetchers=stubs, writer=ParquetWriter()).run(
+            *window_bounds
+        )
+    assert not (config.output_dir / config.incident_id / "p3_logs.parquet").exists()
+
+
+def test_capture_accepts_an_empty_log_stream(config, window_bounds):
+    empty = _logs_table().slice(0, 0)
+    stubs = [*_three_stubs()[:2], _StubFetcher("p3_logs", empty)]
+    window = TelemetryCapture(
+        config=config, fetchers=stubs, writer=ParquetWriter()
+    ).run(*window_bounds)
+    assert window.p3_logs_path is not None
+
+
+def test_logs_fetcher_refuses_a_slice_at_the_result_cap(window_bounds):
+    from helios.telemetry.otel_demo_capture import CaptureTruncatedError
+
+    start, end = window_bounds
+    hit = {"_source": {"@timestamp": "t", "resource": {"service.name": "cart"}}}
+    payload = {"hits": {"hits": [hit] * 3}}
+    with (
+        patch("urllib.request.urlopen", return_value=_http_mock(payload)),
+        pytest.raises(CaptureTruncatedError),
+    ):
+        OpenSearchLogsFetcher("http://opensearch:9200", size=3).fetch(start, end)

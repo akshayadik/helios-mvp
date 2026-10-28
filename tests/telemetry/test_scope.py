@@ -11,7 +11,7 @@ from helios.telemetry.scope import (
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
 
 
-def test_out_of_scope_list_is_the_frozen_eight() -> None:
+def test_out_of_scope_list_is_the_frozen_list() -> None:
     assert (
         frozenset(
             {
@@ -23,6 +23,7 @@ def test_out_of_scope_list_is_the_frozen_eight() -> None:
                 "opensearch",
                 "grafana",
                 "otel-collector",
+                "otelcol-contrib",
             }
         )
         == OUT_OF_SCOPE_SERVICES
@@ -49,3 +50,9 @@ def test_names_match_loosely_as_scoring_does() -> None:
 def test_scope_digest_is_stable() -> None:
     assert scope_digest() == scope_digest()
     assert len(scope_digest()) == 64
+
+
+def test_collector_is_out_of_scope_under_its_log_name() -> None:
+    # The collector's own logs carry resource service.name "otelcol-contrib"
+    # (seen once log attribution was fixed, S2-M7-ENG10); same component as D-f.
+    assert not in_scope("otelcol-contrib")

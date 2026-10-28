@@ -42,6 +42,7 @@ if TYPE_CHECKING:
 __all__ = [
     "DEMO_CONTAINERS",
     "CaptureConfig",
+    "CaptureTruncatedError",
     "JaegerTracesFetcher",
     "OpenSearchLogsFetcher",
     "ParquetWriter",
@@ -49,6 +50,7 @@ __all__ = [
     "SlicedFetcher",
     "StreamFetcher",
     "TelemetryCapture",
+    "UnattributedLogsError",
     "build_campaign_capture",
     "build_default_capture",
     "campaign_metric_queries",
@@ -290,16 +292,49 @@ class JaegerTracesFetcher(StreamFetcher):
 # ---------------------------------------------------------------------------
 
 
+class CaptureTruncatedError(RuntimeError):
+    """A backend query returned as many rows as its cap: part of it may be missing."""
+
+
+class UnattributedLogsError(RuntimeError):
+    """Log lines were captured but none names its service: the fields are misread."""
+
+
+# OTel severity numbers 1-24 in bands of four (logs data model).
+_SEVERITY_BANDS = ("TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL")
+
+
+def _severity(field: dict[str, Any]) -> str:
+    """Level from the exporter's ``severity`` object: text, else the number's band."""
+    text = str(field.get("text") or "").strip().upper()
+    if text:
+        return text
+    number = field.get("number")
+    if isinstance(number, int) and 1 <= number <= 4 * len(_SEVERITY_BANDS):
+        return _SEVERITY_BANDS[(number - 1) // 4]
+    return ""
+
+
 class OpenSearchLogsFetcher(StreamFetcher):
-    """P3: Structured logs via OpenSearch /_search with ISO time-range filter."""
+    """P3: Structured logs via OpenSearch /_search with ISO time-range filter.
+
+    The OpenSearch exporter writes the service as ``resource["service.name"]``
+    (a dotted key inside ``resource``) and the level as ``severity.text`` /
+    ``severity.number``. Captures before 2026-10-28 read flat ``serviceName`` /
+    ``severityText`` fields that do not exist, so their logs carry an empty
+    service and severity (S2.1 finding, S2-M7-ENG10).
+    """
 
     # Index pattern verified via OTEL Collector config (src/otel-collector/otelcol-config.yml):
     # opensearch exporter sets logs_index="otel-logs" with daily time-format suffixes.
     _DEFAULT_INDEX = "otel-logs-*"
 
-    def __init__(self, base_url: str, index: str = _DEFAULT_INDEX) -> None:
+    def __init__(
+        self, base_url: str, index: str = _DEFAULT_INDEX, size: int = 10000
+    ) -> None:
         self._base_url = base_url.rstrip("/")
         self._index = index
+        self._size = size
 
     @property
     def stream_name(self) -> str:
@@ -317,11 +352,11 @@ class OpenSearchLogsFetcher(StreamFetcher):
                         }
                     }
                 },
-                "size": 10000,
+                "size": self._size,
                 "_source": [
                     "@timestamp",
-                    "serviceName",
-                    "severityText",
+                    "resource",
+                    "severity",
                     "body",
                     "traceId",
                     "spanId",
@@ -340,6 +375,11 @@ class OpenSearchLogsFetcher(StreamFetcher):
             payload: dict[str, Any] = json.loads(resp.read())
 
         hits = payload.get("hits", {}).get("hits", [])
+        if len(hits) >= self._size:
+            raise CaptureTruncatedError(
+                f"OpenSearch returned {len(hits)} log lines for {start}..{end}, "
+                f"its cap: use a shorter slice"
+            )
         timestamps: list[str] = []
         services: list[str] = []
         severities: list[str] = []
@@ -350,8 +390,8 @@ class OpenSearchLogsFetcher(StreamFetcher):
         for h in hits:
             src: dict[str, Any] = h.get("_source", {})
             timestamps.append(str(src.get("@timestamp", "")))
-            services.append(str(src.get("serviceName", "")))
-            severities.append(str(src.get("severityText", "")))
+            services.append(str(src.get("resource", {}).get("service.name", "")))
+            severities.append(_severity(src.get("severity", {})))
             bodies.append(str(src.get("body", "")))
             trace_ids.append(str(src.get("traceId", "")))
             span_ids.append(str(src.get("spanId", "")))
@@ -458,6 +498,12 @@ class TelemetryCapture:
 
         for fetcher in self._fetchers:
             table = fetcher.fetch(start, end)
+            if fetcher.stream_name == "p3_logs":
+                services = table.column("service_name").to_pylist()
+                if services and not any(services):
+                    raise UnattributedLogsError(
+                        f"{len(services)} log lines and none names its service"
+                    )
             path = incident_dir / f"{fetcher.stream_name}.parquet"
             self._writer.write(table, path)
             if fetcher.stream_name == "p1_metrics":
