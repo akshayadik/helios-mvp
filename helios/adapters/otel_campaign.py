@@ -54,6 +54,8 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 __all__ = [
+    "CAPTURE_RETRIES",
+    "CAPTURE_RETRY_WAIT_S",
     "CORPUS",
     "CORPUS_PILOT_V3",
     "CORPUS_V2",
@@ -101,6 +103,10 @@ RECOVERY_S = 60  # flag off (and restart) before the next case's normal period
 INGEST_LAG_S = 60  # let exporters and scrapes catch up before querying
 SLICE_S = 60  # trace and log query slices
 FLAG_CONFIRM_S = 30
+# A backend that drops a query (OpenSearch restarting, 2026-10-28) is asked
+# again: the window is already stored, so a fresh fetch gets the same data.
+CAPTURE_RETRIES = 3
+CAPTURE_RETRY_WAIT_S = 120
 _OFF = "off"
 
 
@@ -301,6 +307,30 @@ class Campaign:
             f"flagd did not serve {flag}={variant} within {FLAG_CONFIRM_S}s"
         )
 
+    def _capture_with_retries(
+        self,
+        case: PlannedCase,
+        start: datetime,
+        end: datetime,
+        position: int,
+        total: int,
+    ) -> None:
+        partial = self.captures_dir / case.incident_id
+        for attempt in range(1, CAPTURE_RETRIES + 1):
+            try:
+                self.capture(case, start, end)
+                return
+            except OSError as exc:  # connection refused, reset or timed out
+                if attempt == CAPTURE_RETRIES:
+                    raise
+                if partial.exists():
+                    shutil.rmtree(partial)
+                self.log(
+                    f"[campaign] case {position}/{total}: capture failed ({exc!r}); "
+                    f"retrying in {CAPTURE_RETRY_WAIT_S}s"
+                )
+                self.sleep(CAPTURE_RETRY_WAIT_S)
+
     def run_case(self, case: PlannedCase, position: int, total: int) -> None:
         f = case.fault
         partial = self.captures_dir / case.incident_id
@@ -319,7 +349,7 @@ class Campaign:
         self.sleep(INGEST_LAG_S)
         start = inject - timedelta(seconds=case.pre_s)
         end = inject + timedelta(seconds=POST_S)
-        self.capture(case, start, end)
+        self._capture_with_retries(case, start, end, position, total)
         self.ground_truth.add(
             case.incident_id,
             {

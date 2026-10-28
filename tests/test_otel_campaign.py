@@ -12,6 +12,7 @@ import pytest
 
 import bin.capture_campaign as cli
 from helios.adapters.otel_campaign import (
+    CAPTURE_RETRY_WAIT_S,
     CORPUS_V2,
     FAULTS,
     INGEST_LAG_S,
@@ -564,3 +565,34 @@ def test_span_latency_rate_window_covers_two_collector_flushes() -> None:
     )
     assert latency.count("[2m]") == 2
     assert "[1m]" not in latency
+
+
+def test_capture_retries_after_a_backend_drops_the_connection(tmp_path: Path) -> None:
+    # 2026-10-28: OpenSearch restarted mid-query in case 10 of otel_build_v3;
+    # the fault window was already stored, so the capture can be fetched again.
+    cases = plan(1)
+    calls: list[int] = []
+
+    def flaky(case: PlannedCase, start: datetime, end: datetime) -> None:
+        calls.append(1)
+        (tmp_path / "build" / case.incident_id).mkdir(parents=True)
+        if len(calls) == 1:
+            raise ConnectionResetError("Remote end closed connection")
+
+    campaign, clock, events = _campaign(tmp_path, cases, capture=flaky)
+    assert campaign.run(limit=1) == 1
+    assert len(calls) == 2
+    assert CAPTURE_RETRY_WAIT_S in clock.slept
+    assert any("retrying" in e for e in events)
+    assert cases[0].incident_id in campaign.ground_truth.cases()
+
+
+def test_capture_gives_up_after_its_retries(tmp_path: Path) -> None:
+    def down(case: PlannedCase, start: datetime, end: datetime) -> None:
+        raise ConnectionRefusedError("backend down")
+
+    campaign, _, _ = _campaign(tmp_path, plan(1), capture=down)
+    with pytest.raises(ConnectionRefusedError):
+        campaign.run()
+    assert campaign.ground_truth.cases() == {}
+    assert set(campaign.flagd.state().values()) == {"off"}
