@@ -610,7 +610,9 @@ _CONTAINER_METRICS = (
 
 # Span metrics of the demo collector's spanmetrics connector, per service, over
 # the spans a service serves (server and consumer kinds): request and error
-# counts (cumulative counters) and mean latency over the last minute.
+# counts (cumulative counters) and mean latency. The collector flushes span
+# metrics once a minute, so the rate window spans two flushes (2 min): its
+# ratio is the mean latency of the last minute.
 _SPAN_KINDS = 'span_kind=~"SPAN_KIND_SERVER|SPAN_KIND_CONSUMER"'
 _SPAN_ERROR = 'status_code="STATUS_CODE_ERROR"'
 
@@ -630,8 +632,8 @@ def _span_metric_queries() -> tuple[str, ...]:
         ),
         _named(
             "span_mean_latency_milliseconds",
-            f"sum by (service_name) (rate({duration}_sum{{{_SPAN_KINDS}}}[1m])) / "
-            f"sum by (service_name) (rate({duration}_count{{{_SPAN_KINDS}}}[1m]))",
+            f"sum by (service_name) (rate({duration}_sum{{{_SPAN_KINDS}}}[2m])) / "
+            f"sum by (service_name) (rate({duration}_count{{{_SPAN_KINDS}}}[2m]))",
         ),
     )
 

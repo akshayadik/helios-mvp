@@ -550,3 +550,17 @@ def test_cli_sets_and_checks_the_locust_user_count(
     state["user_count"] = 5
     with pytest.raises(RuntimeError, match="5 users, expected 25"):
         cli.check_load("http://lg", 25)
+
+
+def test_span_latency_rate_window_covers_two_collector_flushes() -> None:
+    # The collector's span metrics arrive once a minute: a 1 min rate window
+    # holds one sample and returns nothing (pilot v3, 2026-10-28).
+    from helios.telemetry.otel_demo_capture import campaign_metric_queries
+
+    latency = next(
+        q
+        for q in campaign_metric_queries(span_metrics=True)
+        if "span_mean_latency" in q
+    )
+    assert latency.count("[2m]") == 2
+    assert "[1m]" not in latency
