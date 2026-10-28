@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import numpy as np
+import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
@@ -300,3 +301,137 @@ def test_many_series_raise_the_bar() -> None:
 
     assert series_correction(1) == 1
     assert series_correction(300) > series_correction(10) > 1
+
+
+# ── OTel signal repair (S2-M7-ENG10): histograms, span metrics, traces ──────
+
+
+def test_histogram_buckets_fold_to_their_total_for_the_detector() -> None:
+    import pandas as pd
+
+    from helios.graph.anomaly_intensity import metric_series
+
+    rows = [
+        (
+            T0 + b * BUCKET,
+            "rpc_server_duration_milliseconds_bucket",
+            float(b * 10),
+            json.dumps({"service_name": "ad", "le": le}),
+        )
+        for b in range(6)
+        for le in ("5", "10", "50", "+Inf")
+    ]
+    frame = pd.DataFrame(rows, columns=["timestamp", "metric_name", "value", "labels"])
+    assert len(metric_series(frame, START, 6, BUCKET)["ad"]) == 4  # UEG-C view
+    folded = metric_series(frame, START, 6, BUCKET, fold_histograms=True)["ad"]
+    assert len(folded) == 1  # only the +Inf bucket: the request count
+    assert folded[0].is_count
+
+
+def test_span_error_calls_and_latency_count_rises_only() -> None:
+    from helios.graph.anomaly_intensity import UPWARD_ONLY_METRICS
+
+    assert {
+        "span_error_calls_total",
+        "span_mean_latency_milliseconds",
+    } <= UPWARD_ONLY_METRICS
+    assert "span_calls_total" not in UPWARD_ONLY_METRICS  # workload: both ways
+
+
+def _spans(rows: list[tuple[str, int, int, str]]) -> pd.DataFrame:
+    return pd.DataFrame(
+        rows, columns=["service_name", "start_time_us", "duration_us", "status_code"]
+    )
+
+
+def test_detector_fires_on_a_span_metric_error_burst(tmp_path: Path) -> None:
+    errors = {b: 0 if b < 18 else 12 * (b - 17) for b in range(N_BUCKETS)}
+    window = _window(
+        tmp_path,
+        {("cart", "span_error_calls_total"): errors},  # cumulative counter
+        services=("cart", "ad"),
+    )
+    rec = detect(window, PARAMS, root=tmp_path)
+    assert rec.source == TriggerSource.THRESHOLD
+    assert rec.suspects[0] == "cart"
+    assert rec.trigger_time_s == T0 + 18 * BUCKET
+
+
+def test_detector_never_reads_raw_spans(tmp_path: Path) -> None:
+    # The RCAEval build corpus has no traces but the pool has: a raw-span
+    # signal could not be calibrated for the pool (design, since trigger-v1).
+    # Trace evidence reaches the detector only as span metrics (S2-M7-ENG10).
+    window = _window(tmp_path, {}, services=("cart", "ad"))
+    us = 1_000_000
+    rows = [
+        (service, (T0 + b * BUCKET + k) * us, 3000, "ERROR" if b >= 18 else "UNSET")
+        for b in range(N_BUCKETS)
+        for k in range(20)
+        for service in ("cart", "ad")
+    ]
+    pq.write_table(pa.Table.from_pandas(_spans(rows)), tmp_path / "w" / "p2.parquet")
+    with_traces = window.model_copy(update={"p2_traces_path": "w/p2.parquet"})
+    assert detect(with_traces, PARAMS, root=tmp_path) == detect(
+        window, PARAMS, root=tmp_path
+    )
+
+
+def test_a_sustained_burst_on_a_zero_count_series_stays_high() -> None:
+    # Before S2-M7-ENG10 a count series with MAD 0 fell back to the std of its
+    # history, which the burst's own first bucket inflates: the second burst
+    # bucket scored ~4 instead of ~10 and a sustained error burst never fired.
+    errors = np.array([0] * 18 + [12] * 4, dtype=float)
+    z = causal_z(errors, count_series=True, upward_only=True)
+    assert z[18] > 8
+    assert z[19] > 8 and z[20] > 8  # the burst does not mask itself
+    gauge = np.array([0] * 18 + [12] * 4, dtype=float)
+    assert np.isnan(causal_z(gauge, count_series=False)[18])  # flat-zero gauge rule
+
+
+def test_detector_scores_a_histogram_by_its_total_only(tmp_path: Path) -> None:
+    from helios.telemetry.trigger import service_scores
+
+    def hist(root: Path, les: tuple[str, ...]) -> TelemetryWindow:
+        rows = []
+        for b in range(N_BUCKETS):
+            total = 600 * b + (0 if b < 18 else 400 * (b - 17))  # traffic surge
+            for le in les:
+                rows.append(
+                    (
+                        float(T0 + b * BUCKET),
+                        "rpc_server_duration_milliseconds_bucket",
+                        float(total),
+                        json.dumps({"service_name": "ad", "le": le}),
+                    )
+                )
+        (root / "w").mkdir(parents=True)
+        pq.write_table(
+            pa.table(
+                {
+                    "timestamp": [r[0] for r in rows],
+                    "metric_name": [r[1] for r in rows],
+                    "value": [r[2] for r in rows],
+                    "labels": [r[3] for r in rows],
+                }
+            ),
+            root / "w" / "p1.parquet",
+        )
+        return TelemetryWindow(
+            incident_id="opaque",
+            variant_config_hash="h" * 64,
+            window_start_iso=START,
+            window_end_iso=END,
+            evaluation_phase=EvaluationPhase.EXPLORATORY,
+            p1_metrics_path="w/p1.parquet",
+        )
+
+    one = service_scores(hist(tmp_path / "a", ("+Inf",)), BUCKET, root=tmp_path / "a")
+    many = (*(str(2**k) for k in range(30)), "+Inf")
+    folded = service_scores(hist(tmp_path / "b", many), BUCKET, root=tmp_path / "b")
+    assert np.array_equal(one.z, folded.z, equal_nan=True)
+
+
+def test_detector_version_is_v2_after_the_signal_repair() -> None:
+    from helios.telemetry.trigger import DETECTOR_VERSION
+
+    assert DETECTOR_VERSION == "trigger-v2"

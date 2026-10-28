@@ -4,10 +4,14 @@ Design: docs/sprints/s2-reasoning/s2_1_dpipe_trigger_design.md (owner decisions
 D-a … D-f). HELIOS and every baseline receive the same trigger record for an
 incident; nothing else gives a system a time anchor.
 
-How it decides (``trigger-v1``):
+How it decides (``trigger-v2``):
 
-- Signals come from metrics and logs only (never traces: the RCAEval build
-  corpus has none, so a trace signal could not be calibrated for the pool).
+- Signals come from metrics and logs only, never raw spans: the RCAEval build
+  corpus has none while the pool has, so a raw-span signal could not be
+  calibrated for the pool. Trace evidence enters as metrics computed from
+  spans (the OTel collector's span metrics: calls, error calls, mean latency
+  per service), which RCAEval data does not carry. Latency histograms count
+  once per service (their total; ``fold_histograms``).
   Each series is bucketed (helios.graph.anomaly_intensity) and every bucket is
   scored against that series' own **past** only (``causal_z``): the detector
   never looks ahead, and no parameter refers to a position in the window.
@@ -80,7 +84,9 @@ __all__ = [
 
 HELIOS_ENABLE_TRIGGER: bool = True
 
-DETECTOR_VERSION = "trigger-v1"
+# v2 (S2-M7-ENG10): histogram folding, span-metric direction rules, Poisson
+# floor for count series with MAD 0.
+DETECTOR_VERSION = "trigger-v2"
 WARMUP_BUCKETS = 4  # fixed before calibration, never tuned (design §5.3)
 REL_FLOOR = 0.05  # a gauge's scale is at least 5% of its level
 Z_CAP = 50  # numeric guard only; never stands in for a missing scale
@@ -150,13 +156,17 @@ class ServiceScores:
 def robust_scale(history: np.ndarray, *, count_series: bool) -> float:
     """Scale of a reference sample: robust spread with floors (0 = no scale).
 
-    Spread = 1.4826 MAD, else std; floored at ``REL_FLOOR`` of the median and,
-    for count series, at the Poisson noise sqrt(max(median, 1)). Shared by the
-    trigger and D-pipe's trigger split, so both judge a shift the same way.
+    Spread = 1.4826 MAD, else (gauges only) std; floored at ``REL_FLOOR`` of
+    the median and, for count series, at the Poisson noise
+    sqrt(max(median, 1)). A count series with MAD 0 takes the Poisson floor,
+    not the std: the std of a mostly-zero history is set by its few bursts, so
+    an error burst would mask itself from its second bucket on (S2-M7-ENG10).
+    Shared by the trigger and D-pipe's trigger split, so both judge a shift
+    the same way.
     """
     centre = float(np.median(history))
     spread = _MAD_TO_SIGMA * float(np.median(np.abs(history - centre)))
-    if spread == 0:
+    if spread == 0 and not count_series:
         spread = float(np.std(history))
     floor = REL_FLOOR * abs(centre)
     if count_series:
@@ -241,7 +251,15 @@ def service_scores(
     parts: list[dict[str, list[Series]]] = []
     if window.p1_metrics_path is not None:
         metrics = pd.read_parquet(_resolve(window.p1_metrics_path, root))
-        parts.append(metric_series(metrics, window.window_start_iso, n, bucket_seconds))
+        parts.append(
+            metric_series(
+                metrics,
+                window.window_start_iso,
+                n,
+                bucket_seconds,
+                fold_histograms=True,
+            )
+        )
     features = features_for_window(window, root or Path(), bucket_seconds)
     if features is not None:
         parts.append(log_series(features, window.window_start_iso, n, bucket_seconds))

@@ -42,6 +42,7 @@ from helios.evaluation.trigger_calibration import (
     select,
 )
 from helios.telemetry.trigger import (
+    DETECTOR_VERSION,
     WARMUP_BUCKETS,
     DetectorParams,
     ServiceScores,
@@ -174,7 +175,7 @@ def main(argv: list[str] | None = None) -> int:
             }
 
     report: dict[str, Any] = {
-        "detector_version": "trigger-v1",
+        "detector_version": DETECTOR_VERSION,
         "warmup_buckets": WARMUP_BUCKETS,
         "false_rate_limit": FALSE_RATE_LIMIT,
         "grid": {k: list(v) for k, v in GRID.items()},

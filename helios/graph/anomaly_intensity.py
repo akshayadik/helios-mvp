@@ -55,8 +55,13 @@ UPWARD_ONLY_METRICS: frozenset[str] = frozenset(
         "mem",
         "container_cpu_utilization_ratio",
         "container_memory_usage_total_bytes",
+        # OTel v3 span metrics (S2-M7-ENG10): errors and latency rise in a fault;
+        # their drop follows a traffic drop, which span_calls_total carries.
+        "span_error_calls_total",
+        "span_mean_latency_milliseconds",
     }
 )
+_HISTOGRAM_TOTAL = "+Inf"
 
 
 class Series(NamedTuple):
@@ -116,10 +121,16 @@ def metric_series(
     window_start_iso: str,
     n_buckets: int,
     bucket_seconds: int,
+    *,
+    fold_histograms: bool = False,
 ) -> dict[str, list[Series]]:
     """Raw bucket means per series (metric name + labels), counters differenced.
 
     Services and series are in sorted order; buckets with no sample are NaN.
+    ``fold_histograms`` (detector view, S2-M7-ENG10) keeps only the ``+Inf``
+    bucket of a ``_bucket`` histogram, its request count: the other buckets are
+    near-copies that would each count as a series in the many-series
+    correction and shrink the service's score.
     """
     if metrics.empty:
         return {}
@@ -136,6 +147,12 @@ def metric_series(
     )
     frame = frame[(frame["bucket"] >= 0) & (frame["bucket"] < n_buckets)]
     frame = frame[np.isfinite(frame["value"])]
+    if fold_histograms:
+        bucket = frame["metric"].str.endswith("_bucket")
+        total = frame["labels"].map(
+            lambda lab: json.loads(lab).get("le") == _HISTOGRAM_TOTAL
+        )
+        frame = frame[~bucket | total]
     if frame.empty:
         return {}
     services = {lab: service_of(json.loads(lab)) for lab in frame["labels"].unique()}
