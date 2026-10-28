@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -24,6 +25,9 @@ from helios.telemetry.trigger import (
     TriggerSource,
 )
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 T0 = 1_790_000_000
 
@@ -197,3 +201,34 @@ def test_untolerated_false_count_is_reported_beside() -> None:
     result = evaluate([_rec(0, T0 + 540)], cases, bucket_seconds=30)
     assert (result.false, result.false_untolerated) == (0, 1)
     assert result.as_dict()["false_untolerated"] == 1
+
+
+def test_calibration_uses_rcaeval_build_and_otel_build_v2() -> None:
+    from helios.evaluation.trigger_calibration import CORPORA
+
+    assert list(CORPORA) == ["rcaeval_build", "otel_build_v2"]
+    assert CORPORA["otel_build_v2"] == (
+        "data/otel/build_v2",
+        "data/otel/build_v2_manifest.json",
+        "data/otel/ground_truth_build_v2.json",
+    )
+
+
+def test_otel_v2_cases_carry_their_fault(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import json
+
+    from helios.evaluation import trigger_calibration as tc
+
+    captures = tmp_path / "data/otel/build_v2/c0"
+    captures.mkdir(parents=True)
+    window = _case(0).window.model_dump(mode="json")
+    (captures / "manifest.json").write_text(json.dumps(window), encoding="utf-8")
+    (tmp_path / "data/otel/build_v2_manifest.json").write_text(
+        json.dumps({"case_order": ["c0"]}), encoding="utf-8"
+    )
+    label = {"inject_time": T0 + 600, "root_cause_service": "ad", "fault": "adFailure"}
+    monkeypatch.setattr(tc, "verify_ground_truth", lambda _p, _k: {"c0": label})
+    cases = tc.load_cases("otel_build_v2", root=tmp_path, key=b"k")
+    assert cases[0].fault == "adFailure"

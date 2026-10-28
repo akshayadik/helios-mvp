@@ -81,10 +81,12 @@ CORPORA: dict[str, tuple[str, str, str]] = {
         "data/rcaeval/build_manifest.json",
         "data/rcaeval/ground_truth_build.json",
     ),
-    "otel_build": (
-        "data/otel/build",
-        "data/otel/build_manifest.json",
-        "data/otel/ground_truth_build.json",
+    # v2 (deviation entry 48): normal period varied 8-15 min per case; v1's
+    # fixed 5 min left the detector too little history and stays committed.
+    "otel_build_v2": (
+        "data/otel/build_v2",
+        "data/otel/build_v2_manifest.json",
+        "data/otel/ground_truth_build_v2.json",
     ),
 }
 _DIGITS = 6
@@ -163,7 +165,7 @@ def load_cases(corpus: str, *, root: Path, key: bytes) -> list[CalibrationCase]:
                 window=TelemetryWindow(**raw),
                 inject_time_s=_seconds(label["inject_time"]),
                 root_cause=str(label["root_cause_service"]),
-                fault=str(label["fault"]) if corpus == "otel_build" else None,
+                fault=str(label["fault"]) if corpus.startswith("otel") else None,
             )
         )
     return cases
