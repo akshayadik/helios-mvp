@@ -815,3 +815,17 @@ def test_logs_fetcher_refuses_a_slice_at_the_result_cap(window_bounds):
         pytest.raises(CaptureTruncatedError),
     ):
         OpenSearchLogsFetcher("http://opensearch:9200", size=3).fetch(start, end)
+
+
+def test_traces_fetcher_refuses_a_service_query_at_the_trace_limit(window_bounds):
+    from helios.telemetry.otel_demo_capture import CaptureTruncatedError
+
+    start, end = window_bounds
+    trace = {"traceID": "t", "processes": {}, "spans": []}
+    payload = {"data": [trace] * 2}
+    fetcher = JaegerTracesFetcher("http://jaeger:16686", limit=2)
+    with (
+        patch("urllib.request.urlopen", return_value=_http_mock(payload)),
+        pytest.raises(CaptureTruncatedError),
+    ):
+        fetcher.fetch(start, end)

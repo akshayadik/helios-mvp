@@ -415,3 +415,138 @@ def test_cli_v2_corpus_has_its_own_files(
     assert written["protocol"]["pre_s"] == {"min": 480, "max": 900, "step": 15}
     assert cli.main(["status"]) == 0  # v1 still the default
     assert "0/63" in capsys.readouterr().out
+
+
+# ── v3: span metrics, 25-user load, pilot (S2-M7-ENG10, 2026-10-28) ─────────
+
+
+def test_v3_and_pilot_plans_vary_the_normal_period_and_stay_disjoint() -> None:
+    from helios.adapters.otel_campaign import CORPUS_PILOT_V3, CORPUS_V3
+
+    v3 = plan(7, corpus=CORPUS_V3)
+    assert len(v3) == 63
+    assert all(c.pre_s == pre_s_for(c.incident_id) for c in v3)
+    pilot = plan(1, corpus=CORPUS_PILOT_V3)
+    ids = [{c.incident_id for c in p} for p in (v3, pilot, plan(7, corpus=CORPUS_V2))]
+    assert ids[0].isdisjoint(ids[1]) and ids[0].isdisjoint(ids[2])
+
+
+def test_plan_can_be_limited_to_named_faults() -> None:
+    from helios.adapters.otel_campaign import CORPUS_PILOT_V3
+
+    hard = ("paymentFailure", "productCatalogFailure", "recommendationCacheFailure")
+    cases = plan(1, corpus=CORPUS_PILOT_V3, faults=hard)
+    assert [c.fault.flag for c in cases] == list(hard)
+    with pytest.raises(ValueError, match="unknown fault"):
+        plan(1, corpus=CORPUS_PILOT_V3, faults=("noSuchFlag",))
+
+
+def test_v3_corpora_run_at_twenty_five_users() -> None:
+    from helios.adapters.otel_campaign import (
+        CORPUS,
+        CORPUS_PILOT_V3,
+        CORPUS_V3,
+        load_users_for,
+    )
+
+    assert load_users_for(CORPUS_V3) == 25
+    assert load_users_for(CORPUS_PILOT_V3) == 25
+    assert load_users_for(CORPUS) is None  # v1/v2 ran at the demo's 5, unenforced
+    assert load_users_for(CORPUS_V2) is None
+
+
+def test_campaign_checks_load_before_every_case_and_records_it(
+    tmp_path: Path,
+) -> None:
+    checks: list[str] = []
+    cases = plan(1)[:2]
+    campaign, _, _ = _campaign(
+        tmp_path, cases, check_load=lambda: checks.append("ok"), load_users=25
+    )
+    campaign.run()
+    assert checks == ["ok", "ok"]
+    labels = campaign.ground_truth.cases()
+    assert {v["load_users"] for v in labels.values()} == {25}
+
+
+def test_campaign_stops_when_the_load_is_wrong(tmp_path: Path) -> None:
+    def wrong() -> None:
+        raise RuntimeError("load generator runs 5 users, expected 25")
+
+    campaign, _, events = _campaign(tmp_path, plan(1), check_load=wrong)
+    with pytest.raises(RuntimeError, match="expected 25"):
+        campaign.run()
+    assert campaign.ground_truth.cases() == {}
+    assert not any(e.startswith("capture") for e in events)
+
+
+def test_v3_capture_records_span_metrics_not_histogram_buckets(
+    tmp_path: Path,
+) -> None:
+    from helios.telemetry.otel_demo_capture import campaign_metric_queries
+
+    queries = campaign_metric_queries(span_metrics=True)
+    assert not any("_bucket" in q for q in queries)
+    for name in (
+        "span_calls_total",
+        "span_error_calls_total",
+        "span_mean_latency_milliseconds",
+        "container_cpu_utilization_ratio",
+        "container_memory_usage_total_bytes",
+    ):
+        assert any(name in q for q in queries), name
+    error = next(q for q in queries if "span_error_calls_total" in q)
+    assert 'status_code="STATUS_CODE_ERROR"' in error
+    assert all(
+        "SPAN_KIND_SERVER|SPAN_KIND_CONSUMER" in q for q in queries if "span_" in q
+    )
+    cap = build_campaign_capture(
+        "x" * 32,
+        get_variant("HELIOS-Full"),
+        output_dir=tmp_path,
+        prometheus_url="http://p",
+        jaeger_url="http://j",
+        opensearch_url="http://o",
+        span_metrics=True,
+    )
+    assert cap._fetchers[0]._queries == queries  # type: ignore[attr-defined]
+    assert campaign_metric_queries() != queries  # v1/v2 definition unchanged
+
+
+def test_cli_v3_and_pilot_corpora_have_their_own_files() -> None:
+    from helios.adapters.otel_campaign import CORPUS_PILOT_V3, CORPUS_V3
+
+    captures, truth, manifest = cli._paths(CORPUS_V3)
+    assert (captures.name, truth.name, manifest.name) == (
+        "build_v3",
+        "ground_truth_build_v3.json",
+        "build_v3_manifest.json",
+    )
+    captures, truth, manifest = cli._paths(CORPUS_PILOT_V3)
+    assert (captures.name, truth.name, manifest.name) == (
+        "pilot_v3",
+        "ground_truth_pilot_v3.json",
+        "pilot_v3_manifest.json",
+    )
+
+
+def test_cli_sets_and_checks_the_locust_user_count(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sent: list[tuple[str, dict[str, str] | None]] = []
+    state = {"user_count": 5}
+
+    def fake(url: str, form: dict[str, str] | None = None) -> dict[str, object]:
+        sent.append((url, form))
+        if form is not None:
+            state["user_count"] = int(form["user_count"])
+            return {"success": True}
+        return {"state": "running", "user_count": state["user_count"]}
+
+    monkeypatch.setattr(cli, "_locust_call", fake)
+    cli.set_load("http://lg", 25)
+    assert sent[0] == ("http://lg/swarm", {"user_count": "25", "spawn_rate": "5"})
+    cli.check_load("http://lg", 25)  # passes
+    state["user_count"] = 5
+    with pytest.raises(RuntimeError, match="5 users, expected 25"):
+        cli.check_load("http://lg", 25)

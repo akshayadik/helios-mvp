@@ -4,14 +4,17 @@
 Usage (from repo root, with the pinned demo running; needs the ledger key):
     set -a; source .env; set +a
     poetry run python bin/capture_campaign.py preflight
-    poetry run python bin/capture_campaign.py run [--limit N] [--reps 7] [--corpus C]
-    poetry run python bin/capture_campaign.py status [--corpus C]
+    poetry run python bin/capture_campaign.py run [--limit N] [--reps 7] [--corpus C] [--faults F,F]
+    poetry run python bin/capture_campaign.py status [--corpus C] [--faults F,F]
     poetry run python bin/capture_campaign.py verify [--corpus C]
     poetry run python bin/capture_campaign.py finalize [--corpus C]
 
 ``--corpus`` is ``otel_build`` (S1.2, default) or ``otel_build_v2`` (S2.1
 recapture: normal period varied per case, 8 to 15 minutes; each case then
-takes about 20 minutes).
+takes about 20 minutes), ``otel_build_v3`` (S2-M7-ENG10: as v2, plus span
+metrics, attributed logs and the load generator set to 25 users through its
+API and checked before every case) or ``otel_pilot_v3`` (the v3 protocol under
+its own IDs; with ``--reps 1 --faults ...`` for a short pilot).
 
 ``run`` resumes where it stopped: cases already in the signed ground truth are
 skipped, an interrupted capture is recorded again. Each case takes about
@@ -28,6 +31,7 @@ import subprocess
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from collections import Counter
 from pathlib import Path
@@ -39,7 +43,9 @@ from bin.log_deviation import load_key
 from bin.run_capture import _write_snapshot_hash
 from helios.adapters.otel_campaign import (
     CORPUS,
+    CORPUS_PILOT_V3,
     CORPUS_V2,
+    CORPUS_V3,
     DEFAULT_REPS,
     INGEST_LAG_S,
     POST_S,
@@ -53,6 +59,7 @@ from helios.adapters.otel_campaign import (
     FlagdFile,
     GroundTruthFile,
     PlannedCase,
+    load_users_for,
     plan,
 )
 from helios.telemetry.otel_demo_capture import build_campaign_capture
@@ -75,13 +82,52 @@ CORPUS_MANIFEST = Path("data/otel/build_manifest.json")
 CAPTURES_DIR_V2 = Path("data/otel/build_v2")
 GROUND_TRUTH_V2 = Path("data/otel/ground_truth_build_v2.json")
 CORPUS_MANIFEST_V2 = Path("data/otel/build_v2_manifest.json")
+_V3_FILES = {
+    CORPUS_V3: "build_v3",
+    CORPUS_PILOT_V3: "pilot_v3",
+}
+CORPORA = (CORPUS, CORPUS_V2, CORPUS_V3, CORPUS_PILOT_V3)
+LOCUST_PORT = 8089
+_SPAWN_RATE = 5  # users started per second
+_SPAWN_SETTLE_S = 30
 
 
 def _paths(corpus: str) -> tuple[Path, Path, Path]:
     """Captures directory, signed ground truth and corpus manifest of a corpus."""
     if corpus == CORPUS_V2:
         return CAPTURES_DIR_V2, GROUND_TRUTH_V2, CORPUS_MANIFEST_V2
+    if corpus in _V3_FILES:
+        stem = _V3_FILES[corpus]
+        return (
+            Path(f"data/otel/{stem}"),
+            Path(f"data/otel/ground_truth_{stem}.json"),
+            Path(f"data/otel/{stem}_manifest.json"),
+        )
     return CAPTURES_DIR, GROUND_TRUTH, CORPUS_MANIFEST
+
+
+def _locust_call(url: str, form: dict[str, str] | None = None) -> dict[str, object]:
+    """GET (``form`` None) or form-POST to the load generator's web API."""
+    data = urllib.parse.urlencode(form).encode() if form is not None else None
+    with urllib.request.urlopen(url, data=data, timeout=10) as resp:
+        payload: dict[str, object] = json.loads(resp.read())
+    return payload
+
+
+def set_load(locust_url: str, users: int) -> None:
+    """Start (or re-scale) the load generator to ``users`` users."""
+    _locust_call(
+        f"{locust_url}/swarm",
+        {"user_count": str(users), "spawn_rate": str(_SPAWN_RATE)},
+    )
+
+
+def check_load(locust_url: str, users: int) -> None:
+    """Raise unless the load generator runs exactly ``users`` users."""
+    stats = _locust_call(f"{locust_url}/stats/requests")
+    running = stats.get("user_count")
+    if running != users:
+        raise RuntimeError(f"load generator runs {running} users, expected {users}")
 
 
 PROMETHEUS_URL = "http://localhost:9090"
@@ -181,8 +227,13 @@ def cmd_preflight() -> int:
     return 0 if ok else 1
 
 
-def cmd_status(key: bytes, reps: int, corpus: str = CORPUS) -> int:
-    cases = plan(reps, corpus=corpus)
+def cmd_status(
+    key: bytes,
+    reps: int,
+    corpus: str = CORPUS,
+    faults: tuple[str, ...] | None = None,
+) -> int:
+    cases = plan(reps, corpus=corpus, faults=faults)
     done = _ground_truth(key, _demo_commit(), corpus).cases()
     by_fault = Counter(c.fault.flag for c in cases if c.incident_id in done)
     print(f"[status] {len(done)}/{len(cases)} cases captured and labelled")
@@ -194,7 +245,13 @@ def cmd_status(key: bytes, reps: int, corpus: str = CORPUS) -> int:
     return 0
 
 
-def cmd_run(key: bytes, reps: int, limit: int | None, corpus: str = CORPUS) -> int:
+def cmd_run(
+    key: bytes,
+    reps: int,
+    limit: int | None,
+    corpus: str = CORPUS,
+    faults: tuple[str, ...] | None = None,
+) -> int:
     commit = _demo_commit()
     captures_dir = _paths(corpus)[0]
     manifest = get_variant("HELIOS-Full")
@@ -202,6 +259,17 @@ def cmd_run(key: bytes, reps: int, limit: int | None, corpus: str = CORPUS) -> i
     jaeger = _host_url("jaeger", JAEGER_UI_PORT)
     opensearch = _host_url("opensearch", OPENSEARCH_PORT)
     ofrep = _host_url("flagd", FLAGD_OFREP_PORT)
+    users = load_users_for(corpus)
+    locust = _host_url("load-generator", LOCUST_PORT) if users is not None else ""
+    if users is not None:
+        set_load(locust, users)
+        time.sleep(_SPAWN_SETTLE_S)
+        check_load(locust, users)
+        print(f"[campaign] load generator at {users} users")
+
+    def load_check() -> None:
+        if users is not None:  # v1/v2 never enforced the load
+            check_load(locust, users)
 
     def capture(case: PlannedCase, start: datetime, end: datetime) -> None:
         cap = build_campaign_capture(
@@ -212,6 +280,7 @@ def cmd_run(key: bytes, reps: int, limit: int | None, corpus: str = CORPUS) -> i
             jaeger_url=jaeger,
             opensearch_url=opensearch,
             slice_s=SLICE_S,
+            span_metrics=corpus in _V3_FILES,
         )
         window = cap.run(start, end)
         incident_dir = captures_dir / case.incident_id
@@ -223,7 +292,7 @@ def cmd_run(key: bytes, reps: int, limit: int | None, corpus: str = CORPUS) -> i
         print(f"[campaign] restarted {service}")
 
     campaign = Campaign(
-        cases=plan(reps, corpus=corpus),
+        cases=plan(reps, corpus=corpus, faults=faults),
         captures_dir=captures_dir,
         flagd=FlagdFile(REPO_ROOT / FLAGD_PATH),
         ground_truth=_ground_truth(key, commit, corpus),
@@ -231,10 +300,12 @@ def cmd_run(key: bytes, reps: int, limit: int | None, corpus: str = CORPUS) -> i
         confirm_flag=lambda flag, variant: _flag_variant(ofrep, flag) == variant,
         restart=restart,
         sleep=time.sleep,
+        load_users=users,
+        check_load=load_check,
     )
     captured = campaign.run(limit)
     print(f"[campaign] captured {captured} case(s) this run")
-    return cmd_status(key, reps, corpus)
+    return cmd_status(key, reps, corpus, faults)
 
 
 def cmd_verify(key: bytes, corpus: str = CORPUS) -> int:
@@ -265,8 +336,13 @@ def cmd_finalize(key: bytes, corpus: str = CORPUS) -> int:
         "protocol": {
             "pre_s": (
                 {"min": PRE_S_MIN, "max": PRE_S_MAX, "step": PRE_S_STEP}
-                if corpus == CORPUS_V2
+                if corpus != CORPUS
                 else PRE_S
+            ),
+            **(
+                {"load_users": load_users_for(corpus), "metrics": "span_metrics"}
+                if corpus in _V3_FILES
+                else {}
             ),
             "post_s": POST_S,
             "recovery_s": RECOVERY_S,
@@ -289,21 +365,22 @@ def main(argv: list[str] | None = None) -> int:
     for name in ("status", "run"):
         p = sub.add_parser(name)
         p.add_argument("--reps", type=int, default=DEFAULT_REPS)
+        p.add_argument("--faults", type=lambda v: tuple(v.split(",")), default=None)
         if name == "run":
             p.add_argument("--limit", type=int, default=None)
     for name in ("verify", "finalize"):
         sub.add_parser(name)
     for p in sub.choices.values():
         if p.prog.split()[-1] != "preflight":
-            p.add_argument("--corpus", choices=(CORPUS, CORPUS_V2), default=CORPUS)
+            p.add_argument("--corpus", choices=CORPORA, default=CORPUS)
     args = parser.parse_args(argv)
     if args.cmd == "preflight":
         return cmd_preflight()
     key = load_key()
     if args.cmd == "status":
-        return cmd_status(key, args.reps, args.corpus)
+        return cmd_status(key, args.reps, args.corpus, args.faults)
     if args.cmd == "run":
-        return cmd_run(key, args.reps, args.limit, args.corpus)
+        return cmd_run(key, args.reps, args.limit, args.corpus, args.faults)
     if args.cmd == "verify":
         return cmd_verify(key, args.corpus)
     return cmd_finalize(key, args.corpus)
