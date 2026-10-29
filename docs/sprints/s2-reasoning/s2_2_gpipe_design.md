@@ -132,3 +132,16 @@ Row S2-M7-ENG02 (planned, effort 3). About 3–4 days: features and evidence (1�
 ## 9. Left to the builder
 
 Module layout; the exact pairwise objective and solver; how evidence is attached to the verdict (field and schema version); rounding details within the `canonical_json` rule; report layout.
+
+## 10. Results
+
+### K-hop re-check (S2 plan carry-over, 2026-10-29) — before the selection run
+
+`bin/khop_calibrate.py` (HELIOS-Full graphs; root-cause retention per (K, top-n); then the frozen setting with the 50-node floor, and seeded by the frozen trigger's suspects with the out-of-scope services excluded, as the runner prunes):
+
+| Corpus | Graphs | Root is a service node | K = 3, top-n 50, no floor | With the floor | Seeded by the frozen trigger | Services kept (with floor) |
+|---|---|---|---|---|---|---|
+| OTel build v3 | 63 | 63 | 63/63 | 63/63 | **63/63** | 29 (every graph) |
+| Earlier captures | 20 | 16 (the 4 imageSlowLoad cases have no service root) | 16/16 | 16/16 | **16/16** | 15 (every graph) |
+
+The frozen K = 3 / top-n 50 (deviation entry 40) keeps the root in all 79 G-pipe build cases; no change. On the earlier captures every K in the grid keeps all 16 roots, so the S1.7 tie rule prints K = 1; that is a tie on a 16-case corpus, not a reason to move K. OTel graphs are smaller than the 50-node floor, so on OTel the pruner keeps every service: G-pipe ranks over the whole service graph there. The trigger's suspects contain the root in 22 of 63 v3 cases (6 of 16 earlier).
