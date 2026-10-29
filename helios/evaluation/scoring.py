@@ -75,6 +75,7 @@ GROUND_TRUTH_FILES: dict[str, str] = {
     "captures": "data/ground_truth.json",
     "otel_build": "data/otel/ground_truth_build.json",
     "otel_build_v2": "data/otel/ground_truth_build_v2.json",
+    "otel_build_v3": "data/otel/ground_truth_build_v3.json",
 }
 
 
@@ -86,6 +87,7 @@ class Corpus(StrEnum):
     CAPTURES = "captures"  # OTel Demo captures (exploratory)
     OTEL_BUILD = "otel_build"  # OTel Demo build captures (S1.2; signed)
     OTEL_BUILD_V2 = "otel_build_v2"  # recapture, varied normal period (S2.1; signed)
+    OTEL_BUILD_V3 = "otel_build_v3"  # attributed logs, span metrics, 25 users (signed)
 
 
 class ListKind(StrEnum):

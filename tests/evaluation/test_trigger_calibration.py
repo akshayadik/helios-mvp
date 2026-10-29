@@ -203,32 +203,34 @@ def test_untolerated_false_count_is_reported_beside() -> None:
     assert result.as_dict()["false_untolerated"] == 1
 
 
-def test_calibration_uses_rcaeval_build_and_otel_build_v2() -> None:
+def test_calibration_uses_rcaeval_build_and_otel_build_v3() -> None:
+    # Deviation entry 50: v3 replaces v2 for OTel (attributed logs, span
+    # metrics, 25 users); v2 stays committed with calibration runs 4 and 5.
     from helios.evaluation.trigger_calibration import CORPORA
 
-    assert list(CORPORA) == ["rcaeval_build", "otel_build_v2"]
-    assert CORPORA["otel_build_v2"] == (
-        "data/otel/build_v2",
-        "data/otel/build_v2_manifest.json",
-        "data/otel/ground_truth_build_v2.json",
+    assert list(CORPORA) == ["rcaeval_build", "otel_build_v3"]
+    assert CORPORA["otel_build_v3"] == (
+        "data/otel/build_v3",
+        "data/otel/build_v3_manifest.json",
+        "data/otel/ground_truth_build_v3.json",
     )
 
 
-def test_otel_v2_cases_carry_their_fault(
+def test_otel_v3_cases_carry_their_fault(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     import json
 
     from helios.evaluation import trigger_calibration as tc
 
-    captures = tmp_path / "data/otel/build_v2/c0"
+    captures = tmp_path / "data/otel/build_v3/c0"
     captures.mkdir(parents=True)
     window = _case(0).window.model_dump(mode="json")
     (captures / "manifest.json").write_text(json.dumps(window), encoding="utf-8")
-    (tmp_path / "data/otel/build_v2_manifest.json").write_text(
+    (tmp_path / "data/otel/build_v3_manifest.json").write_text(
         json.dumps({"case_order": ["c0"]}), encoding="utf-8"
     )
     label = {"inject_time": T0 + 600, "root_cause_service": "ad", "fault": "adFailure"}
     monkeypatch.setattr(tc, "verify_ground_truth", lambda _p, _k: {"c0": label})
-    cases = tc.load_cases("otel_build_v2", root=tmp_path, key=b"k")
+    cases = tc.load_cases("otel_build_v3", root=tmp_path, key=b"k")
     assert cases[0].fault == "adFailure"

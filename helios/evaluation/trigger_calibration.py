@@ -81,12 +81,13 @@ CORPORA: dict[str, tuple[str, str, str]] = {
         "data/rcaeval/build_manifest.json",
         "data/rcaeval/ground_truth_build.json",
     ),
-    # v2 (deviation entry 48): normal period varied 8-15 min per case; v1's
-    # fixed 5 min left the detector too little history and stays committed.
-    "otel_build_v2": (
-        "data/otel/build_v2",
-        "data/otel/build_v2_manifest.json",
-        "data/otel/ground_truth_build_v2.json",
+    # v3 (deviation entry 50): v2's varied normal period (entry 48) plus
+    # attributed logs, span metrics and 25 users. v1 and v2 stay committed;
+    # v2's results are calibration runs 4 and 5.
+    "otel_build_v3": (
+        "data/otel/build_v3",
+        "data/otel/build_v3_manifest.json",
+        "data/otel/ground_truth_build_v3.json",
     ),
 }
 _DIGITS = 6

@@ -104,3 +104,10 @@ def test_cli_offers_the_otel_v2_build_corpus() -> None:
     from bin.trigger_check import CORPORA
 
     assert CORPORA["otel_build_v2"] == Path("data/otel/build_v2")
+
+
+def test_cli_offers_the_otel_v3_build_corpus() -> None:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from bin.trigger_check import CORPORA
+
+    assert CORPORA["otel_build_v3"] == Path("data/otel/build_v3")
