@@ -1,6 +1,6 @@
 # S2.2 — G-pipe culprit-versus-victim ranker · design
 
-**Task:** S2.2 (tracking S2-M7-ENG02) · **Date:** 2026-10-29 · **Status:** for owner approval · **Depends on:** S2.1 (frozen trigger and D-pipe, deviation entries 52–53), S1.7 K-hop pruner, S1.5 UEG-C builder, S1.2 OTel build corpus · **Owner decisions:** the points marked *owner* below (2026-10-29)
+**Task:** S2.2 (tracking S2-M7-ENG02) · **Date:** 2026-10-29 · **Status:** approved by the owner 2026-10-29 · **Depends on:** S2.1 (frozen trigger and D-pipe, deviation entries 52–53), S1.7 K-hop pruner, S1.5 UEG-C builder, S1.2 OTel build corpus · **Owner decisions:** the points marked *owner* below (2026-10-29)
 
 ## 1. Intent
 
