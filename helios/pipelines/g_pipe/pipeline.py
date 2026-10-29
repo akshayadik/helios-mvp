@@ -8,9 +8,8 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING, Any
 
-import networkx as nx
-
-from helios.pipelines.g_pipe.gpipe_config import DISAGREEMENT_THRESHOLD, GPIPE_PPR_ALPHA
+from helios.pipelines.g_pipe.gpipe_config import DISAGREEMENT_THRESHOLD
+from helios.pipelines.g_pipe.rankers import plain_ppr
 from helios.schemas.ueg_c import UEGCSnapshot  # noqa: TCH001
 from helios.schemas.verdict import VERDICT_SCHEMA_VERSION, VerdictStatus, top1_share
 from helios.vcl import VCLFlag, gated_by
@@ -50,32 +49,12 @@ def should_run_gpipe(dpipe_verdict: dict[str, Any], manifest: Any) -> bool:
     return compute_ppr_disagreement(dpipe_scores) >= DISAGREEMENT_THRESHOLD
 
 
-def _build_nx_graph(snapshot: UEGCSnapshot) -> nx.DiGraph:
-    graph: nx.DiGraph = nx.DiGraph()
-    for node in snapshot.nodes:
-        graph.add_node(node.node_id)
-    for edge in snapshot.edges:
-        graph.add_edge(edge.source, edge.target, weight=edge.weight)
-    return graph
-
-
 def _ppr_traverse(
     snapshot: UEGCSnapshot,
     seed_weights: dict[str, float],
 ) -> tuple[list[str], dict[str, float]]:
-    graph = _build_nx_graph(snapshot)
-    personalization: dict[str, float] | None = {
-        k: v for k, v in seed_weights.items() if k in graph.nodes
-    }
-    if not personalization or sum(personalization.values()) <= 0.00:
-        personalization = None
-    raw_scores: dict[str, float] = nx.pagerank(
-        graph, alpha=GPIPE_PPR_ALPHA, personalization=personalization
-    )
-    # Only production services are root-cause candidates (KPI and reasoning-step
-    # nodes take part in the walk but are never ranked).
-    candidates = set(snapshot.candidate_ids())
-    scores = {k: v for k, v in raw_scores.items() if k in candidates}
+    """Plain PPR (``rankers.plain_ppr``), ranked best first."""
+    scores = plain_ppr(snapshot, seed_weights)
     ranked = sorted(scores, key=scores.__getitem__, reverse=True)
     return ranked, scores
 
