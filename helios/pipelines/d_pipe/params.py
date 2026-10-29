@@ -9,13 +9,15 @@ parameters are refused in confirmatory runs until calibration freezes them
 
 from __future__ import annotations
 
+import hashlib
 import json
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
+from helios.vcl.utils import canonical_json
 
-__all__ = ["DPIPE_PARAMS_PATH", "DPipeParams", "load_dpipe_params"]
+__all__ = ["DPIPE_PARAMS_PATH", "DPipeParams", "dpipe_params_hash", "load_dpipe_params"]
 
 HELIOS_ENABLE_DPIPE_PARAMS: bool = True
 
@@ -58,3 +60,8 @@ def load_dpipe_params(path: Path = DPIPE_PARAMS_PATH) -> DPipeParams:
     ):
         raise ValueError("weights must be >= 0 with w_error + w_resource <= 1")
     return params
+
+
+def dpipe_params_hash(params: DPipeParams) -> str:
+    """SHA-256 over the parameters (stored with calibration results)."""
+    return hashlib.sha256(canonical_json(asdict(params)).encode("utf-8")).hexdigest()

@@ -640,3 +640,44 @@ class TestDPipeParameters:
     def test_missing_dpipe_parameter_file_is_an_error(self, tmp_path: Path) -> None:
         with pytest.raises(FileNotFoundError):
             load_dpipe_params(tmp_path / "absent.json")
+
+
+class TestIncidentGraph:
+    """The runner's graph step as a function: D-pipe calibration reuses it."""
+
+    def test_no_traces_gives_no_graph_and_no_seeds(self) -> None:
+        window = TelemetryWindow(
+            incident_id="inc-001",
+            variant_config_hash="a" * 64,
+            window_start_iso=dt.datetime(2026, 1, 1, tzinfo=dt.UTC).isoformat(),
+            window_end_iso=dt.datetime(2026, 1, 1, 0, 5, tzinfo=dt.UTC).isoformat(),
+            evaluation_phase=EvaluationPhase.EXPLORATORY,
+        )
+        manifest = get_variant(_VARIANT)
+        assert runner_module.incident_graph(
+            window, manifest, "c" * 64, _record("cart")
+        ) == (None, [])
+
+    def test_graph_is_pruned_around_the_trigger_suspects(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        spy = _Spy(_record("cart", "metric-only"))
+        spy.install(monkeypatch)
+        captures = tmp_path / "captures"
+        _capture_with_traces(captures, "inc-001")
+        window = TelemetryWindow.model_validate(
+            {
+                k: v
+                for k, v in json.loads(
+                    (captures / "inc-001" / "manifest.json").read_text()
+                ).items()
+                if k != "window_hash"
+            }
+        )
+        graph, seeds = runner_module.incident_graph(
+            window, get_variant(_VARIANT), "c" * 64, spy.record
+        )
+        assert graph is not None
+        assert seeds == ["cart"]
+        assert spy.events == ["prune"]
+        assert "prometheus" in spy.prune_kwargs["exclude"]
