@@ -129,3 +129,79 @@ def test_cli_offers_the_otel_v3_build_corpus() -> None:
     from bin.trigger_check import CORPORA
 
     assert CORPORA["otel_build_v3"] == Path("data/otel/build_v3")
+
+
+def _case_with_traces(root: Path) -> Path:
+    """The synthetic window plus frontend -> cart calls before and after the
+    trigger (cart's latency rises from bucket 12, about T0 + 360 s)."""
+    case = _case(root)
+    rows = []
+    for i, start in enumerate(
+        [*range(T0 + 30, T0 + 330, 30), *range(T0 + 400, T0 + 880, 30)]
+    ):
+        slow = start > T0 + 360
+        rows += [
+            (f"t{i}", f"f{i}", None, "frontend", start, 0.120 if slow else 0.030),
+            (
+                f"t{i}",
+                f"c{i}",
+                f"f{i}",
+                "cart",
+                start + 0.005,
+                0.100 if slow else 0.010,
+            ),
+        ]
+    pq.write_table(
+        pa.table(
+            {
+                "trace_id": [r[0] for r in rows],
+                "span_id": [r[1] for r in rows],
+                "parent_span_id": [r[2] for r in rows],
+                "operation_name": ["op"] * len(rows),
+                "service_name": [r[3] for r in rows],
+                "start_time_us": [int(r[4] * 1_000_000) for r in rows],
+                "duration_us": [int(r[5] * 1_000_000) for r in rows],
+                "status_code": ["UNSET"] * len(rows),
+            }
+        ),
+        case / "p2_traces.parquet",
+    )
+    manifest = json.loads((case / "manifest.json").read_text(encoding="utf-8"))
+    manifest.pop("window_hash")
+    manifest["p2_traces_path"] = str(case / "p2_traces.parquet")
+    window = TelemetryWindow(**manifest)
+    manifest["window_hash"] = window.compute_window_hash()
+    (case / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    return case
+
+
+def test_gpipe_verdict_identical_across_processes(tmp_path: Path) -> None:
+    case = _case_with_traces(tmp_path)
+    gparams = tmp_path / "gpipe.json"
+    gparams.write_text(
+        json.dumps(
+            {
+                "ranker": "weighted_ppr",
+                "weights": None,
+                "mean": None,
+                "scale": None,
+                "provisional": True,
+            }
+        ),
+        encoding="utf-8",
+    )
+    args = (
+        *_window_args(case),
+        "--json",
+        "--with-gpipe",
+        "--gpipe-params",
+        str(gparams),
+    )
+    first = _run(*args)
+    second = _run(*args)
+    assert first.returncode == 0, first.stderr
+    assert first.stdout == second.stdout
+    gpipe = json.loads(first.stdout.splitlines()[-1])
+    assert gpipe["ranker"] == "weighted_ppr"
+    assert gpipe["ranked"][0] in {"cart", "frontend"}
+    assert "evidence" in gpipe
