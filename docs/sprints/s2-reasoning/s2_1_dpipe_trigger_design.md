@@ -278,3 +278,18 @@ Frozen in `data/frozen/trigger_detector.json` (`provisional: false`); `tests/tel
 | OTel build v3 | 63 | 31 | 32 | `3ca9a4678e9b697b69aa397d02956ac7d797e2f70515b9b816fb2491d4731569` |
 
 Pool rates are measured after tag build-freeze.
+
+### Row S2-M7-EVAL01 (2026-10-29) — D-pipe calibrated and frozen
+
+`bin/dpipe_calibrate.py` (plan Task 13): the `dpipe_config` grid for w_error, ρ and boost crossed with w_resource ∈ {0, 0.1, 0.2, 0.3}, w_error + w_resource < 1 (800 settings); trigger = the frozen detector; each OTel case ranked on the graph the runner builds (`incident_graph`, HELIOS-Full); objective = mean of per-corpus HR@3; ties → smallest change from the May values. Build data only.
+
+| Run | OTel parsing | Selected (w_error, w_resource, ρ, boost) | RCAEval build HR@3 | OTel v3 HR@3 | May values (RCAEval / OTel) |
+|---|---|---|---|---|---|
+| 1 | CPU and memory only (defect) | 0.3, 0.3, 0.2, 1 | 0.960 | 0.524 | 0.935 / 0.524 |
+| 2 | + span-metric errors and latency | **0.7, 0.1, 0.2, 1** (frozen) | **0.945** | **0.762** | 0.935 / 0.619 |
+
+Run 1 found that D-pipe's parser read no error or latency series on otel_build_v3: span metrics replaced the histograms (entry 50) and only the detector had been updated. The parser now differences `span_error_calls_total` per step (a missing early sample counts as zero, a gap carries the last value) and reads `span_mean_latency_milliseconds` per step; errors keep the count floor, latency the gauge rule (D-g).
+
+**Propagation (Stage C) has no effect on build data.** 50 settings tie at the best mean: every ρ and boost at the selected weights. RCAEval build has no traces, so no graph. On OTel every graph service has its own metrics since the resource channel (S2-M7-ENG09), so the topology boost (for services without metrics) never applies; the correlation boost fires on 39 of 418 call edges and never changes a top 3. The tie rule keeps the May ρ and boost. Owner decision 2026-10-29: freeze as selected and report the null effect; a narrower definition of "services with metrics" is left to S2.2 or Stage B.
+
+Frozen in `data/frozen/dpipe_params.json` (`provisional: false`, `dpipe_params_hash` `4dc7f3ebc534…`); `tests/evaluation/test_dpipe_calibration.py::test_frozen_dpipe_params_are_the_calibration_selection` ties the file to the report and the frozen detector.

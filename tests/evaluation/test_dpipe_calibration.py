@@ -87,3 +87,34 @@ def test_params_hash_is_stable_and_covers_every_parameter() -> None:
         replace(MAY_PARAMS, provisional=True),
     ):
         assert dpipe_params_hash(changed) != base
+
+
+def test_frozen_dpipe_params_are_the_calibration_selection() -> None:
+    # S2-M7-EVAL01 (owner 2026-10-29): D-pipe calibration run 2 selected
+    # (0.7, 0.1, 0.2, 1); the frozen file must match the committed report.
+    import json
+    from pathlib import Path
+
+    from helios.pipelines.d_pipe.params import load_dpipe_params
+    from helios.telemetry.trigger import detector_hash, load_detector_params
+
+    report_path = Path(__file__).resolve().parents[2] / (
+        "docs/sprints/s2-reasoning/s2_1_dpipe_calibration.json"
+    )
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    selected = report["selected"]
+    params = load_dpipe_params()
+    assert not params.provisional
+    assert report["detector_hash"] == detector_hash(load_detector_params())
+    assert (
+        params.w_error,
+        params.w_resource,
+        params.rho_threshold,
+        params.topology_boost_factor,
+    ) == (
+        selected["w_error"],
+        selected["w_resource"],
+        selected["rho_threshold"],
+        selected["topology_boost_factor"],
+    )
+    assert dpipe_params_hash(params) == selected["dpipe_params_hash"]
