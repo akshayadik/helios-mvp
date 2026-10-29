@@ -104,7 +104,8 @@ INGEST_LAG_S = 60  # let exporters and scrapes catch up before querying
 SLICE_S = 60  # trace and log query slices
 FLAG_CONFIRM_S = 30
 # A backend that drops a query (OpenSearch restarting, 2026-10-28) is asked
-# again: the window is already stored, so a fresh fetch gets the same data.
+# again. Exports sent while the backend was down may be lost, so a retried
+# case records its attempts in its label (capture_attempts) and stays visible.
 CAPTURE_RETRIES = 3
 CAPTURE_RETRY_WAIT_S = 120
 _OFF = "off"
@@ -314,12 +315,13 @@ class Campaign:
         end: datetime,
         position: int,
         total: int,
-    ) -> None:
+    ) -> int:
+        """Capture the case; returns the number of attempts it took."""
         partial = self.captures_dir / case.incident_id
         for attempt in range(1, CAPTURE_RETRIES + 1):
             try:
                 self.capture(case, start, end)
-                return
+                return attempt
             except OSError as exc:  # connection refused, reset or timed out
                 if attempt == CAPTURE_RETRIES:
                     raise
@@ -330,6 +332,7 @@ class Campaign:
                     f"retrying in {CAPTURE_RETRY_WAIT_S}s"
                 )
                 self.sleep(CAPTURE_RETRY_WAIT_S)
+        raise AssertionError("unreachable")  # the last attempt returns or raises
 
     def run_case(self, case: PlannedCase, position: int, total: int) -> None:
         f = case.fault
@@ -349,7 +352,7 @@ class Campaign:
         self.sleep(INGEST_LAG_S)
         start = inject - timedelta(seconds=case.pre_s)
         end = inject + timedelta(seconds=POST_S)
-        self._capture_with_retries(case, start, end, position, total)
+        attempts = self._capture_with_retries(case, start, end, position, total)
         self.ground_truth.add(
             case.incident_id,
             {
@@ -363,6 +366,7 @@ class Campaign:
                 "window_start": start.isoformat(),
                 "window_end": end.isoformat(),
                 **({"load_users": self.load_users} if self.load_users else {}),
+                **({"capture_attempts": attempts} if attempts > 1 else {}),
             },
         )
         if f.restart_after:

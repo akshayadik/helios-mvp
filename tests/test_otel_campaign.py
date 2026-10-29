@@ -596,3 +596,21 @@ def test_capture_gives_up_after_its_retries(tmp_path: Path) -> None:
         campaign.run()
     assert campaign.ground_truth.cases() == {}
     assert set(campaign.flagd.state().values()) == {"off"}
+
+
+def test_a_retried_capture_is_marked_in_its_label(tmp_path: Path) -> None:
+    # Review of PR 3 (I1): a backend that restarted may have lost exports
+    # during the fault, so a retried case must stay visible, never silent.
+    cases = plan(1)
+    calls: list[int] = []
+
+    def flaky(case: PlannedCase, start: datetime, end: datetime) -> None:
+        calls.append(1)
+        if len(calls) == 1:
+            raise ConnectionResetError("Remote end closed connection")
+
+    campaign, _, _ = _campaign(tmp_path, cases, capture=flaky)
+    campaign.run(limit=2)
+    labels = campaign.ground_truth.cases()
+    assert labels[cases[0].incident_id]["capture_attempts"] == 2
+    assert "capture_attempts" not in labels[cases[1].incident_id]
