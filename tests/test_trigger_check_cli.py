@@ -51,6 +51,24 @@ def _case(root: Path) -> Path:
     return case
 
 
+def _window_args(case: Path) -> tuple[str, ...]:
+    """The synthetic window with the parameters it was built for (30 s, 6, 2),
+    independent of the committed frozen file."""
+    params = case.parent / "params.json"
+    params.write_text(
+        json.dumps(
+            {
+                "bucket_seconds": 30,
+                "threshold": 6,
+                "persistence": 2,
+                "provisional": True,
+            }
+        ),
+        encoding="utf-8",
+    )
+    return ("--window", str(case), "--params", str(params))
+
+
 def _run(*args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [sys.executable, "bin/trigger_check.py", *args],
@@ -63,8 +81,8 @@ def _run(*args: str) -> subprocess.CompletedProcess[str]:
 
 def test_two_processes_give_identical_bytes(tmp_path: Path) -> None:
     case = _case(tmp_path)
-    first = _run("--window", str(case), "--json")
-    second = _run("--window", str(case), "--json")
+    first = _run(*_window_args(case), "--json")
+    second = _run(*_window_args(case), "--json")
     assert first.returncode == 0, first.stderr
     assert first.stdout
     assert first.stdout == second.stdout
@@ -81,15 +99,15 @@ def test_cli_refuses_pool() -> None:
 
 def test_counts_mode_prints_only_counts_and_a_digest(tmp_path: Path) -> None:
     case = _case(tmp_path)
-    out = _run("--window", str(case)).stdout
+    out = _run(*_window_args(case)).stdout
     assert "opaque-case" not in out
     assert "digest" in out
 
 
 def test_dpipe_verdict_identical_across_processes(tmp_path: Path) -> None:
     case = _case(tmp_path)
-    first = _run("--window", str(case), "--json", "--with-dpipe")
-    second = _run("--window", str(case), "--json", "--with-dpipe")
+    first = _run(*_window_args(case), "--json", "--with-dpipe")
+    second = _run(*_window_args(case), "--json", "--with-dpipe")
     assert first.returncode == 0, first.stderr
     assert first.stdout == second.stdout
     lines = first.stdout.splitlines()
@@ -97,3 +115,17 @@ def test_dpipe_verdict_identical_across_processes(tmp_path: Path) -> None:
     assert verdict["pipeline"] == "dpipe"
     assert verdict["ranked_candidates"][0] == "cart"
     assert verdict["sigma"] is not None
+
+
+def test_cli_offers_the_otel_v2_build_corpus() -> None:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from bin.trigger_check import CORPORA
+
+    assert CORPORA["otel_build_v2"] == Path("data/otel/build_v2")
+
+
+def test_cli_offers_the_otel_v3_build_corpus() -> None:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from bin.trigger_check import CORPORA
+
+    assert CORPORA["otel_build_v3"] == Path("data/otel/build_v3")

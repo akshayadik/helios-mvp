@@ -1,6 +1,6 @@
 {
-  "bucket_seconds": 30,
-  "threshold": 6,
-  "persistence": 2,
-  "provisional": true
+  "bucket_seconds": 60,
+  "threshold": 10,
+  "persistence": 3,
+  "provisional": false
 }

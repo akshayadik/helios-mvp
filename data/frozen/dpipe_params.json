@@ -1,7 +1,7 @@
 {
-  "w_error": 0.3,
-  "w_resource": 0.2,
+  "w_error": 0.7,
+  "w_resource": 0.1,
   "rho_threshold": 0.2,
   "topology_boost_factor": 1,
-  "provisional": true
+  "provisional": false
 }

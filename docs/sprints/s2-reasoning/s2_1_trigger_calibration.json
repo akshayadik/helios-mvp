@@ -1,0 +1,2784 @@
+{
+  "audit": {
+    "otel_build_v3": {
+      "crops": {
+        "0.25": {
+          "cases": 59,
+          "cropped": {
+            "excluded": 0,
+            "false": 1,
+            "false_by_fault": {
+              "adFailure": 0,
+              "adHighCpu": 1,
+              "adManualGc": 0,
+              "cartFailure": 0,
+              "emailMemoryLeak": 0,
+              "paymentFailure": 0,
+              "paymentUnreachable": 0,
+              "productCatalogFailure": 0,
+              "recommendationCacheFailure": 0
+            },
+            "false_rate": 0.016949,
+            "false_untolerated": 4,
+            "median_delay_s": 90.0,
+            "n": 59,
+            "no_trigger": 31,
+            "root_among_suspects": 30,
+            "true": 27
+          },
+          "passes": true,
+          "skipped_no_slack": 4,
+          "uncropped": {
+            "excluded": 0,
+            "false": 0,
+            "false_by_fault": {
+              "adFailure": 0,
+              "adHighCpu": 0,
+              "adManualGc": 0,
+              "cartFailure": 0,
+              "emailMemoryLeak": 0,
+              "paymentFailure": 0,
+              "paymentUnreachable": 0,
+              "productCatalogFailure": 0,
+              "recommendationCacheFailure": 0
+            },
+            "false_rate": 0.0,
+            "false_untolerated": 4,
+            "median_delay_s": 75.0,
+            "n": 59,
+            "no_trigger": 31,
+            "root_among_suspects": 28,
+            "true": 28
+          }
+        },
+        "0.4": {
+          "cases": 59,
+          "cropped": {
+            "excluded": 0,
+            "false": 1,
+            "false_by_fault": {
+              "adFailure": 0,
+              "adHighCpu": 1,
+              "adManualGc": 0,
+              "cartFailure": 0,
+              "emailMemoryLeak": 0,
+              "paymentFailure": 0,
+              "paymentUnreachable": 0,
+              "productCatalogFailure": 0,
+              "recommendationCacheFailure": 0
+            },
+            "false_rate": 0.016949,
+            "false_untolerated": 4,
+            "median_delay_s": 75.0,
+            "n": 59,
+            "no_trigger": 31,
+            "root_among_suspects": 31,
+            "true": 27
+          },
+          "passes": true,
+          "skipped_no_slack": 4,
+          "uncropped": {
+            "excluded": 0,
+            "false": 0,
+            "false_by_fault": {
+              "adFailure": 0,
+              "adHighCpu": 0,
+              "adManualGc": 0,
+              "cartFailure": 0,
+              "emailMemoryLeak": 0,
+              "paymentFailure": 0,
+              "paymentUnreachable": 0,
+              "productCatalogFailure": 0,
+              "recommendationCacheFailure": 0
+            },
+            "false_rate": 0.0,
+            "false_untolerated": 4,
+            "median_delay_s": 75.0,
+            "n": 59,
+            "no_trigger": 31,
+            "root_among_suspects": 28,
+            "true": 28
+          }
+        },
+        "0.6": {
+          "cases": 59,
+          "cropped": {
+            "excluded": 0,
+            "false": 0,
+            "false_by_fault": {
+              "adFailure": 0,
+              "adHighCpu": 0,
+              "adManualGc": 0,
+              "cartFailure": 0,
+              "emailMemoryLeak": 0,
+              "paymentFailure": 0,
+              "paymentUnreachable": 0,
+              "productCatalogFailure": 0,
+              "recommendationCacheFailure": 0
+            },
+            "false_rate": 0.0,
+            "false_untolerated": 2,
+            "median_delay_s": 82.5,
+            "n": 59,
+            "no_trigger": 31,
+            "root_among_suspects": 28,
+            "true": 28
+          },
+          "passes": true,
+          "skipped_no_slack": 4,
+          "uncropped": {
+            "excluded": 0,
+            "false": 0,
+            "false_by_fault": {
+              "adFailure": 0,
+              "adHighCpu": 0,
+              "adManualGc": 0,
+              "cartFailure": 0,
+              "emailMemoryLeak": 0,
+              "paymentFailure": 0,
+              "paymentUnreachable": 0,
+              "productCatalogFailure": 0,
+              "recommendationCacheFailure": 0
+            },
+            "false_rate": 0.0,
+            "false_untolerated": 4,
+            "median_delay_s": 75.0,
+            "n": 59,
+            "no_trigger": 31,
+            "root_among_suspects": 28,
+            "true": 28
+          }
+        }
+      },
+      "passes": true
+    },
+    "rcaeval_build": {
+      "crops": {
+        "0.25": {
+          "cases": 170,
+          "cropped": {
+            "excluded": 1,
+            "false": 3,
+            "false_by_fault": {},
+            "false_rate": 0.017751,
+            "false_untolerated": 9,
+            "median_delay_s": 60.0,
+            "n": 169,
+            "no_trigger": 0,
+            "root_among_suspects": 155,
+            "true": 166
+          },
+          "passes": true,
+          "skipped_no_slack": 325,
+          "uncropped": {
+            "excluded": 1,
+            "false": 6,
+            "false_by_fault": {},
+            "false_rate": 0.035503,
+            "false_untolerated": 12,
+            "median_delay_s": 60.0,
+            "n": 169,
+            "no_trigger": 1,
+            "root_among_suspects": 150,
+            "true": 162
+          }
+        },
+        "0.4": {
+          "cases": 170,
+          "cropped": {
+            "excluded": 1,
+            "false": 5,
+            "false_by_fault": {},
+            "false_rate": 0.029586,
+            "false_untolerated": 14,
+            "median_delay_s": 60.0,
+            "n": 169,
+            "no_trigger": 0,
+            "root_among_suspects": 150,
+            "true": 164
+          },
+          "passes": true,
+          "skipped_no_slack": 325,
+          "uncropped": {
+            "excluded": 1,
+            "false": 6,
+            "false_by_fault": {},
+            "false_rate": 0.035503,
+            "false_untolerated": 12,
+            "median_delay_s": 60.0,
+            "n": 169,
+            "no_trigger": 1,
+            "root_among_suspects": 150,
+            "true": 162
+          }
+        },
+        "0.6": {
+          "cases": 170,
+          "cropped": {
+            "excluded": 1,
+            "false": 2,
+            "false_by_fault": {},
+            "false_rate": 0.011834,
+            "false_untolerated": 8,
+            "median_delay_s": 60.0,
+            "n": 169,
+            "no_trigger": 2,
+            "root_among_suspects": 158,
+            "true": 165
+          },
+          "passes": true,
+          "skipped_no_slack": 325,
+          "uncropped": {
+            "excluded": 1,
+            "false": 6,
+            "false_by_fault": {},
+            "false_rate": 0.035503,
+            "false_untolerated": 12,
+            "median_delay_s": 60.0,
+            "n": 169,
+            "no_trigger": 1,
+            "root_among_suspects": 150,
+            "true": 162
+          }
+        }
+      },
+      "passes": true
+    }
+  },
+  "crop_fractions": [
+    0.25,
+    0.4,
+    0.6
+  ],
+  "detector_version": "trigger-v2",
+  "false_rate_limit": 0.05,
+  "grid": {
+    "bucket_seconds": [
+      15,
+      30,
+      60
+    ],
+    "persistence": [
+      1,
+      2,
+      3
+    ],
+    "threshold": [
+      3,
+      4,
+      5,
+      6,
+      8,
+      10,
+      12
+    ]
+  },
+  "results": [
+    {
+      "bucket_seconds": 15,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 63,
+        "false_by_fault": {
+          "adFailure": 7,
+          "adHighCpu": 7,
+          "adManualGc": 7,
+          "cartFailure": 7,
+          "emailMemoryLeak": 7,
+          "paymentFailure": 7,
+          "paymentUnreachable": 7,
+          "productCatalogFailure": 7,
+          "recommendationCacheFailure": 7
+        },
+        "false_rate": 1.0,
+        "false_untolerated": 63,
+        "median_delay_s": null,
+        "n": 63,
+        "no_trigger": 0,
+        "root_among_suspects": 6,
+        "true": 0
+      },
+      "persistence": 1,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 455,
+        "false_by_fault": {},
+        "false_rate": 0.922921,
+        "false_untolerated": 467,
+        "median_delay_s": 15.0,
+        "n": 493,
+        "no_trigger": 0,
+        "root_among_suspects": 61,
+        "true": 38
+      },
+      "threshold": 3.0
+    },
+    {
+      "bucket_seconds": 15,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 63,
+        "false_by_fault": {
+          "adFailure": 7,
+          "adHighCpu": 7,
+          "adManualGc": 7,
+          "cartFailure": 7,
+          "emailMemoryLeak": 7,
+          "paymentFailure": 7,
+          "paymentUnreachable": 7,
+          "productCatalogFailure": 7,
+          "recommendationCacheFailure": 7
+        },
+        "false_rate": 1.0,
+        "false_untolerated": 63,
+        "median_delay_s": null,
+        "n": 63,
+        "no_trigger": 0,
+        "root_among_suspects": 6,
+        "true": 0
+      },
+      "persistence": 2,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 431,
+        "false_by_fault": {},
+        "false_rate": 0.874239,
+        "false_untolerated": 448,
+        "median_delay_s": 15.0,
+        "n": 493,
+        "no_trigger": 0,
+        "root_among_suspects": 79,
+        "true": 62
+      },
+      "threshold": 3.0
+    },
+    {
+      "bucket_seconds": 15,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 63,
+        "false_by_fault": {
+          "adFailure": 7,
+          "adHighCpu": 7,
+          "adManualGc": 7,
+          "cartFailure": 7,
+          "emailMemoryLeak": 7,
+          "paymentFailure": 7,
+          "paymentUnreachable": 7,
+          "productCatalogFailure": 7,
+          "recommendationCacheFailure": 7
+        },
+        "false_rate": 1.0,
+        "false_untolerated": 63,
+        "median_delay_s": null,
+        "n": 63,
+        "no_trigger": 0,
+        "root_among_suspects": 9,
+        "true": 0
+      },
+      "persistence": 3,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 399,
+        "false_by_fault": {},
+        "false_rate": 0.809331,
+        "false_untolerated": 419,
+        "median_delay_s": 15.0,
+        "n": 493,
+        "no_trigger": 0,
+        "root_among_suspects": 102,
+        "true": 94
+      },
+      "threshold": 3.0
+    },
+    {
+      "bucket_seconds": 15,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 63,
+        "false_by_fault": {
+          "adFailure": 7,
+          "adHighCpu": 7,
+          "adManualGc": 7,
+          "cartFailure": 7,
+          "emailMemoryLeak": 7,
+          "paymentFailure": 7,
+          "paymentUnreachable": 7,
+          "productCatalogFailure": 7,
+          "recommendationCacheFailure": 7
+        },
+        "false_rate": 1.0,
+        "false_untolerated": 63,
+        "median_delay_s": null,
+        "n": 63,
+        "no_trigger": 0,
+        "root_among_suspects": 7,
+        "true": 0
+      },
+      "persistence": 1,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 427,
+        "false_by_fault": {},
+        "false_rate": 0.866126,
+        "false_untolerated": 439,
+        "median_delay_s": 15.0,
+        "n": 493,
+        "no_trigger": 0,
+        "root_among_suspects": 85,
+        "true": 66
+      },
+      "threshold": 4.0
+    },
+    {
+      "bucket_seconds": 15,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 63,
+        "false_by_fault": {
+          "adFailure": 7,
+          "adHighCpu": 7,
+          "adManualGc": 7,
+          "cartFailure": 7,
+          "emailMemoryLeak": 7,
+          "paymentFailure": 7,
+          "paymentUnreachable": 7,
+          "productCatalogFailure": 7,
+          "recommendationCacheFailure": 7
+        },
+        "false_rate": 1.0,
+        "false_untolerated": 63,
+        "median_delay_s": null,
+        "n": 63,
+        "no_trigger": 0,
+        "root_among_suspects": 6,
+        "true": 0
+      },
+      "persistence": 2,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 398,
+        "false_by_fault": {},
+        "false_rate": 0.807302,
+        "false_untolerated": 410,
+        "median_delay_s": 15.0,
+        "n": 493,
+        "no_trigger": 0,
+        "root_among_suspects": 107,
+        "true": 95
+      },
+      "threshold": 4.0
+    },
+    {
+      "bucket_seconds": 15,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 63,
+        "false_by_fault": {
+          "adFailure": 7,
+          "adHighCpu": 7,
+          "adManualGc": 7,
+          "cartFailure": 7,
+          "emailMemoryLeak": 7,
+          "paymentFailure": 7,
+          "paymentUnreachable": 7,
+          "productCatalogFailure": 7,
+          "recommendationCacheFailure": 7
+        },
+        "false_rate": 1.0,
+        "false_untolerated": 63,
+        "median_delay_s": null,
+        "n": 63,
+        "no_trigger": 0,
+        "root_among_suspects": 7,
+        "true": 0
+      },
+      "persistence": 3,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 361,
+        "false_by_fault": {},
+        "false_rate": 0.732252,
+        "false_untolerated": 379,
+        "median_delay_s": 15.0,
+        "n": 493,
+        "no_trigger": 0,
+        "root_among_suspects": 129,
+        "true": 132
+      },
+      "threshold": 4.0
+    },
+    {
+      "bucket_seconds": 15,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 63,
+        "false_by_fault": {
+          "adFailure": 7,
+          "adHighCpu": 7,
+          "adManualGc": 7,
+          "cartFailure": 7,
+          "emailMemoryLeak": 7,
+          "paymentFailure": 7,
+          "paymentUnreachable": 7,
+          "productCatalogFailure": 7,
+          "recommendationCacheFailure": 7
+        },
+        "false_rate": 1.0,
+        "false_untolerated": 63,
+        "median_delay_s": null,
+        "n": 63,
+        "no_trigger": 0,
+        "root_among_suspects": 6,
+        "true": 0
+      },
+      "persistence": 1,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 394,
+        "false_by_fault": {},
+        "false_rate": 0.799189,
+        "false_untolerated": 406,
+        "median_delay_s": 15.0,
+        "n": 493,
+        "no_trigger": 0,
+        "root_among_suspects": 112,
+        "true": 99
+      },
+      "threshold": 5.0
+    },
+    {
+      "bucket_seconds": 15,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 63,
+        "false_by_fault": {
+          "adFailure": 7,
+          "adHighCpu": 7,
+          "adManualGc": 7,
+          "cartFailure": 7,
+          "emailMemoryLeak": 7,
+          "paymentFailure": 7,
+          "paymentUnreachable": 7,
+          "productCatalogFailure": 7,
+          "recommendationCacheFailure": 7
+        },
+        "false_rate": 1.0,
+        "false_untolerated": 63,
+        "median_delay_s": null,
+        "n": 63,
+        "no_trigger": 0,
+        "root_among_suspects": 5,
+        "true": 0
+      },
+      "persistence": 2,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 368,
+        "false_by_fault": {},
+        "false_rate": 0.74645,
+        "false_untolerated": 383,
+        "median_delay_s": 15.0,
+        "n": 493,
+        "no_trigger": 0,
+        "root_among_suspects": 134,
+        "true": 125
+      },
+      "threshold": 5.0
+    },
+    {
+      "bucket_seconds": 15,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 63,
+        "false_by_fault": {
+          "adFailure": 7,
+          "adHighCpu": 7,
+          "adManualGc": 7,
+          "cartFailure": 7,
+          "emailMemoryLeak": 7,
+          "paymentFailure": 7,
+          "paymentUnreachable": 7,
+          "productCatalogFailure": 7,
+          "recommendationCacheFailure": 7
+        },
+        "false_rate": 1.0,
+        "false_untolerated": 63,
+        "median_delay_s": null,
+        "n": 63,
+        "no_trigger": 0,
+        "root_among_suspects": 3,
+        "true": 0
+      },
+      "persistence": 3,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 331,
+        "false_by_fault": {},
+        "false_rate": 0.6714,
+        "false_untolerated": 354,
+        "median_delay_s": 15.0,
+        "n": 493,
+        "no_trigger": 0,
+        "root_among_suspects": 154,
+        "true": 162
+      },
+      "threshold": 5.0
+    },
+    {
+      "bucket_seconds": 15,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 63,
+        "false_by_fault": {
+          "adFailure": 7,
+          "adHighCpu": 7,
+          "adManualGc": 7,
+          "cartFailure": 7,
+          "emailMemoryLeak": 7,
+          "paymentFailure": 7,
+          "paymentUnreachable": 7,
+          "productCatalogFailure": 7,
+          "recommendationCacheFailure": 7
+        },
+        "false_rate": 1.0,
+        "false_untolerated": 63,
+        "median_delay_s": null,
+        "n": 63,
+        "no_trigger": 0,
+        "root_among_suspects": 7,
+        "true": 0
+      },
+      "persistence": 1,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 376,
+        "false_by_fault": {},
+        "false_rate": 0.762677,
+        "false_untolerated": 389,
+        "median_delay_s": 30.0,
+        "n": 493,
+        "no_trigger": 0,
+        "root_among_suspects": 124,
+        "true": 117
+      },
+      "threshold": 6.0
+    },
+    {
+      "bucket_seconds": 15,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 63,
+        "false_by_fault": {
+          "adFailure": 7,
+          "adHighCpu": 7,
+          "adManualGc": 7,
+          "cartFailure": 7,
+          "emailMemoryLeak": 7,
+          "paymentFailure": 7,
+          "paymentUnreachable": 7,
+          "productCatalogFailure": 7,
+          "recommendationCacheFailure": 7
+        },
+        "false_rate": 1.0,
+        "false_untolerated": 63,
+        "median_delay_s": null,
+        "n": 63,
+        "no_trigger": 0,
+        "root_among_suspects": 6,
+        "true": 0
+      },
+      "persistence": 2,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 351,
+        "false_by_fault": {},
+        "false_rate": 0.711968,
+        "false_untolerated": 365,
+        "median_delay_s": 30.0,
+        "n": 493,
+        "no_trigger": 0,
+        "root_among_suspects": 142,
+        "true": 142
+      },
+      "threshold": 6.0
+    },
+    {
+      "bucket_seconds": 15,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 62,
+        "false_by_fault": {
+          "adFailure": 7,
+          "adHighCpu": 7,
+          "adManualGc": 6,
+          "cartFailure": 7,
+          "emailMemoryLeak": 7,
+          "paymentFailure": 7,
+          "paymentUnreachable": 7,
+          "productCatalogFailure": 7,
+          "recommendationCacheFailure": 7
+        },
+        "false_rate": 0.984127,
+        "false_untolerated": 62,
+        "median_delay_s": 30.0,
+        "n": 63,
+        "no_trigger": 0,
+        "root_among_suspects": 7,
+        "true": 1
+      },
+      "persistence": 3,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 316,
+        "false_by_fault": {},
+        "false_rate": 0.640974,
+        "false_untolerated": 335,
+        "median_delay_s": 15.0,
+        "n": 493,
+        "no_trigger": 2,
+        "root_among_suspects": 161,
+        "true": 175
+      },
+      "threshold": 6.0
+    },
+    {
+      "bucket_seconds": 15,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 63,
+        "false_by_fault": {
+          "adFailure": 7,
+          "adHighCpu": 7,
+          "adManualGc": 7,
+          "cartFailure": 7,
+          "emailMemoryLeak": 7,
+          "paymentFailure": 7,
+          "paymentUnreachable": 7,
+          "productCatalogFailure": 7,
+          "recommendationCacheFailure": 7
+        },
+        "false_rate": 1.0,
+        "false_untolerated": 63,
+        "median_delay_s": null,
+        "n": 63,
+        "no_trigger": 0,
+        "root_among_suspects": 8,
+        "true": 0
+      },
+      "persistence": 1,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 348,
+        "false_by_fault": {},
+        "false_rate": 0.705882,
+        "false_untolerated": 364,
+        "median_delay_s": 30.0,
+        "n": 493,
+        "no_trigger": 1,
+        "root_among_suspects": 147,
+        "true": 144
+      },
+      "threshold": 8.0
+    },
+    {
+      "bucket_seconds": 15,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 63,
+        "false_by_fault": {
+          "adFailure": 7,
+          "adHighCpu": 7,
+          "adManualGc": 7,
+          "cartFailure": 7,
+          "emailMemoryLeak": 7,
+          "paymentFailure": 7,
+          "paymentUnreachable": 7,
+          "productCatalogFailure": 7,
+          "recommendationCacheFailure": 7
+        },
+        "false_rate": 1.0,
+        "false_untolerated": 63,
+        "median_delay_s": null,
+        "n": 63,
+        "no_trigger": 0,
+        "root_among_suspects": 7,
+        "true": 0
+      },
+      "persistence": 2,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 327,
+        "false_by_fault": {},
+        "false_rate": 0.663286,
+        "false_untolerated": 340,
+        "median_delay_s": 30.0,
+        "n": 493,
+        "no_trigger": 1,
+        "root_among_suspects": 160,
+        "true": 165
+      },
+      "threshold": 8.0
+    },
+    {
+      "bucket_seconds": 15,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 58,
+        "false_by_fault": {
+          "adFailure": 7,
+          "adHighCpu": 6,
+          "adManualGc": 5,
+          "cartFailure": 7,
+          "emailMemoryLeak": 7,
+          "paymentFailure": 7,
+          "paymentUnreachable": 6,
+          "productCatalogFailure": 6,
+          "recommendationCacheFailure": 7
+        },
+        "false_rate": 0.920635,
+        "false_untolerated": 59,
+        "median_delay_s": 30.0,
+        "n": 63,
+        "no_trigger": 2,
+        "root_among_suspects": 10,
+        "true": 3
+      },
+      "persistence": 3,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 289,
+        "false_by_fault": {},
+        "false_rate": 0.586207,
+        "false_untolerated": 305,
+        "median_delay_s": 30.0,
+        "n": 493,
+        "no_trigger": 4,
+        "root_among_suspects": 185,
+        "true": 200
+      },
+      "threshold": 8.0
+    },
+    {
+      "bucket_seconds": 15,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 63,
+        "false_by_fault": {
+          "adFailure": 7,
+          "adHighCpu": 7,
+          "adManualGc": 7,
+          "cartFailure": 7,
+          "emailMemoryLeak": 7,
+          "paymentFailure": 7,
+          "paymentUnreachable": 7,
+          "productCatalogFailure": 7,
+          "recommendationCacheFailure": 7
+        },
+        "false_rate": 1.0,
+        "false_untolerated": 63,
+        "median_delay_s": null,
+        "n": 63,
+        "no_trigger": 0,
+        "root_among_suspects": 9,
+        "true": 0
+      },
+      "persistence": 1,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 333,
+        "false_by_fault": {},
+        "false_rate": 0.675456,
+        "false_untolerated": 346,
+        "median_delay_s": 30.0,
+        "n": 493,
+        "no_trigger": 1,
+        "root_among_suspects": 161,
+        "true": 159
+      },
+      "threshold": 10.0
+    },
+    {
+      "bucket_seconds": 15,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 62,
+        "false_by_fault": {
+          "adFailure": 7,
+          "adHighCpu": 7,
+          "adManualGc": 7,
+          "cartFailure": 7,
+          "emailMemoryLeak": 7,
+          "paymentFailure": 7,
+          "paymentUnreachable": 7,
+          "productCatalogFailure": 6,
+          "recommendationCacheFailure": 7
+        },
+        "false_rate": 0.984127,
+        "false_untolerated": 62,
+        "median_delay_s": null,
+        "n": 63,
+        "no_trigger": 1,
+        "root_among_suspects": 10,
+        "true": 0
+      },
+      "persistence": 2,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 311,
+        "false_by_fault": {},
+        "false_rate": 0.630832,
+        "false_untolerated": 322,
+        "median_delay_s": 30.0,
+        "n": 493,
+        "no_trigger": 1,
+        "root_among_suspects": 175,
+        "true": 181
+      },
+      "threshold": 10.0
+    },
+    {
+      "bucket_seconds": 15,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 54,
+        "false_by_fault": {
+          "adFailure": 7,
+          "adHighCpu": 6,
+          "adManualGc": 5,
+          "cartFailure": 7,
+          "emailMemoryLeak": 6,
+          "paymentFailure": 7,
+          "paymentUnreachable": 4,
+          "productCatalogFailure": 5,
+          "recommendationCacheFailure": 7
+        },
+        "false_rate": 0.857143,
+        "false_untolerated": 55,
+        "median_delay_s": 30.0,
+        "n": 63,
+        "no_trigger": 2,
+        "root_among_suspects": 10,
+        "true": 7
+      },
+      "persistence": 3,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 259,
+        "false_by_fault": {},
+        "false_rate": 0.525355,
+        "false_untolerated": 277,
+        "median_delay_s": 30.0,
+        "n": 493,
+        "no_trigger": 5,
+        "root_among_suspects": 202,
+        "true": 229
+      },
+      "threshold": 10.0
+    },
+    {
+      "bucket_seconds": 15,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 63,
+        "false_by_fault": {
+          "adFailure": 7,
+          "adHighCpu": 7,
+          "adManualGc": 7,
+          "cartFailure": 7,
+          "emailMemoryLeak": 7,
+          "paymentFailure": 7,
+          "paymentUnreachable": 7,
+          "productCatalogFailure": 7,
+          "recommendationCacheFailure": 7
+        },
+        "false_rate": 1.0,
+        "false_untolerated": 63,
+        "median_delay_s": null,
+        "n": 63,
+        "no_trigger": 0,
+        "root_among_suspects": 9,
+        "true": 0
+      },
+      "persistence": 1,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 318,
+        "false_by_fault": {},
+        "false_rate": 0.64503,
+        "false_untolerated": 330,
+        "median_delay_s": 30.0,
+        "n": 493,
+        "no_trigger": 2,
+        "root_among_suspects": 170,
+        "true": 173
+      },
+      "threshold": 12.0
+    },
+    {
+      "bucket_seconds": 15,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 62,
+        "false_by_fault": {
+          "adFailure": 7,
+          "adHighCpu": 7,
+          "adManualGc": 7,
+          "cartFailure": 7,
+          "emailMemoryLeak": 7,
+          "paymentFailure": 7,
+          "paymentUnreachable": 7,
+          "productCatalogFailure": 6,
+          "recommendationCacheFailure": 7
+        },
+        "false_rate": 0.984127,
+        "false_untolerated": 62,
+        "median_delay_s": null,
+        "n": 63,
+        "no_trigger": 1,
+        "root_among_suspects": 8,
+        "true": 0
+      },
+      "persistence": 2,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 284,
+        "false_by_fault": {},
+        "false_rate": 0.576065,
+        "false_untolerated": 295,
+        "median_delay_s": 30.0,
+        "n": 493,
+        "no_trigger": 4,
+        "root_among_suspects": 200,
+        "true": 205
+      },
+      "threshold": 12.0
+    },
+    {
+      "bucket_seconds": 15,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 43,
+        "false_by_fault": {
+          "adFailure": 4,
+          "adHighCpu": 5,
+          "adManualGc": 5,
+          "cartFailure": 6,
+          "emailMemoryLeak": 6,
+          "paymentFailure": 3,
+          "paymentUnreachable": 2,
+          "productCatalogFailure": 5,
+          "recommendationCacheFailure": 7
+        },
+        "false_rate": 0.68254,
+        "false_untolerated": 47,
+        "median_delay_s": 52.5,
+        "n": 63,
+        "no_trigger": 4,
+        "root_among_suspects": 13,
+        "true": 16
+      },
+      "persistence": 3,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 234,
+        "false_by_fault": {},
+        "false_rate": 0.474645,
+        "false_untolerated": 252,
+        "median_delay_s": 30.0,
+        "n": 493,
+        "no_trigger": 6,
+        "root_among_suspects": 229,
+        "true": 253
+      },
+      "threshold": 12.0
+    },
+    {
+      "bucket_seconds": 30,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 63,
+        "false_by_fault": {
+          "adFailure": 7,
+          "adHighCpu": 7,
+          "adManualGc": 7,
+          "cartFailure": 7,
+          "emailMemoryLeak": 7,
+          "paymentFailure": 7,
+          "paymentUnreachable": 7,
+          "productCatalogFailure": 7,
+          "recommendationCacheFailure": 7
+        },
+        "false_rate": 1.0,
+        "false_untolerated": 63,
+        "median_delay_s": null,
+        "n": 63,
+        "no_trigger": 0,
+        "root_among_suspects": 10,
+        "true": 0
+      },
+      "persistence": 1,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 395,
+        "false_by_fault": {},
+        "false_rate": 0.801217,
+        "false_untolerated": 422,
+        "median_delay_s": 30.0,
+        "n": 493,
+        "no_trigger": 0,
+        "root_among_suspects": 102,
+        "true": 98
+      },
+      "threshold": 3.0
+    },
+    {
+      "bucket_seconds": 30,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 63,
+        "false_by_fault": {
+          "adFailure": 7,
+          "adHighCpu": 7,
+          "adManualGc": 7,
+          "cartFailure": 7,
+          "emailMemoryLeak": 7,
+          "paymentFailure": 7,
+          "paymentUnreachable": 7,
+          "productCatalogFailure": 7,
+          "recommendationCacheFailure": 7
+        },
+        "false_rate": 1.0,
+        "false_untolerated": 63,
+        "median_delay_s": null,
+        "n": 63,
+        "no_trigger": 0,
+        "root_among_suspects": 12,
+        "true": 0
+      },
+      "persistence": 2,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 341,
+        "false_by_fault": {},
+        "false_rate": 0.691684,
+        "false_untolerated": 376,
+        "median_delay_s": 30.0,
+        "n": 493,
+        "no_trigger": 0,
+        "root_among_suspects": 144,
+        "true": 152
+      },
+      "threshold": 3.0
+    },
+    {
+      "bucket_seconds": 30,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 63,
+        "false_by_fault": {
+          "adFailure": 7,
+          "adHighCpu": 7,
+          "adManualGc": 7,
+          "cartFailure": 7,
+          "emailMemoryLeak": 7,
+          "paymentFailure": 7,
+          "paymentUnreachable": 7,
+          "productCatalogFailure": 7,
+          "recommendationCacheFailure": 7
+        },
+        "false_rate": 1.0,
+        "false_untolerated": 63,
+        "median_delay_s": null,
+        "n": 63,
+        "no_trigger": 0,
+        "root_among_suspects": 10,
+        "true": 0
+      },
+      "persistence": 3,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 281,
+        "false_by_fault": {},
+        "false_rate": 0.56998,
+        "false_untolerated": 330,
+        "median_delay_s": 30.0,
+        "n": 493,
+        "no_trigger": 2,
+        "root_among_suspects": 179,
+        "true": 210
+      },
+      "threshold": 3.0
+    },
+    {
+      "bucket_seconds": 30,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 63,
+        "false_by_fault": {
+          "adFailure": 7,
+          "adHighCpu": 7,
+          "adManualGc": 7,
+          "cartFailure": 7,
+          "emailMemoryLeak": 7,
+          "paymentFailure": 7,
+          "paymentUnreachable": 7,
+          "productCatalogFailure": 7,
+          "recommendationCacheFailure": 7
+        },
+        "false_rate": 1.0,
+        "false_untolerated": 63,
+        "median_delay_s": null,
+        "n": 63,
+        "no_trigger": 0,
+        "root_among_suspects": 8,
+        "true": 0
+      },
+      "persistence": 1,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 354,
+        "false_by_fault": {},
+        "false_rate": 0.718053,
+        "false_untolerated": 378,
+        "median_delay_s": 30.0,
+        "n": 493,
+        "no_trigger": 0,
+        "root_among_suspects": 146,
+        "true": 139
+      },
+      "threshold": 4.0
+    },
+    {
+      "bucket_seconds": 30,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 63,
+        "false_by_fault": {
+          "adFailure": 7,
+          "adHighCpu": 7,
+          "adManualGc": 7,
+          "cartFailure": 7,
+          "emailMemoryLeak": 7,
+          "paymentFailure": 7,
+          "paymentUnreachable": 7,
+          "productCatalogFailure": 7,
+          "recommendationCacheFailure": 7
+        },
+        "false_rate": 1.0,
+        "false_untolerated": 63,
+        "median_delay_s": null,
+        "n": 63,
+        "no_trigger": 0,
+        "root_among_suspects": 7,
+        "true": 0
+      },
+      "persistence": 2,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 288,
+        "false_by_fault": {},
+        "false_rate": 0.584178,
+        "false_untolerated": 316,
+        "median_delay_s": 30.0,
+        "n": 493,
+        "no_trigger": 1,
+        "root_among_suspects": 193,
+        "true": 204
+      },
+      "threshold": 4.0
+    },
+    {
+      "bucket_seconds": 30,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 59,
+        "false_by_fault": {
+          "adFailure": 7,
+          "adHighCpu": 7,
+          "adManualGc": 7,
+          "cartFailure": 7,
+          "emailMemoryLeak": 5,
+          "paymentFailure": 7,
+          "paymentUnreachable": 7,
+          "productCatalogFailure": 7,
+          "recommendationCacheFailure": 5
+        },
+        "false_rate": 0.936508,
+        "false_untolerated": 59,
+        "median_delay_s": 150.0,
+        "n": 63,
+        "no_trigger": 1,
+        "root_among_suspects": 6,
+        "true": 3
+      },
+      "persistence": 3,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 237,
+        "false_by_fault": {},
+        "false_rate": 0.48073,
+        "false_untolerated": 276,
+        "median_delay_s": 30.0,
+        "n": 493,
+        "no_trigger": 3,
+        "root_among_suspects": 224,
+        "true": 253
+      },
+      "threshold": 4.0
+    },
+    {
+      "bucket_seconds": 30,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 63,
+        "false_by_fault": {
+          "adFailure": 7,
+          "adHighCpu": 7,
+          "adManualGc": 7,
+          "cartFailure": 7,
+          "emailMemoryLeak": 7,
+          "paymentFailure": 7,
+          "paymentUnreachable": 7,
+          "productCatalogFailure": 7,
+          "recommendationCacheFailure": 7
+        },
+        "false_rate": 1.0,
+        "false_untolerated": 63,
+        "median_delay_s": null,
+        "n": 63,
+        "no_trigger": 0,
+        "root_among_suspects": 8,
+        "true": 0
+      },
+      "persistence": 1,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 332,
+        "false_by_fault": {},
+        "false_rate": 0.673428,
+        "false_untolerated": 351,
+        "median_delay_s": 30.0,
+        "n": 493,
+        "no_trigger": 0,
+        "root_among_suspects": 161,
+        "true": 161
+      },
+      "threshold": 5.0
+    },
+    {
+      "bucket_seconds": 30,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 57,
+        "false_by_fault": {
+          "adFailure": 7,
+          "adHighCpu": 7,
+          "adManualGc": 7,
+          "cartFailure": 5,
+          "emailMemoryLeak": 7,
+          "paymentFailure": 5,
+          "paymentUnreachable": 7,
+          "productCatalogFailure": 5,
+          "recommendationCacheFailure": 7
+        },
+        "false_rate": 0.904762,
+        "false_untolerated": 59,
+        "median_delay_s": 75.0,
+        "n": 63,
+        "no_trigger": 0,
+        "root_among_suspects": 7,
+        "true": 6
+      },
+      "persistence": 2,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 265,
+        "false_by_fault": {},
+        "false_rate": 0.537525,
+        "false_untolerated": 293,
+        "median_delay_s": 30.0,
+        "n": 493,
+        "no_trigger": 1,
+        "root_among_suspects": 209,
+        "true": 227
+      },
+      "threshold": 5.0
+    },
+    {
+      "bucket_seconds": 30,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 48,
+        "false_by_fault": {
+          "adFailure": 6,
+          "adHighCpu": 7,
+          "adManualGc": 7,
+          "cartFailure": 5,
+          "emailMemoryLeak": 5,
+          "paymentFailure": 4,
+          "paymentUnreachable": 5,
+          "productCatalogFailure": 5,
+          "recommendationCacheFailure": 4
+        },
+        "false_rate": 0.761905,
+        "false_untolerated": 51,
+        "median_delay_s": 105.0,
+        "n": 63,
+        "no_trigger": 4,
+        "root_among_suspects": 6,
+        "true": 11
+      },
+      "persistence": 3,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 201,
+        "false_by_fault": {},
+        "false_rate": 0.407708,
+        "false_untolerated": 238,
+        "median_delay_s": 30.0,
+        "n": 493,
+        "no_trigger": 3,
+        "root_among_suspects": 252,
+        "true": 289
+      },
+      "threshold": 5.0
+    },
+    {
+      "bucket_seconds": 30,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 63,
+        "false_by_fault": {
+          "adFailure": 7,
+          "adHighCpu": 7,
+          "adManualGc": 7,
+          "cartFailure": 7,
+          "emailMemoryLeak": 7,
+          "paymentFailure": 7,
+          "paymentUnreachable": 7,
+          "productCatalogFailure": 7,
+          "recommendationCacheFailure": 7
+        },
+        "false_rate": 1.0,
+        "false_untolerated": 63,
+        "median_delay_s": null,
+        "n": 63,
+        "no_trigger": 0,
+        "root_among_suspects": 11,
+        "true": 0
+      },
+      "persistence": 1,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 309,
+        "false_by_fault": {},
+        "false_rate": 0.626775,
+        "false_untolerated": 326,
+        "median_delay_s": 30.0,
+        "n": 493,
+        "no_trigger": 0,
+        "root_among_suspects": 178,
+        "true": 184
+      },
+      "threshold": 6.0
+    },
+    {
+      "bucket_seconds": 30,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 52,
+        "false_by_fault": {
+          "adFailure": 5,
+          "adHighCpu": 7,
+          "adManualGc": 7,
+          "cartFailure": 5,
+          "emailMemoryLeak": 5,
+          "paymentFailure": 5,
+          "paymentUnreachable": 6,
+          "productCatalogFailure": 5,
+          "recommendationCacheFailure": 7
+        },
+        "false_rate": 0.825397,
+        "false_untolerated": 53,
+        "median_delay_s": 135.0,
+        "n": 63,
+        "no_trigger": 2,
+        "root_among_suspects": 9,
+        "true": 9
+      },
+      "persistence": 2,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 246,
+        "false_by_fault": {},
+        "false_rate": 0.498986,
+        "false_untolerated": 268,
+        "median_delay_s": 30.0,
+        "n": 493,
+        "no_trigger": 1,
+        "root_among_suspects": 224,
+        "true": 246
+      },
+      "threshold": 6.0
+    },
+    {
+      "bucket_seconds": 30,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 40,
+        "false_by_fault": {
+          "adFailure": 4,
+          "adHighCpu": 6,
+          "adManualGc": 6,
+          "cartFailure": 4,
+          "emailMemoryLeak": 3,
+          "paymentFailure": 4,
+          "paymentUnreachable": 5,
+          "productCatalogFailure": 4,
+          "recommendationCacheFailure": 4
+        },
+        "false_rate": 0.634921,
+        "false_untolerated": 43,
+        "median_delay_s": 75.0,
+        "n": 63,
+        "no_trigger": 10,
+        "root_among_suspects": 14,
+        "true": 13
+      },
+      "persistence": 3,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 165,
+        "false_by_fault": {},
+        "false_rate": 0.334686,
+        "false_untolerated": 201,
+        "median_delay_s": 30.0,
+        "n": 493,
+        "no_trigger": 4,
+        "root_among_suspects": 278,
+        "true": 324
+      },
+      "threshold": 6.0
+    },
+    {
+      "bucket_seconds": 30,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 59,
+        "false_by_fault": {
+          "adFailure": 7,
+          "adHighCpu": 7,
+          "adManualGc": 6,
+          "cartFailure": 7,
+          "emailMemoryLeak": 7,
+          "paymentFailure": 6,
+          "paymentUnreachable": 5,
+          "productCatalogFailure": 7,
+          "recommendationCacheFailure": 7
+        },
+        "false_rate": 0.936508,
+        "false_untolerated": 61,
+        "median_delay_s": 0.0,
+        "n": 63,
+        "no_trigger": 1,
+        "root_among_suspects": 11,
+        "true": 3
+      },
+      "persistence": 1,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 282,
+        "false_by_fault": {},
+        "false_rate": 0.572008,
+        "false_untolerated": 297,
+        "median_delay_s": 30.0,
+        "n": 493,
+        "no_trigger": 0,
+        "root_among_suspects": 205,
+        "true": 211
+      },
+      "threshold": 8.0
+    },
+    {
+      "bucket_seconds": 30,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 29,
+        "false_by_fault": {
+          "adFailure": 2,
+          "adHighCpu": 4,
+          "adManualGc": 3,
+          "cartFailure": 4,
+          "emailMemoryLeak": 3,
+          "paymentFailure": 3,
+          "paymentUnreachable": 4,
+          "productCatalogFailure": 5,
+          "recommendationCacheFailure": 1
+        },
+        "false_rate": 0.460317,
+        "false_untolerated": 36,
+        "median_delay_s": 45.0,
+        "n": 63,
+        "no_trigger": 13,
+        "root_among_suspects": 18,
+        "true": 21
+      },
+      "persistence": 2,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 201,
+        "false_by_fault": {},
+        "false_rate": 0.407708,
+        "false_untolerated": 228,
+        "median_delay_s": 30.0,
+        "n": 493,
+        "no_trigger": 2,
+        "root_among_suspects": 264,
+        "true": 290
+      },
+      "threshold": 8.0
+    },
+    {
+      "bucket_seconds": 30,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 16,
+        "false_by_fault": {
+          "adFailure": 2,
+          "adHighCpu": 3,
+          "adManualGc": 3,
+          "cartFailure": 2,
+          "emailMemoryLeak": 1,
+          "paymentFailure": 1,
+          "paymentUnreachable": 1,
+          "productCatalogFailure": 3,
+          "recommendationCacheFailure": 0
+        },
+        "false_rate": 0.253968,
+        "false_untolerated": 23,
+        "median_delay_s": 45.0,
+        "n": 63,
+        "no_trigger": 21,
+        "root_among_suspects": 22,
+        "true": 26
+      },
+      "persistence": 3,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 114,
+        "false_by_fault": {},
+        "false_rate": 0.231237,
+        "false_untolerated": 156,
+        "median_delay_s": 30.0,
+        "n": 493,
+        "no_trigger": 6,
+        "root_among_suspects": 325,
+        "true": 373
+      },
+      "threshold": 8.0
+    },
+    {
+      "bucket_seconds": 30,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 52,
+        "false_by_fault": {
+          "adFailure": 6,
+          "adHighCpu": 6,
+          "adManualGc": 4,
+          "cartFailure": 6,
+          "emailMemoryLeak": 6,
+          "paymentFailure": 6,
+          "paymentUnreachable": 4,
+          "productCatalogFailure": 7,
+          "recommendationCacheFailure": 7
+        },
+        "false_rate": 0.825397,
+        "false_untolerated": 55,
+        "median_delay_s": 22.5,
+        "n": 63,
+        "no_trigger": 3,
+        "root_among_suspects": 12,
+        "true": 8
+      },
+      "persistence": 1,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 250,
+        "false_by_fault": {},
+        "false_rate": 0.507099,
+        "false_untolerated": 263,
+        "median_delay_s": 30.0,
+        "n": 493,
+        "no_trigger": 1,
+        "root_among_suspects": 229,
+        "true": 242
+      },
+      "threshold": 10.0
+    },
+    {
+      "bucket_seconds": 30,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 21,
+        "false_by_fault": {
+          "adFailure": 1,
+          "adHighCpu": 2,
+          "adManualGc": 2,
+          "cartFailure": 4,
+          "emailMemoryLeak": 2,
+          "paymentFailure": 3,
+          "paymentUnreachable": 3,
+          "productCatalogFailure": 4,
+          "recommendationCacheFailure": 0
+        },
+        "false_rate": 0.333333,
+        "false_untolerated": 26,
+        "median_delay_s": 37.5,
+        "n": 63,
+        "no_trigger": 22,
+        "root_among_suspects": 17,
+        "true": 20
+      },
+      "persistence": 2,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 172,
+        "false_by_fault": {},
+        "false_rate": 0.348884,
+        "false_untolerated": 186,
+        "median_delay_s": 30.0,
+        "n": 493,
+        "no_trigger": 5,
+        "root_among_suspects": 293,
+        "true": 316
+      },
+      "threshold": 10.0
+    },
+    {
+      "bucket_seconds": 30,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 11,
+        "false_by_fault": {
+          "adFailure": 1,
+          "adHighCpu": 2,
+          "adManualGc": 1,
+          "cartFailure": 2,
+          "emailMemoryLeak": 1,
+          "paymentFailure": 0,
+          "paymentUnreachable": 1,
+          "productCatalogFailure": 3,
+          "recommendationCacheFailure": 0
+        },
+        "false_rate": 0.174603,
+        "false_untolerated": 16,
+        "median_delay_s": 37.5,
+        "n": 63,
+        "no_trigger": 30,
+        "root_among_suspects": 21,
+        "true": 22
+      },
+      "persistence": 3,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 93,
+        "false_by_fault": {},
+        "false_rate": 0.188641,
+        "false_untolerated": 118,
+        "median_delay_s": 30.0,
+        "n": 493,
+        "no_trigger": 10,
+        "root_among_suspects": 356,
+        "true": 390
+      },
+      "threshold": 10.0
+    },
+    {
+      "bucket_seconds": 30,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 46,
+        "false_by_fault": {
+          "adFailure": 6,
+          "adHighCpu": 4,
+          "adManualGc": 4,
+          "cartFailure": 5,
+          "emailMemoryLeak": 6,
+          "paymentFailure": 5,
+          "paymentUnreachable": 4,
+          "productCatalogFailure": 6,
+          "recommendationCacheFailure": 6
+        },
+        "false_rate": 0.730159,
+        "false_untolerated": 50,
+        "median_delay_s": 22.5,
+        "n": 63,
+        "no_trigger": 7,
+        "root_among_suspects": 16,
+        "true": 10
+      },
+      "persistence": 1,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 232,
+        "false_by_fault": {},
+        "false_rate": 0.470588,
+        "false_untolerated": 243,
+        "median_delay_s": 30.0,
+        "n": 493,
+        "no_trigger": 3,
+        "root_among_suspects": 248,
+        "true": 258
+      },
+      "threshold": 12.0
+    },
+    {
+      "bucket_seconds": 30,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 16,
+        "false_by_fault": {
+          "adFailure": 1,
+          "adHighCpu": 2,
+          "adManualGc": 2,
+          "cartFailure": 3,
+          "emailMemoryLeak": 1,
+          "paymentFailure": 1,
+          "paymentUnreachable": 2,
+          "productCatalogFailure": 4,
+          "recommendationCacheFailure": 0
+        },
+        "false_rate": 0.253968,
+        "false_untolerated": 21,
+        "median_delay_s": 30.0,
+        "n": 63,
+        "no_trigger": 29,
+        "root_among_suspects": 20,
+        "true": 18
+      },
+      "persistence": 2,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 137,
+        "false_by_fault": {},
+        "false_rate": 0.27789,
+        "false_untolerated": 150,
+        "median_delay_s": 30.0,
+        "n": 493,
+        "no_trigger": 7,
+        "root_among_suspects": 329,
+        "true": 349
+      },
+      "threshold": 12.0
+    },
+    {
+      "bucket_seconds": 30,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 7,
+        "false_by_fault": {
+          "adFailure": 1,
+          "adHighCpu": 1,
+          "adManualGc": 1,
+          "cartFailure": 1,
+          "emailMemoryLeak": 1,
+          "paymentFailure": 0,
+          "paymentUnreachable": 0,
+          "productCatalogFailure": 2,
+          "recommendationCacheFailure": 0
+        },
+        "false_rate": 0.111111,
+        "false_untolerated": 12,
+        "median_delay_s": 30.0,
+        "n": 63,
+        "no_trigger": 35,
+        "root_among_suspects": 25,
+        "true": 21
+      },
+      "persistence": 3,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 63,
+        "false_by_fault": {},
+        "false_rate": 0.127789,
+        "false_untolerated": 86,
+        "median_delay_s": 30.0,
+        "n": 493,
+        "no_trigger": 13,
+        "root_among_suspects": 384,
+        "true": 417
+      },
+      "threshold": 12.0
+    },
+    {
+      "bucket_seconds": 60,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 58,
+        "false_by_fault": {
+          "adFailure": 7,
+          "adHighCpu": 5,
+          "adManualGc": 5,
+          "cartFailure": 7,
+          "emailMemoryLeak": 7,
+          "paymentFailure": 7,
+          "paymentUnreachable": 7,
+          "productCatalogFailure": 6,
+          "recommendationCacheFailure": 7
+        },
+        "false_rate": 0.920635,
+        "false_untolerated": 62,
+        "median_delay_s": 0.0,
+        "n": 63,
+        "no_trigger": 0,
+        "root_among_suspects": 7,
+        "true": 5
+      },
+      "persistence": 1,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 258,
+        "false_by_fault": {},
+        "false_rate": 0.523327,
+        "false_untolerated": 293,
+        "median_delay_s": 60.0,
+        "n": 493,
+        "no_trigger": 0,
+        "root_among_suspects": 207,
+        "true": 235
+      },
+      "threshold": 3.0
+    },
+    {
+      "bucket_seconds": 60,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 40,
+        "false_by_fault": {
+          "adFailure": 5,
+          "adHighCpu": 4,
+          "adManualGc": 2,
+          "cartFailure": 5,
+          "emailMemoryLeak": 5,
+          "paymentFailure": 6,
+          "paymentUnreachable": 3,
+          "productCatalogFailure": 4,
+          "recommendationCacheFailure": 6
+        },
+        "false_rate": 0.634921,
+        "false_untolerated": 50,
+        "median_delay_s": 15.0,
+        "n": 63,
+        "no_trigger": 1,
+        "root_among_suspects": 13,
+        "true": 22
+      },
+      "persistence": 2,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 190,
+        "false_by_fault": {},
+        "false_rate": 0.385396,
+        "false_untolerated": 254,
+        "median_delay_s": 60.0,
+        "n": 493,
+        "no_trigger": 3,
+        "root_among_suspects": 246,
+        "true": 300
+      },
+      "threshold": 3.0
+    },
+    {
+      "bucket_seconds": 60,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 27,
+        "false_by_fault": {
+          "adFailure": 2,
+          "adHighCpu": 3,
+          "adManualGc": 2,
+          "cartFailure": 3,
+          "emailMemoryLeak": 5,
+          "paymentFailure": 3,
+          "paymentUnreachable": 0,
+          "productCatalogFailure": 3,
+          "recommendationCacheFailure": 6
+        },
+        "false_rate": 0.428571,
+        "false_untolerated": 40,
+        "median_delay_s": 30.0,
+        "n": 63,
+        "no_trigger": 3,
+        "root_among_suspects": 20,
+        "true": 33
+      },
+      "persistence": 3,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 145,
+        "false_by_fault": {},
+        "false_rate": 0.294118,
+        "false_untolerated": 226,
+        "median_delay_s": 60.0,
+        "n": 493,
+        "no_trigger": 4,
+        "root_among_suspects": 274,
+        "true": 344
+      },
+      "threshold": 3.0
+    },
+    {
+      "bucket_seconds": 60,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 50,
+        "false_by_fault": {
+          "adFailure": 7,
+          "adHighCpu": 4,
+          "adManualGc": 4,
+          "cartFailure": 6,
+          "emailMemoryLeak": 6,
+          "paymentFailure": 7,
+          "paymentUnreachable": 5,
+          "productCatalogFailure": 5,
+          "recommendationCacheFailure": 6
+        },
+        "false_rate": 0.793651,
+        "false_untolerated": 56,
+        "median_delay_s": 15.0,
+        "n": 63,
+        "no_trigger": 0,
+        "root_among_suspects": 11,
+        "true": 13
+      },
+      "persistence": 1,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 220,
+        "false_by_fault": {},
+        "false_rate": 0.446247,
+        "false_untolerated": 254,
+        "median_delay_s": 60.0,
+        "n": 493,
+        "no_trigger": 1,
+        "root_among_suspects": 236,
+        "true": 272
+      },
+      "threshold": 4.0
+    },
+    {
+      "bucket_seconds": 60,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 23,
+        "false_by_fault": {
+          "adFailure": 2,
+          "adHighCpu": 3,
+          "adManualGc": 2,
+          "cartFailure": 4,
+          "emailMemoryLeak": 4,
+          "paymentFailure": 1,
+          "paymentUnreachable": 1,
+          "productCatalogFailure": 2,
+          "recommendationCacheFailure": 4
+        },
+        "false_rate": 0.365079,
+        "false_untolerated": 34,
+        "median_delay_s": 75.0,
+        "n": 63,
+        "no_trigger": 3,
+        "root_among_suspects": 18,
+        "true": 37
+      },
+      "persistence": 2,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 149,
+        "false_by_fault": {},
+        "false_rate": 0.302231,
+        "false_untolerated": 203,
+        "median_delay_s": 60.0,
+        "n": 493,
+        "no_trigger": 3,
+        "root_among_suspects": 285,
+        "true": 341
+      },
+      "threshold": 4.0
+    },
+    {
+      "bucket_seconds": 60,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 11,
+        "false_by_fault": {
+          "adFailure": 1,
+          "adHighCpu": 1,
+          "adManualGc": 1,
+          "cartFailure": 1,
+          "emailMemoryLeak": 3,
+          "paymentFailure": 0,
+          "paymentUnreachable": 0,
+          "productCatalogFailure": 2,
+          "recommendationCacheFailure": 2
+        },
+        "false_rate": 0.174603,
+        "false_untolerated": 25,
+        "median_delay_s": 75.0,
+        "n": 63,
+        "no_trigger": 7,
+        "root_among_suspects": 25,
+        "true": 45
+      },
+      "persistence": 3,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 97,
+        "false_by_fault": {},
+        "false_rate": 0.196755,
+        "false_untolerated": 162,
+        "median_delay_s": 60.0,
+        "n": 493,
+        "no_trigger": 5,
+        "root_among_suspects": 319,
+        "true": 391
+      },
+      "threshold": 4.0
+    },
+    {
+      "bucket_seconds": 60,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 39,
+        "false_by_fault": {
+          "adFailure": 4,
+          "adHighCpu": 3,
+          "adManualGc": 3,
+          "cartFailure": 4,
+          "emailMemoryLeak": 6,
+          "paymentFailure": 5,
+          "paymentUnreachable": 5,
+          "productCatalogFailure": 5,
+          "recommendationCacheFailure": 4
+        },
+        "false_rate": 0.619048,
+        "false_untolerated": 48,
+        "median_delay_s": 52.5,
+        "n": 63,
+        "no_trigger": 0,
+        "root_among_suspects": 17,
+        "true": 24
+      },
+      "persistence": 1,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 196,
+        "false_by_fault": {},
+        "false_rate": 0.397566,
+        "false_untolerated": 230,
+        "median_delay_s": 60.0,
+        "n": 493,
+        "no_trigger": 1,
+        "root_among_suspects": 260,
+        "true": 296
+      },
+      "threshold": 5.0
+    },
+    {
+      "bucket_seconds": 60,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 15,
+        "false_by_fault": {
+          "adFailure": 2,
+          "adHighCpu": 1,
+          "adManualGc": 2,
+          "cartFailure": 3,
+          "emailMemoryLeak": 3,
+          "paymentFailure": 1,
+          "paymentUnreachable": 0,
+          "productCatalogFailure": 2,
+          "recommendationCacheFailure": 1
+        },
+        "false_rate": 0.238095,
+        "false_untolerated": 25,
+        "median_delay_s": 75.0,
+        "n": 63,
+        "no_trigger": 7,
+        "root_among_suspects": 23,
+        "true": 41
+      },
+      "persistence": 2,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 125,
+        "false_by_fault": {},
+        "false_rate": 0.25355,
+        "false_untolerated": 171,
+        "median_delay_s": 60.0,
+        "n": 493,
+        "no_trigger": 6,
+        "root_among_suspects": 315,
+        "true": 362
+      },
+      "threshold": 5.0
+    },
+    {
+      "bucket_seconds": 60,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 7,
+        "false_by_fault": {
+          "adFailure": 1,
+          "adHighCpu": 1,
+          "adManualGc": 1,
+          "cartFailure": 1,
+          "emailMemoryLeak": 1,
+          "paymentFailure": 0,
+          "paymentUnreachable": 0,
+          "productCatalogFailure": 1,
+          "recommendationCacheFailure": 1
+        },
+        "false_rate": 0.111111,
+        "false_untolerated": 19,
+        "median_delay_s": 75.0,
+        "n": 63,
+        "no_trigger": 12,
+        "root_among_suspects": 27,
+        "true": 44
+      },
+      "persistence": 3,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 67,
+        "false_by_fault": {},
+        "false_rate": 0.135903,
+        "false_untolerated": 129,
+        "median_delay_s": 60.0,
+        "n": 493,
+        "no_trigger": 9,
+        "root_among_suspects": 350,
+        "true": 417
+      },
+      "threshold": 5.0
+    },
+    {
+      "bucket_seconds": 60,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 29,
+        "false_by_fault": {
+          "adFailure": 4,
+          "adHighCpu": 3,
+          "adManualGc": 3,
+          "cartFailure": 3,
+          "emailMemoryLeak": 4,
+          "paymentFailure": 3,
+          "paymentUnreachable": 2,
+          "productCatalogFailure": 5,
+          "recommendationCacheFailure": 2
+        },
+        "false_rate": 0.460317,
+        "false_untolerated": 38,
+        "median_delay_s": 75.0,
+        "n": 63,
+        "no_trigger": 0,
+        "root_among_suspects": 19,
+        "true": 34
+      },
+      "persistence": 1,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 169,
+        "false_by_fault": {},
+        "false_rate": 0.342799,
+        "false_untolerated": 207,
+        "median_delay_s": 60.0,
+        "n": 493,
+        "no_trigger": 3,
+        "root_among_suspects": 277,
+        "true": 321
+      },
+      "threshold": 6.0
+    },
+    {
+      "bucket_seconds": 60,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 7,
+        "false_by_fault": {
+          "adFailure": 2,
+          "adHighCpu": 1,
+          "adManualGc": 0,
+          "cartFailure": 1,
+          "emailMemoryLeak": 1,
+          "paymentFailure": 1,
+          "paymentUnreachable": 0,
+          "productCatalogFailure": 0,
+          "recommendationCacheFailure": 1
+        },
+        "false_rate": 0.111111,
+        "false_untolerated": 15,
+        "median_delay_s": 97.5,
+        "n": 63,
+        "no_trigger": 10,
+        "root_among_suspects": 28,
+        "true": 46
+      },
+      "persistence": 2,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 88,
+        "false_by_fault": {},
+        "false_rate": 0.178499,
+        "false_untolerated": 138,
+        "median_delay_s": 60.0,
+        "n": 493,
+        "no_trigger": 7,
+        "root_among_suspects": 340,
+        "true": 398
+      },
+      "threshold": 6.0
+    },
+    {
+      "bucket_seconds": 60,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 3,
+        "false_by_fault": {
+          "adFailure": 1,
+          "adHighCpu": 1,
+          "adManualGc": 0,
+          "cartFailure": 0,
+          "emailMemoryLeak": 0,
+          "paymentFailure": 0,
+          "paymentUnreachable": 0,
+          "productCatalogFailure": 0,
+          "recommendationCacheFailure": 1
+        },
+        "false_rate": 0.047619,
+        "false_untolerated": 12,
+        "median_delay_s": 75.0,
+        "n": 63,
+        "no_trigger": 18,
+        "root_among_suspects": 28,
+        "true": 42
+      },
+      "persistence": 3,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 43,
+        "false_by_fault": {},
+        "false_rate": 0.087221,
+        "false_untolerated": 103,
+        "median_delay_s": 60.0,
+        "n": 493,
+        "no_trigger": 10,
+        "root_among_suspects": 369,
+        "true": 440
+      },
+      "threshold": 6.0
+    },
+    {
+      "bucket_seconds": 60,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 19,
+        "false_by_fault": {
+          "adFailure": 4,
+          "adHighCpu": 2,
+          "adManualGc": 1,
+          "cartFailure": 3,
+          "emailMemoryLeak": 4,
+          "paymentFailure": 1,
+          "paymentUnreachable": 2,
+          "productCatalogFailure": 2,
+          "recommendationCacheFailure": 0
+        },
+        "false_rate": 0.301587,
+        "false_untolerated": 27,
+        "median_delay_s": 112.5,
+        "n": 63,
+        "no_trigger": 4,
+        "root_among_suspects": 22,
+        "true": 40
+      },
+      "persistence": 1,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 135,
+        "false_by_fault": {},
+        "false_rate": 0.273834,
+        "false_untolerated": 172,
+        "median_delay_s": 60.0,
+        "n": 493,
+        "no_trigger": 6,
+        "root_among_suspects": 306,
+        "true": 352
+      },
+      "threshold": 8.0
+    },
+    {
+      "bucket_seconds": 60,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 2,
+        "false_by_fault": {
+          "adFailure": 1,
+          "adHighCpu": 0,
+          "adManualGc": 0,
+          "cartFailure": 1,
+          "emailMemoryLeak": 0,
+          "paymentFailure": 0,
+          "paymentUnreachable": 0,
+          "productCatalogFailure": 0,
+          "recommendationCacheFailure": 0
+        },
+        "false_rate": 0.031746,
+        "false_untolerated": 8,
+        "median_delay_s": 97.5,
+        "n": 63,
+        "no_trigger": 21,
+        "root_among_suspects": 30,
+        "true": 40
+      },
+      "persistence": 2,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 53,
+        "false_by_fault": {},
+        "false_rate": 0.107505,
+        "false_untolerated": 98,
+        "median_delay_s": 60.0,
+        "n": 493,
+        "no_trigger": 9,
+        "root_among_suspects": 369,
+        "true": 431
+      },
+      "threshold": 8.0
+    },
+    {
+      "bucket_seconds": 60,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 1,
+        "false_by_fault": {
+          "adFailure": 1,
+          "adHighCpu": 0,
+          "adManualGc": 0,
+          "cartFailure": 0,
+          "emailMemoryLeak": 0,
+          "paymentFailure": 0,
+          "paymentUnreachable": 0,
+          "productCatalogFailure": 0,
+          "recommendationCacheFailure": 0
+        },
+        "false_rate": 0.015873,
+        "false_untolerated": 7,
+        "median_delay_s": 82.5,
+        "n": 63,
+        "no_trigger": 24,
+        "root_among_suspects": 31,
+        "true": 38
+      },
+      "persistence": 3,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 25,
+        "false_by_fault": {},
+        "false_rate": 0.05071,
+        "false_untolerated": 73,
+        "median_delay_s": 60.0,
+        "n": 493,
+        "no_trigger": 18,
+        "root_among_suspects": 393,
+        "true": 450
+      },
+      "threshold": 8.0
+    },
+    {
+      "bucket_seconds": 60,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 11,
+        "false_by_fault": {
+          "adFailure": 2,
+          "adHighCpu": 1,
+          "adManualGc": 0,
+          "cartFailure": 2,
+          "emailMemoryLeak": 2,
+          "paymentFailure": 1,
+          "paymentUnreachable": 1,
+          "productCatalogFailure": 2,
+          "recommendationCacheFailure": 0
+        },
+        "false_rate": 0.174603,
+        "false_untolerated": 18,
+        "median_delay_s": 97.5,
+        "n": 63,
+        "no_trigger": 12,
+        "root_among_suspects": 23,
+        "true": 40
+      },
+      "persistence": 1,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 104,
+        "false_by_fault": {},
+        "false_rate": 0.210953,
+        "false_untolerated": 128,
+        "median_delay_s": 60.0,
+        "n": 493,
+        "no_trigger": 8,
+        "root_among_suspects": 342,
+        "true": 381
+      },
+      "threshold": 10.0
+    },
+    {
+      "bucket_seconds": 60,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 1,
+        "false_by_fault": {
+          "adFailure": 0,
+          "adHighCpu": 0,
+          "adManualGc": 0,
+          "cartFailure": 1,
+          "emailMemoryLeak": 0,
+          "paymentFailure": 0,
+          "paymentUnreachable": 0,
+          "productCatalogFailure": 0,
+          "recommendationCacheFailure": 0
+        },
+        "false_rate": 0.015873,
+        "false_untolerated": 5,
+        "median_delay_s": 75.0,
+        "n": 63,
+        "no_trigger": 29,
+        "root_among_suspects": 29,
+        "true": 33
+      },
+      "persistence": 2,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 36,
+        "false_by_fault": {},
+        "false_rate": 0.073022,
+        "false_untolerated": 62,
+        "median_delay_s": 60.0,
+        "n": 493,
+        "no_trigger": 15,
+        "root_among_suspects": 401,
+        "true": 442
+      },
+      "threshold": 10.0
+    },
+    {
+      "bucket_seconds": 60,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 0,
+        "false_by_fault": {
+          "adFailure": 0,
+          "adHighCpu": 0,
+          "adManualGc": 0,
+          "cartFailure": 0,
+          "emailMemoryLeak": 0,
+          "paymentFailure": 0,
+          "paymentUnreachable": 0,
+          "productCatalogFailure": 0,
+          "recommendationCacheFailure": 0
+        },
+        "false_rate": 0.0,
+        "false_untolerated": 5,
+        "median_delay_s": 75.0,
+        "n": 63,
+        "no_trigger": 32,
+        "root_among_suspects": 30,
+        "true": 31
+      },
+      "persistence": 3,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 17,
+        "false_by_fault": {},
+        "false_rate": 0.034483,
+        "false_untolerated": 44,
+        "median_delay_s": 60.0,
+        "n": 493,
+        "no_trigger": 26,
+        "root_among_suspects": 419,
+        "true": 450
+      },
+      "threshold": 10.0
+    },
+    {
+      "bucket_seconds": 60,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 9,
+        "false_by_fault": {
+          "adFailure": 2,
+          "adHighCpu": 1,
+          "adManualGc": 0,
+          "cartFailure": 2,
+          "emailMemoryLeak": 1,
+          "paymentFailure": 1,
+          "paymentUnreachable": 0,
+          "productCatalogFailure": 2,
+          "recommendationCacheFailure": 0
+        },
+        "false_rate": 0.142857,
+        "false_untolerated": 13,
+        "median_delay_s": 75.0,
+        "n": 63,
+        "no_trigger": 23,
+        "root_among_suspects": 25,
+        "true": 31
+      },
+      "persistence": 1,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 73,
+        "false_by_fault": {},
+        "false_rate": 0.148073,
+        "false_untolerated": 97,
+        "median_delay_s": 60.0,
+        "n": 493,
+        "no_trigger": 8,
+        "root_among_suspects": 365,
+        "true": 412
+      },
+      "threshold": 12.0
+    },
+    {
+      "bucket_seconds": 60,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 1,
+        "false_by_fault": {
+          "adFailure": 0,
+          "adHighCpu": 0,
+          "adManualGc": 0,
+          "cartFailure": 1,
+          "emailMemoryLeak": 0,
+          "paymentFailure": 0,
+          "paymentUnreachable": 0,
+          "productCatalogFailure": 0,
+          "recommendationCacheFailure": 0
+        },
+        "false_rate": 0.015873,
+        "false_untolerated": 4,
+        "median_delay_s": 75.0,
+        "n": 63,
+        "no_trigger": 32,
+        "root_among_suspects": 28,
+        "true": 30
+      },
+      "persistence": 2,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 28,
+        "false_by_fault": {},
+        "false_rate": 0.056795,
+        "false_untolerated": 51,
+        "median_delay_s": 60.0,
+        "n": 493,
+        "no_trigger": 24,
+        "root_among_suspects": 409,
+        "true": 441
+      },
+      "threshold": 12.0
+    },
+    {
+      "bucket_seconds": 60,
+      "otel_build_v3": {
+        "excluded": 0,
+        "false": 0,
+        "false_by_fault": {
+          "adFailure": 0,
+          "adHighCpu": 0,
+          "adManualGc": 0,
+          "cartFailure": 0,
+          "emailMemoryLeak": 0,
+          "paymentFailure": 0,
+          "paymentUnreachable": 0,
+          "productCatalogFailure": 0,
+          "recommendationCacheFailure": 0
+        },
+        "false_rate": 0.0,
+        "false_untolerated": 3,
+        "median_delay_s": 75.0,
+        "n": 63,
+        "no_trigger": 35,
+        "root_among_suspects": 32,
+        "true": 28
+      },
+      "persistence": 3,
+      "rcaeval_build": {
+        "excluded": 2,
+        "false": 11,
+        "false_by_fault": {},
+        "false_rate": 0.022312,
+        "false_untolerated": 35,
+        "median_delay_s": 60.0,
+        "n": 493,
+        "no_trigger": 37,
+        "root_among_suspects": 424,
+        "true": 445
+      },
+      "threshold": 12.0
+    }
+  ],
+  "selected": {
+    "bucket_seconds": 60,
+    "context_nonempty": {
+      "otel_build_v3": 26,
+      "rcaeval_build": 0
+    },
+    "detector_hash": "bc07f4952e6856eecdfd62591664b0aa541701e08098594d61ddb3fccb2bf312",
+    "fallbacks": {
+      "otel_build_v3": 32,
+      "rcaeval_build": 27
+    },
+    "otel_build_v3": {
+      "excluded": 0,
+      "false": 0,
+      "false_by_fault": {
+        "adFailure": 0,
+        "adHighCpu": 0,
+        "adManualGc": 0,
+        "cartFailure": 0,
+        "emailMemoryLeak": 0,
+        "paymentFailure": 0,
+        "paymentUnreachable": 0,
+        "productCatalogFailure": 0,
+        "recommendationCacheFailure": 0
+      },
+      "false_rate": 0.0,
+      "false_untolerated": 5,
+      "median_delay_s": 75.0,
+      "n": 63,
+      "no_trigger": 32,
+      "root_among_suspects": 30,
+      "true": 31
+    },
+    "persistence": 3,
+    "rcaeval_build": {
+      "excluded": 2,
+      "false": 17,
+      "false_by_fault": {},
+      "false_rate": 0.034483,
+      "false_untolerated": 44,
+      "median_delay_s": 60.0,
+      "n": 493,
+      "no_trigger": 26,
+      "root_among_suspects": 419,
+      "true": 450
+    },
+    "threshold": 10.0
+  },
+  "warmup_buckets": 4
+}

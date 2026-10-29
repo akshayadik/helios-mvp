@@ -57,7 +57,7 @@ if TYPE_CHECKING:
     from helios.schemas.telemetry import TelemetryWindow
     from helios.vcl.config import VCLManifest
 
-__all__ = ["RunOrchestrator"]
+__all__ = ["RunOrchestrator", "incident_graph"]
 
 HELIOS_ENABLE_ORCHESTRATOR: bool = True
 
@@ -167,21 +167,9 @@ class RunOrchestrator:
                 self._registry.register(snapshot_hash, self._config_hash)
 
         # Build UEG-C once per incident
-        ueg_c = None
-        seeds: list[str] = []
-        if self._manifest.l2b_graph and window.p2_traces_path is not None:
-            ueg_c = build_ueg_c(window, self._config_hash)
-            if ueg_c is not None:
-                # ueg_structural ON keeps the typed graph; OFF flattens it to one
-                # untyped edge kind (HELIOS-noStructural, S1.6).
-                ueg_c = apply_structural_bundle(ueg_c).snapshot
-                # Incident-local subgraph, Algorithm 5 (S1.7), seeded by the
-                # trigger's suspects that are services of the graph.
-                candidates = set(ueg_c.candidate_ids())
-                seeds = [s for s in trigger.suspects if s in candidates]
-                ueg_c, _prune_result = khop_prune(
-                    ueg_c, seeds=seeds or None, exclude=OUT_OF_SCOPE_SERVICES
-                )
+        ueg_c, seeds = incident_graph(
+            window, self._manifest, self._config_hash, trigger
+        )
         self._store.insert_trigger(
             trigger,
             run_id=run_id,
@@ -338,6 +326,35 @@ class RunOrchestrator:
             latency_ms=latency_ms,
             cpu_ms=cpu_ms,
         )
+
+
+def incident_graph(
+    window: TelemetryWindow,
+    manifest: VCLManifest,
+    config_hash: str,
+    trigger: TriggerRecord,
+) -> tuple[UEGCSnapshot | None, list[str]]:
+    """The incident's UEG-C and the trigger suspects that seeded its pruning.
+
+    ``(None, [])`` without traces or with the graph flag off. D-pipe
+    calibration calls this too, so it ranks on the graph the runner uses.
+    """
+    if not manifest.l2b_graph or window.p2_traces_path is None:
+        return None, []
+    ueg_c = build_ueg_c(window, config_hash)
+    if ueg_c is None:
+        return None, []
+    # ueg_structural ON keeps the typed graph; OFF flattens it to one
+    # untyped edge kind (HELIOS-noStructural, S1.6).
+    ueg_c = apply_structural_bundle(ueg_c).snapshot
+    # Incident-local subgraph, Algorithm 5 (S1.7), seeded by the
+    # trigger's suspects that are services of the graph.
+    candidates = set(ueg_c.candidate_ids())
+    seeds = [s for s in trigger.suspects if s in candidates]
+    ueg_c, _prune_result = khop_prune(
+        ueg_c, seeds=seeds or None, exclude=OUT_OF_SCOPE_SERVICES
+    )
+    return ueg_c, seeds
 
 
 def _in_scope_output(out: dict[str, Any]) -> dict[str, Any]:

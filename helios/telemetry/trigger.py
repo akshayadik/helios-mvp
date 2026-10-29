@@ -4,10 +4,14 @@ Design: docs/sprints/s2-reasoning/s2_1_dpipe_trigger_design.md (owner decisions
 D-a … D-f). HELIOS and every baseline receive the same trigger record for an
 incident; nothing else gives a system a time anchor.
 
-How it decides (``trigger-v1``):
+How it decides (``trigger-v2``):
 
-- Signals come from metrics and logs only (never traces: the RCAEval build
-  corpus has none, so a trace signal could not be calibrated for the pool).
+- Signals come from metrics and logs only, never raw spans: the RCAEval build
+  corpus has none while the pool has, so a raw-span signal could not be
+  calibrated for the pool. Trace evidence enters as metrics computed from
+  spans (the OTel collector's span metrics: calls, error calls, mean latency
+  per service), which RCAEval data does not carry. Latency histograms count
+  once per service (their total; ``fold_histograms``).
   Each series is bucketed (helios.graph.anomaly_intensity) and every bucket is
   scored against that series' own **past** only (``causal_z``): the detector
   never looks ahead, and no parameter refers to a position in the window.
@@ -29,12 +33,14 @@ import hashlib
 import json
 from dataclasses import asdict, dataclass
 from enum import StrEnum
+from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
 from pydantic import BaseModel, ConfigDict
+from scipy import stats
 
 from helios.graph.anomaly_intensity import (
     Series,
@@ -65,20 +71,31 @@ __all__ = [
     "TriggerRecord",
     "TriggerSource",
     "causal_z",
+    "decide",
     "detect",
     "detector_hash",
+    "history_discount",
     "load_detector_params",
     "load_external_triggers",
     "robust_scale",
+    "series_correction",
     "service_scores",
 ]
 
 HELIOS_ENABLE_TRIGGER: bool = True
 
-DETECTOR_VERSION = "trigger-v1"
+# v2 (S2-M7-ENG10): histogram folding, span-metric direction rules, Poisson
+# floor for count series with MAD 0.
+DETECTOR_VERSION = "trigger-v2"
 WARMUP_BUCKETS = 4  # fixed before calibration, never tuned (design §5.3)
 REL_FLOOR = 0.05  # a gauge's scale is at least 5% of its level
 Z_CAP = 50  # numeric guard only; never stands in for a missing scale
+# Tail probability behind both corrections (owner decision D-i, 2026-10-27):
+# a short history is judged with a Student-t prediction interval, and a
+# service's largest score is divided by the Bonferroni factor for its number
+# of series, so z stays in normal-tail units however few points or many
+# series there are.
+TAIL_PROB = 0.001
 SUSPECT_COUNT = SEED_COUNT
 _MAD_TO_SIGMA = 1.4826
 _TIME_DIGITS = 6
@@ -139,13 +156,17 @@ class ServiceScores:
 def robust_scale(history: np.ndarray, *, count_series: bool) -> float:
     """Scale of a reference sample: robust spread with floors (0 = no scale).
 
-    Spread = 1.4826 MAD, else std; floored at ``REL_FLOOR`` of the median and,
-    for count series, at the Poisson noise sqrt(max(median, 1)). Shared by the
-    trigger and D-pipe's trigger split, so both judge a shift the same way.
+    Spread = 1.4826 MAD, else (gauges only) std; floored at ``REL_FLOOR`` of
+    the median and, for count series, at the Poisson noise
+    sqrt(max(median, 1)). A count series with MAD 0 takes the Poisson floor,
+    not the std: the std of a mostly-zero history is set by its few bursts, so
+    an error burst would mask itself from its second bucket on (S2-M7-ENG10).
+    Shared by the trigger and D-pipe's trigger split, so both judge a shift
+    the same way.
     """
     centre = float(np.median(history))
     spread = _MAD_TO_SIGMA * float(np.median(np.abs(history - centre)))
-    if spread == 0:
+    if spread == 0 and not count_series:
         spread = float(np.std(history))
     floor = REL_FLOOR * abs(centre)
     if count_series:
@@ -153,10 +174,39 @@ def robust_scale(history: np.ndarray, *, count_series: bool) -> float:
     return max(spread, floor)
 
 
+@cache
+def history_discount(n: int) -> float:
+    """Factor by which a z from ``n`` past points is shrunk (>= 1, -> 1 as n grows).
+
+    Student-t prediction interval for one new value from n points, relative to
+    the normal quantile: t(1 - TAIL_PROB; n - 1) * sqrt(1 + 1/n) / z(1 - TAIL_PROB).
+    """
+    if n < 2:
+        return float("inf")
+    t = float(stats.t.isf(TAIL_PROB, n - 1)) * float(np.sqrt(1 + 1 / n))
+    return max(1, t / float(stats.norm.isf(TAIL_PROB)))
+
+
+@cache
+def series_correction(m: int) -> float:
+    """Bonferroni factor for the largest of ``m`` series scores (1 for one series)."""
+    if m <= 1:
+        return 1
+    return float(stats.norm.isf(TAIL_PROB / m)) / float(stats.norm.isf(TAIL_PROB))
+
+
 def causal_z(
-    values: np.ndarray, *, count_series: bool, warmup: int = WARMUP_BUCKETS
+    values: np.ndarray,
+    *,
+    count_series: bool,
+    upward_only: bool = False,
+    warmup: int = WARMUP_BUCKETS,
 ) -> np.ndarray:
     """|z| of each bucket against the finite buckets before it (never after).
+
+    ``upward_only`` series (CPU, memory; owner decision D-h) score rises only:
+    a drop gives 0. The z of a short history is shrunk by ``history_discount``
+    (D-i), so a few noisy points cannot set off the trigger.
 
     Scale = ``robust_scale`` of the past. With no scale (a gauge flat at zero)
     a bucket gives no evidence (NaN). Buckets before ``warmup`` past values
@@ -172,8 +222,10 @@ def causal_z(
             continue
         scale = robust_scale(history, count_series=count_series)
         if scale > 0:
-            centre = float(np.median(history))
-            out[i] = min(abs(float(current) - centre) / scale, Z_CAP)
+            delta = float(current) - float(np.median(history))
+            if upward_only:
+                delta = max(delta, 0)
+            out[i] = min(abs(delta) / scale / history_discount(history.size), Z_CAP)
     return out
 
 
@@ -199,7 +251,15 @@ def service_scores(
     parts: list[dict[str, list[Series]]] = []
     if window.p1_metrics_path is not None:
         metrics = pd.read_parquet(_resolve(window.p1_metrics_path, root))
-        parts.append(metric_series(metrics, window.window_start_iso, n, bucket_seconds))
+        parts.append(
+            metric_series(
+                metrics,
+                window.window_start_iso,
+                n,
+                bucket_seconds,
+                fold_histograms=True,
+            )
+        )
     features = features_for_window(window, root or Path(), bucket_seconds)
     if features is not None:
         parts.append(log_series(features, window.window_start_iso, n, bucket_seconds))
@@ -212,8 +272,14 @@ def service_scores(
             for series in part.get(service, []):
                 values = series.values.astype("float64", copy=True)
                 values[:first] = np.nan
-                scored.append(causal_z(values, count_series=series.is_count))
-        stacked = np.vstack(scored)
+                scored.append(
+                    causal_z(
+                        values,
+                        count_series=series.is_count,
+                        upward_only=series.upward_only,
+                    )
+                )
+        stacked = np.vstack(scored) / series_correction(len(scored))
         has = np.isfinite(stacked).any(axis=0)
         z[row, has] = np.nanmax(np.where(np.isfinite(stacked), stacked, -1), axis=0)[
             has
@@ -258,6 +324,15 @@ def detect(
     scores = service_scores(
         window, params.bucket_seconds, root=root, crop_start_s=crop_start_s
     )
+    return decide(scores, params, incident_id=window.incident_id)
+
+
+def decide(
+    scores: ServiceScores, params: DetectorParams, *, incident_id: str
+) -> TriggerRecord:
+    """The firing rule on precomputed scores (``scores`` must use
+    ``params.bucket_seconds``); lets calibration sweep threshold and
+    persistence without rescoring."""
     inside = [i for i, s in enumerate(scores.services) if in_scope(s)]
     outside = [i for i, s in enumerate(scores.services) if not in_scope(s)]
     n = scores.z.shape[1]
@@ -286,7 +361,7 @@ def detect(
     if source == TriggerSource.FALLBACK and not finite.any():
         context = []
     return TriggerRecord(
-        incident_id=window.incident_id,
+        incident_id=incident_id,
         trigger_time_s=round(
             scores.start_s + bucket * params.bucket_seconds, _TIME_DIGITS
         ),

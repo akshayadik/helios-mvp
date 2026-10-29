@@ -1,0 +1,265 @@
+[campaign] load generator at 25 users
+[campaign] case 1/63: normal period (570s)
+[campaign] case 1/63: fault active (300s)
+[campaign] case 1/63: captured and labelled
+[campaign] case 2/63: normal period (480s)
+[campaign] case 2/63: fault active (300s)
+[campaign] case 2/63: captured and labelled
+[campaign] case 3/63: normal period (540s)
+[campaign] case 3/63: fault active (300s)
+[campaign] case 3/63: captured and labelled
+[campaign] case 4/63: normal period (480s)
+[campaign] case 4/63: fault active (300s)
+[campaign] case 4/63: captured and labelled
+[campaign] case 5/63: normal period (615s)
+[campaign] case 5/63: fault active (300s)
+[campaign] case 5/63: captured and labelled
+[campaign] case 6/63: normal period (555s)
+[campaign] case 6/63: fault active (300s)
+[campaign] case 6/63: captured and labelled
+[campaign] case 7/63: normal period (900s)
+[campaign] case 7/63: fault active (300s)
+[campaign] case 7/63: captured and labelled
+[campaign] case 8/63: normal period (705s)
+[campaign] case 8/63: fault active (300s)
+[campaign] case 8/63: captured and labelled
+[campaign] case 9/63: normal period (900s)
+[campaign] case 9/63: fault active (300s)
+[campaign] restarted email
+[campaign] case 9/63: captured and labelled
+[campaign] case 10/63: normal period (615s)
+[campaign] case 10/63: fault active (300s)
+Traceback (most recent call last):
+  File "/Users/akshay/Documents/_Projects/Experimental/helios-mvp/bin/capture_campaign.py", line 390, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/Users/akshay/Documents/_Projects/Experimental/helios-mvp/bin/capture_campaign.py", line 383, in main
+    return cmd_run(key, args.reps, args.limit, args.corpus, args.faults)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/akshay/Documents/_Projects/Experimental/helios-mvp/bin/capture_campaign.py", line 306, in cmd_run
+    captured = campaign.run(limit)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/Users/akshay/Documents/_Projects/Experimental/helios-mvp/helios/adapters/otel_campaign.py", line 351, in run
+    self.run_case(case, done + i, len(self.cases))
+  File "/Users/akshay/Documents/_Projects/Experimental/helios-mvp/helios/adapters/otel_campaign.py", line 322, in run_case
+    self.capture(case, start, end)
+  File "/Users/akshay/Documents/_Projects/Experimental/helios-mvp/bin/capture_campaign.py", line 285, in capture
+    window = cap.run(start, end)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/Users/akshay/Documents/_Projects/Experimental/helios-mvp/helios/telemetry/otel_demo_capture.py", line 509, in run
+    table = fetcher.fetch(start, end)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/akshay/Documents/_Projects/Experimental/helios-mvp/helios/telemetry/otel_demo_capture.py", line 451, in fetch
+    tables.append(self._inner.fetch(lo, hi))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/akshay/Documents/_Projects/Experimental/helios-mvp/helios/telemetry/otel_demo_capture.py", line 383, in fetch
+    with urllib.request.urlopen(req, timeout=60) as resp:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/akshay/.local/share/uv/python/cpython-3.11.15-macos-aarch64-none/lib/python3.11/urllib/request.py", line 216, in urlopen
+    return opener.open(url, data, timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/akshay/.local/share/uv/python/cpython-3.11.15-macos-aarch64-none/lib/python3.11/urllib/request.py", line 519, in open
+    response = self._open(req, data)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/akshay/.local/share/uv/python/cpython-3.11.15-macos-aarch64-none/lib/python3.11/urllib/request.py", line 536, in _open
+    result = self._call_chain(self.handle_open, protocol, protocol +
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/akshay/.local/share/uv/python/cpython-3.11.15-macos-aarch64-none/lib/python3.11/urllib/request.py", line 496, in _call_chain
+    result = func(*args)
+             ^^^^^^^^^^^
+  File "/Users/akshay/.local/share/uv/python/cpython-3.11.15-macos-aarch64-none/lib/python3.11/urllib/request.py", line 1377, in http_open
+    return self.do_open(http.client.HTTPConnection, req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/akshay/.local/share/uv/python/cpython-3.11.15-macos-aarch64-none/lib/python3.11/urllib/request.py", line 1352, in do_open
+    r = h.getresponse()
+        ^^^^^^^^^^^^^^^
+  File "/Users/akshay/.local/share/uv/python/cpython-3.11.15-macos-aarch64-none/lib/python3.11/http/client.py", line 1415, in getresponse
+    response.begin()
+  File "/Users/akshay/.local/share/uv/python/cpython-3.11.15-macos-aarch64-none/lib/python3.11/http/client.py", line 330, in begin
+    version, status, reason = self._read_status()
+                              ^^^^^^^^^^^^^^^^^^^
+  File "/Users/akshay/.local/share/uv/python/cpython-3.11.15-macos-aarch64-none/lib/python3.11/http/client.py", line 299, in _read_status
+    raise RemoteDisconnected("Remote end closed connection without"
+http.client.RemoteDisconnected: Remote end closed connection without response
+[campaign] resumed Wed Oct 28 22:40:19 IST 2026 after OpenSearch restart (commit e272617)
+[campaign] load generator at 25 users
+[campaign] case 10/63: normal period (615s)
+[campaign] case 10/63: fault active (300s)
+[campaign] case 10/63: captured and labelled
+[campaign] case 11/63: normal period (585s)
+[campaign] case 11/63: fault active (300s)
+[campaign] case 11/63: captured and labelled
+[campaign] case 12/63: normal period (585s)
+[campaign] case 12/63: fault active (300s)
+[campaign] case 12/63: captured and labelled
+[campaign] case 13/63: normal period (750s)
+[campaign] case 13/63: fault active (300s)
+[campaign] case 13/63: captured and labelled
+[campaign] case 14/63: normal period (660s)
+[campaign] case 14/63: fault active (300s)
+[campaign] case 14/63: captured and labelled
+[campaign] case 15/63: normal period (840s)
+[campaign] case 15/63: fault active (300s)
+[campaign] case 15/63: captured and labelled
+[campaign] case 16/63: normal period (795s)
+[campaign] case 16/63: fault active (300s)
+[campaign] case 16/63: captured and labelled
+[campaign] case 17/63: normal period (765s)
+[campaign] case 17/63: fault active (300s)
+[campaign] case 17/63: captured and labelled
+[campaign] case 18/63: normal period (750s)
+[campaign] case 18/63: fault active (300s)
+[campaign] restarted email
+[campaign] case 18/63: captured and labelled
+[campaign] case 19/63: normal period (795s)
+[campaign] case 19/63: fault active (300s)
+[campaign] case 19/63: captured and labelled
+[campaign] case 20/63: normal period (690s)
+[campaign] case 20/63: fault active (300s)
+[campaign] case 20/63: captured and labelled
+[campaign] case 21/63: normal period (750s)
+[campaign] case 21/63: fault active (300s)
+[campaign] case 21/63: captured and labelled
+[campaign] case 22/63: normal period (615s)
+[campaign] case 22/63: fault active (300s)
+[campaign] case 22/63: captured and labelled
+[campaign] case 23/63: normal period (885s)
+[campaign] case 23/63: fault active (300s)
+[campaign] case 23/63: captured and labelled
+[campaign] case 24/63: normal period (510s)
+[campaign] case 24/63: fault active (300s)
+[campaign] case 24/63: captured and labelled
+[campaign] case 25/63: normal period (780s)
+[campaign] case 25/63: fault active (300s)
+[campaign] case 25/63: captured and labelled
+[campaign] case 26/63: normal period (780s)
+[campaign] case 26/63: fault active (300s)
+[campaign] case 26/63: captured and labelled
+[campaign] case 27/63: normal period (870s)
+[campaign] case 27/63: fault active (300s)
+[campaign] restarted email
+[campaign] case 27/63: captured and labelled
+[campaign] case 28/63: normal period (645s)
+[campaign] case 28/63: fault active (300s)
+[campaign] case 28/63: captured and labelled
+[campaign] case 29/63: normal period (720s)
+[campaign] case 29/63: fault active (300s)
+[campaign] case 29/63: captured and labelled
+[campaign] case 30/63: normal period (615s)
+[campaign] case 30/63: fault active (300s)
+[campaign] case 30/63: captured and labelled
+[campaign] case 31/63: normal period (795s)
+[campaign] case 31/63: fault active (300s)
+[campaign] case 31/63: captured and labelled
+[campaign] case 32/63: normal period (780s)
+[campaign] case 32/63: fault active (300s)
+[campaign] case 32/63: captured and labelled
+[campaign] case 33/63: normal period (480s)
+[campaign] case 33/63: fault active (300s)
+[campaign] case 33/63: captured and labelled
+[campaign] case 34/63: normal period (480s)
+[campaign] case 34/63: fault active (300s)
+[campaign] case 34/63: captured and labelled
+[campaign] case 35/63: normal period (525s)
+[campaign] case 35/63: fault active (300s)
+[campaign] case 35/63: captured and labelled
+[campaign] case 36/63: normal period (795s)
+[campaign] case 36/63: fault active (300s)
+[campaign] restarted email
+[campaign] case 36/63: captured and labelled
+[campaign] case 37/63: normal period (630s)
+[campaign] case 37/63: fault active (300s)
+[campaign] case 37/63: captured and labelled
+[campaign] case 38/63: normal period (645s)
+[campaign] case 38/63: fault active (300s)
+[campaign] case 38/63: captured and labelled
+[campaign] case 39/63: normal period (870s)
+[campaign] case 39/63: fault active (300s)
+[campaign] case 39/63: captured and labelled
+[campaign] case 40/63: normal period (855s)
+[campaign] case 40/63: fault active (300s)
+[campaign] case 40/63: captured and labelled
+[campaign] case 41/63: normal period (690s)
+[campaign] case 41/63: fault active (300s)
+[campaign] case 41/63: captured and labelled
+[campaign] case 42/63: normal period (540s)
+[campaign] case 42/63: fault active (300s)
+[campaign] case 42/63: captured and labelled
+[campaign] case 43/63: normal period (795s)
+[campaign] case 43/63: fault active (300s)
+[campaign] case 43/63: captured and labelled
+[campaign] case 44/63: normal period (570s)
+[campaign] case 44/63: fault active (300s)
+[campaign] case 44/63: captured and labelled
+[campaign] case 45/63: normal period (810s)
+[campaign] case 45/63: fault active (300s)
+[campaign] restarted email
+[campaign] case 45/63: captured and labelled
+[campaign] case 46/63: normal period (780s)
+[campaign] case 46/63: fault active (300s)
+[campaign] case 46/63: captured and labelled
+[campaign] case 47/63: normal period (825s)
+[campaign] case 47/63: fault active (300s)
+[campaign] case 47/63: captured and labelled
+[campaign] case 48/63: normal period (825s)
+[campaign] case 48/63: fault active (300s)
+[campaign] case 48/63: captured and labelled
+[campaign] case 49/63: normal period (900s)
+[campaign] case 49/63: fault active (300s)
+[campaign] case 49/63: captured and labelled
+[campaign] case 50/63: normal period (885s)
+[campaign] case 50/63: fault active (300s)
+[campaign] case 50/63: captured and labelled
+[campaign] case 51/63: normal period (600s)
+[campaign] case 51/63: fault active (300s)
+[campaign] case 51/63: captured and labelled
+[campaign] case 52/63: normal period (705s)
+[campaign] case 52/63: fault active (300s)
+[campaign] case 52/63: captured and labelled
+[campaign] case 53/63: normal period (630s)
+[campaign] case 53/63: fault active (300s)
+[campaign] case 53/63: captured and labelled
+[campaign] case 54/63: normal period (585s)
+[campaign] case 54/63: fault active (300s)
+[campaign] restarted email
+[campaign] case 54/63: captured and labelled
+[campaign] case 55/63: normal period (630s)
+[campaign] case 55/63: fault active (300s)
+[campaign] case 55/63: captured and labelled
+[campaign] case 56/63: normal period (630s)
+[campaign] case 56/63: fault active (300s)
+[campaign] case 56/63: captured and labelled
+[campaign] case 57/63: normal period (720s)
+[campaign] case 57/63: fault active (300s)
+[campaign] case 57/63: captured and labelled
+[campaign] case 58/63: normal period (810s)
+[campaign] case 58/63: fault active (300s)
+[campaign] case 58/63: captured and labelled
+[campaign] case 59/63: normal period (705s)
+[campaign] case 59/63: fault active (300s)
+[campaign] case 59/63: captured and labelled
+[campaign] case 60/63: normal period (585s)
+[campaign] case 60/63: fault active (300s)
+[campaign] case 60/63: captured and labelled
+[campaign] case 61/63: normal period (615s)
+[campaign] case 61/63: fault active (300s)
+[campaign] case 61/63: captured and labelled
+[campaign] case 62/63: normal period (540s)
+[campaign] case 62/63: fault active (300s)
+[campaign] case 62/63: captured and labelled
+[campaign] case 63/63: normal period (870s)
+[campaign] case 63/63: fault active (300s)
+[campaign] restarted email
+[campaign] case 63/63: captured and labelled
+[campaign] captured 54 case(s) this run
+[status] 63/63 cases captured and labelled
+[status]   adFailure                    7
+[status]   adHighCpu                    7
+[status]   adManualGc                   7
+[status]   cartFailure                  7
+[status]   emailMemoryLeak              7
+[status]   paymentFailure               7
+[status]   paymentUnreachable           7
+[status]   productCatalogFailure        7
+[status]   recommendationCacheFailure   7
+[status] about 0.0 h left

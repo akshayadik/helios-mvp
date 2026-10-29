@@ -45,6 +45,7 @@ OUT_OF_SCOPE_SERVICES: frozenset[str] = frozenset(
         "opensearch",
         "grafana",
         "otel-collector",
+        "otelcol-contrib",  # the collector under its own log service name
     }
 )
 

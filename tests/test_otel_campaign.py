@@ -12,10 +12,15 @@ import pytest
 
 import bin.capture_campaign as cli
 from helios.adapters.otel_campaign import (
+    CAPTURE_RETRY_WAIT_S,
+    CORPUS_V2,
     FAULTS,
     INGEST_LAG_S,
     POST_S,
     PRE_S,
+    PRE_S_MAX,
+    PRE_S_MIN,
+    PRE_S_STEP,
     RECOVERY_S,
     Campaign,
     FlagdFile,
@@ -23,6 +28,7 @@ from helios.adapters.otel_campaign import (
     PlannedCase,
     opaque_id,
     plan,
+    pre_s_for,
 )
 from helios.evaluation.scoring import Corpus, load_ground_truth
 from helios.telemetry.otel_demo_capture import (
@@ -345,3 +351,266 @@ def test_campaign_metrics_add_container_cpu_and_memory() -> None:
     assert (
         PrometheusMetricsFetcher("http://p")._queries[0] == "up"
     )  # May list unchanged
+
+
+# ── v2: varied normal period (S2.1 recapture, 2026-10-27) ───────────────────
+
+
+def test_v1_plan_is_unchanged() -> None:
+    cases = plan(7)
+    assert {c.pre_s for c in cases} == {PRE_S}
+    assert all(c.case.startswith("otel_build/") for c in cases)
+
+
+def test_v2_plan_varies_the_normal_period_deterministically() -> None:
+    v2 = plan(7, corpus=CORPUS_V2)
+    assert plan(7, corpus=CORPUS_V2) == v2
+    assert all(c.case.startswith(f"{CORPUS_V2}/") for c in v2)
+    assert {c.incident_id for c in v2}.isdisjoint({c.incident_id for c in plan(7)})
+    pre = [c.pre_s for c in v2]
+    assert min(pre) >= PRE_S_MIN and max(pre) <= PRE_S_MAX
+    assert all((p - PRE_S_MIN) % PRE_S_STEP == 0 for p in pre)
+    assert len(set(pre)) >= 10  # position no longer reveals the onset
+    assert all(c.pre_s == pre_s_for(c.incident_id) for c in v2)
+
+
+def test_v2_case_uses_its_own_normal_period(tmp_path: Path) -> None:
+    cases = plan(1, corpus=CORPUS_V2)
+    campaign, clock, events = _campaign(
+        tmp_path,
+        cases,
+        ground_truth=GroundTruthFile(
+            tmp_path / "gt.json", KEY, demo_commit="c", corpus=CORPUS_V2
+        ),
+    )
+    campaign.run(limit=1)
+    pre = cases[0].pre_s
+    assert clock.slept == [RECOVERY_S + pre, POST_S, INGEST_LAG_S]
+    inject = T0 + timedelta(seconds=RECOVERY_S + pre)
+    label = campaign.ground_truth.cases()[cases[0].incident_id]
+    assert label["window_start"] == (inject - timedelta(seconds=pre)).isoformat()
+    assert json.loads((tmp_path / "gt.json").read_text())["corpus"] == CORPUS_V2
+    assert f"[campaign] case 1/9: normal period ({pre}s)" in events
+
+
+def test_cli_v2_corpus_has_its_own_files(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(cli, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(cli, "_demo_commit", lambda: "b74a7bc")
+    monkeypatch.setattr(cli, "load_key", lambda: KEY)
+    captures, truth, manifest = cli._paths(CORPUS_V2)
+    assert captures.name == "build_v2"
+    assert truth.name == "ground_truth_build_v2.json"
+    (tmp_path / truth).parent.mkdir(parents=True)
+    first = plan(1, corpus=CORPUS_V2)[0]
+    GroundTruthFile(tmp_path / truth, KEY, demo_commit="b74a7bc", corpus=CORPUS_V2).add(
+        first.incident_id, {"root_cause_service": "ad", "case": first.case}
+    )
+    assert cli.main(["status", "--corpus", CORPUS_V2]) == 0
+    out = capsys.readouterr().out
+    assert "1/63 cases captured and labelled" in out
+    assert cli.main(["finalize", "--corpus", CORPUS_V2]) == 0
+    written = json.loads((tmp_path / manifest).read_text())
+    assert written["corpus"] == CORPUS_V2
+    assert written["protocol"]["pre_s"] == {"min": 480, "max": 900, "step": 15}
+    assert cli.main(["status"]) == 0  # v1 still the default
+    assert "0/63" in capsys.readouterr().out
+
+
+# ── v3: span metrics, 25-user load, pilot (S2-M7-ENG10, 2026-10-28) ─────────
+
+
+def test_v3_and_pilot_plans_vary_the_normal_period_and_stay_disjoint() -> None:
+    from helios.adapters.otel_campaign import CORPUS_PILOT_V3, CORPUS_V3
+
+    v3 = plan(7, corpus=CORPUS_V3)
+    assert len(v3) == 63
+    assert all(c.pre_s == pre_s_for(c.incident_id) for c in v3)
+    pilot = plan(1, corpus=CORPUS_PILOT_V3)
+    ids = [{c.incident_id for c in p} for p in (v3, pilot, plan(7, corpus=CORPUS_V2))]
+    assert ids[0].isdisjoint(ids[1]) and ids[0].isdisjoint(ids[2])
+
+
+def test_plan_can_be_limited_to_named_faults() -> None:
+    from helios.adapters.otel_campaign import CORPUS_PILOT_V3
+
+    hard = ("paymentFailure", "productCatalogFailure", "recommendationCacheFailure")
+    cases = plan(1, corpus=CORPUS_PILOT_V3, faults=hard)
+    assert [c.fault.flag for c in cases] == list(hard)
+    with pytest.raises(ValueError, match="unknown fault"):
+        plan(1, corpus=CORPUS_PILOT_V3, faults=("noSuchFlag",))
+
+
+def test_v3_corpora_run_at_twenty_five_users() -> None:
+    from helios.adapters.otel_campaign import (
+        CORPUS,
+        CORPUS_PILOT_V3,
+        CORPUS_V3,
+        load_users_for,
+    )
+
+    assert load_users_for(CORPUS_V3) == 25
+    assert load_users_for(CORPUS_PILOT_V3) == 25
+    assert load_users_for(CORPUS) is None  # v1/v2 ran at the demo's 5, unenforced
+    assert load_users_for(CORPUS_V2) is None
+
+
+def test_campaign_checks_load_before_every_case_and_records_it(
+    tmp_path: Path,
+) -> None:
+    checks: list[str] = []
+    cases = plan(1)[:2]
+    campaign, _, _ = _campaign(
+        tmp_path, cases, check_load=lambda: checks.append("ok"), load_users=25
+    )
+    campaign.run()
+    assert checks == ["ok", "ok"]
+    labels = campaign.ground_truth.cases()
+    assert {v["load_users"] for v in labels.values()} == {25}
+
+
+def test_campaign_stops_when_the_load_is_wrong(tmp_path: Path) -> None:
+    def wrong() -> None:
+        raise RuntimeError("load generator runs 5 users, expected 25")
+
+    campaign, _, events = _campaign(tmp_path, plan(1), check_load=wrong)
+    with pytest.raises(RuntimeError, match="expected 25"):
+        campaign.run()
+    assert campaign.ground_truth.cases() == {}
+    assert not any(e.startswith("capture") for e in events)
+
+
+def test_v3_capture_records_span_metrics_not_histogram_buckets(
+    tmp_path: Path,
+) -> None:
+    from helios.telemetry.otel_demo_capture import campaign_metric_queries
+
+    queries = campaign_metric_queries(span_metrics=True)
+    assert not any("_bucket" in q for q in queries)
+    for name in (
+        "span_calls_total",
+        "span_error_calls_total",
+        "span_mean_latency_milliseconds",
+        "container_cpu_utilization_ratio",
+        "container_memory_usage_total_bytes",
+    ):
+        assert any(name in q for q in queries), name
+    error = next(q for q in queries if "span_error_calls_total" in q)
+    assert 'status_code="STATUS_CODE_ERROR"' in error
+    assert all(
+        "SPAN_KIND_SERVER|SPAN_KIND_CONSUMER" in q for q in queries if "span_" in q
+    )
+    cap = build_campaign_capture(
+        "x" * 32,
+        get_variant("HELIOS-Full"),
+        output_dir=tmp_path,
+        prometheus_url="http://p",
+        jaeger_url="http://j",
+        opensearch_url="http://o",
+        span_metrics=True,
+    )
+    assert cap._fetchers[0]._queries == queries  # type: ignore[attr-defined]
+    assert campaign_metric_queries() != queries  # v1/v2 definition unchanged
+
+
+def test_cli_v3_and_pilot_corpora_have_their_own_files() -> None:
+    from helios.adapters.otel_campaign import CORPUS_PILOT_V3, CORPUS_V3
+
+    captures, truth, manifest = cli._paths(CORPUS_V3)
+    assert (captures.name, truth.name, manifest.name) == (
+        "build_v3",
+        "ground_truth_build_v3.json",
+        "build_v3_manifest.json",
+    )
+    captures, truth, manifest = cli._paths(CORPUS_PILOT_V3)
+    assert (captures.name, truth.name, manifest.name) == (
+        "pilot_v3",
+        "ground_truth_pilot_v3.json",
+        "pilot_v3_manifest.json",
+    )
+
+
+def test_cli_sets_and_checks_the_locust_user_count(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sent: list[tuple[str, dict[str, str] | None]] = []
+    state = {"user_count": 5}
+
+    def fake(url: str, form: dict[str, str] | None = None) -> dict[str, object]:
+        sent.append((url, form))
+        if form is not None:
+            state["user_count"] = int(form["user_count"])
+            return {"success": True}
+        return {"state": "running", "user_count": state["user_count"]}
+
+    monkeypatch.setattr(cli, "_locust_call", fake)
+    cli.set_load("http://lg", 25)
+    assert sent[0] == ("http://lg/swarm", {"user_count": "25", "spawn_rate": "5"})
+    cli.check_load("http://lg", 25)  # passes
+    state["user_count"] = 5
+    with pytest.raises(RuntimeError, match="5 users, expected 25"):
+        cli.check_load("http://lg", 25)
+
+
+def test_span_latency_rate_window_covers_two_collector_flushes() -> None:
+    # The collector's span metrics arrive once a minute: a 1 min rate window
+    # holds one sample and returns nothing (pilot v3, 2026-10-28).
+    from helios.telemetry.otel_demo_capture import campaign_metric_queries
+
+    latency = next(
+        q
+        for q in campaign_metric_queries(span_metrics=True)
+        if "span_mean_latency" in q
+    )
+    assert latency.count("[2m]") == 2
+    assert "[1m]" not in latency
+
+
+def test_capture_retries_after_a_backend_drops_the_connection(tmp_path: Path) -> None:
+    # 2026-10-28: OpenSearch restarted mid-query in case 10 of otel_build_v3;
+    # the fault window was already stored, so the capture can be fetched again.
+    cases = plan(1)
+    calls: list[int] = []
+
+    def flaky(case: PlannedCase, start: datetime, end: datetime) -> None:
+        calls.append(1)
+        (tmp_path / "build" / case.incident_id).mkdir(parents=True)
+        if len(calls) == 1:
+            raise ConnectionResetError("Remote end closed connection")
+
+    campaign, clock, events = _campaign(tmp_path, cases, capture=flaky)
+    assert campaign.run(limit=1) == 1
+    assert len(calls) == 2
+    assert CAPTURE_RETRY_WAIT_S in clock.slept
+    assert any("retrying" in e for e in events)
+    assert cases[0].incident_id in campaign.ground_truth.cases()
+
+
+def test_capture_gives_up_after_its_retries(tmp_path: Path) -> None:
+    def down(case: PlannedCase, start: datetime, end: datetime) -> None:
+        raise ConnectionRefusedError("backend down")
+
+    campaign, _, _ = _campaign(tmp_path, plan(1), capture=down)
+    with pytest.raises(ConnectionRefusedError):
+        campaign.run()
+    assert campaign.ground_truth.cases() == {}
+    assert set(campaign.flagd.state().values()) == {"off"}
+
+
+def test_a_retried_capture_is_marked_in_its_label(tmp_path: Path) -> None:
+    # Review of PR 3 (I1): a backend that restarted may have lost exports
+    # during the fault, so a retried case must stay visible, never silent.
+    cases = plan(1)
+    calls: list[int] = []
+
+    def flaky(case: PlannedCase, start: datetime, end: datetime) -> None:
+        calls.append(1)
+        if len(calls) == 1:
+            raise ConnectionResetError("Remote end closed connection")
+
+    campaign, _, _ = _campaign(tmp_path, cases, capture=flaky)
+    campaign.run(limit=2)
+    labels = campaign.ground_truth.cases()
+    assert labels[cases[0].incident_id]["capture_attempts"] == 2
+    assert "capture_attempts" not in labels[cases[1].incident_id]

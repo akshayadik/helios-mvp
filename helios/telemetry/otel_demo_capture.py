@@ -42,6 +42,7 @@ if TYPE_CHECKING:
 __all__ = [
     "DEMO_CONTAINERS",
     "CaptureConfig",
+    "CaptureTruncatedError",
     "JaegerTracesFetcher",
     "OpenSearchLogsFetcher",
     "ParquetWriter",
@@ -49,6 +50,7 @@ __all__ = [
     "SlicedFetcher",
     "StreamFetcher",
     "TelemetryCapture",
+    "UnattributedLogsError",
     "build_campaign_capture",
     "build_default_capture",
     "campaign_metric_queries",
@@ -196,9 +198,12 @@ class JaegerTracesFetcher(StreamFetcher):
         "shipping",
     )
 
-    def __init__(self, base_url: str, api_prefix: str = "/jaeger/ui") -> None:
+    def __init__(
+        self, base_url: str, api_prefix: str = "/jaeger/ui", limit: int = 1000
+    ) -> None:
         self._base_url = base_url.rstrip("/")
         self._api_prefix = api_prefix.rstrip("/")
+        self._limit = limit
 
     @property
     def stream_name(self) -> str:
@@ -224,7 +229,7 @@ class JaegerTracesFetcher(StreamFetcher):
                     "service": service,
                     "start": start_us,
                     "end": end_us,
-                    "limit": 1000,
+                    "limit": self._limit,
                 }
             )
             url = f"{self._base_url}{self._api_prefix}/api/traces?{params}"
@@ -235,7 +240,13 @@ class JaegerTracesFetcher(StreamFetcher):
                 if exc.code == 404:
                     continue
                 raise
-            for trace in payload.get("data", []):
+            traces = payload.get("data", [])
+            if len(traces) >= self._limit:
+                raise CaptureTruncatedError(
+                    f"Jaeger returned {len(traces)} traces of {service} for "
+                    f"{start}..{end}, its limit: use a shorter slice"
+                )
+            for trace in traces:
                 tid: str = trace.get("traceID", "")
                 processes: dict[str, Any] = trace.get("processes", {})
                 for span in trace.get("spans", []):
@@ -290,16 +301,49 @@ class JaegerTracesFetcher(StreamFetcher):
 # ---------------------------------------------------------------------------
 
 
+class CaptureTruncatedError(RuntimeError):
+    """A backend query returned as many rows as its cap: part of it may be missing."""
+
+
+class UnattributedLogsError(RuntimeError):
+    """Log lines were captured but none names its service: the fields are misread."""
+
+
+# OTel severity numbers 1-24 in bands of four (logs data model).
+_SEVERITY_BANDS = ("TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL")
+
+
+def _severity(field: dict[str, Any]) -> str:
+    """Level from the exporter's ``severity`` object: text, else the number's band."""
+    text = str(field.get("text") or "").strip().upper()
+    if text:
+        return text
+    number = field.get("number")
+    if isinstance(number, int) and 1 <= number <= 4 * len(_SEVERITY_BANDS):
+        return _SEVERITY_BANDS[(number - 1) // 4]
+    return ""
+
+
 class OpenSearchLogsFetcher(StreamFetcher):
-    """P3: Structured logs via OpenSearch /_search with ISO time-range filter."""
+    """P3: Structured logs via OpenSearch /_search with ISO time-range filter.
+
+    The OpenSearch exporter writes the service as ``resource["service.name"]``
+    (a dotted key inside ``resource``) and the level as ``severity.text`` /
+    ``severity.number``. Captures before 2026-10-28 read flat ``serviceName`` /
+    ``severityText`` fields that do not exist, so their logs carry an empty
+    service and severity (S2.1 finding, S2-M7-ENG10).
+    """
 
     # Index pattern verified via OTEL Collector config (src/otel-collector/otelcol-config.yml):
     # opensearch exporter sets logs_index="otel-logs" with daily time-format suffixes.
     _DEFAULT_INDEX = "otel-logs-*"
 
-    def __init__(self, base_url: str, index: str = _DEFAULT_INDEX) -> None:
+    def __init__(
+        self, base_url: str, index: str = _DEFAULT_INDEX, size: int = 10000
+    ) -> None:
         self._base_url = base_url.rstrip("/")
         self._index = index
+        self._size = size
 
     @property
     def stream_name(self) -> str:
@@ -317,11 +361,11 @@ class OpenSearchLogsFetcher(StreamFetcher):
                         }
                     }
                 },
-                "size": 10000,
+                "size": self._size,
                 "_source": [
                     "@timestamp",
-                    "serviceName",
-                    "severityText",
+                    "resource",
+                    "severity",
                     "body",
                     "traceId",
                     "spanId",
@@ -340,6 +384,11 @@ class OpenSearchLogsFetcher(StreamFetcher):
             payload: dict[str, Any] = json.loads(resp.read())
 
         hits = payload.get("hits", {}).get("hits", [])
+        if len(hits) >= self._size:
+            raise CaptureTruncatedError(
+                f"OpenSearch returned {len(hits)} log lines for {start}..{end}, "
+                f"its cap: use a shorter slice"
+            )
         timestamps: list[str] = []
         services: list[str] = []
         severities: list[str] = []
@@ -350,8 +399,8 @@ class OpenSearchLogsFetcher(StreamFetcher):
         for h in hits:
             src: dict[str, Any] = h.get("_source", {})
             timestamps.append(str(src.get("@timestamp", "")))
-            services.append(str(src.get("serviceName", "")))
-            severities.append(str(src.get("severityText", "")))
+            services.append(str(src.get("resource", {}).get("service.name", "")))
+            severities.append(_severity(src.get("severity", {})))
             bodies.append(str(src.get("body", "")))
             trace_ids.append(str(src.get("traceId", "")))
             span_ids.append(str(src.get("spanId", "")))
@@ -458,6 +507,12 @@ class TelemetryCapture:
 
         for fetcher in self._fetchers:
             table = fetcher.fetch(start, end)
+            if fetcher.stream_name == "p3_logs":
+                services = table.column("service_name").to_pylist()
+                if services and not any(services):
+                    raise UnattributedLogsError(
+                        f"{len(services)} log lines and none names its service"
+                    )
             path = incident_dir / f"{fetcher.stream_name}.parquet"
             self._writer.write(table, path)
             if fetcher.stream_name == "p1_metrics":
@@ -553,14 +608,49 @@ _CONTAINER_METRICS = (
 )
 
 
-def campaign_metric_queries() -> tuple[str, ...]:
-    """PromQL of the S1.2 campaign: latency histograms plus per-container CPU and memory."""
+# Span metrics of the demo collector's spanmetrics connector, per service, over
+# the spans a service serves (server and consumer kinds): request and error
+# counts (cumulative counters) and mean latency. The collector flushes span
+# metrics once a minute, so the rate window spans two flushes (2 min): its
+# ratio is the mean latency of the last minute.
+_SPAN_KINDS = 'span_kind=~"SPAN_KIND_SERVER|SPAN_KIND_CONSUMER"'
+_SPAN_ERROR = 'status_code="STATUS_CODE_ERROR"'
+
+
+def _named(name: str, expr: str) -> str:
+    return f'label_replace({expr}, "__name__", "{name}", "", "")'
+
+
+def _span_metric_queries() -> tuple[str, ...]:
+    calls = "traces_span_metrics_calls_total"
+    duration = "traces_span_metrics_duration_milliseconds"
+    return (
+        _named("span_calls_total", f"sum by (service_name) ({calls}{{{_SPAN_KINDS}}})"),
+        _named(
+            "span_error_calls_total",
+            f"sum by (service_name) ({calls}{{{_SPAN_KINDS},{_SPAN_ERROR}}})",
+        ),
+        _named(
+            "span_mean_latency_milliseconds",
+            f"sum by (service_name) (rate({duration}_sum{{{_SPAN_KINDS}}}[2m])) / "
+            f"sum by (service_name) (rate({duration}_count{{{_SPAN_KINDS}}}[2m]))",
+        ),
+    )
+
+
+def campaign_metric_queries(*, span_metrics: bool = False) -> tuple[str, ...]:
+    """PromQL of the campaign: per-container CPU and memory, plus either the
+    S1.2 latency histograms (v1, v2) or per-service span metrics (v3,
+    S2-M7-ENG10: every service gets request, error and latency series, and
+    histogram buckets no longer arrive as dozens of series per service)."""
     containers = "|".join(DEMO_CONTAINERS)
     resource = tuple(
         f'label_replace({name}{{container_name=~"{containers}"}}, '
         f'"service_name", "$1", "container_name", "(.*)")'
         for name in _CONTAINER_METRICS
     )
+    if span_metrics:
+        return (*_span_metric_queries(), *resource)
     return (
         "http_server_duration_milliseconds_bucket",
         "rpc_server_duration_milliseconds_bucket",
@@ -577,6 +667,7 @@ def build_campaign_capture(
     jaeger_url: str,
     opensearch_url: str,
     slice_s: float = 60,
+    span_metrics: bool = False,
 ) -> TelemetryCapture:
     """TelemetryCapture for the S1.2 build campaign: explicit backends and
     output directory, traces and logs fetched in ``slice_s`` slices."""
@@ -590,7 +681,9 @@ def build_campaign_capture(
         output_dir=output_dir,
     )
     fetchers: list[StreamFetcher] = [
-        PrometheusMetricsFetcher(prometheus_url, campaign_metric_queries()),
+        PrometheusMetricsFetcher(
+            prometheus_url, campaign_metric_queries(span_metrics=span_metrics)
+        ),
         SlicedFetcher(
             JaegerTracesFetcher(jaeger_url, api_prefix="/jaeger/ui"), slice_s
         ),

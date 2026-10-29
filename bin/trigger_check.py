@@ -42,6 +42,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 CORPORA: dict[str, Path] = {
     "captures": Path("data/captures"),
     "otel_build": Path("data/otel/build"),
+    "otel_build_v2": Path("data/otel/build_v2"),
+    "otel_build_v3": Path("data/otel/build_v3"),
     "rcaeval_build": Path("data/rcaeval/build"),
 }
 

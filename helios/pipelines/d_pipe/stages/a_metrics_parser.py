@@ -5,6 +5,7 @@ label, errors from status codes, cumulative counters differenced) and plain
 per-service series (RCAEval ``latency-90``/``error``/``cpu``…, OTel container
 CPU and memory; service from ``service_name``). Plain series are read at each
 step, not differenced. Resource series form their own channel, kept per metric.
+OTel span metrics (v3): the error counter is differenced, latency read per step.
 """
 
 from __future__ import annotations
@@ -19,6 +20,8 @@ from helios.pipelines.d_pipe.dpipe_config import (
     INF_MIDPOINT,
     LE_BOUNDARIES,
     OTEL_RESOURCE_NAMES,
+    OTEL_SPAN_ERROR_NAMES,
+    OTEL_SPAN_LATENCY_NAMES,
     RCAEVAL_ERROR_NAMES,
     RCAEVAL_LATENCY_NAMES,
     RCAEVAL_RESOURCE_NAMES,
@@ -94,6 +97,15 @@ def _at_steps(svc_df: pd.DataFrame, metric: str, steps: list[float]) -> list[flo
     return [float(v) for v in values.reindex(steps).to_numpy(dtype="float64")]
 
 
+def _counter_deltas(
+    svc_df: pd.DataFrame, metric: str, timestamps: list[float]
+) -> list[float]:
+    """Per-step increase of a cumulative counter: a gap carries the last value,
+    and the time before the counter's first sample counts as zero."""
+    values = svc_df[svc_df["metric_name"] == metric].groupby("timestamp")["value"].sum()
+    return _diff_series(values.reindex(timestamps).ffill().fillna(0))
+
+
 class MetricsParser:
     def parse(self, df: pd.DataFrame) -> ParsedMetrics:
         df = df.copy()
@@ -163,12 +175,22 @@ class MetricsParser:
         for svc in services:
             svc_df = df[df["service"] == svc]
             names = set(svc_df["metric_name"])
-            latency = next((m for m in RCAEVAL_LATENCY_NAMES if m in names), None)
+            latency = next(
+                (
+                    m
+                    for m in (*RCAEVAL_LATENCY_NAMES, *OTEL_SPAN_LATENCY_NAMES)
+                    if m in names
+                ),
+                None,
+            )
             if latency is not None and svc not in latency_means:
                 latency_means[svc] = _at_steps(svc_df, latency, steps)
             for name in RCAEVAL_ERROR_NAMES:
                 if name in names and svc not in error_deltas:
                     error_deltas[svc] = _at_steps(svc_df, name, steps)
+            for name in OTEL_SPAN_ERROR_NAMES:
+                if name in names and svc not in error_deltas:
+                    error_deltas[svc] = _counter_deltas(svc_df, name, timestamps)
             for name in sorted(names & {*RCAEVAL_RESOURCE_NAMES, *OTEL_RESOURCE_NAMES}):
                 resource_values.setdefault(svc, {})[name] = _at_steps(
                     svc_df, name, steps

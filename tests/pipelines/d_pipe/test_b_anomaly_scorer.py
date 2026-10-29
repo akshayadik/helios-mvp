@@ -127,3 +127,18 @@ def test_out_of_scope_services_do_not_set_the_normalisation_scale() -> None:
         abs(scored.scores["cart"] - 1) < 1e-6
     )  # the top in-scope shift sets the scale
     assert scored.evidence["jaeger"] > scored.evidence["cart"]  # raw evidence kept
+
+
+def test_workload_drop_scores_but_cpu_drop_does_not() -> None:
+    before: list[float] = [float(40 + t % 3) for t in range(6)]
+    drop: list[float] = before + [1.0] * 6
+    parsed = ParsedMetrics(
+        error_deltas={},
+        latency_means={},
+        steps=[float(t) for t in range(12)],
+        p1_services=["a", "b"],
+        resource_values={"a": {"workload": drop}, "b": {"cpu": drop}},
+    )
+    scored = AnomalyScorer(w_error=0, w_resource=1).score_split(parsed, split_s=6)
+    assert scored.evidence["a"] > 6
+    assert scored.evidence["b"] == 0

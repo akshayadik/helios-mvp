@@ -146,3 +146,36 @@ def test_otel_histogram_parsing_unchanged_with_resource_rows_present() -> None:
     assert mixed.error_deltas == alone.error_deltas
     assert mixed.steps == alone.steps
     assert mixed.resource_values == {"svc-a": {"container_cpu_utilization_ratio": [2]}}
+
+
+def test_otel_span_metrics_give_error_and_latency_channels() -> None:
+    # otel_build_v3 (deviation entry 50): span metrics replace the histograms.
+    # Before this, D-pipe saw only CPU and memory on v3 (found 2026-10-29 in
+    # the D-pipe recalibration: error weight and propagation had no effect).
+    rows = [
+        _plain(t, "payment", "span_error_calls_total", e)
+        for t, e in ((1, 2), (2, 2), (3, 7), (4, 15))
+    ] + [
+        _plain(t, "payment", "span_mean_latency_milliseconds", lat)
+        for t, lat in ((1, 3), (2, 3), (3, 4), (4, 9))
+    ]
+    parsed = MetricsParser().parse(_make_df(rows))
+    assert parsed.steps == [2, 3, 4]
+    assert parsed.error_deltas["payment"] == [0, 5, 8]  # counter differenced
+    assert parsed.latency_means["payment"] == [3, 4, 9]  # read at each step
+    assert "payment" in parsed.p1_services
+
+
+def test_span_error_counter_absent_before_its_first_error_counts_from_zero() -> None:
+    # The collector creates the error series at the first error.
+    rows = [_plain(t, "ad", "span_mean_latency_milliseconds", 2) for t in (1, 2, 3)]
+    rows += [_plain(3, "ad", "span_error_calls_total", 4)]
+    parsed = MetricsParser().parse(_make_df(rows))
+    assert parsed.error_deltas["ad"] == [0, 4]
+
+
+def test_span_error_counter_gap_is_carried_not_reset() -> None:
+    rows = [_plain(t, "cart", "span_error_calls_total", e) for t, e in ((1, 3), (3, 6))]
+    rows += [_plain(t, "cart", "span_mean_latency_milliseconds", 2) for t in (1, 2, 3)]
+    parsed = MetricsParser().parse(_make_df(rows))
+    assert parsed.error_deltas["cart"] == [0, 3]

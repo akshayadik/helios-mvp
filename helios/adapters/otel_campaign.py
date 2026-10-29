@@ -19,6 +19,20 @@ variants rotated across repetitions, so a stopped campaign stays balanced.
 
 All side effects (clock, sleep, flag file, flag check, capture, container
 restart) are injected, so the schedule is testable without the demo running.
+
+Corpus v2 (``otel_build_v2``, S2.1 recapture, 2026-10-27): the normal period
+varies per case between ``PRE_S_MIN`` and ``PRE_S_MAX`` (15 s steps), derived
+from the case's opaque ID — deterministic and label-free — so the onset no
+longer sits at a fixed position in the window (validity threat T19) and the
+label-free detector has enough history. The v1 corpus (fixed ``PRE_S``) is
+kept unchanged.
+
+Corpus v3 (``otel_build_v3``, S2-M7-ENG10, 2026-10-28): as v2, with the logs'
+service and severity captured (the earlier fetcher misread them), per-service
+span metrics in place of the latency histograms, and the load generator held
+at ``LOAD_USERS_V3`` users, checked before every case (the demo's default 5
+users gave payment about half a request a minute: too few for any detector).
+``otel_pilot_v3`` is the same protocol under its own IDs, for the pilot.
 """
 
 from __future__ import annotations
@@ -40,12 +54,21 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 __all__ = [
+    "CAPTURE_RETRIES",
+    "CAPTURE_RETRY_WAIT_S",
     "CORPUS",
+    "CORPUS_PILOT_V3",
+    "CORPUS_V2",
+    "CORPUS_V3",
     "DEFAULT_REPS",
     "FAULTS",
     "INGEST_LAG_S",
+    "LOAD_USERS_V3",
     "POST_S",
     "PRE_S",
+    "PRE_S_MAX",
+    "PRE_S_MIN",
+    "PRE_S_STEP",
     "RECOVERY_S",
     "SLICE_S",
     "Campaign",
@@ -53,23 +76,38 @@ __all__ = [
     "FlagdFile",
     "GroundTruthFile",
     "PlannedCase",
+    "load_users_for",
     "opaque_id",
     "plan",
+    "pre_s_for",
 ]
 
 HELIOS_ENABLE_OTEL_CAMPAIGN: bool = True
 
 CORPUS = "otel_build"
+CORPUS_V2 = "otel_build_v2"
+CORPUS_V3 = "otel_build_v3"
+CORPUS_PILOT_V3 = "otel_pilot_v3"
+_VARIED_PRE = (CORPUS_V2, CORPUS_V3, CORPUS_PILOT_V3)
+LOAD_USERS_V3 = 25  # owner decision 2026-10-28
 # The OTel Demo's registered opaque-ID slot. Adding a slot would change the
 # seed register deposited at OSF (deposit 1); case names carry the corpus.
 _OPAQUE_SLOT = "otel_exploratory"
 DEFAULT_REPS = 7
-PRE_S = 300  # normal traffic before the onset
+PRE_S = 300  # normal traffic before the onset (v1)
+PRE_S_MIN = 480  # v2: varied normal period, 8 to 15 minutes in 15 s steps
+PRE_S_MAX = 900
+PRE_S_STEP = 15
 POST_S = 300  # fault active
 RECOVERY_S = 60  # flag off (and restart) before the next case's normal period
 INGEST_LAG_S = 60  # let exporters and scrapes catch up before querying
 SLICE_S = 60  # trace and log query slices
 FLAG_CONFIRM_S = 30
+# A backend that drops a query (OpenSearch restarting, 2026-10-28) is asked
+# again. Exports sent while the backend was down may be lost, so a retried
+# case records its attempts in its label (capture_attempts) and stays visible.
+CAPTURE_RETRIES = 3
+CAPTURE_RETRY_WAIT_S = 120
 _OFF = "off"
 
 
@@ -107,6 +145,18 @@ class PlannedCase:
     fault: FaultSpec
     variant: str
     repetition: int
+    pre_s: int = PRE_S
+
+
+def pre_s_for(incident_id: str) -> int:
+    """v2 normal period of a case, from its opaque ID (label-free, deterministic)."""
+    steps = (PRE_S_MAX - PRE_S_MIN) // PRE_S_STEP + 1
+    return PRE_S_MIN + (int(incident_id[:8], 16) % steps) * PRE_S_STEP
+
+
+def load_users_for(corpus: str) -> int | None:
+    """Load-generator users a corpus is captured at; None = not enforced (v1, v2)."""
+    return LOAD_USERS_V3 if corpus in (CORPUS_V3, CORPUS_PILOT_V3) else None
 
 
 def opaque_id(case: str) -> str:
@@ -115,16 +165,33 @@ def opaque_id(case: str) -> str:
     return hashlib.sha256(f"{seed}:{case}".encode()).hexdigest()[:32]
 
 
-def plan(reps: int = DEFAULT_REPS) -> list[PlannedCase]:
-    """Rep-major schedule: every fault once per repetition, variants rotated."""
+def plan(
+    reps: int = DEFAULT_REPS,
+    *,
+    corpus: str = CORPUS,
+    faults: Sequence[str] | None = None,
+) -> list[PlannedCase]:
+    """Rep-major schedule: every fault once per repetition, variants rotated.
+
+    ``corpus`` v2 and later give each case its own normal period
+    (``pre_s_for``); ``faults`` keeps only the named flags (pilots).
+    """
     if reps < 1:
         raise ValueError("reps must be >= 1")
+    if corpus not in (CORPUS, *_VARIED_PRE):
+        raise ValueError(f"unknown campaign corpus {corpus!r}")
+    known = {f.flag for f in FAULTS}
+    if faults is not None and not set(faults) <= known:
+        raise ValueError(f"unknown fault(s) {sorted(set(faults) - known)}")
+    chosen = [f for f in FAULTS if faults is None or f.flag in faults]
     cases = []
     for r in range(1, reps + 1):
-        for f in FAULTS:
+        for f in chosen:
             variant = f.variants[(r - 1) % len(f.variants)]
-            case = f"{CORPUS}/{f.flag}/{variant}/r{r:02d}"
-            cases.append(PlannedCase(case, opaque_id(case), f, variant, r))
+            case = f"{corpus}/{f.flag}/{variant}/r{r:02d}"
+            incident_id = opaque_id(case)
+            pre = pre_s_for(incident_id) if corpus in _VARIED_PRE else PRE_S
+            cases.append(PlannedCase(case, incident_id, f, variant, r, pre))
     return cases
 
 
@@ -179,10 +246,13 @@ class GroundTruthFile:
     the scoring path read it unchanged.
     """
 
-    def __init__(self, path: Path, key: bytes, *, demo_commit: str) -> None:
+    def __init__(
+        self, path: Path, key: bytes, *, demo_commit: str, corpus: str = CORPUS
+    ) -> None:
         self._path = path
         self._key = key
         self._demo_commit = demo_commit
+        self._corpus = corpus
 
     def cases(self) -> dict[str, Any]:
         if not self._path.exists():
@@ -196,7 +266,7 @@ class GroundTruthFile:
         cases[incident_id] = entry
         body = {
             "kind": "otel-ground-truth",
-            "corpus": CORPUS,
+            "corpus": self._corpus,
             "demo_commit": self._demo_commit,
             "cases": cases,
         }
@@ -222,6 +292,8 @@ class Campaign:
     sleep: Callable[[float], None]
     clock: Callable[[], datetime] = lambda: datetime.now(UTC)
     log: Callable[[str], None] = print
+    check_load: Callable[[], None] = lambda: None  # raises when the load is wrong
+    load_users: int | None = None  # recorded with each label when enforced
 
     def pending(self) -> list[PlannedCase]:
         done = self.ground_truth.cases()
@@ -236,13 +308,40 @@ class Campaign:
             f"flagd did not serve {flag}={variant} within {FLAG_CONFIRM_S}s"
         )
 
+    def _capture_with_retries(
+        self,
+        case: PlannedCase,
+        start: datetime,
+        end: datetime,
+        position: int,
+        total: int,
+    ) -> int:
+        """Capture the case; returns the number of attempts it took."""
+        partial = self.captures_dir / case.incident_id
+        for attempt in range(1, CAPTURE_RETRIES + 1):
+            try:
+                self.capture(case, start, end)
+                return attempt
+            except OSError as exc:  # connection refused, reset or timed out
+                if attempt == CAPTURE_RETRIES:
+                    raise
+                if partial.exists():
+                    shutil.rmtree(partial)
+                self.log(
+                    f"[campaign] case {position}/{total}: capture failed ({exc!r}); "
+                    f"retrying in {CAPTURE_RETRY_WAIT_S}s"
+                )
+                self.sleep(CAPTURE_RETRY_WAIT_S)
+        raise AssertionError("unreachable")  # the last attempt returns or raises
+
     def run_case(self, case: PlannedCase, position: int, total: int) -> None:
         f = case.fault
         partial = self.captures_dir / case.incident_id
         if partial.exists():  # an interrupted, unlabelled capture: start again
             shutil.rmtree(partial)
-        self.log(f"[campaign] case {position}/{total}: normal period ({PRE_S}s)")
-        self.sleep(RECOVERY_S + PRE_S)
+        self.check_load()
+        self.log(f"[campaign] case {position}/{total}: normal period ({case.pre_s}s)")
+        self.sleep(RECOVERY_S + case.pre_s)
         self.flagd.set(f.flag, case.variant)
         self._wait_for_flag(f.flag, case.variant)
         inject = self.clock()
@@ -251,9 +350,9 @@ class Campaign:
         self.flagd.set(f.flag, _OFF)
         self._wait_for_flag(f.flag, _OFF)
         self.sleep(INGEST_LAG_S)
-        start = inject - timedelta(seconds=PRE_S)
+        start = inject - timedelta(seconds=case.pre_s)
         end = inject + timedelta(seconds=POST_S)
-        self.capture(case, start, end)
+        attempts = self._capture_with_retries(case, start, end, position, total)
         self.ground_truth.add(
             case.incident_id,
             {
@@ -266,6 +365,8 @@ class Campaign:
                 "inject_time": inject.isoformat(),
                 "window_start": start.isoformat(),
                 "window_end": end.isoformat(),
+                **({"load_users": self.load_users} if self.load_users else {}),
+                **({"capture_attempts": attempts} if attempts > 1 else {}),
             },
         )
         if f.restart_after:

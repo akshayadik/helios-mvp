@@ -11,6 +11,7 @@ import pytest
 
 from helios.consensus.verdict import ConsensusVerdict
 from helios.evaluation.scoring import (
+    GROUND_TRUTH_FILES,
     SCORING_VERSION,
     Corpus,
     GroundTruth,
@@ -279,3 +280,12 @@ def test_scoring_drops_out_of_scope_candidates_before_ranking() -> None:
 def test_scoring_refuses_an_out_of_scope_label() -> None:
     with pytest.raises(OutOfScopeLabelError):
         score_ranking(["cart"], "otel-collector")
+
+
+def test_otel_build_v2_is_a_scoring_corpus() -> None:
+    assert Corpus("otel_build_v2") == Corpus.OTEL_BUILD_V2
+
+
+def test_otel_build_v3_is_a_scoring_corpus() -> None:
+    assert Corpus("otel_build_v3") == Corpus.OTEL_BUILD_V3
+    assert GROUND_TRUTH_FILES["otel_build_v3"] == "data/otel/ground_truth_build_v3.json"

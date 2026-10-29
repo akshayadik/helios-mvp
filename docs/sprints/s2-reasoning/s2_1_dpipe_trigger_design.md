@@ -23,6 +23,11 @@ S2.1 also finishes D-pipe so it can take part in the confirmatory runs at all: t
 | D-e | **At most 5% false triggers on build data.** Reason (owner): build data is cleaner than live traffic, and a 10% rate would inflate to 20–30% live and flood the LLM pipelines with cost and queueing | owner, 2026-10-27 |
 | D-f | **Exclude the test harness and the observability stack from the root-cause candidate pool, but keep their telemetry visible.** Owner's reasons: the load generator and flag service are synthetic testbed artefacts, so their anomalies are testbed noise that would waste compute and inflate false triggers. The ground truth never injects into Prometheus or the collector, so naming a real but out-of-scope failure there would be scored as a false positive for HELIOS and the baselines alike. Their health metrics stay in the graph and in the evidence: if telemetry drops for an application service, HELIOS must be able to recognise a broken collector instead of hallucinating an application fault. Logged as a deviation entry (§5.1a). This closes the S1 carry-over on infrastructure candidates | owner, 2026-10-27 (revised the same day; first answer was "keep them") |
 
+| D-g | **OTel `_sum` series are gauges, not counts.** They are summed durations, so a Poisson floor would make their scale depend on the unit (seconds vs milliseconds); they get the relative gauge floor. The Poisson floor stays for event counts only: `_total`, `_count`, `_bucket` counters, RCAEval `error`, log line counts | owner, 2026-10-27 (before calibration) |
+| D-h | **Direction of resource signals.** Workload and socket count in both directions (a drop means a crash, starvation or a broken connection). CPU and memory count rises only: a drop is a secondary symptom of a workload collapse, and tracking it would inflate false triggers during upstream outages. Applies to the trigger and to D-pipe. Other metrics keep their previous behaviour (trigger: both directions; D-pipe: rises) | owner, 2026-10-27 (before calibration) |
+
+| D-i | **Short-history and many-series corrections.** The first calibration (grid fixed in advance) found no setting at or below 5% false triggers on both corpora (best: about 20% on each, with 41 of 63 OTel faults missed); most false triggers fired just after the four-bucket warm-up, where a scale from four points is noisy. Fix, approved by the owner: each bucket's z is shrunk by a Student-t prediction-interval factor for its number of past points (about 3.7 with four points, near 1 with many), and a service's largest score is divided by the Bonferroni factor for its number of series; both at tail probability 0.001, fixed before the rerun. No parameter refers to a position | owner, 2026-10-27 (after the first calibration) |
+
 ## 3. Goals, non-goals, anti-goals
 
 **Goals**
@@ -238,3 +243,53 @@ D-pipe reads both metric formats (RCAEval plain series; OTel histograms plus con
 | RCAEval build | 495 | 495 (before S2.1: none, every RCAEval window abstained). One window has its trigger at the window start (fallback), so no reference part exists: it is scored over the whole window and gets no σ | 494 |
 
 Rules added in review: a split without a reference or an incident part falls back to the whole-window score; all-zero in-scope scores give ABSTAINED, never a by-name order; each channel is normalised by its largest **in-scope** shift, so out-of-scope services keep their raw evidence but never set the scale. Accuracy on build data is measured in the calibration (S2-M7-EVAL01). Two separate processes give byte-identical D-pipe verdicts (`tests/test_trigger_check_cli.py::test_dpipe_verdict_identical_across_processes`).
+
+### Row S2-M7-EVAL01 (2026-10-29) — detector calibrated and frozen
+
+Same grid, rule and 5% limit in every run (§5.3, D-e); every report is kept in `calibration/`.
+
+| Run | Detector, corpora | Settings meeting 5% on both | Selected | Outcome |
+|---|---|---|---|---|
+| 1 | trigger-v1, no corrections; RCAEval build + OTel v1 | 0 | none | false triggers cluster just after warm-up; stopped, owner decision D-i |
+| 2 | + history discount and series correction (D-i) | 0 | none | RCAEval false 6.7% at best; most fire under 60 s before the recorded injection |
+| 3 | + bucket-end labelling | 0 | none | led to the 60 s onset tolerance (deviation entry 49) |
+| 4 | trigger-v1; RCAEval build + OTel v2 | 2 | (60 s, 10, 3) | OTel v2: 9 true, 3 false, 51 no trigger; **not frozen**: defects found (row S2-M7-ENG10) |
+| 5 | trigger-v2; RCAEval build + OTel v2 | 1 | (60 s, 12, 3) | RCAEval unharmed by v2; OTel v2 cannot improve without span metrics |
+| 6 | trigger-v2; RCAEval build + OTel v3 | 2 | **(60 s, 10, 3)** | frozen (owner, 2026-10-29) |
+
+Row S2-M7-ENG10 (deviation entries 50 and 51) found and fixed, between runs 4 and 6: OTel logs captured without service or severity since May (wrong exporter fields); only four metric families; the demo's 5 users gave payment about half a request a minute; histogram buckets inflated the series correction; a count series with MAD zero fell back to its standard deviation, so an error burst masked itself. A pilot (3 hard faults at 25 users) and an end-to-end sample capture (seal, detector, D-pipe, G-pipe, runner) passed before the v3 campaign. The campaign (63 cases) stopped once when OpenSearch restarted mid-query (case 10); the capture now retries a dropped connection, and the case was captured again from the start.
+
+**Run 6 at the selected setting** (`detector_hash` `bc07f4952e68…`):
+
+| Corpus | Usable | True | False | No trigger | Median delay | Root among suspects |
+|---|---|---|---|---|---|---|
+| RCAEval build | 493 (2 excluded) | 450 | 17 (3.4%) | 26 | 60 s | 419 |
+| OTel build v3 | 63 | 31 | 0 | 32 | 75 s | 30 |
+
+Crop audit passes. The other qualifying setting is (60 s, 12, 3). RCAEval is the binding corpus: (60 s, 8, 3) would catch 38 OTel faults but RCAEval false is 5.1%.
+
+OTel misses by fault (build data): adFailure 7 of 7 (about one error a minute at the root), emailMemoryLeak 7 of 7 (no change within the 5-minute fault period), recommendationCacheFailure 7 of 7 (T14); paymentFailure 5, paymentUnreachable 5 and productCatalogFailure 1, whose signal is real (payment errors from zero to 4–8 a minute; with paymentUnreachable, payment's own calls stop) but scores between about 6 and 10. On the six faults with a signal inside five minutes the detector catches 31 of 42. A window without a trigger is analysed whole (fallback), so it still gets a ranking.
+
+Frozen in `data/frozen/trigger_detector.json` (`provisional: false`); `tests/telemetry/test_trigger.py::test_frozen_detector_is_the_calibration_selection` ties the file to this report. `bin/trigger_check.py`, each corpus twice in separate processes:
+
+| Corpus | Windows | Threshold triggers | Fallbacks | Records digest (both runs) |
+|---|---|---|---|---|
+| RCAEval build | 495 | 468 | 27 | `434042a4c8f1f28c61bbd52e3560fdb02bb7c9a4ae86bee33c847186c40af3ea` |
+| OTel build v3 | 63 | 31 | 32 | `3ca9a4678e9b697b69aa397d02956ac7d797e2f70515b9b816fb2491d4731569` |
+
+Pool rates are measured after tag build-freeze.
+
+### Row S2-M7-EVAL01 (2026-10-29) — D-pipe calibrated and frozen
+
+`bin/dpipe_calibrate.py` (plan Task 13): the `dpipe_config` grid for w_error, ρ and boost crossed with w_resource ∈ {0, 0.1, 0.2, 0.3}, w_error + w_resource < 1 (800 settings); trigger = the frozen detector; each OTel case ranked on the graph the runner builds (`incident_graph`, HELIOS-Full); objective = mean of per-corpus HR@3; ties → smallest change from the May values. Build data only.
+
+| Run | OTel parsing | Selected (w_error, w_resource, ρ, boost) | RCAEval build HR@3 | OTel v3 HR@3 | May values (RCAEval / OTel) |
+|---|---|---|---|---|---|
+| 1 | CPU and memory only (defect) | 0.3, 0.3, 0.2, 1 | 0.960 | 0.524 | 0.935 / 0.524 |
+| 2 | + span-metric errors and latency | **0.7, 0.1, 0.2, 1** (frozen) | **0.945** | **0.762** | 0.935 / 0.619 |
+
+Run 1 found that D-pipe's parser read no error or latency series on otel_build_v3: span metrics replaced the histograms (entry 50) and only the detector had been updated. The parser now differences `span_error_calls_total` per step (a missing early sample counts as zero, a gap carries the last value) and reads `span_mean_latency_milliseconds` per step; errors keep the count floor, latency the gauge rule (D-g).
+
+**Propagation (Stage C) has no effect on build data.** 50 settings tie at the best mean: every ρ and boost at the selected weights. RCAEval build has no traces, so no graph. On OTel every graph service has its own metrics since the resource channel (S2-M7-ENG09), so the topology boost (for services without metrics) never applies; the correlation boost fires on 39 of 418 call edges and never changes a top 3. The tie rule keeps the May ρ and boost. Owner decision 2026-10-29: freeze as selected and report the null effect; a narrower definition of "services with metrics" is left to S2.2 or Stage B.
+
+Frozen in `data/frozen/dpipe_params.json` (`provisional: false`, `dpipe_params_hash` `4dc7f3ebc534…`); `tests/evaluation/test_dpipe_calibration.py::test_frozen_dpipe_params_are_the_calibration_selection` ties the file to the report and the frozen detector.
