@@ -435,3 +435,26 @@ def test_detector_version_is_v2_after_the_signal_repair() -> None:
     from helios.telemetry.trigger import DETECTOR_VERSION
 
     assert DETECTOR_VERSION == "trigger-v2"
+
+
+def test_frozen_detector_is_the_calibration_selection() -> None:
+    # S2-M7-EVAL01 (owner 2026-10-29): calibration run 6 on RCAEval build +
+    # otel_build_v3 selected (60 s, 10, 3); the frozen file must match it.
+    from pathlib import Path
+
+    from helios.telemetry.trigger import DETECTOR_VERSION
+
+    report_path = Path(__file__).resolve().parents[2] / (
+        "docs/sprints/s2-reasoning/s2_1_trigger_calibration.json"
+    )
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    selected = report["selected"]
+    params = load_detector_params()
+    assert not params.provisional
+    assert report["detector_version"] == DETECTOR_VERSION
+    assert (params.bucket_seconds, params.threshold, params.persistence) == (
+        selected["bucket_seconds"],
+        selected["threshold"],
+        selected["persistence"],
+    )
+    assert detector_hash(params) == selected["detector_hash"]

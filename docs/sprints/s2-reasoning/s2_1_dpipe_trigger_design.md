@@ -243,3 +243,38 @@ D-pipe reads both metric formats (RCAEval plain series; OTel histograms plus con
 | RCAEval build | 495 | 495 (before S2.1: none, every RCAEval window abstained). One window has its trigger at the window start (fallback), so no reference part exists: it is scored over the whole window and gets no σ | 494 |
 
 Rules added in review: a split without a reference or an incident part falls back to the whole-window score; all-zero in-scope scores give ABSTAINED, never a by-name order; each channel is normalised by its largest **in-scope** shift, so out-of-scope services keep their raw evidence but never set the scale. Accuracy on build data is measured in the calibration (S2-M7-EVAL01). Two separate processes give byte-identical D-pipe verdicts (`tests/test_trigger_check_cli.py::test_dpipe_verdict_identical_across_processes`).
+
+### Row S2-M7-EVAL01 (2026-10-29) — detector calibrated and frozen
+
+Same grid, rule and 5% limit in every run (§5.3, D-e); every report is kept in `calibration/`.
+
+| Run | Detector, corpora | Settings meeting 5% on both | Selected | Outcome |
+|---|---|---|---|---|
+| 1 | trigger-v1, no corrections; RCAEval build + OTel v1 | 0 | none | false triggers cluster just after warm-up; stopped, owner decision D-i |
+| 2 | + history discount and series correction (D-i) | 0 | none | RCAEval false 6.7% at best; most fire under 60 s before the recorded injection |
+| 3 | + bucket-end labelling | 0 | none | led to the 60 s onset tolerance (deviation entry 49) |
+| 4 | trigger-v1; RCAEval build + OTel v2 | 2 | (60 s, 10, 3) | OTel v2: 9 true, 3 false, 51 no trigger; **not frozen**: defects found (row S2-M7-ENG10) |
+| 5 | trigger-v2; RCAEval build + OTel v2 | 1 | (60 s, 12, 3) | RCAEval unharmed by v2; OTel v2 cannot improve without span metrics |
+| 6 | trigger-v2; RCAEval build + OTel v3 | 2 | **(60 s, 10, 3)** | frozen (owner, 2026-10-29) |
+
+Row S2-M7-ENG10 (deviation entries 50 and 51) found and fixed, between runs 4 and 6: OTel logs captured without service or severity since May (wrong exporter fields); only four metric families; the demo's 5 users gave payment about half a request a minute; histogram buckets inflated the series correction; a count series with MAD zero fell back to its standard deviation, so an error burst masked itself. A pilot (3 hard faults at 25 users) and an end-to-end sample capture (seal, detector, D-pipe, G-pipe, runner) passed before the v3 campaign. The campaign (63 cases) stopped once when OpenSearch restarted mid-query (case 10); the capture now retries a dropped connection, and the case was captured again from the start.
+
+**Run 6 at the selected setting** (`detector_hash` `bc07f4952e68…`):
+
+| Corpus | Usable | True | False | No trigger | Median delay | Root among suspects |
+|---|---|---|---|---|---|---|
+| RCAEval build | 493 (2 excluded) | 450 | 17 (3.4%) | 26 | 60 s | 419 |
+| OTel build v3 | 63 | 31 | 0 | 32 | 75 s | 30 |
+
+Crop audit passes. The other qualifying setting is (60 s, 12, 3). RCAEval is the binding corpus: (60 s, 8, 3) would catch 38 OTel faults but RCAEval false is 5.1%.
+
+OTel misses by fault (build data): adFailure 7 of 7 (about one error a minute at the root), emailMemoryLeak 7 of 7 (no change within the 5-minute fault period), recommendationCacheFailure 7 of 7 (T14); paymentFailure 5, paymentUnreachable 5 and productCatalogFailure 1, whose signal is real (payment errors from zero to 4–8 a minute; with paymentUnreachable, payment's own calls stop) but scores between about 6 and 10. On the six faults with a signal inside five minutes the detector catches 31 of 42. A window without a trigger is analysed whole (fallback), so it still gets a ranking.
+
+Frozen in `data/frozen/trigger_detector.json` (`provisional: false`); `tests/telemetry/test_trigger.py::test_frozen_detector_is_the_calibration_selection` ties the file to this report. `bin/trigger_check.py`, each corpus twice in separate processes:
+
+| Corpus | Windows | Threshold triggers | Fallbacks | Records digest (both runs) |
+|---|---|---|---|---|
+| RCAEval build | 495 | 468 | 27 | `434042a4c8f1f28c61bbd52e3560fdb02bb7c9a4ae86bee33c847186c40af3ea` |
+| OTel build v3 | 63 | 31 | 32 | `3ca9a4678e9b697b69aa397d02956ac7d797e2f70515b9b816fb2491d4731569` |
+
+Pool rates are measured after tag build-freeze.
