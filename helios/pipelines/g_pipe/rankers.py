@@ -22,9 +22,9 @@ import networkx as nx
 import numpy as np
 from scipy.optimize import minimize
 
-from helios.evaluation.scoring import service_key
 from helios.pipelines.g_pipe.features import FEATURE_COLUMNS, assert_no_identity
 from helios.pipelines.g_pipe.gpipe_config import GPIPE_PPR_ALPHA
+from helios.telemetry.scope import scope_key
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
 
 if TYPE_CHECKING:
@@ -88,8 +88,8 @@ def weighted_ppr(
 
 
 def _root_row(features: GraphFeatures, root: str, stem: bool) -> int | None:
-    names = [service_key(s) for s in features.services] if stem else features.services
-    target = service_key(root) if stem else root
+    names = [scope_key(s) for s in features.services] if stem else features.services
+    target = scope_key(root) if stem else root
     return names.index(target) if target in names else None
 
 

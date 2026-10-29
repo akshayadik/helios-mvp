@@ -17,7 +17,6 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pandas as pd
 
-from helios.evaluation.scoring import service_key
 from helios.graph.span_features import (
     SpanAnalysis,
     analyse_spans,
@@ -27,6 +26,7 @@ from helios.graph.span_features import (
     split_at,
     wait_share,
 )
+from helios.telemetry.scope import scope_key
 from helios.telemetry.trigger import robust_scale, service_scores
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
 
@@ -116,7 +116,7 @@ def lead_counts(
 
 def assert_no_identity(columns: Sequence[str], services: Sequence[str]) -> None:
     """Refuse any feature that is not a known column or names a service (F3)."""
-    keys = {service_key(s) for s in services} | {s.lower() for s in services}
+    keys = {scope_key(s) for s in services} | {s.lower() for s in services}
     for column in columns:
         if any(token in keys for token in column.lower().split("_")):
             raise ValueError(f"feature column {column!r} carries a service identity")
