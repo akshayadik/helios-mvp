@@ -44,6 +44,11 @@ RCAEVAL_RESOURCE_NAMES: tuple[str, ...] = (
 # Resource series whose drop is also a signal (a crash, starvation or a broken
 # connection; owner decision D-h). Every other channel scores rises only.
 TWO_SIDED_RESOURCE_NAMES: frozenset[str] = frozenset({"workload", "socket"})
+# OTel span metrics (otel_build_v3, deviation entry 50): the collector's
+# per-service error counter (cumulative, differenced per step; absent until the
+# first error) and mean latency (a rate ratio, read at each step).
+OTEL_SPAN_ERROR_NAMES: tuple[str, ...] = ("span_error_calls_total",)
+OTEL_SPAN_LATENCY_NAMES: tuple[str, ...] = ("span_mean_latency_milliseconds",)
 OTEL_RESOURCE_NAMES: tuple[str, ...] = (
     "container_cpu_utilization_ratio",
     "container_memory_usage_total_bytes",
