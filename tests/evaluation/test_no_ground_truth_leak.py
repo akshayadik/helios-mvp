@@ -22,6 +22,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from helios.consensus.mahc import fuse, run_mahc, run_vote_only
 from helios.graph.khop_pruner import khop_prune
 from helios.graph.structural_bundle import apply_structural_bundle
 from helios.graph.ueg_c_builder import build_ueg_c
@@ -33,6 +34,7 @@ from helios.pipelines.g_pipe.pipeline import run_gpipe, should_run_gpipe
 from helios.pipelines.l_pipe.pipeline import run_lpipe
 from helios.schemas.telemetry import EvaluationPhase, TelemetryWindow
 from helios.telemetry.seal import write_seal
+from helios.telemetry.signal_type import signal_type
 from helios.telemetry.trigger import detect
 from helios.vcl import VCLFlag, get_variant, set_current_manifest  # noqa: F401
 
@@ -60,6 +62,10 @@ ENTRY_POINTS: tuple[Callable[..., Any], ...] = (
     apply_structural_bundle,
     khop_prune,
     detect,
+    signal_type,
+    run_mahc,
+    run_vote_only,
+    fuse,
     RunOrchestrator.__init__,
     RunOrchestrator.run,
 )

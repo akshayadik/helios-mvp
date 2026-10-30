@@ -326,6 +326,19 @@ def score_store(
         )
         unlabelled += row is None
         rows.extend([row] if row is not None else [])
+    for f in store.fetch_all_fusion_rows():
+        row = _score_row(
+            gt,
+            run_id=str(f["run_id"]),
+            incident_id=str(f["incident_id"]),
+            list_kind=ListKind.FUSED,
+            source=str(f["method"]),
+            source_status=str(f["state"]),
+            ranked=list(f["ranked"]),
+            variant_config_hash=str(f["variant_config_hash"]),
+        )
+        unlabelled += row is None
+        rows.extend([row] if row is not None else [])
     store.replace_scores(rows)
     return ScoringReport(
         scored=len(rows),
