@@ -10,7 +10,7 @@ import pytest
 from bin import lpipe_build_run as tool
 from helios.evaluation.lpipe_calibration import LPipeCase
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
-from tests.pipelines.l_pipe.test_pipeline import OTEL, RCAEVAL, FakeClient, _window
+from tests.pipelines.l_pipe.test_pipeline import OTEL, FakeClient, _window, rcaeval_like
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -35,10 +35,10 @@ def test_report_has_no_incident_ids(
             "cartFailure",
         ),
         LPipeCase(
-            _window(RCAEVAL).incident_id,
+            rcaeval_like().incident_id,
             "rcaeval_build",
-            _window(RCAEVAL),
-            "carts",
+            rcaeval_like(),
+            "cart",
             None,
         ),
     ]

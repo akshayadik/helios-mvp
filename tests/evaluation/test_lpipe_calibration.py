@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
+from unittest.mock import MagicMock
 
 from helios.evaluation import lpipe_calibration as lc
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
@@ -30,23 +31,19 @@ def test_split_alternates_in_hash_order() -> None:
 
 
 def test_cases_count_558(monkeypatch: pytest.MonkeyPatch) -> None:
-    from helios.evaluation import trigger_calibration as tc
+    # RCAEval case files are gitignored; stub the per-case loader and count the
+    # IDs of the tracked corpus manifests.
+    from helios.evaluation.trigger_calibration import CalibrationCase
 
-    def fake(_path: Any, _key: Any) -> dict[str, dict[str, Any]]:
-        ids = _ids(MANIFESTS[0]) + _ids(MANIFESTS[1])
-        return {
-            i: {
-                "inject_time": 1_790_000_000,
-                "root_cause_service": "cart",
-                "fault": "f",
-            }
-            for i in ids
-        }
+    def fake(corpus: str, *, root: Path, key: bytes) -> list[CalibrationCase]:
+        path = MANIFESTS[0] if corpus == "otel_build_v3" else MANIFESTS[1]
+        window = MagicMock()
+        return [CalibrationCase(i, window, 0, "cart", None) for i in _ids(path)]
 
-    monkeypatch.setattr(tc, "verify_ground_truth", fake)
+    monkeypatch.setattr(lc, "load_cases", fake)
     cases = lc.load_lpipe_cases(root=REPO, key=b"k")
     assert len(cases) == 558
-    assert {c.corpus for c in cases} == {"otel_build_v3", "rcaeval_build"}
+    assert [c.corpus for c in cases].count("otel_build_v3") == 63
 
 
 def test_summary_counts() -> None:

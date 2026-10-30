@@ -33,7 +33,19 @@ def _window(manifest: Path, **update: Any) -> TelemetryWindow:
 
 
 OTEL = sorted((REPO / "data/otel/build_v3").glob("*/manifest.json"))[9]  # all 3 digests
-RCAEVAL = REPO / "data/rcaeval/build/07cd12b1da55c799672f5c85336eb8ea/manifest.json"
+
+
+def rcaeval_like() -> TelemetryWindow:
+    """A tracked OTel window whose P2 sits outside data/otel, as RCAEval's does.
+
+    RCAEval case files are gitignored (local only), so tests never read them;
+    the trace-format gate decides by location (L-f), which this exercises.
+    """
+    return _window(
+        OTEL,
+        incident_id="rcaevallike00000000000000000001",
+        p2_traces_path="data/rcaeval/build/rcaevallike/p2_traces.parquet",
+    )
 
 
 def _trigger(window: TelemetryWindow) -> TriggerRecord:
@@ -110,9 +122,9 @@ def test_all_workers_invalid_abstains_with_reasons() -> None:
     assert reasons == {"no_valid_claim"}
 
 
-def test_rcaeval_window_runs_two_workers() -> None:
+def test_rcaeval_format_window_runs_two_workers() -> None:
     client = FakeClient()
-    out = _run(_window(RCAEVAL), client)
+    out = _run(rcaeval_like(), client)
     assert client.calls == 2
     assert out["evidence"]["workers"]["trace"]["dropped"] == "no_digest"
     assert out["evidence"]["k"] == 2
