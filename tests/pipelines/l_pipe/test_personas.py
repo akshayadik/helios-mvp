@@ -111,11 +111,24 @@ def test_prompt_files_contain_contract_placeholders() -> None:
         assert len(prompt_sha(persona)) == 64
 
 
-def test_provisional_until_frozen(monkeypatch: pytest.MonkeyPatch) -> None:
-    assert provisional()
-    frozen = {p.name: prompt_sha(p) for p in PERSONAS}
-    monkeypatch.setattr(lpipe_config, "WORKER_PROMPT_SHAS", frozen)
+def test_frozen_prompt_shas_match_files_and_report() -> None:
+    # Entry 58: the round 1 prompts and llama3.1:8b, as in the final build report.
+    report = json.loads(
+        (REPO / "docs/sprints/s2-reasoning/calibration/lpipe_round3.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    files = {p.name: prompt_sha(p) for p in PERSONAS}
+    assert lpipe_config.WORKER_PROMPT_SHAS == files == report["prompt_shas"]
+    assert report["model_digest"] == lpipe_config.EXPECTED_MODEL_DIGEST
+    assert report["split"] == "both"
     assert not provisional()
+
+
+def test_provisional_when_a_sha_is_unset(monkeypatch: pytest.MonkeyPatch) -> None:
+    unset = {**lpipe_config.WORKER_PROMPT_SHAS, "log": None}
+    monkeypatch.setattr(lpipe_config, "WORKER_PROMPT_SHAS", unset)
+    assert provisional()
 
 
 def test_template_words_are_not_checked_only_inserted_text(tmp_path: Path) -> None:

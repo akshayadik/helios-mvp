@@ -9,6 +9,7 @@ import pytest
 
 from bin import lpipe_build_run as tool
 from helios.evaluation.lpipe_calibration import LPipeCase
+from helios.pipelines.l_pipe import lpipe_config
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
 from tests.pipelines.l_pipe.test_pipeline import OTEL, FakeClient, _window, rcaeval_like
 
@@ -61,7 +62,7 @@ def test_report_has_no_incident_ids(
         g["cases"] for corpus in report["summary"].values() for g in corpus.values()
     )
     assert total == 2
-    assert report["model_digest"] == "fake-digest"
+    assert report["model_digest"] == lpipe_config.EXPECTED_MODEL_DIGEST
     assert set(report["prompt_shas"]) == {"metric", "log", "trace"}
 
 

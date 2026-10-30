@@ -51,7 +51,7 @@ if TYPE_CHECKING:
     from helios.schemas.telemetry import TelemetryWindow
     from helios.telemetry.trigger import TriggerRecord
 
-__all__ = ["ProvisionalPromptError", "run_lpipe"]
+__all__ = ["ModelMismatchError", "ProvisionalPromptError", "run_lpipe"]
 
 _log = logging.getLogger(__name__)
 
@@ -60,6 +60,10 @@ HELIOS_ENABLE_LPIPE_PIPELINE: bool = True
 
 class ProvisionalPromptError(RuntimeError):
     """A confirmatory run met worker prompts that are not frozen."""
+
+
+class ModelMismatchError(RuntimeError):
+    """The served model is not the one frozen with the prompts (entry 58)."""
 
 
 def _check_prompts(evaluation_phase: str) -> dict[str, str]:
@@ -145,6 +149,17 @@ def run_lpipe(
     }
     try:
         model_digest = client.model_digest(timeout_s=TIMEOUT_S)
+    except (OllamaTimeoutError, OllamaConnectionError, OllamaResponseError) as exc:
+        _log.error("lpipe model endpoint error for %s: %s", incident_id, exc)
+        return _failed(
+            base, gateway, t0, f"l-pipe-connectivity-error: {type(exc).__name__}"
+        )
+    expected = lpipe_config.EXPECTED_MODEL_DIGEST
+    if expected is not None and model_digest != expected:
+        raise ModelMismatchError(
+            f"served model {model_digest[:12]} is not the frozen {expected[:12]}"
+        )
+    try:
         bucket_seconds = load_detector_params().bucket_seconds
         services = service_scores(window, bucket_seconds, root=root).services
         candidates = [s for s in services if in_scope(s)]
@@ -154,11 +169,6 @@ def run_lpipe(
             p.name: p.build(window, trigger, candidates, root=root)
             for p in personas.PERSONAS
         }
-    except (OllamaTimeoutError, OllamaConnectionError, OllamaResponseError) as exc:
-        _log.error("lpipe model endpoint error for %s: %s", incident_id, exc)
-        return _failed(
-            base, gateway, t0, f"l-pipe-connectivity-error: {type(exc).__name__}"
-        )
     except Exception as exc:
         _log.error("lpipe digest error for %s: %s", incident_id, exc)
         return _failed(base, gateway, t0, f"l-pipe-digest-error: {type(exc).__name__}")
