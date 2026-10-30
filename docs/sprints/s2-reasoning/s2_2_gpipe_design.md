@@ -133,8 +133,8 @@ Row S2-M7-ENG02 (planned, effort 3). About 3–4 days: features and evidence (1�
 
 A fresh review of PR 1 found two defects that change the rule signed in deviation entry 54; no selection had run. Owner decision G-i, recorded in deviation entry 55:
 
-1. **Build data = the 63 `otel_build_v3` cases** (9 fault types, 6 root services). The 20 earlier captures are dropped: in their P2 files 88–90% of span IDs appear under several services (up to 9), because the May capture stamped every span of a returned trace with the queried service, so wait shares, call edges and ghost edges are invented there (v3: 0%). This replaces G-f. P2 files with a span under more than one service are now refused.
-2. **The learned ranker is scored leaving one root service out** (6 folds), not one fault type: `ad` is the root of three faults and `payment` of two, so a fault-type fold still trained on the held-out service.
+1. **Build data = the 63 `otel_build_v3` cases** (9 fault types, 7 root services — entry 55 says 6; corrected in entry 56). The 20 earlier captures are dropped: in their P2 files 88–90% of span IDs appear under several services (up to 9), because the May capture stamped every span of a returned trace with the queried service, so wait shares, call edges and ghost edges are invented there (v3: 0%). This replaces G-f. P2 files with a span under more than one service are now refused.
+2. **The learned ranker is scored leaving one root service out** (one fold per root, 7 folds), not one fault type: `ad` is the root of three faults, so a fault-type fold still trained on the held-out service.
 3. **No degree features; D-pipe and PPR scores divided by the window's largest.** In a fixed topology degree is a per-service constant (an identity proxy, F3), and raw scores scale with the window and graph size. Ten features remain.
 4. The 3-hit margin and the order of comparisons are unchanged (now of 63).
 
@@ -158,3 +158,26 @@ Module layout; the exact pairwise objective and solver; how evidence is attached
 | Earlier captures | 20 | 16 (the 4 imageSlowLoad cases have no service root) | 16/16 | 16/16 | **16/16** | 15 (every graph) |
 
 The frozen K = 3 / top-n 50 (deviation entry 40) keeps the root in all 79 G-pipe build cases; no change. On the earlier captures every K in the grid keeps all 16 roots, so the S1.7 tie rule prints K = 1; that is a tie on a 16-case corpus, not a reason to move K. OTel graphs are smaller than the 50-node floor, so on OTel the pruner keeps every service: G-pipe ranks over the whole service graph there. The trigger's suspects contain the root in 22 of 63 v3 cases (6 of 16 earlier).
+
+### G-pipe selection run 1 (2026-10-30) — learned ranker frozen
+
+`bin/gpipe_select.py` on the 63 `otel_build_v3` cases under the rule of deviation entries 54–55 (HELIOS-Full graphs, frozen trigger and D-pipe; routing gate ignored; the learned ranker scored leaving one root service out — **7 folds**: the labels have 7 root services (paymentUnreachable's root is `checkout` under the S1.2 labelling rule, entry 44), not the 6 entry 55 states; one fold per root is what the rule intends). Top-3 hits:
+
+| Fault (7 cases each) | Learned | Feature-weighted PPR | Plain PPR | D-pipe alone |
+|---|---|---|---|---|
+| adFailure | 4 | 4 | 3 | 4 |
+| adHighCpu | 7 | 7 | 5 | 7 |
+| adManualGc | 7 | 7 | 7 | 7 |
+| cartFailure | 7 | 7 | 7 | 7 |
+| emailMemoryLeak | 5 | 5 | 5 | 5 |
+| paymentFailure | 6 | 2 | 2 | 4 |
+| paymentUnreachable | 7 | 4 | 5 | 7 |
+| productCatalogFailure | 6 | 6 | 4 | 6 |
+| recommendationCacheFailure | 1 | 1 | 1 | 1 |
+| **Total (of 63)** | **50** | 43 | 39 | 48 |
+
+Rule: learned vs feature-weighted PPR +7 hits, better on 2 faults, worse on none → learned; learned vs plain PPR +11 → **learned selected**. Feature fallbacks 0; no case without a graph. Gated view: the current routing gate sends 44 of 63 cases to G-pipe; HR@3 on them learned 32, weighted 25, plain 21.
+
+What it means: the lift of G-pipe over D-pipe alone is **2 cases**, both paymentFailure (root payment brought into the top three); elsewhere G-pipe matches D-pipe. "Never trained on" holds for the G-pipe weights only: the detector and D-pipe were frozen on these same 63 cases (entries 52, 53), and D-pipe's and PPR's scores are among the largest weights, so the held-out 50 is not a clean out-of-sample figure — the D-pipe baseline (48) is in-sample in the same way, so the selection itself is not biased. The refit's largest weights are the error-share shift (0.215), D-pipe's score (0.172), PPR (0.164), ghost-edge out-degree (0.115) and the rise of pooled wait (0.092): part of what it learned is to agree with D-pipe. **The ghost-edge weights are untested by the held-out evaluation:** outside the 21 ad-rooted cases no root differs from the other services on the ghost columns, so in every held-out ranking those columns are constant (and the fold holding out ad fits them to zero); their weight is learned from three ad faults only and enters the pool untested (T21). The graph-only walks do worse than D-pipe (43 and 39 against 48): on this testbed the graph helps only together with anomaly evidence. recommendationCacheFailure is missed by every method (silent within five minutes, T14). Pool HR@3 is measured after tag build-freeze, on another system (OTel-to-pool shift, T21).
+
+Frozen in `data/frozen/gpipe_params.json` (`ranker: learned`, ten weights, `provisional: false`, `gpipe_params_hash` `3ab65983cba8…`); `tests/pipelines/g_pipe/test_pipeline_s22.py::test_frozen_gpipe_params_are_the_selection` ties the file to the report and to the frozen detector and D-pipe. `bin/trigger_check.py --corpus otel_build_v3 --with-gpipe` twice in separate processes: G-pipe digest `a67bc8a98ff173a561add7a9e31aabf6f5bff8b6c36cad167b49e19157432a20` both times (trigger digest unchanged, `3ca9a4678e9b…`).

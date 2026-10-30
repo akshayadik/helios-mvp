@@ -155,10 +155,26 @@ def test_learned_params_need_a_full_model(tmp_path: Path) -> None:
         load_gpipe_params(path)
 
 
-def test_committed_params_are_provisional_plain_ppr_until_selection() -> None:
+def test_frozen_gpipe_params_are_the_selection() -> None:
+    # S2.2 selection run 1 (owner 2026-10-30): the rule selected the learned
+    # ranker; the frozen file is its refit on all 63 cases, tied to the report.
+    from pathlib import Path
+
+    from helios.pipelines.d_pipe.params import dpipe_params_hash, load_dpipe_params
+    from helios.telemetry.trigger import detector_hash, load_detector_params
+
+    report = json.loads(
+        (
+            Path(__file__).resolve().parents[3]
+            / "docs/sprints/s2-reasoning/s2_2_gpipe_selection.json"
+        ).read_text(encoding="utf-8")
+    )
     params = load_gpipe_params()
-    assert params.ranker == "ppr"
-    assert params.provisional
+    assert report["selected"] == params.ranker == "learned"
+    assert not params.provisional
+    assert gpipe_params_hash(params) == report["learned_refit"]["gpipe_params_hash"]
+    assert report["detector_hash"] == detector_hash(load_detector_params())
+    assert report["dpipe_params_hash"] == dpipe_params_hash(load_dpipe_params())
 
 
 def test_params_hash_covers_every_field() -> None:

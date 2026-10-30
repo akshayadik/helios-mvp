@@ -1,0 +1,124 @@
+{
+  "cases": 63,
+  "cases_by_corpus": {
+    "otel_build_v3": 63
+  },
+  "cases_without_graph": 0,
+  "detector_hash": "bc07f4952e6856eecdfd62591664b0aa541701e08098594d61ddb3fccb2bf312",
+  "dpipe_hr_at_3": {
+    "by_fault": {
+      "adFailure": 4,
+      "adHighCpu": 7,
+      "adManualGc": 7,
+      "cartFailure": 7,
+      "emailMemoryLeak": 5,
+      "paymentFailure": 4,
+      "paymentUnreachable": 7,
+      "productCatalogFailure": 6,
+      "recommendationCacheFailure": 1
+    },
+    "total": 48
+  },
+  "dpipe_params_hash": "4dc7f3ebc534d6d8e934ef8d3feec516787880ad616effcb3337570ea0170d56",
+  "feature_fallbacks": 0,
+  "gated_view": {
+    "cases": 44,
+    "learned": 32,
+    "ppr": 21,
+    "weighted_ppr": 25
+  },
+  "hr_at_3": {
+    "learned": {
+      "by_fault": {
+        "adFailure": 4,
+        "adHighCpu": 7,
+        "adManualGc": 7,
+        "cartFailure": 7,
+        "emailMemoryLeak": 5,
+        "paymentFailure": 6,
+        "paymentUnreachable": 7,
+        "productCatalogFailure": 6,
+        "recommendationCacheFailure": 1
+      },
+      "total": 50
+    },
+    "ppr": {
+      "by_fault": {
+        "adFailure": 3,
+        "adHighCpu": 5,
+        "adManualGc": 7,
+        "cartFailure": 7,
+        "emailMemoryLeak": 5,
+        "paymentFailure": 2,
+        "paymentUnreachable": 5,
+        "productCatalogFailure": 4,
+        "recommendationCacheFailure": 1
+      },
+      "total": 39
+    },
+    "weighted_ppr": {
+      "by_fault": {
+        "adFailure": 4,
+        "adHighCpu": 7,
+        "adManualGc": 7,
+        "cartFailure": 7,
+        "emailMemoryLeak": 5,
+        "paymentFailure": 2,
+        "paymentUnreachable": 4,
+        "productCatalogFailure": 6,
+        "recommendationCacheFailure": 1
+      },
+      "total": 43
+    }
+  },
+  "learned_refit": {
+    "gpipe_params_hash": "3ab65983cba8f37a26005bc3ceb0440fffa65460f7b9fe06c2181a1055dbd855",
+    "mean": [
+      0.085237,
+      0.146961,
+      0.146141,
+      0.146141,
+      5.559776,
+      0.084638,
+      -0.000288,
+      0.004926,
+      0.004926,
+      0.009904
+    ],
+    "provisional": false,
+    "ranker": "learned",
+    "scale": [
+      0.213631,
+      0.234968,
+      0.697945,
+      0.368417,
+      89.269703,
+      0.205182,
+      0.044856,
+      0.107098,
+      0.070013,
+      0.079682
+    ],
+    "weights": [
+      0.1723,
+      0.163502,
+      0.052533,
+      0.039346,
+      0.086563,
+      0.023835,
+      0.092468,
+      -0.004952,
+      0.115471,
+      0.215447
+    ]
+  },
+  "margin_hits": 3,
+  "selected": "learned",
+  "trigger_sources": {
+    "otel_build_v3": {
+      "fallback": 32,
+      "threshold": 31
+    }
+  },
+  "variant": "HELIOS-Full"
+}
