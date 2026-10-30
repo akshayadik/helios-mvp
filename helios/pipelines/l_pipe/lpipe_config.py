@@ -42,3 +42,7 @@ TRACE_MIN_SPANS: int = (
 TRACE_RISE_FACTOR: int = 2
 # P2 written by the OTel capture: the only trace format build data validated (L-f).
 TRACE_VALIDATED_ROOTS: tuple[str, ...] = ("data/otel",)
+# SHA-256 of prompts/<worker>_v1.txt; None = provisional (not frozen). Frozen in
+# S2.3 PR 2 with a deviation entry; a confirmatory run refuses provisional prompts.
+WORKER_PROMPT_SHAS: dict[str, str | None] = {"metric": None, "log": None, "trace": None}
+LOG_MIN_LINES: int = 3  # lines after the trigger before a template is listed

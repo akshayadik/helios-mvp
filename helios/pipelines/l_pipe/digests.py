@@ -30,6 +30,7 @@ from helios.graph.span_features import ERROR_CODES
 from helios.pipelines.l_pipe.lpipe_config import (
     DIGEST_TOKEN_CAP,
     LOG_LINES_PER_SERVICE,
+    LOG_MIN_LINES,
     LOG_RISE_FACTOR,
     METRIC_LINES_PER_SERVICE,
     ONSET_UNITS,
@@ -66,7 +67,7 @@ HELIOS_ENABLE_LPIPE_DIGESTS: bool = True
 
 Modality = Literal["metric", "log", "trace"]
 _PREFIX: dict[str, str] = {"metric": "M", "log": "L", "trace": "T"}
-_SERVICE_LABELS = frozenset({"service_name", "service", "job", "instance"})
+_SERVICE_LABELS = frozenset({"service_name", "service", "job", "instance", "__name__"})
 _HISTOGRAM_TOTAL = "+Inf"
 _DIGITS = 6
 _ERROR_LEVELS = ("ERROR", "FATAL", "CRITICAL")
@@ -334,7 +335,7 @@ def log_digest(
         a = int(grouped.get((service, template, True), 0))
         b = int(grouped.get((service, template, False), 0))
         weight = _rise(b, a, *seconds)
-        if a == 0 or weight < LOG_RISE_FACTOR:
+        if a < LOG_MIN_LINES or weight < LOG_RISE_FACTOR:
             continue
         shown = text_of[template][:TEMPLATE_CHARS]
         per_service.setdefault(service, []).append(

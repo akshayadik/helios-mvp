@@ -326,3 +326,35 @@ def test_trace_digest_none_when_not_validated(tmp_path: Path) -> None:
     (tmp_path / "data" / "otel").rename(moved)
     w = _window(tmp_path, p2_traces_path=p2.replace("otel", "rcaeval"))
     assert trace_digest(w, _trigger(), ["cart"], root=tmp_path) is None
+
+
+def test_metric_line_drops_name_label(tmp_path: Path) -> None:
+    rows = pd.DataFrame(
+        {
+            "timestamp": [float(START + i * BUCKET + 5) for i in range(N)],
+            "metric_name": ["errors_total"] * N,
+            "value": [float(i if i < T_BUCKET else 40 * i) for i in range(N)],
+            "labels": [json.dumps({"service_name": "cart", "__name__": "errors_total"})]
+            * N,
+        }
+    )
+    path = tmp_path / "p1.parquet"
+    rows.to_parquet(path)
+    digest = metric_digest(
+        _window(tmp_path, p1_metrics_path=str(path)),
+        _trigger(),
+        ["cart"],
+        root=tmp_path,
+        bucket_seconds=BUCKET,
+    )
+    assert digest is not None and digest.lines
+    assert "__name__" not in digest.lines[0].text
+
+
+def test_template_needs_three_lines_after(tmp_path: Path) -> None:
+    two: list[Row] = [
+        (T_BUCKET * BUCKET + 20 + i, "cart", "rare event", "INFO") for i in range(2)
+    ]
+    digest = _log_digest(tmp_path, _steady("cart") + two, ["cart"])
+    assert digest is not None
+    assert not any("rare event" in line.text for line in digest.lines)

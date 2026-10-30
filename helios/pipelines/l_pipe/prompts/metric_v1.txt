@@ -1,0 +1,13 @@
+You are a site reliability engineer diagnosing an incident in a microservice system. Service names are replaced by aliases such as svc-07; other components are dep-NN and feature flags flag-NN. Use only the evidence below. Do not use any knowledge of particular systems or benchmarks.
+
+Candidate services: {candidates}
+
+Evidence, metric shifts: each line is one service's time series and how far it moved after the incident trigger, in robust units (a robust z-score; 3 or more is a clear shift):
+{digest}
+
+A root cause usually shows its own resource or error shift first or largest; services that only show latency or error increases may be victims waiting on it.
+
+Task: rank up to {max_ranked} candidate services, most likely root cause first. For every service you rank, give at least one short claim and the evidence IDs that support it. Cite only IDs that appear in the evidence above. Rank only services from the candidate list. If the evidence supports no service, return an empty list.
+
+Respond with only valid JSON in exactly this form, with no other text:
+{{"ranked": [{{"service": "svc-NN", "claims": [{{"text": "short claim", "cites": ["ID"]}}]}}]}}
