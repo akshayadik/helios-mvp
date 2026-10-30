@@ -149,6 +149,16 @@ The plan gives S2.3 3 days; my estimate is **4** (the digests are most of the wo
 9. **Calls run sequentially** for determinism.
 10. **Dev/held-out split by opaque-ID hash** (§5.8).
 
+## 8b. PR 1 review amendments (owner approved with entry 57, 2026-10-30) — before any build run
+
+- **Aliasing works on tokens** (alphanumeric runs split at camelCase and digits), longest name first, so concatenated and CamelCase names (`checkoutservice`, `ProductCatalogService`) are masked and a Train-Ticket database keeps its own alias. A known name inside an unknown hyphenated name is never half-masked. A **separate, stricter check** refuses a prompt in which a real name survives; that worker drops (`alias_leak`).
+- **One call per worker, no retry** (replaces §5.3's one retry): under Protocol A the same prompt returns the same text, so a retry only doubled cost and time.
+- **σ floor:** agreement is floored at 0, so σ stays in [0, 1] when no worker's top-1 is the merged top-1.
+- **Drops never crash a run:** a leak or a cache error is a worker drop or a cache miss.
+- **Log lines show the masked template, not a raw example body** (§5.2): a raw body can carry identifiers the masks remove.
+- **Dev/held-out split** (§5.8): each corpus's IDs sorted by SHA-256, alternately dev and held-out (exact halves; the first-byte rule gave 25 of 63 OTel cases to dev). The tool runs dev only; held-out cases run once, with `--final`.
+- **Trace format by location:** only P2 under `data/otel` counts as validated (OTel and RCAEval P2 share schema version and columns).
+
 ## 9. Left to the builder
 
 Exact digest line wording; per-service line limits inside the cap; how tokens are counted for the cap; how the model digest is read from Ollama; where the cache lives (inside the store or a separate file, gitignored); how a window is recognised as RCAEval-format for L-f without adding a field to `TelemetryWindow`; the hang timeout value (today 120 s).
