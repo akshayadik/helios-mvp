@@ -272,6 +272,11 @@ class RunOrchestrator:
             self._store.insert_evidence(
                 run_id, incident_id, PipelineName.LPIPE.value, l_out["evidence"]
             )
+        # H_struct (S2.4): L-pipe is the only agent pipeline; gated off = structural zero.
+        structural_zero = l_verdict.status == VerdictStatus.SKIPPED
+        if not structural_zero and "h_struct" not in l_out:
+            raise ValueError("L-pipe ran but returned no h_struct counts (S2.4)")
+        h_struct = {"outputs": 0, "failed": 0} if structural_zero else l_out["h_struct"]
         verdicts = [d_verdict, g_verdict, l_verdict]
 
         gate = MetricIntegrityGate.from_manifest(
@@ -286,6 +291,15 @@ class RunOrchestrator:
         if gate_result.status == "PASS":
             for verdict in verdicts:
                 self._store.insert(verdict)
+            # Only stored runs carry H_struct, so A-H7 pairs match the verdicts.
+            self._store.insert_hstruct(
+                run_id,
+                incident_id,
+                PipelineName.LPIPE.value,
+                outputs=int(h_struct["outputs"]),
+                failed=int(h_struct["failed"]),
+                structural_zero=structural_zero,
+            )
             self._reconciliation.record(
                 run_id=run_id,
                 incident_id=incident_id,
