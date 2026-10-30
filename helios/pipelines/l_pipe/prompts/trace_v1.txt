@@ -5,7 +5,9 @@ Candidate services: {candidates}
 Evidence, trace changes: each line is one service operation whose median latency rose after the incident trigger, or a count of a service's error spans:
 {digest}
 
-A service whose own operations slowed or failed is a stronger suspect than callers whose latency only rose because they wait on it.
+Failures spread: a service that calls a failing service shows higher latency and errors too, and services that receive user traffic show the symptoms of almost every failure behind them. Rank the service whose own behaviour started the change above services that only wait on it.
+
+A service whose own operations slowed or failed is a stronger suspect than callers whose latency only rose because they wait on it. When a caller and its callee both slowed by a similar amount, prefer the callee.
 
 Task: rank up to {max_ranked} candidate services, most likely root cause first. For every service you rank, give at least one short claim and the evidence IDs that support it. Cite only IDs that appear in the evidence above. Rank only services from the candidate list. If the evidence supports no service, return an empty list.
 
