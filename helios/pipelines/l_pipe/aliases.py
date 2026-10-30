@@ -99,7 +99,6 @@ def _labels(prefix: str, names: list[str]) -> dict[str, str]:
 
 def _runs(text: str, toks: list[tuple[int, int, str]], i: int) -> list[tuple[int, str]]:
     """(last index, concatenation) of token runs from i, longest first."""
-    out = []
     joined = toks[i][2]
     runs = [(i, joined)]
     for j in range(i + 1, min(i + _MAX_RUN, len(toks))):
@@ -107,8 +106,7 @@ def _runs(text: str, toks: list[tuple[int, int, str]], i: int) -> list[tuple[int
             break
         joined += toks[j][2]
         runs.append((j, joined))
-    out.extend(reversed(runs))
-    return out
+    return runs[::-1]
 
 
 def _hyphen_word(
