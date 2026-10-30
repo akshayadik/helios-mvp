@@ -8,7 +8,7 @@ VCLManifest + VCLFlag imports satisfy flag-guard compliance.
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import duckdb
 import pytest
@@ -365,3 +365,35 @@ def test_hstruct_round_trip(store: ResultStore) -> None:
     assert store.fetch_hstruct("run-2")[0]["structural_zero"] is True
     assert store.fetch_hstruct("run-3") == []
     assert "hstruct-v1" in store.schema_tags()
+
+
+def _fused(ranked: tuple[str, ...]) -> Any:
+    from helios.consensus.calibration import State
+    from helios.consensus.mahc import FusedVerdict
+    from helios.consensus.timing import Schedule
+
+    return FusedVerdict(
+        method="mahc",
+        ranked=ranked,
+        scores={s: float(len(ranked) - i) for i, s in enumerate(ranked)},
+        confidence=0.9,
+        fused_sigma=0.2,
+        state=State.CONFIRMED,
+        schedule=Schedule(9000, ("dpipe", "gpipe", "lpipe"), 9000, False),
+        first_ranked=ranked,
+        evidence={"signal": "resource"},
+    )
+
+
+def test_fusion_round_trip(store: ResultStore) -> None:
+    # S2.5: one fused verdict per run; the terminal list is what is scored.
+    store.insert_fusion("run-1", "inc-1", "h" * 64, _fused(("cart", "ad")))
+    row = store.fetch_fusion("run-1")
+    assert row is not None
+    assert row["ranked"] == ["cart", "ad"] and row["state"] == "confirmed"
+    assert row["confidence"] == 0.9 and row["method"] == "mahc"
+    assert row["first_ms"] == 9000 and row["non_converged"] is False
+    assert row["evidence"] == {"signal": "resource"}
+    assert store.fetch_fusion("run-2") is None
+    assert len(store.fetch_all_fusion_rows()) == 1
+    assert "fusion-v1" in store.schema_tags()

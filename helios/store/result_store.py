@@ -15,6 +15,7 @@ import duckdb
 from helios.vcl.utils import canonical_json
 
 if TYPE_CHECKING:
+    from helios.consensus.mahc import FusedVerdict
     from helios.consensus.verdict import ConsensusVerdict
     from helios.schemas.verdict import PipelineName, PipelineVerdict
     from helios.telemetry.trigger import TriggerRecord
@@ -280,6 +281,59 @@ class ResultStore:
             "VALUES (?, ?, ?, ?)",
             [run_id, incident_id, pipeline, canonical_json(evidence)],
         )
+
+    def insert_fusion(
+        self,
+        run_id: str,
+        incident_id: str,
+        variant_config_hash: str,
+        fused: FusedVerdict,
+    ) -> None:
+        """Store what HELIOS published for one run (S2.5)."""
+        sched = fused.schedule
+        self._con.execute(
+            "INSERT INTO fusion_row (run_id, incident_id, variant_config_hash, method, "
+            "ranked_json, scores_json, confidence, fused_sigma, state, first_ms, "
+            "first_ranked_json, terminal_ms, non_converged, evidence_json) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [
+                run_id,
+                incident_id,
+                variant_config_hash,
+                fused.method,
+                json.dumps(list(fused.ranked)),
+                canonical_json(fused.scores),
+                fused.confidence,
+                fused.fused_sigma,
+                fused.state.value,
+                sched.first_ms,
+                json.dumps(list(fused.first_ranked)),
+                sched.terminal_ms,
+                sched.non_converged,
+                canonical_json(fused.evidence),
+            ],
+        )
+
+    def _fusion_rows(self, where: str, args: list[Any]) -> list[dict[str, Any]]:
+        cur = self._con.execute(f"SELECT * FROM fusion_row {where}", args)
+        cols = [d[0] for d in cur.description or []]
+        out = []
+        for values in cur.fetchall():
+            row = dict(zip(cols, values, strict=True))
+            for key in ("ranked", "scores", "first_ranked", "evidence"):
+                row[key] = json.loads(row.pop(f"{key}_json"))
+            row["non_converged"] = bool(row["non_converged"])
+            out.append(row)
+        return out
+
+    def fetch_fusion(self, run_id: str) -> dict[str, Any] | None:
+        """The fused verdict of one run, or None."""
+        rows = self._fusion_rows("WHERE run_id = ?", [run_id])
+        return rows[0] if rows else None
+
+    def fetch_all_fusion_rows(self) -> list[dict[str, Any]]:
+        """Every fused verdict, ordered by run."""
+        return self._fusion_rows("ORDER BY run_id", [])
 
     def insert_hstruct(
         self,

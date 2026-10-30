@@ -182,3 +182,27 @@ CREATE TABLE IF NOT EXISTS hstruct_row (
 INSERT INTO schema_tag (tag)
 VALUES ('hstruct-v1')
 ON CONFLICT (tag) DO NOTHING;
+
+-- fusion-v1 (S2.5): what HELIOS publishes per run — MAHC or vote-only. The
+-- terminal list is the one scored (HR@k); first_* is the first publication
+-- (TTT). Written only for runs whose verdicts are stored.
+CREATE TABLE IF NOT EXISTS fusion_row (
+    run_id               VARCHAR     NOT NULL PRIMARY KEY,
+    incident_id          VARCHAR     NOT NULL,
+    variant_config_hash  VARCHAR     NOT NULL,
+    method               VARCHAR     NOT NULL,
+    ranked_json          VARCHAR     NOT NULL,
+    scores_json          VARCHAR     NOT NULL,
+    confidence           DOUBLE,
+    fused_sigma          DOUBLE,
+    state                VARCHAR     NOT NULL,
+    first_ms             DOUBLE      NOT NULL,
+    first_ranked_json    VARCHAR     NOT NULL,
+    terminal_ms          DOUBLE,
+    non_converged        BOOLEAN     NOT NULL,
+    evidence_json        VARCHAR     NOT NULL
+);
+
+INSERT INTO schema_tag (tag)
+VALUES ('fusion-v1')
+ON CONFLICT (tag) DO NOTHING;

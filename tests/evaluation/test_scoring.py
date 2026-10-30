@@ -289,3 +289,29 @@ def test_otel_build_v2_is_a_scoring_corpus() -> None:
 def test_otel_build_v3_is_a_scoring_corpus() -> None:
     assert Corpus("otel_build_v3") == Corpus.OTEL_BUILD_V3
     assert GROUND_TRUTH_FILES["otel_build_v3"] == "data/otel/ground_truth_build_v3.json"
+
+
+def test_scorer_scores_fusion_rows_as_fused(tmp_path: Path) -> None:
+    # S2.5: HR@k is measured on the terminal fused list of fusion_row.
+    from helios.consensus.calibration import State
+    from helios.consensus.mahc import FusedVerdict
+    from helios.consensus.timing import Schedule
+
+    store = _store(tmp_path)
+    fused = FusedVerdict(
+        method="mahc",
+        ranked=("ad", "cart"),
+        scores={"ad": 2, "cart": 1},
+        confidence=0.6,
+        fused_sigma=0.3,
+        state=State.PROVISIONAL,
+        schedule=Schedule(9000, ("dpipe",), 9000, False),
+        first_ranked=("ad",),
+        evidence={},
+    )
+    store.insert_fusion("r9", "inc-1", "h" * 64, fused)
+    score_store(store, GT, frozen=lambda: False)
+    rows = {(r["run_id"], r["list_kind"], r["source"]): r for r in store.fetch_scores()}
+    row = rows["r9", "fused", "mahc"]
+    assert (row["ground_truth_rank"], row["hr_at_1"], row["hr_at_3"]) == (2, 0, 1)
+    assert row["source_status"] == "provisional"
