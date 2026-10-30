@@ -106,3 +106,11 @@ def test_votes_from_keeps_ranked_lists_only() -> None:
         ]
     )
     assert votes == [Vote("dpipe", ("cart",), 1)]
+
+
+def test_zero_priors_are_floored_not_divided_by() -> None:
+    f = fuse(
+        [_v("dpipe", ["a"], 0.2), _v("gpipe", ["b"], 0.4)], {"dpipe": 0, "gpipe": 0}
+    )
+    assert f.ranked == ("a", "b")  # sigma still decides when every prior is 0
+    assert sum(f.weights.values()) == pytest.approx(1)

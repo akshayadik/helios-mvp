@@ -106,7 +106,9 @@ def fuse(votes: Sequence[Vote], priors: Mapping[str, float]) -> Fusion:
     if not votes:
         return Fusion((), {}, {}, None, (), True)
     raw = {
-        v.pipeline: priors.get(v.pipeline, 1) / (v.sigma**2 + MAHC_EPSILON)
+        # A prior of 0 is floored at eps: the pipeline barely counts, sigma still applies.
+        v.pipeline: max(priors.get(v.pipeline, 1), MAHC_EPSILON)
+        / (v.sigma**2 + MAHC_EPSILON)
         for v in votes
     }
     total = sum(raw.values())
