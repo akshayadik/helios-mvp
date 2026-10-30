@@ -281,6 +281,35 @@ class ResultStore:
             [run_id, incident_id, pipeline, canonical_json(evidence)],
         )
 
+    def insert_hstruct(
+        self,
+        run_id: str,
+        incident_id: str,
+        pipeline: str,
+        *,
+        outputs: int,
+        failed: int,
+        structural_zero: bool,
+    ) -> None:
+        """Agent outputs and schema failures of one run's pipeline (S2.4, H_struct)."""
+        self._con.execute(
+            "INSERT INTO hstruct_row (run_id, incident_id, pipeline, outputs, failed, "
+            "structural_zero) VALUES (?, ?, ?, ?, ?, ?)",
+            [run_id, incident_id, pipeline, outputs, failed, structural_zero],
+        )
+
+    def fetch_hstruct(self, run_id: str) -> list[dict[str, Any]]:
+        """The H_struct counts of a run, one per pipeline."""
+        rows = self._con.execute(
+            "SELECT pipeline, outputs, failed, structural_zero FROM hstruct_row "
+            "WHERE run_id = ? ORDER BY pipeline",
+            [run_id],
+        ).fetchall()
+        return [
+            {"pipeline": p, "outputs": o, "failed": f, "structural_zero": bool(z)}
+            for p, o, f, z in rows
+        ]
+
     def fetch_evidence(self, run_id: str, pipeline: str) -> dict[str, Any] | None:
         """The stored evidence of a run's pipeline, or None."""
         row = self._con.execute(

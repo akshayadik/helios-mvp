@@ -222,6 +222,10 @@ def run_lpipe(
         "narrative": f"l-pipe k={merged.k}",
         "latency_ms": (time.monotonic() - t0) * 1_000 + replayed_ms,
         "cache_hit": bool(called) and all(r.cache_hit for r in called),
+        "h_struct": {
+            "outputs": sum(r.produced_output for r in results),
+            "failed": sum(r.invalid_output for r in results),
+        },
         "replayed_ms": replayed_ms,
         "evidence": {
             "k": merged.k,
@@ -248,4 +252,5 @@ def _failed(
         "latency_ms": (time.monotonic() - t0) * 1_000,
         "cache_hit": False,
         "replayed_ms": 0,
+        "h_struct": {"outputs": 0, "failed": 0},
     }

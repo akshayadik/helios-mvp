@@ -162,3 +162,21 @@ CREATE TABLE IF NOT EXISTS evidence_row (
 INSERT INTO schema_tag (tag)
 VALUES ('gpipe-evidence-v1')
 ON CONFLICT (tag) DO NOTHING;
+
+-- hstruct-v1 (S2.4): agent outputs and outputs failing schema validation per
+-- run and pipeline (metric contract H_struct; owner option b: form, services
+-- outside the candidate aliases, cited IDs not in the digest). structural_zero
+-- marks a pipeline gated off (no agent calls), recorded as such (contract §H).
+CREATE TABLE IF NOT EXISTS hstruct_row (
+    run_id              VARCHAR     NOT NULL,
+    incident_id         VARCHAR     NOT NULL,
+    pipeline            VARCHAR     NOT NULL,
+    outputs             INTEGER     NOT NULL,
+    failed              INTEGER     NOT NULL,
+    structural_zero     BOOLEAN     NOT NULL,
+    PRIMARY KEY (run_id, pipeline)
+);
+
+INSERT INTO schema_tag (tag)
+VALUES ('hstruct-v1')
+ON CONFLICT (tag) DO NOTHING;

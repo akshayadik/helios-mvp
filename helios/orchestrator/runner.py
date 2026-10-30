@@ -272,6 +272,16 @@ class RunOrchestrator:
             self._store.insert_evidence(
                 run_id, incident_id, PipelineName.LPIPE.value, l_out["evidence"]
             )
+        # H_struct (S2.4): L-pipe is the only agent pipeline; gated off = structural zero.
+        h_struct = l_out.get("h_struct", {})
+        self._store.insert_hstruct(
+            run_id,
+            incident_id,
+            PipelineName.LPIPE.value,
+            outputs=int(h_struct.get("outputs", 0)),
+            failed=int(h_struct.get("failed", 0)),
+            structural_zero=l_verdict.status == VerdictStatus.SKIPPED,
+        )
         verdicts = [d_verdict, g_verdict, l_verdict]
 
         gate = MetricIntegrityGate.from_manifest(

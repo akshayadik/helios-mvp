@@ -235,3 +235,28 @@ def test_confirmatory_refuses_unpinned_model(monkeypatch: pytest.MonkeyPatch) ->
             client=client,  # type: ignore[arg-type]
         )
     assert client.calls == 0
+
+
+def test_h_struct_counts_outputs_and_failures() -> None:
+    class LogCitesNothingReal(FakeClient):
+        def generate(self, prompt: str, timeout_s: float) -> OllamaGenerateResult:
+            out = super().generate(prompt, timeout_s)
+            if "Evidence, log changes" in prompt:
+                return OllamaGenerateResult(out.text.replace('"L', '"T'), *_USAGE)
+            return out
+
+    out = _run(_window(OTEL), LogCitesNothingReal())
+    assert out["h_struct"] == {"outputs": 3, "failed": 1}
+
+
+def test_h_struct_is_zero_without_outputs(monkeypatch: pytest.MonkeyPatch) -> None:
+    def boom(*_a: Any, **_k: Any) -> None:
+        raise ValueError("bad parquet")
+
+    crashing = dataclasses.replace(personas_module.PERSONAS[0], build=boom)
+    monkeypatch.setattr(
+        personas_module, "PERSONAS", (crashing, *personas_module.PERSONAS[1:])
+    )
+    out = _run(_window(OTEL), FakeClient())
+    assert out["status"] == "failed"
+    assert out["h_struct"] == {"outputs": 0, "failed": 0}

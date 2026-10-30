@@ -348,3 +348,20 @@ def test_evidence_round_trip(store: ResultStore) -> None:
     store.insert_evidence("run-1", "inc-1", "gpipe", evidence)
     assert store.fetch_evidence("run-1", "gpipe") == evidence
     assert store.fetch_evidence("run-1", "dpipe") is None
+
+
+def test_hstruct_round_trip(store: ResultStore) -> None:
+    # S2.4: agent outputs and schema failures per run and pipeline; structural zero
+    # when the agent pipeline was gated off (metric contract H_struct).
+    store.insert_hstruct(
+        "run-1", "inc-1", "lpipe", outputs=3, failed=1, structural_zero=False
+    )
+    store.insert_hstruct(
+        "run-2", "inc-1", "lpipe", outputs=0, failed=0, structural_zero=True
+    )
+    assert store.fetch_hstruct("run-1") == [
+        {"pipeline": "lpipe", "outputs": 3, "failed": 1, "structural_zero": False}
+    ]
+    assert store.fetch_hstruct("run-2")[0]["structural_zero"] is True
+    assert store.fetch_hstruct("run-3") == []
+    assert "hstruct-v1" in store.schema_tags()

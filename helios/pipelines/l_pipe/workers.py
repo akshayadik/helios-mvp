@@ -85,6 +85,10 @@ class WorkerResult:
     raw: str | None = None
     cache_hit: bool = False
     wall_ms: float = 0
+    # H_struct (S2.4): the model answered, and the answer failed schema validation
+    # (form, a service outside the candidate aliases, or a cited ID not in the digest).
+    produced_output: bool = False
+    invalid_output: bool = False
 
     @property
     def valid(self) -> bool:
@@ -143,6 +147,26 @@ def _validate(
         if len(ranked) == MAX_RANKED:
             break
     return tuple(ranked), claims
+
+
+def _fails_schema(answer: _AnswerIn, digest: Digest, alias: AliasMap) -> bool:
+    """Owner option b (S2.4): the answer breaks its schema's form or allowed values.
+
+    Allowed values: at most MAX_RANKED services, each a candidate alias with at
+    least one claim, each claim citing at least one ID, every ID in this digest.
+    An empty ranking is valid (the prompt allows it).
+    """
+    ids = digest.ids()
+    if len(answer.ranked) > MAX_RANKED:
+        return True
+    for entry in answer.ranked:
+        if not entry.service.startswith("svc-") or entry.service not in alias.backward:
+            return True
+        if not entry.claims:
+            return True
+        if any(not c.cites or not set(c.cites) <= ids for c in entry.claims):
+            return True
+    return False
 
 
 def _cached(cache: ResponseCache | None, key: str) -> CachedCall | None:
@@ -216,11 +240,22 @@ def run_worker(
                 wall_ms,
             ),
         )
-    done = {"raw": raw, "cache_hit": cache_hit, "wall_ms": wall_ms}
+    done = {
+        "raw": raw,
+        "cache_hit": cache_hit,
+        "wall_ms": wall_ms,
+        "produced_output": True,
+    }
     try:
         answer = _AnswerIn.model_validate(json.loads(sanitize_llm_output(raw)))
     except (json.JSONDecodeError, ValidationError):
-        return WorkerResult(persona.name, dropped=DropReason.SCHEMA, **done)  # type: ignore[arg-type]
+        return WorkerResult(
+            persona.name,
+            dropped=DropReason.SCHEMA,
+            invalid_output=True,
+            **done,  # type: ignore[arg-type]
+        )
+    done["invalid_output"] = _fails_schema(answer, digest, alias)
     ranked, claims = _validate(answer, digest, alias)
     if not ranked:
         return WorkerResult(persona.name, dropped=DropReason.NO_VALID_CLAIM, **done)  # type: ignore[arg-type]

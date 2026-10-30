@@ -145,3 +145,39 @@ def test_lpipe_off_does_not_need_the_model(tmp_path: Path) -> None:
     assert [r["status"] for r in store.fetch_all() if r["pipeline"] == "lpipe"] == [
         "skipped"
     ]
+
+
+def _hstruct(store: ResultStore) -> dict[str, Any]:
+    run_id = str(
+        next(r["run_id"] for r in store.fetch_all() if r["pipeline"] == "lpipe")
+    )
+    rows = store.fetch_hstruct(run_id)
+    assert len(rows) == 1
+    return rows[0]
+
+
+def test_runner_records_h_struct(tmp_path: Path) -> None:
+    row = _hstruct(run_variant(tmp_path, "HELIOS-Full", FakeClient()))
+    assert row == {
+        "pipeline": "lpipe",
+        "outputs": 3,
+        "failed": 0,
+        "structural_zero": False,
+    }
+
+
+def test_no_llm_variant_records_a_structural_zero(tmp_path: Path) -> None:
+    row = _hstruct(run_variant(tmp_path, "HELIOS-noLLM", FakeClient()))
+    assert row == {
+        "pipeline": "lpipe",
+        "outputs": 0,
+        "failed": 0,
+        "structural_zero": True,
+    }
+
+
+def test_cached_run_gives_the_same_h_struct(tmp_path: Path) -> None:
+    cache = ResponseCache(tmp_path / "cache.sqlite")
+    first = _hstruct(run_variant(tmp_path, "HELIOS-Full", FakeClient(), cache, "a"))
+    second = _hstruct(run_variant(tmp_path, "HELIOS-Full", FakeClient(), cache, "b"))
+    assert first == second
