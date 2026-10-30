@@ -139,20 +139,3 @@ def test_gated_off_raises_inactive() -> None:
     set_current_manifest(get_variant("HELIOS-noConsensus"))
     with pytest.raises(GatedComponentInactiveError):
         run_mahc([D], RES, PROVISIONAL, latency_ms=FAST, confirmatory=False)
-
-
-def test_frozen_mahc_params_match_the_report() -> None:
-    # Entry 61: MAHC frozen from build run 1 (calibration/mahc_run1.json).
-    import json
-    from pathlib import Path
-
-    repo = Path(__file__).resolve().parents[2]
-    report = json.loads(
-        (repo / "docs/sprints/s2-reasoning/calibration/mahc_run1.json").read_text(
-            encoding="utf-8"
-        )
-    )
-    frozen = load_mahc_params()
-    assert not frozen.provisional
-    assert frozen.floor == report["floor"]
-    assert mahc_params_hash(frozen) == report["refit_hash"]

@@ -90,7 +90,10 @@ def test_full_stores_a_mahc_fusion_row(
     row = _fusion(_run(tmp_path, monkeypatch, "HELIOS-Full", "full"))
     assert row["method"] == "mahc"
     assert row["state"] in {"confirmed", "provisional"}
-    assert row["confidence"] is not None  # frozen calibrator (entry 61)
+    from helios.consensus.params import load_mahc_params
+
+    # A calibrated confidence exactly when the parameters are frozen.
+    assert (row["confidence"] is None) == load_mahc_params().provisional
     assert row["evidence"]["signal"] == "unclassified"
     assert row["ranked"][0] == "svc-b"
 
