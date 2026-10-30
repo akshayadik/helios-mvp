@@ -1,0 +1,78 @@
+{
+  "detector_hash": "bc07f4952e6856eecdfd62591664b0aa541701e08098594d61ddb3fccb2bf312",
+  "model_digest": "46e0c10c039e019119339687c3c1757cc81b9da49709a3b3924863ba87ca666e",
+  "prompt_shas": {
+    "log": "50a3035e07f3aae6d422b3b91db850a0b0ea2a5d29d2e0f5cdbc4d3d6f49b0c1",
+    "metric": "4d6094db720e0badebb01d15d71d8d44b8fadd76cc3617bded7b2cb6fc35421d",
+    "trace": "eade3311be60563fccf93032f78cc01f044155598ecccdf9b28f0b54efd94cf2"
+  },
+  "round": 2,
+  "split": "dev",
+  "summary": {
+    "otel_build_v3": {
+      "dev": {
+        "cache_hits": 32,
+        "cases": 32,
+        "drops": {
+          "no_digest": 15
+        },
+        "faults": {
+          "adFailure": 4,
+          "adHighCpu": 4,
+          "adManualGc": 3,
+          "cartFailure": 4,
+          "emailMemoryLeak": 5,
+          "paymentFailure": 2,
+          "paymentUnreachable": 3,
+          "productCatalogFailure": 2,
+          "recommendationCacheFailure": 5
+        },
+        "k": {
+          "1": 2,
+          "2": 11,
+          "3": 19
+        },
+        "lpipe_hr3_hits": 23,
+        "mean_seconds": 15.95,
+        "worker_hr3_hits": {
+          "log": 17,
+          "metric": 17,
+          "trace": 16
+        },
+        "worker_valid": {
+          "log": 25,
+          "metric": 32,
+          "trace": 24
+        }
+      }
+    },
+    "rcaeval_build": {
+      "dev": {
+        "cache_hits": 121,
+        "cases": 248,
+        "drops": {
+          "no_digest": 463
+        },
+        "faults": {},
+        "k": {
+          "0": 1,
+          "1": 213,
+          "2": 34
+        },
+        "lpipe_hr3_hits": 238,
+        "mean_seconds": 9.64,
+        "worker_hr3_hits": {
+          "log": 24,
+          "metric": 237,
+          "trace": 0
+        },
+        "worker_valid": {
+          "log": 34,
+          "metric": 247,
+          "trace": 0
+        }
+      }
+    }
+  },
+  "variant": "HELIOS-Full"
+}
