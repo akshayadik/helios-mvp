@@ -44,7 +44,7 @@ def _patch(
         return cases, {"excluded": 0}
 
     monkeypatch.setattr(tool, "collect_cases", collect)
-    monkeypatch.setattr(tool, "REPORT", tmp_path / "mahc_run.json")
+    monkeypatch.setattr(tool, "REPORT_DIR", tmp_path)
     monkeypatch.setattr(tool, "load_key", lambda: b"k")
 
 
@@ -58,7 +58,7 @@ def test_report_has_no_incident_ids(
     cases = _cases(right=True)
     _patch(monkeypatch, tmp_path, cases)
     assert tool.main([]) == 0
-    text = (tmp_path / "mahc_run.json").read_text(encoding="utf-8")
+    text = (tmp_path / "mahc_run1.json").read_text(encoding="utf-8")
     assert not any(c.incident_id in text for c in cases)
     report = json.loads(text)
     assert report["floor"] is not None
@@ -72,7 +72,7 @@ def test_unreachable_floor_exits_3(
     _patch(monkeypatch, tmp_path, _cases(right=False))
     assert tool.main([]) == 3
     assert (
-        json.loads((tmp_path / "mahc_run.json").read_text(encoding="utf-8"))["floor"]
+        json.loads((tmp_path / "mahc_run1.json").read_text(encoding="utf-8"))["floor"]
         is None
     )
 
@@ -222,3 +222,12 @@ def test_cases_are_ordered_by_incident(tmp_path: Path) -> None:
         "inc-1",
         "inc-2",
     ]
+
+
+def test_run_number_names_the_report(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _patch(monkeypatch, tmp_path, _cases(right=True))
+    assert tool.main(["--run", "2"]) == 0
+    assert (tmp_path / "mahc_run2.json").is_file()
+    assert not (tmp_path / "mahc_run1.json").exists()

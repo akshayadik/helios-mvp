@@ -2,14 +2,14 @@
 
 Usage (from the repository root; the runner reads repo-relative stream paths):
     set -a; source .env; set +a
-    poetry run python bin/mahc_build_run.py
+    poetry run python bin/mahc_build_run.py --run N
 
 Runs the real orchestrator (HELIOS-Full, frozen detector, D-, G- and L-pipe,
 provisional MAHC parameters) over the sealed build corpora into a scratch
 store. L-pipe answers come only from the response cache: a cache miss aborts
 the run rather than calling the model. Then priors and calibration are
 nested cross-fitted, the floor is chosen, and the parameters are refitted on
-all build cases. Writes ``docs/sprints/s2-reasoning/calibration/mahc_run1.json``
+all build cases. Writes ``docs/sprints/s2-reasoning/calibration/mahc_run<N>.json``
 (aggregates only, never an incident ID). Exit 3 when a corpus cannot reach the
 floor target: the owner decides (M-e). Never writes ``data/frozen/``.
 """
@@ -61,7 +61,7 @@ from helios.vcl.config import VCLManifest  # noqa: F401  # flag-guard compliance
 from helios.vcl.utils import canonical_json
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-REPORT = REPO_ROOT / "docs/sprints/s2-reasoning/calibration/mahc_run1.json"
+REPORT_DIR = REPO_ROOT / "docs/sprints/s2-reasoning/calibration"
 CACHE_PATH = REPO_ROOT / "data/cache/lpipe_cache.sqlite"
 BUILD_CORPORA = ("otel_build_v3", "rcaeval_build")
 VARIANT = "HELIOS-Full"
@@ -182,6 +182,9 @@ def collect_cases(*, key: bytes) -> tuple[list[BuildCase], dict[str, int]]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--corpus", choices=("build", "pool"), default="build")
+    parser.add_argument(
+        "--run", type=int, default=1, help="names the report mahc_run<N>.json"
+    )
     args = parser.parse_args(argv)
     if args.corpus == "pool":
         print("[mahc] the pool is locked until tag build-freeze", file=sys.stderr)
@@ -211,8 +214,9 @@ def main(argv: list[str] | None = None) -> int:
         }
     )
     text = json.dumps(json.loads(canonical_json(report)), indent=2, sort_keys=True)
-    REPORT.parent.mkdir(parents=True, exist_ok=True)
-    REPORT.write_text(text + "\n", encoding="utf-8")
+    report_path = REPORT_DIR / f"mahc_run{args.run}.json"
+    REPORT_DIR.mkdir(parents=True, exist_ok=True)
+    report_path.write_text(text + "\n", encoding="utf-8")
     for name, g in report["by_corpus"].items():
         print(
             f"[mahc] {name}: {g['cases']} cases, MAHC HR@3 {g['mahc_hr3']}, "
