@@ -9,9 +9,11 @@ from typing import TYPE_CHECKING, Any
 import pandas as pd
 
 from helios.pipelines.l_pipe.digests import (
+    Digest,
     DigestLine,
     cap_lines,
     estimate_tokens,
+    log_digest,
     metric_digest,
 )
 from helios.schemas.telemetry import EvaluationPhase, TelemetryWindow
@@ -27,10 +29,11 @@ START = 1_790_000_040  # a whole minute
 BUCKET = 60
 N = 20
 T_BUCKET = 10
+Row = tuple[float, str, str, str]
 
 
 def _iso(t: float) -> str:
-    return pd.Timestamp(t, unit="s", tz="UTC").strftime("%Y-%m-%dT%H:%M:%SZ")
+    return str(pd.Timestamp(t, unit="s", tz="UTC").strftime("%Y-%m-%dT%H:%M:%SZ"))
 
 
 def _window(tmp_path: Path, **paths: str | None) -> TelemetryWindow:
@@ -169,4 +172,85 @@ def test_no_p1_no_digest(tmp_path: Path) -> None:
             bucket_seconds=BUCKET,
         )
         is None
+    )
+
+
+def _p3(tmp_path: Path, rows: list[Row]) -> str:
+    frame = pd.DataFrame(
+        {
+            "timestamp": [_iso(START + t) for t, _, _, _ in rows],
+            "service_name": [s for _, s, _, _ in rows],
+            "severity": [sev for _, _, _, sev in rows],
+            "body": [b for _, _, b, _ in rows],
+        }
+    )
+    path = tmp_path / "p3.parquet"
+    frame.to_parquet(path)
+    return str(path)
+
+
+def _steady(service: str, sev: str = "INFO") -> list[Row]:
+    return [(t, service, "request served ok", sev) for t in range(10, N * BUCKET, 60)]
+
+
+def _log_digest(tmp_path: Path, rows: list[Row], cands: list[str]) -> Digest | None:
+    return log_digest(
+        _window(tmp_path, p3_logs_path=_p3(tmp_path, rows)),
+        _trigger(),
+        cands,
+        root=tmp_path,
+    )
+
+
+def test_new_template_after_trigger_listed(tmp_path: Path) -> None:
+    fail: list[Row] = [
+        (
+            T_BUCKET * BUCKET + 20 + i,
+            "cart",
+            f"connection to 10.0.0.{i} failed",
+            "ERROR",
+        )
+        for i in range(5)
+    ]
+    digest = _log_digest(tmp_path, _steady("cart") + fail, ["cart"])
+    assert digest is not None
+    texts = [line.text for line in digest.lines]
+    new = [t for t in texts if "connection to" in t]
+    assert len(new) == 1
+    assert new[0].endswith("0 lines before trigger, 5 after")
+    assert not any("request served ok" in t for t in texts)
+    assert "cart 5 error-level lines after trigger, 0 before" in texts
+
+
+def test_rising_template_listed_with_counts(tmp_path: Path) -> None:
+    slow: list[Row] = [(t, "cart", "slow query took 120ms", "WARN") for t in (50, 250)]
+    slow += [
+        (T_BUCKET * BUCKET + 5 * i, "cart", "slow query took 300ms", "WARN")
+        for i in range(12)
+    ]
+    digest = _log_digest(tmp_path, _steady("cart") + slow, ["cart"])
+    assert digest is not None
+    rising = [line.text for line in digest.lines if "slow query" in line.text]
+    assert rising == [
+        'cart log template "slow query took <DUR>": 2 lines before trigger, 12 after'
+    ]
+
+
+def test_empty_severity_and_silent_service(tmp_path: Path) -> None:
+    fail: list[Row] = [
+        (T_BUCKET * BUCKET + 20 + i, "cart", "cache unavailable", "") for i in range(4)
+    ]
+    digest = _log_digest(tmp_path, _steady("cart", "") + fail, ["cart", "payment"])
+    assert digest is not None
+    assert {line.service for line in digest.lines} == {"cart"}
+    assert not any("error-level" in line.text for line in digest.lines)
+
+
+def test_log_digest_deterministic(tmp_path: Path) -> None:
+    fail: list[Row] = [
+        (T_BUCKET * BUCKET + 20 + i, "cart", "boom", "ERROR") for i in range(3)
+    ]
+    rows = _steady("cart") + fail
+    assert _log_digest(tmp_path, rows, ["cart"]) == _log_digest(
+        tmp_path, rows, ["cart"]
     )

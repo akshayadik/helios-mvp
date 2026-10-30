@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 import pandas as pd
+import pyarrow.parquet as pq
 
 from helios.graph.anomaly_intensity import (
     COUNT_METRICS,
@@ -27,9 +28,13 @@ from helios.graph.anomaly_intensity import (
 )
 from helios.pipelines.l_pipe.lpipe_config import (
     DIGEST_TOKEN_CAP,
+    LOG_LINES_PER_SERVICE,
+    LOG_RISE_FACTOR,
     METRIC_LINES_PER_SERVICE,
     ONSET_UNITS,
+    TEMPLATE_CHARS,
 )
+from helios.telemetry.log_templates import BUCKET_SECONDS, features_for_window
 from helios.telemetry.trigger import load_detector_params, robust_scale
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
 
@@ -46,6 +51,7 @@ __all__ = [
     "Modality",
     "cap_lines",
     "estimate_tokens",
+    "log_digest",
     "metric_digest",
 ]
 
@@ -56,6 +62,7 @@ _PREFIX: dict[str, str] = {"metric": "M", "log": "L", "trace": "T"}
 _SERVICE_LABELS = frozenset({"service_name", "service", "job", "instance"})
 _HISTOGRAM_TOTAL = "+Inf"
 _DIGITS = 6
+_ERROR_LEVELS = ("ERROR", "FATAL", "CRITICAL")
 
 
 @dataclass(frozen=True)
@@ -232,3 +239,113 @@ def metric_digest(
         ]
     ]
     return cap_lines("metric", lines, token_cap)
+
+
+def _rise(before: int, after: int, before_s: float, after_s: float) -> float:
+    """Rate ratio after/before, one pseudo-line each side (a new template counts)."""
+    return ((after + 1) / after_s) / ((before + 1) / before_s)
+
+
+def _split_seconds(window: TelemetryWindow, t_start: float) -> tuple[float, float]:
+    start = pd.Timestamp(window.window_start_iso).timestamp()
+    end = pd.Timestamp(window.window_end_iso).timestamp()
+    return max(t_start - start, 1), max(end - t_start, 1)
+
+
+def _severity_lines(
+    window: TelemetryWindow,
+    path: Path,
+    t_start: float,
+    wanted: set[str],
+    seconds: tuple[float, float],
+) -> list[DigestLine]:
+    if "severity" not in pq.read_schema(path).names:
+        return []
+    logs = pq.read_table(
+        path, columns=["timestamp", "service_name", "severity"]
+    ).to_pandas()
+    levels = logs["severity"].astype("string").fillna("").str.upper()
+    logs = logs[levels.isin(_ERROR_LEVELS) & logs["service_name"].isin(wanted)]
+    if logs.empty:
+        return []
+    stamps = pd.to_datetime(
+        logs["timestamp"], utc=True, format="ISO8601", errors="coerce"
+    )
+    after = stamps.map(lambda t: t.timestamp() >= t_start)
+    out = []
+    for service in sorted(set(logs["service_name"])):
+        mine = logs["service_name"] == service
+        a = int((mine & after).sum())
+        b = int((mine & ~after).sum())
+        weight = _rise(b, a, *seconds)
+        if weight >= LOG_RISE_FACTOR:
+            out.append(
+                DigestLine(
+                    "",
+                    service,
+                    f"{service} {a} error-level lines after trigger, {b} before",
+                    weight,
+                )
+            )
+    return out
+
+
+def log_digest(
+    window: TelemetryWindow,
+    trigger: TriggerRecord,
+    candidates: Sequence[str],
+    *,
+    root: Path,
+    token_cap: int = DIGEST_TOKEN_CAP,
+) -> Digest | None:
+    """Templates new or rising after the trigger, and error-level line counts; None without P3."""
+    if window.p3_logs_path is None:
+        return None
+    features = features_for_window(window, root, BUCKET_SECONDS)
+    if features is None:
+        return None
+    start = pd.Timestamp(window.window_start_iso).timestamp()
+    t_start = (
+        start
+        + math.floor((trigger.trigger_time_s - start) / BUCKET_SECONDS) * BUCKET_SECONDS
+    )
+    seconds = _split_seconds(window, t_start)
+    wanted = set(candidates)
+    counts = features.counts[features.counts["service"].isin(wanted)].copy()
+    stamps = pd.to_datetime(counts["bucket_start"], utc=True)
+    counts["after"] = stamps.map(lambda t: t.timestamp() >= t_start)
+    text_of = dict(
+        zip(
+            features.templates["template_id"],
+            features.templates["template"],
+            strict=True,
+        )
+    )
+    per_service: dict[str, list[DigestLine]] = {}
+    grouped = counts.groupby(["service", "template_id", "after"])["count"].sum()
+    for service, template in sorted({(s, t) for s, t, _ in grouped.index}):
+        a = int(grouped.get((service, template, True), 0))
+        b = int(grouped.get((service, template, False), 0))
+        weight = _rise(b, a, *seconds)
+        if a == 0 or weight < LOG_RISE_FACTOR:
+            continue
+        shown = text_of[template][:TEMPLATE_CHARS]
+        per_service.setdefault(service, []).append(
+            DigestLine(
+                "",
+                service,
+                f'{service} log template "{shown}": {b} lines before trigger, {a} after',
+                weight,
+            )
+        )
+    lines = [
+        line
+        for service in sorted(per_service)
+        for line in sorted(per_service[service], key=lambda d: (-d.weight, d.text))[
+            :LOG_LINES_PER_SERVICE
+        ]
+    ]
+    lines += _severity_lines(
+        window, _resolve(window.p3_logs_path, root), t_start, wanted, seconds
+    )
+    return cap_lines("log", lines, token_cap)

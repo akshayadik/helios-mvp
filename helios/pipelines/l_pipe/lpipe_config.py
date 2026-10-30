@@ -32,3 +32,6 @@ DIGEST_TOKEN_CAP: int = 2000  # per worker digest, tokens = ceil(characters / 4)
 METRIC_LINES_PER_SERVICE: int = 3
 ONSET_UNITS: int = 3  # a metric line names when a series first moved this far
 MAX_RANKED: int = 5
+LOG_LINES_PER_SERVICE: int = 4
+LOG_RISE_FACTOR: int = 2  # a template is listed when its rate at least doubles
+TEMPLATE_CHARS: int = 160
