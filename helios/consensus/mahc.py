@@ -13,18 +13,33 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
+from helios.consensus.calibration import State, features, state
+from helios.consensus.timing import CONVERGE_MS, Schedule, schedule
 from helios.schemas.verdict import VerdictStatus
 from helios.telemetry.scope import in_scope
-from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
+from helios.vcl import VCLFlag, gated_by
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping, Sequence
+    from collections.abc import Callable, Mapping, Sequence
 
+    from helios.consensus.params import MAHCParams
     from helios.schemas.verdict import PipelineVerdict
+    from helios.telemetry.signal_type import SignalType
 
-__all__ = ["MAHC_EPSILON", "Fusion", "Vote", "borda", "fuse", "votes_from"]
+__all__ = [
+    "MAHC_EPSILON",
+    "FusedVerdict",
+    "Fusion",
+    "ProvisionalParamsError",
+    "Vote",
+    "borda",
+    "fuse",
+    "run_mahc",
+    "run_vote_only",
+    "votes_from",
+]
 
 HELIOS_ENABLE_MAHC: bool = True
 
@@ -105,4 +120,112 @@ def fuse(votes: Sequence[Vote], priors: Mapping[str, float]) -> Fusion:
         round(sigma, _DIGITS),
         fused.contributing,
         fused.top1s_agree,
+    )
+
+
+class ProvisionalParamsError(RuntimeError):
+    """A confirmatory run met MAHC parameters that are not frozen."""
+
+
+@dataclass(frozen=True)
+class FusedVerdict:
+    """What HELIOS publishes for an incident (S2.5 design §5.4-5.7)."""
+
+    method: str
+    ranked: tuple[str, ...]
+    scores: dict[str, float]
+    confidence: float | None
+    fused_sigma: float | None
+    state: State
+    schedule: Schedule
+    first_ranked: tuple[str, ...]
+    evidence: dict[str, Any]
+
+
+def _publish(
+    method: str,
+    verdicts: Sequence[PipelineVerdict],
+    latency_ms: Mapping[str, float],
+    combine: Callable[[Sequence[Vote]], Fusion],
+    score: Callable[[Fusion], float | None],
+    floor: float | None,
+    extra: dict[str, Any],
+) -> FusedVerdict:
+    votes = votes_from(verdicts)
+    sched = schedule(latency_ms)
+    in_time = [v for v in votes if latency_ms.get(v.pipeline, 0) <= CONVERGE_MS]
+    terminal = combine(in_time)
+    first = combine([v for v in votes if v.pipeline in sched.first_pipelines])
+    confidence = score(terminal) if terminal.ranked else None
+    if sched.non_converged:
+        published = State.NON_CONVERGED
+    elif not terminal.ranked:
+        published = State.PROVISIONAL
+    elif method == "vote_only":
+        published = State.CONFIRMED
+    else:
+        published = state(confidence, floor, all_in=True)
+    top = terminal.ranked[0] if terminal.ranked else None
+    return FusedVerdict(
+        method=method,
+        ranked=terminal.ranked,
+        scores=terminal.scores,
+        confidence=confidence,
+        fused_sigma=terminal.fused_sigma,
+        state=published,
+        schedule=sched,
+        first_ranked=first.ranked,
+        evidence={
+            **extra,
+            "weights": terminal.weights,
+            "contributing": list(terminal.contributing),
+            "features": list(features(terminal)),
+            "disagreeing": sorted(v.pipeline for v in in_time if v.ranked[0] != top),
+        },
+    )
+
+
+@gated_by(VCLFlag.MAHC_HIERARCHICAL)
+def run_mahc(
+    verdicts: Sequence[PipelineVerdict],
+    signal: SignalType,
+    params: MAHCParams,
+    *,
+    latency_ms: Mapping[str, float],
+    confirmatory: bool,
+) -> FusedVerdict:
+    """MAHC under the frozen priors, calibrator and floor."""
+    if confirmatory and params.provisional:
+        raise ProvisionalParamsError(
+            "MAHC parameters are provisional; freeze them first"
+        )
+    looked = {
+        p.value: params.priors.lookup(p.value, signal)
+        for p in (v.pipeline for v in verdicts)
+    }
+    priors = {p: value for p, (value, _) in looked.items()}
+    cal = params.calibrator
+
+    def score(f: Fusion) -> float | None:
+        return None if cal is None else cal.predict(features(f))
+
+    return _publish(
+        "mahc",
+        verdicts,
+        latency_ms,
+        lambda votes: fuse(votes, priors),
+        score,
+        params.floor,
+        {"signal": signal.value, "priors": {p: list(v) for p, v in looked.items()}},
+    )
+
+
+def run_vote_only(
+    verdicts: Sequence[PipelineVerdict], *, latency_ms: Mapping[str, float]
+) -> FusedVerdict:
+    """HELIOS-noConsensus: equal-weight Borda, no gate (S2.6)."""
+    from helios.consensus.vote_only import vote_only
+
+    return _publish(
+        "vote_only", verdicts, latency_ms, vote_only, lambda _f: None, None, {}
     )

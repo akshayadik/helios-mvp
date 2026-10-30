@@ -1,0 +1,10 @@
+{
+  "calibrator": null,
+  "floor": null,
+  "priors": {
+    "by_signal": {},
+    "counts": {},
+    "global": {}
+  },
+  "provisional": true
+}
