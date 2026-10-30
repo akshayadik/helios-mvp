@@ -2,15 +2,18 @@
 
 Validation, in order (L-e): JSON schema; services must be candidate aliases;
 a ranked service keeps only claims whose citations all exist in **this
-worker's** digest, and is dropped without one. A schema failure is retried
-once (``LPIPE_MAX_RETRIES``). A worker with nothing left, or whose call fails,
-is invalid with a recorded reason; model errors never raise out of here.
+worker's** digest, and is dropped without one. There is no retry: Protocol A
+decoding is deterministic, so a schema failure drops the worker. A worker
+with nothing left, whose call fails or whose prompt would leak a real name
+is invalid with a recorded reason; nothing raises out of here.
 """
 
 from __future__ import annotations
 
 import json
+import logging
 import re
+import sqlite3
 import time
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -18,9 +21,9 @@ from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
+from helios.pipelines.l_pipe.aliases import AliasLeakError
 from helios.pipelines.l_pipe.cache import CachedCall, ResponseCache, cache_key
 from helios.pipelines.l_pipe.lpipe_config import (
-    LPIPE_MAX_RETRIES,
     MAX_RANKED,
     TIMEOUT_S,
 )
@@ -46,6 +49,8 @@ __all__ = ["Claim", "DropReason", "WorkerResult", "run_worker"]
 
 HELIOS_ENABLE_LPIPE_WORKERS: bool = True
 
+_log = logging.getLogger(__name__)
+
 _ALIAS_TOKEN = re.compile(r"\b(?:svc|dep|flag)-\d+\b")
 
 
@@ -58,6 +63,7 @@ class DropReason(StrEnum):
     HTTP = "http"
     SCHEMA = "schema"
     NO_VALID_CLAIM = "no_valid_claim"
+    ALIAS_LEAK = "alias_leak"
 
 
 @dataclass(frozen=True)
@@ -139,36 +145,23 @@ def _validate(
     return tuple(ranked), claims
 
 
-def _call(
-    prompt: str,
-    gateway: LLMGateway,
-    cache: ResponseCache | None,
-    key: str,
-) -> tuple[OllamaGenerateResult, float, bool]:
-    """(result, wall ms, served from cache); model errors propagate."""
-    if cache is not None:
-        hit = cache.get(key)
-        if hit is not None:
-            result = OllamaGenerateResult(
-                hit.text, hit.prompt_tokens, hit.completion_tokens, hit.compute_ms
-            )
-            gateway.replay(result)
-            return result, hit.wall_ms, True
-    t0 = time.monotonic()
-    result = gateway.generate(prompt, timeout_s=TIMEOUT_S)
-    wall = (time.monotonic() - t0) * 1_000
-    if cache is not None:
-        cache.put(
-            key,
-            CachedCall(
-                result.text,
-                result.prompt_tokens,
-                result.completion_tokens,
-                result.compute_ms,
-                wall,
-            ),
-        )
-    return result, wall, False
+def _cached(cache: ResponseCache | None, key: str) -> CachedCall | None:
+    if cache is None:
+        return None
+    try:
+        return cache.get(key)
+    except sqlite3.Error as exc:  # a broken cache never fails a worker
+        _log.warning("lpipe cache read failed: %s", exc)
+        return None
+
+
+def _store(cache: ResponseCache | None, key: str, call: CachedCall) -> None:
+    if cache is None:
+        return
+    try:
+        cache.put(key, call)
+    except sqlite3.Error as exc:
+        _log.warning("lpipe cache write failed: %s", exc)
 
 
 def run_worker(
@@ -180,46 +173,55 @@ def run_worker(
     cache: ResponseCache | None = None,
     model_digest: str = "",
 ) -> WorkerResult:
-    """Call the model over the worker's digest and validate its answer."""
+    """One model call over the worker's digest, then validation.
+
+    No retry: Protocol A decoding is deterministic, so the same prompt gives
+    the same answer; a schema failure drops the worker.
+    """
     if digest is None or not digest.lines:
         return WorkerResult(persona.name, dropped=DropReason.NO_DIGEST)
-    prompt = render_prompt(persona, digest, alias)
+    try:
+        prompt = render_prompt(persona, digest, alias)
+    except AliasLeakError:
+        return WorkerResult(persona.name, dropped=DropReason.ALIAS_LEAK)
     key = cache_key(model_digest, prompt_sha(persona), prompt)
-    raw: str | None = None
-    wall_ms: float = 0
-    hits: list[bool] = []
-    for _ in range(1 + LPIPE_MAX_RETRIES):
+    hit = _cached(cache, key)
+    if hit is not None:
+        raw = hit.text
+        gateway.replay(
+            OllamaGenerateResult(
+                raw, hit.prompt_tokens, hit.completion_tokens, hit.compute_ms
+            )
+        )
+        wall_ms, cache_hit = hit.wall_ms, True
+    else:
         t0 = time.monotonic()
         try:
-            result, wall, hit = _call(prompt, gateway, cache, key)
+            result = gateway.generate(prompt, timeout_s=TIMEOUT_S)
         except (OllamaTimeoutError, OllamaConnectionError, OllamaResponseError) as exc:
-            wall_ms += (time.monotonic() - t0) * 1_000
-            return WorkerResult(
-                persona.name, dropped=_CALL_DROPS[type(exc)], raw=raw, wall_ms=wall_ms
-            )
-        wall_ms += wall
-        hits.append(hit)
-        raw = result.text
-        try:
-            answer = _AnswerIn.model_validate(json.loads(sanitize_llm_output(raw)))
-        except (json.JSONDecodeError, ValidationError):
-            continue
-        ranked, claims = _validate(answer, digest, alias)
-        if not ranked:
             return WorkerResult(
                 persona.name,
-                dropped=DropReason.NO_VALID_CLAIM,
-                raw=raw,
-                cache_hit=all(hits),
-                wall_ms=wall_ms,
+                dropped=_CALL_DROPS[type(exc)],
+                wall_ms=(time.monotonic() - t0) * 1_000,
             )
-        return WorkerResult(
-            persona.name, ranked, claims, raw=raw, cache_hit=all(hits), wall_ms=wall_ms
+        raw, wall_ms, cache_hit = result.text, (time.monotonic() - t0) * 1_000, False
+        _store(
+            cache,
+            key,
+            CachedCall(
+                raw,
+                result.prompt_tokens,
+                result.completion_tokens,
+                result.compute_ms,
+                wall_ms,
+            ),
         )
-    return WorkerResult(
-        persona.name,
-        dropped=DropReason.SCHEMA,
-        raw=raw,
-        cache_hit=all(hits),
-        wall_ms=wall_ms,
-    )
+    done = {"raw": raw, "cache_hit": cache_hit, "wall_ms": wall_ms}
+    try:
+        answer = _AnswerIn.model_validate(json.loads(sanitize_llm_output(raw)))
+    except (json.JSONDecodeError, ValidationError):
+        return WorkerResult(persona.name, dropped=DropReason.SCHEMA, **done)  # type: ignore[arg-type]
+    ranked, claims = _validate(answer, digest, alias)
+    if not ranked:
+        return WorkerResult(persona.name, dropped=DropReason.NO_VALID_CLAIM, **done)  # type: ignore[arg-type]
+    return WorkerResult(persona.name, ranked, claims, **done)  # type: ignore[arg-type]

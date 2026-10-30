@@ -358,3 +358,18 @@ def test_template_needs_three_lines_after(tmp_path: Path) -> None:
     digest = _log_digest(tmp_path, _steady("cart") + two, ["cart"])
     assert digest is not None
     assert not any("rare event" in line.text for line in digest.lines)
+
+
+def test_unparsable_error_timestamp_is_skipped(tmp_path: Path) -> None:
+    rows: list[Row] = _steady("cart") + [
+        (T_BUCKET * BUCKET + 20 + i, "cart", "boom", "ERROR") for i in range(4)
+    ]
+    path = _p3(tmp_path, rows)
+    frame = pd.read_parquet(path)
+    frame.loc[0, "timestamp"] = "not a time"
+    frame.loc[0, "severity"] = "ERROR"
+    frame.to_parquet(path)
+    digest = log_digest(
+        _window(tmp_path, p3_logs_path=path), _trigger(), ["cart"], root=tmp_path
+    )
+    assert digest is not None

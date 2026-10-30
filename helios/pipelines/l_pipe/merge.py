@@ -7,7 +7,8 @@ merged score is the mean. Ties break by service name.
 - mu = the top-1 share of the merged scores (``top1_share``).
 - sigma = 1 - agreement * gap, the shape D-pipe and G-pipe use: gap =
   (s1 - s2) / s1; agreement = (workers whose top-1 is the merged top-1,
-  minus one) / (k - 1), and 0 for k = 1, so a lone worker has sigma 1.
+  minus one, floored at 0) / (k - 1), and 0 for k = 1, so a lone worker
+  has sigma 1 and sigma stays in [0, 1].
 - k = 0: no ranking, mu and sigma None (the verdict contract's ABSTAINED).
 
 The model's own stated confidence is never used.
@@ -60,8 +61,8 @@ def merge(results: Sequence[WorkerResult]) -> MergeResult:
     s1 = scores[ranked[0]]
     s2 = scores[ranked[1]] if len(ranked) > 1 else 0
     gap = (s1 - s2) / s1
-    agreement = (
-        (sum(r.ranked[0] == ranked[0] for r in valid) - 1) / (k - 1) if k > 1 else 0
-    )
+    agreeing = sum(r.ranked[0] == ranked[0] for r in valid)
+    # No worker may top the merge (e.g. a, c and b, c merge to c): agreement 0.
+    agreement = max(agreeing - 1, 0) / (k - 1) if k > 1 else 0
     sigma = round(1 - agreement * gap, MU_DIGITS)
     return MergeResult(scores, ranked, top1_share(scores), sigma, k)

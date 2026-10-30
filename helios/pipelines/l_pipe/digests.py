@@ -279,6 +279,9 @@ def _severity_lines(
     stamps = pd.to_datetime(
         logs["timestamp"], utc=True, format="ISO8601", errors="coerce"
     )
+    logs, stamps = logs[stamps.notna()], stamps[stamps.notna()]  # as Drain skips them
+    if logs.empty:
+        return []
     after = stamps.map(lambda t: t.timestamp() >= t_start)
     out = []
     for service in sorted(set(logs["service_name"])):

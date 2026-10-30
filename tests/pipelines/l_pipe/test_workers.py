@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from helios.pipelines.l_pipe.aliases import build_alias_map
+from helios.pipelines.l_pipe.aliases import AliasLeakError, build_alias_map
 from helios.pipelines.l_pipe.digests import Digest, DigestLine
 from helios.pipelines.l_pipe.ollama_client import (
     OllamaGenerateResult,
@@ -98,13 +98,39 @@ def test_duplicate_service_keeps_first() -> None:
     assert result.claims["cart"][0].cites == ("L1",)
 
 
-def test_schema_failure_retries_once_then_drops() -> None:
-    result, gw = _run("not json", '{"ranked": "nope"}')
-    assert gw.calls == 2
+def test_schema_failure_drops_without_retry() -> None:
+    # Protocol A decoding is deterministic: the same prompt gives the same text.
+    result, gw = _run("not json")
+    assert gw.calls == 1
     assert result.dropped == DropReason.SCHEMA
-    assert result.raw == '{"ranked": "nope"}'
-    ok, gw = _run("not json", _answer((_a("cart"), ["L1"])))
-    assert gw.calls == 2 and ok.valid
+    assert result.raw == "not json"
+
+
+def test_alias_leak_is_a_drop(monkeypatch: Any) -> None:
+    from helios.pipelines.l_pipe import workers
+
+    def leak(*_a: Any, **_k: Any) -> str:
+        raise AliasLeakError("1 real name(s) survived masking")
+
+    monkeypatch.setattr(workers, "render_prompt", leak)
+    result, gw = _run(_answer((_a("cart"), ["L1"])))
+    assert result.dropped == DropReason.ALIAS_LEAK
+    assert gw.calls == 0
+
+
+def test_cache_error_falls_back_to_the_model(tmp_path: Any) -> None:
+    import sqlite3
+
+    class Broken:
+        def get(self, key: str) -> None:
+            raise sqlite3.OperationalError("locked")
+
+        def put(self, key: str, call: Any) -> None:
+            raise sqlite3.OperationalError("locked")
+
+    gw = FakeGateway([_answer((_a("cart"), ["L1"]))])
+    result = run_worker(LOG, DIGEST, ALIAS, gw, cache=Broken())  # type: ignore[arg-type]
+    assert result.valid and gw.calls == 1 and not result.cache_hit
 
 
 def test_timeout_is_a_drop_not_an_exception() -> None:

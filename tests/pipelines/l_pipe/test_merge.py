@@ -49,3 +49,18 @@ def test_no_valid_worker() -> None:
     assert m.k == 0
     assert m.ranked == ()
     assert m.mu is None and m.sigma is None
+
+
+def test_sigma_stays_in_unit_range_when_no_worker_tops_the_merge() -> None:
+    m = merge([_w("a", "c"), _w("b", "c")])
+    assert m.ranked[0] == "c"
+    assert m.sigma == 1
+
+
+def test_sigma_always_in_unit_range() -> None:
+    lists = [("a", "b", "c"), ("c", "b"), ("b",), ("d", "c", "a"), ("a",)]
+    for i, x in enumerate(lists):
+        for y in lists[i:]:
+            for z in lists:
+                m = merge([_w(*x), _w(*y), _w(*z)])
+                assert m.sigma is not None and 0 <= m.sigma <= 1

@@ -51,7 +51,7 @@ def test_report_has_no_incident_ids(
     monkeypatch.setattr(tool, "make_client", FakeClient)
     monkeypatch.setattr(tool, "REPORT_DIR", tmp_path)
     monkeypatch.setattr(tool, "CACHE_PATH", tmp_path / "cache.sqlite")
-    assert tool.main(["--round", "0"]) == 0
+    assert tool.main(["--round", "0", "--split", "both", "--final"]) == 0
     text = (tmp_path / "lpipe_round0.json").read_text(encoding="utf-8")
     for case in cases:
         assert case.incident_id not in text
@@ -63,3 +63,17 @@ def test_report_has_no_incident_ids(
     assert total == 2
     assert report["model_digest"] == "fake-digest"
     assert set(report["prompt_shas"]) == {"metric", "log", "trace"}
+
+
+def test_heldout_needs_the_final_flag() -> None:
+    for split in ("heldout", "both"):
+        with pytest.raises(SystemExit):
+            tool.parse_args(["--round", "1", "--split", split])
+        assert (
+            tool.parse_args(["--round", "3", "--split", split, "--final"]).split
+            == split
+        )
+
+
+def test_split_defaults_to_dev() -> None:
+    assert tool.parse_args(["--round", "1"]).split == "dev"

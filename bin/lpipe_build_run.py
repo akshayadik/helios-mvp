@@ -2,13 +2,15 @@
 
 Usage:
     set -a; source .env; set +a
-    poetry run python bin/lpipe_build_run.py --round N [--split dev|heldout|both]
+    poetry run python bin/lpipe_build_run.py --round N              # dev half
+    poetry run python bin/lpipe_build_run.py --round N --split both --final
 
 Per case, one at a time: the frozen trigger, then ``run_lpipe`` (HELIOS-Full)
 with the local model and the response cache. Scores L-pipe and each worker
 alone (HR@3) per corpus and split. Writes
 ``docs/sprints/s2-reasoning/calibration/lpipe_round<N>.json`` — aggregates
-only, never an incident ID. Prompt revisions are judged on dev only.
+only, never an incident ID. Prompt revisions are judged on dev only; held-out
+cases run only in the final round (``--final``), so they never steer a revision.
 """
 
 from __future__ import annotations
@@ -91,12 +93,25 @@ def _outcome(
     return outcome, evidence
 
 
-def main(argv: list[str] | None = None) -> int:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    """Dev by default; held-out numbers only with --final (design §5.8)."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--round", type=int, required=True)
-    parser.add_argument("--split", choices=("dev", "heldout", "both"), default="both")
+    parser.add_argument("--split", choices=("dev", "heldout", "both"), default="dev")
+    parser.add_argument(
+        "--final",
+        action="store_true",
+        help="the last round, after the prompts are settled: held-out may be run",
+    )
     parser.add_argument("--corpus", choices=("build", "pool"), default="build")
     args = parser.parse_args(argv)
+    if args.split != "dev" and not args.final:
+        parser.error("held-out cases run only in the final round (--final)")
+    return args
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
     if args.corpus == "pool":
         print("[lpipe] the pool is locked until tag build-freeze", file=sys.stderr)
         return 2

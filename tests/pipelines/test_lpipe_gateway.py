@@ -75,25 +75,20 @@ def test_failed_calls_are_counted_without_tokens() -> None:
     assert gateway.usage == LLMUsage(2, 1, 10, 2, 5)
 
 
-def test_lpipe_episode_reports_all_attempts() -> None:
-    """Every call of the episode is metered, schema retries included (S1.10)."""
+def test_lpipe_episode_reports_every_call() -> None:
+    """Every call of the episode is metered, failed answers included (S1.10)."""
     from tests.pipelines.l_pipe.test_pipeline import OTEL, FakeClient, _run, _window
 
-    class RetryOnce(FakeClient):
-        def __init__(self) -> None:
-            super().__init__()
-            self.seen: set[str] = set()
-
+    class LogFails(FakeClient):
         def generate(self, prompt: str, timeout_s: float) -> OllamaGenerateResult:
-            if prompt not in self.seen:
-                self.seen.add(prompt)
+            if "Evidence, log changes" in prompt:
                 self.calls += 1
                 return _result("{}", 90, 20, 300)
             return super().generate(prompt, timeout_s)
 
-    client = RetryOnce()
-    out = _run(_window(OTEL), client)
+    out = _run(_window(OTEL), LogFails())
     assert out["status"] == "ranked"
-    assert (out["llm_calls"], out["llm_failed_calls"]) == (6, 0)
-    assert out["prompt_tokens"] == 3 * (90 + 50)
-    assert out["gpu_ms"] == pytest.approx(3 * (300 + 90))
+    assert out["evidence"]["workers"]["log"]["dropped"] == "schema"
+    assert (out["llm_calls"], out["llm_failed_calls"]) == (3, 0)
+    assert out["prompt_tokens"] == 90 + 2 * 50
+    assert out["gpu_ms"] == pytest.approx(300 + 2 * 90)
