@@ -147,3 +147,18 @@ CREATE TABLE IF NOT EXISTS timing_row (
 INSERT INTO schema_tag (tag)
 VALUES ('trigger-v1')
 ON CONFLICT (tag) DO NOTHING;
+
+-- gpipe-evidence-v1 (S2.2): the graph facts behind a pipeline's top suspects
+-- (wait share pooled from callers, leads, ghost edges, self-time shift), for
+-- the narratives (IN1) and the RQ4 check. No label, no injection time.
+CREATE TABLE IF NOT EXISTS evidence_row (
+    run_id              VARCHAR     NOT NULL,
+    incident_id         VARCHAR     NOT NULL,
+    pipeline            VARCHAR     NOT NULL,
+    evidence_json       VARCHAR     NOT NULL,
+    PRIMARY KEY (run_id, pipeline)
+);
+
+INSERT INTO schema_tag (tag)
+VALUES ('gpipe-evidence-v1')
+ON CONFLICT (tag) DO NOTHING;

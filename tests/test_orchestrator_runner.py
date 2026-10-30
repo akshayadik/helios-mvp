@@ -24,6 +24,7 @@ from helios.orchestrator.ledger import ReconciliationLedger
 from helios.orchestrator.runner import RunOrchestrator
 from helios.pipelines.d_pipe.params import load_dpipe_params
 from helios.pipelines.d_pipe.pipeline import run_dpipe as run_dpipe_unpatched
+from helios.pipelines.g_pipe.params import load_gpipe_params
 from helios.schemas.telemetry import EvaluationPhase, TelemetryWindow
 from helios.schemas.ueg_c import NodeType, UEGCNode, UEGCSnapshot
 from helios.schemas.verdict import PipelineName
@@ -681,3 +682,58 @@ class TestIncidentGraph:
         assert seeds == ["cart"]
         assert spy.events == ["prune"]
         assert "prometheus" in spy.prune_kwargs["exclude"]
+
+
+class TestGPipeS22:
+    def test_runner_passes_window_trigger_and_frozen_params_and_stores_evidence(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        spy = _Spy(_record("cart"))
+        spy.install(monkeypatch)
+        seen: dict[str, Any] = {}
+        evidence = {"suspects": [{"service": "cart", "wait_from": {}}]}
+
+        def gpipe(**kw: Any) -> dict[str, Any]:
+            seen.update(kw)
+            return {
+                "pipeline": "gpipe",
+                "incident_id": kw["incident_id"],
+                "run_id": kw["run_id"],
+                "snapshot_hash": kw["snapshot_hash"],
+                "status": "skipped",
+                "ranked_candidates": [],
+                "candidate_scores": {},
+                "latency_ms": 1,
+                "evidence": evidence,
+            }
+
+        monkeypatch.setattr(runner_module, "should_run_gpipe", lambda *_: True)
+        monkeypatch.setattr(runner_module, "run_gpipe", gpipe)
+        captures = tmp_path / "captures"
+        _capture_with_traces(captures, "inc-001")
+        _make_orchestrator(tmp_path, captures).run(captures)
+        assert seen["window"].incident_id == "inc-001"
+        assert seen["trigger"] == spy.record
+        assert seen["params"] == load_gpipe_params()
+        assert seen["detector"] == load_detector_params()
+        con = duckdb.connect(str(tmp_path / "results.duckdb"))
+        stored = con.execute(
+            "SELECT pipeline, evidence_json FROM evidence_row"
+        ).fetchall()
+        assert [(p, json.loads(e)) for p, e in stored] == [("gpipe", evidence)]
+
+    def test_confirmatory_run_refuses_provisional_gpipe_params(
+        self, tmp_path: Path
+    ) -> None:
+        captures = tmp_path / "captures"
+        _capture_with_traces(captures, "inc-001", EvaluationPhase.CONFIRMATORY)
+        orch = _make_orchestrator(
+            tmp_path,
+            captures,
+            detector_params=_FINAL_PARAMS,
+            dpipe_params=replace(load_dpipe_params(), provisional=False),
+            gpipe_params=replace(load_gpipe_params(), provisional=True),
+        )
+        orch._reader._pool_lock = lambda _incident: None
+        with pytest.raises(ProvisionalParametersError, match="G-pipe"):
+            orch.run(captures)

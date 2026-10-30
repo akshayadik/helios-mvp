@@ -4,6 +4,7 @@
 Usage (from repo root):
     poetry run python bin/khop_calibrate.py --corpus build [--limit N]
     poetry run python bin/khop_calibrate.py --corpus captures   (OTel Demo, exploratory)
+    poetry run python bin/khop_calibrate.py --corpus otel_build_v3   (S2.2 re-check)
 
 Builds each window's UEG-C once (HELIOS-Full), prunes it for every (K, top-n)
 in the grid and prints counts only: services kept, graphs in the 50-200 range,
@@ -13,7 +14,9 @@ build-freeze). The grid runs Algorithm 5 without the 50-node floor, so it
 measures how far from the seeds the root cause lies. Selection rule, fixed
 before the build run (design note): highest root-cause retention; ties go to
 the smaller K, then the smaller top-n. The selected setting is then reported
-with the floor on, as the orchestrator runs it.
+with the floor on, as the orchestrator runs it, and seeded by the frozen
+trigger's suspects with the out-of-scope services excluded (S2.2: the graph
+G-pipe ranks on).
 """
 
 from __future__ import annotations
@@ -26,10 +29,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from bin.log_deviation import load_key
+from helios.adapters.rcaeval import verify_ground_truth
 from helios.evaluation.scoring import service_key
 from helios.graph.khop_pruner import MIN_NODES, khop_prune
 from helios.graph.ueg_c_builder import build_ueg_c
 from helios.schemas.telemetry import TelemetryWindow
+from helios.telemetry.scope import OUT_OF_SCOPE_SERVICES
+from helios.telemetry.trigger import detect, load_detector_params
 from helios.vcl import set_current_manifest
 from helios.vcl.config import VCLManifest  # noqa: F401  # flag-guard compliance
 from helios.vcl.variants import get_variant
@@ -38,6 +45,9 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 DATA_ROOT = Path("data/rcaeval")
 CAPTURES_ROOT = Path("data/captures")
 CAPTURES_TRUTH = Path("data/ground_truth.json")
+OTEL_V3_ROOT = Path("data/otel/build_v3")
+OTEL_V3_MANIFEST = Path("data/otel/build_v3_manifest.json")
+OTEL_V3_TRUTH = Path("data/otel/ground_truth_build_v3.json")
 K_GRID = (0, 1, 2, 3)
 TOP_N_GRID = (50, 120, 200)
 
@@ -57,6 +67,13 @@ def _cases(corpus: str, limit: int | None) -> tuple[Path, list[str], dict[str, s
         )
         truth = json.loads((REPO_ROOT / CAPTURES_TRUTH).read_text(encoding="utf-8"))
         labels = {k: v["root_cause_service"] for k, v in truth.items()}
+    elif corpus == "otel_build_v3":
+        base = REPO_ROOT / OTEL_V3_ROOT
+        order = json.loads((REPO_ROOT / OTEL_V3_MANIFEST).read_text(encoding="utf-8"))[
+            "case_order"
+        ]
+        signed = verify_ground_truth(REPO_ROOT / OTEL_V3_TRUTH, load_key())
+        labels = {k: str(v["root_cause_service"]) for k, v in signed.items()}
     else:
         data = REPO_ROOT / DATA_ROOT
         index = json.loads((data / "build_manifest.json").read_text(encoding="utf-8"))
@@ -81,15 +98,21 @@ def calibrate(corpus: str, limit: int | None) -> int:
     variant_hash = manifest.compute_variant_config_hash()
     base, order, labels = _cases(corpus, limit)
     graphs = []
+    windows = []
     for incident_id in order:
-        snapshot = build_ueg_c(
-            _window(base / incident_id), variant_hash, root=REPO_ROOT
-        )
+        window = _window(base / incident_id)
+        snapshot = build_ueg_c(window, variant_hash, root=REPO_ROOT)
         if snapshot is not None and incident_id in labels:
             graphs.append((snapshot, service_key(labels[incident_id])))
+            windows.append(window)
     sizes = [len(s.candidate_ids()) for s, _ in graphs]
     labelled = [
         g for g in graphs if g[1] in {service_key(c) for c in g[0].candidate_ids()}
+    ]
+    labelled_windows = [
+        w
+        for w, g in zip(windows, graphs, strict=True)
+        if g[1] in {service_key(c) for c in g[0].candidate_ids()}
     ]
     large = sum(n > MIN_NODES for n in sizes)
     print(f"[khop] {corpus}: {len(order)} windows, {len(graphs)} graphs")
@@ -139,12 +162,31 @@ def calibrate(corpus: str, limit: int | None) -> int:
             f"{_summary([r.services_after for _, r in runs])}; nodes kept "
             f"{_summary([r.nodes_after for _, r in runs])}"
         )
+        detector = load_detector_params()
+        seeded_kept = 0
+        for window, (snapshot, root) in zip(labelled_windows, labelled, strict=True):
+            suspects = detect(window, detector, root=REPO_ROOT).suspects
+            seeds = [s for s in suspects if s in set(snapshot.candidate_ids())]
+            pruned, _ = khop_prune(
+                snapshot,
+                k=k,
+                top_n=top_n,
+                seeds=seeds or None,
+                exclude=OUT_OF_SCOPE_SERVICES,
+            )
+            seeded_kept += root in {service_key(c) for c in pruned.candidate_ids()}
+        print(
+            f"[khop] seeded by the frozen trigger (as the runner): root cause kept "
+            f"{seeded_kept}/{len(labelled)}"
+        )
     return 0
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--corpus", choices=("build", "captures"), required=True)
+    parser.add_argument(
+        "--corpus", choices=("build", "captures", "otel_build_v3"), required=True
+    )
     parser.add_argument("--limit", type=int, default=None)
     args = parser.parse_args(argv)
     return calibrate(args.corpus, args.limit)

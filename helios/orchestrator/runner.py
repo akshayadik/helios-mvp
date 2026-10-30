@@ -25,6 +25,7 @@ from helios.orchestrator.corpus import CorpusLoader
 from helios.orchestrator.ledger import ReconciliationLedger
 from helios.pipelines.d_pipe.params import DPipeParams, load_dpipe_params
 from helios.pipelines.d_pipe.pipeline import run_dpipe
+from helios.pipelines.g_pipe.params import GPipeParams, load_gpipe_params
 from helios.pipelines.g_pipe.pipeline import run_gpipe, should_run_gpipe
 from helios.pipelines.l_pipe.pipeline import run_lpipe
 from helios.schemas.telemetry import EvaluationPhase
@@ -85,8 +86,10 @@ class RunOrchestrator:
         detector_params: DetectorParams | None = None,
         external_triggers: Path | None = None,
         dpipe_params: DPipeParams | None = None,
+        gpipe_params: GPipeParams | None = None,
     ) -> None:
-        """``detector_params`` and ``dpipe_params`` default to the frozen files;
+        """``detector_params``, ``dpipe_params`` and ``gpipe_params`` default to
+        the frozen files;
         ``external_triggers`` (exploratory only) replaces the detector with
         supplied records."""
         set_current_manifest(manifest)
@@ -103,6 +106,7 @@ class RunOrchestrator:
             detector_params if detector_params is not None else load_detector_params()
         )
         self._dpipe = dpipe_params if dpipe_params is not None else load_dpipe_params()
+        self._gpipe = gpipe_params if gpipe_params is not None else load_gpipe_params()
         self._external = (
             load_external_triggers(external_triggers)
             if external_triggers is not None
@@ -119,6 +123,10 @@ class RunOrchestrator:
             if self._detector.provisional or self._dpipe.provisional:
                 raise ProvisionalParametersError(
                     "detector or D-pipe parameters are provisional; freeze them first"
+                )
+            if self._gpipe.provisional:
+                raise ProvisionalParametersError(
+                    "G-pipe parameters are provisional; freeze them first (S2.2)"
                 )
         if self._external is not None:
             if window.incident_id not in self._external:
@@ -210,7 +218,7 @@ class RunOrchestrator:
         dpipe_scores: dict[str, float] = d_routed.get("candidate_scores", {})
         graph = ueg_c
         if graph is not None and should_run_gpipe(d_routed, self._manifest):
-            g_verdict, _ = self._dispatch(
+            g_verdict, g_out = self._dispatch(
                 PipelineName.GPIPE,
                 base,
                 lambda: run_gpipe(
@@ -220,8 +228,16 @@ class RunOrchestrator:
                     dpipe_scores=dpipe_scores,
                     evaluation_phase=evaluation_phase_str,
                     run_id=run_id,
+                    window=window,
+                    trigger=trigger,
+                    params=self._gpipe,
+                    detector=self._detector,
                 ),
             )
+            if g_out.get("evidence"):
+                self._store.insert_evidence(
+                    run_id, incident_id, PipelineName.GPIPE.value, g_out["evidence"]
+                )
         else:
             g_verdict = self._skipped(PipelineName.GPIPE, base)
         lpipe_snapshot = (

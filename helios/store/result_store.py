@@ -8,9 +8,11 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import duckdb
+
+from helios.vcl.utils import canonical_json
 
 if TYPE_CHECKING:
     from helios.consensus.verdict import ConsensusVerdict
@@ -268,6 +270,24 @@ class ResultStore:
                 handover_unix,
             ],
         )
+
+    def insert_evidence(
+        self, run_id: str, incident_id: str, pipeline: str, evidence: dict[str, Any]
+    ) -> None:
+        """Store a pipeline's per-suspect evidence for one run (S2.2)."""
+        self._con.execute(
+            "INSERT INTO evidence_row (run_id, incident_id, pipeline, evidence_json) "
+            "VALUES (?, ?, ?, ?)",
+            [run_id, incident_id, pipeline, canonical_json(evidence)],
+        )
+
+    def fetch_evidence(self, run_id: str, pipeline: str) -> dict[str, Any] | None:
+        """The stored evidence of a run's pipeline, or None."""
+        row = self._con.execute(
+            "SELECT evidence_json FROM evidence_row WHERE run_id = ? AND pipeline = ?",
+            [run_id, pipeline],
+        ).fetchone()
+        return None if row is None else dict(json.loads(row[0]))
 
     def fetch_trigger(
         self, incident_id: str, variant_config_hash: str

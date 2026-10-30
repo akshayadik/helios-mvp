@@ -340,3 +340,11 @@ def test_existing_store_gains_the_new_tables(tmp_path: Path) -> None:
     reopened = ResultStore(path)
     assert {"trigger_row", "timing_row"} <= set(reopened.table_names())
     assert len(reopened.fetch_all_pipeline_rows()) == 1
+
+
+def test_evidence_round_trip(store: ResultStore) -> None:
+    # S2.2: G-pipe's per-suspect graph evidence is stored with the run.
+    evidence = {"suspects": [{"service": "payment", "wait_from": {"checkout": 0.9}}]}
+    store.insert_evidence("run-1", "inc-1", "gpipe", evidence)
+    assert store.fetch_evidence("run-1", "gpipe") == evidence
+    assert store.fetch_evidence("run-1", "dpipe") is None
