@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pandas as pd
@@ -15,14 +16,14 @@ from helios.pipelines.l_pipe.digests import (
     estimate_tokens,
     log_digest,
     metric_digest,
+    trace_digest,
+    trace_format_validated,
 )
 from helios.schemas.telemetry import EvaluationPhase, TelemetryWindow
 from helios.telemetry.trigger import TriggerRecord, TriggerSource
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     import pytest
 
 START = 1_790_000_040  # a whole minute
@@ -254,3 +255,74 @@ def test_log_digest_deterministic(tmp_path: Path) -> None:
     assert _log_digest(tmp_path, rows, ["cart"]) == _log_digest(
         tmp_path, rows, ["cart"]
     )
+
+
+def _p2(tmp_path: Path, spans: list[tuple[str, str, float, float, str]]) -> str:
+    """spans: (service, operation, start offset s, duration ms, status)."""
+    folder = tmp_path / "data" / "otel" / "c1"
+    folder.mkdir(parents=True, exist_ok=True)
+    frame = pd.DataFrame(
+        {
+            "trace_id": [f"t{i}" for i in range(len(spans))],
+            "span_id": [f"s{i}" for i in range(len(spans))],
+            "parent_span_id": [""] * len(spans),
+            "operation_name": [op for _, op, _, _, _ in spans],
+            "service_name": [s for s, _, _, _, _ in spans],
+            "start_time_us": [int((START + t) * 1_000_000) for _, _, t, _, _ in spans],
+            "duration_us": [int(d * 1_000) for _, _, _, d, _ in spans],
+            "status_code": [st for _, _, _, _, st in spans],
+        }
+    )
+    path = folder / "p2_traces.parquet"
+    frame.to_parquet(path)
+    return str(path.relative_to(tmp_path))
+
+
+def test_rcaeval_window_not_validated(tmp_path: Path) -> None:
+    w = _window(tmp_path, p2_traces_path="data/rcaeval/pool/x/p2_traces.parquet")
+    assert not trace_format_validated(w, root=tmp_path)
+
+
+def test_otel_v3_window_validated() -> None:
+    root = Path(__file__).resolve().parents[3]
+    manifest = sorted((root / "data/otel/build_v3").glob("*/manifest.json"))[0]
+    raw = json.loads(manifest.read_text(encoding="utf-8"))
+    raw.pop("window_hash", None)
+    raw.pop("snapshot_hash", None)
+    assert trace_format_validated(TelemetryWindow(**raw), root=root)
+
+
+def test_unknown_format_fails_closed(tmp_path: Path) -> None:
+    assert not trace_format_validated(
+        _window(tmp_path, p2_traces_path="elsewhere/p2_traces.parquet"), root=tmp_path
+    )
+    assert not trace_format_validated(_window(tmp_path), root=tmp_path)
+
+
+def test_trace_digest_errors_and_latency(tmp_path: Path) -> None:
+    t = T_BUCKET * BUCKET
+    spans = [("cart", "GetCart", float(s), 10.0, "OK") for s in range(20, t, 60)]
+    spans += [
+        ("cart", "GetCart", float(t + s), 200.0, "ERROR") for s in range(20, 600, 60)
+    ]
+    spans += [("payment", "Charge", float(s), 5.0, "OK") for s in range(20, 2 * t, 60)]
+    p2 = _p2(tmp_path, spans)
+    digest = trace_digest(
+        _window(tmp_path, p2_traces_path=p2),
+        _trigger(),
+        ["cart", "payment"],
+        root=tmp_path,
+    )
+    assert digest is not None
+    assert [line.text for line in digest.lines] == [
+        'cart operation "GetCart" median latency 10 ms before trigger, 200 ms after',
+        "cart 10 error spans after trigger, 0 before",
+    ]
+
+
+def test_trace_digest_none_when_not_validated(tmp_path: Path) -> None:
+    p2 = _p2(tmp_path, [("cart", "GetCart", 20.0, 10.0, "OK")])
+    moved = tmp_path / "data" / "rcaeval"
+    (tmp_path / "data" / "otel").rename(moved)
+    w = _window(tmp_path, p2_traces_path=p2.replace("otel", "rcaeval"))
+    assert trace_digest(w, _trigger(), ["cart"], root=tmp_path) is None

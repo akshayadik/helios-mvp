@@ -53,7 +53,7 @@ _ENTRY_COLUMNS = [
 ]
 _WAIT_COLUMNS = ["trace_id", "span_id", "caller", "callee", "start_us", "wait_us"]
 _US_PER_S = 1_000_000
-_ERROR_CODES = frozenset({"2", "ERROR", "STATUS_CODE_ERROR"})  # OTel text or enum
+ERROR_CODES = frozenset({"2", "ERROR", "STATUS_CODE_ERROR"})  # OTel text or enum
 
 
 @dataclass(frozen=True)
@@ -130,7 +130,7 @@ def analyse_spans(spans: pd.DataFrame) -> SpanAnalysis:
                 c_lo, c_hi = _interval(child)
                 frontier[child_service].append((max(c_lo, lo), min(c_hi, hi)))
             all_wait = _union_length(i for ivs in frontier.values() for i in ivs)
-            error = str(r.get("status_code", "")).strip().upper() in _ERROR_CODES
+            error = str(r.get("status_code", "")).strip().upper() in ERROR_CODES
             span_id = str(r["span_id"])
             entries.append(
                 (trace_id, span_id, service, lo, hi - lo, (hi - lo) - all_wait, error)

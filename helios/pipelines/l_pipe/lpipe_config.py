@@ -35,3 +35,10 @@ MAX_RANKED: int = 5
 LOG_LINES_PER_SERVICE: int = 4
 LOG_RISE_FACTOR: int = 2  # a template is listed when its rate at least doubles
 TEMPLATE_CHARS: int = 160
+TRACE_LINES_PER_SERVICE: int = 4
+TRACE_MIN_SPANS: int = (
+    3  # spans on each side of the trigger before a median is compared
+)
+TRACE_RISE_FACTOR: int = 2
+# P2 written by the OTel capture: the only trace format build data validated (L-f).
+TRACE_VALIDATED_ROOTS: tuple[str, ...] = ("data/otel",)

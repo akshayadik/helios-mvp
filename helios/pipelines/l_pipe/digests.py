@@ -26,6 +26,7 @@ from helios.graph.anomaly_intensity import (
     bucket_count,
     service_of,
 )
+from helios.graph.span_features import ERROR_CODES
 from helios.pipelines.l_pipe.lpipe_config import (
     DIGEST_TOKEN_CAP,
     LOG_LINES_PER_SERVICE,
@@ -33,6 +34,10 @@ from helios.pipelines.l_pipe.lpipe_config import (
     METRIC_LINES_PER_SERVICE,
     ONSET_UNITS,
     TEMPLATE_CHARS,
+    TRACE_LINES_PER_SERVICE,
+    TRACE_MIN_SPANS,
+    TRACE_RISE_FACTOR,
+    TRACE_VALIDATED_ROOTS,
 )
 from helios.telemetry.log_templates import BUCKET_SECONDS, features_for_window
 from helios.telemetry.trigger import load_detector_params, robust_scale
@@ -53,6 +58,8 @@ __all__ = [
     "estimate_tokens",
     "log_digest",
     "metric_digest",
+    "trace_digest",
+    "trace_format_validated",
 ]
 
 HELIOS_ENABLE_LPIPE_DIGESTS: bool = True
@@ -349,3 +356,99 @@ def log_digest(
         window, _resolve(window.p3_logs_path, root), t_start, wanted, seconds
     )
     return cap_lines("log", lines, token_cap)
+
+
+def trace_format_validated(window: TelemetryWindow, *, root: Path) -> bool:
+    """True only for P2 written by the OTel capture, the one trace format build data validated (L-f).
+
+    RCAEval-format traces (the confirmatory pool) were never seen on build data,
+    so the trace worker skips them, as the detector does; anything not under a
+    validated capture root fails closed.
+    """
+    if window.p2_traces_path is None:
+        return False
+    path = _resolve(window.p2_traces_path, root).resolve()
+    return any(path.is_relative_to((root / r).resolve()) for r in TRACE_VALIDATED_ROOTS)
+
+
+def _ms(us: float) -> str:
+    return f"{us / 1_000:.3g} ms"
+
+
+def trace_digest(
+    window: TelemetryWindow,
+    trigger: TriggerRecord,
+    candidates: Sequence[str],
+    *,
+    root: Path,
+    token_cap: int = DIGEST_TOKEN_CAP,
+) -> Digest | None:
+    """Operations whose median latency rose, and error-span counts; None without validated P2."""
+    if window.p2_traces_path is None or not trace_format_validated(window, root=root):
+        return None
+    spans = pd.read_parquet(
+        _resolve(window.p2_traces_path, root),
+        columns=[
+            "service_name",
+            "operation_name",
+            "start_time_us",
+            "duration_us",
+            "status_code",
+        ],
+    )
+    spans = spans[spans["service_name"].isin(set(candidates))]
+    after = (
+        spans["start_time_us"].astype("float64") >= trigger.trigger_time_s * 1_000_000
+    )
+    error = (
+        spans["status_code"]
+        .astype("string")
+        .fillna("")
+        .str.strip()
+        .str.upper()
+        .isin(ERROR_CODES)
+    )
+    start = pd.Timestamp(window.window_start_iso).timestamp()
+    seconds = _split_seconds(window, max(trigger.trigger_time_s, start))
+    per_service: dict[str, list[DigestLine]] = {}
+    for (service, op), group in spans.groupby(
+        ["service_name", "operation_name"], sort=True
+    ):
+        mask = after.loc[group.index]
+        b, a = group.loc[~mask, "duration_us"], group.loc[mask, "duration_us"]
+        if len(b) < TRACE_MIN_SPANS or len(a) < TRACE_MIN_SPANS:
+            continue
+        mb, ma = float(b.median()), float(a.median())
+        if mb <= 0 or ma / mb < TRACE_RISE_FACTOR:
+            continue
+        per_service.setdefault(str(service), []).append(
+            DigestLine(
+                "",
+                str(service),
+                f'{service} operation "{op}" median latency {_ms(mb)} before trigger, '
+                f"{_ms(ma)} after",
+                ma / mb,
+            )
+        )
+    for service in sorted(set(spans["service_name"])):
+        mine = spans["service_name"] == service
+        a_err = int((mine & error & after).sum())
+        b_err = int((mine & error & ~after).sum())
+        weight = _rise(b_err, a_err, *seconds)
+        if a_err and weight >= TRACE_RISE_FACTOR:
+            per_service.setdefault(str(service), []).append(
+                DigestLine(
+                    "",
+                    str(service),
+                    f"{service} {a_err} error spans after trigger, {b_err} before",
+                    weight,
+                )
+            )
+    lines = [
+        line
+        for service in sorted(per_service)
+        for line in sorted(per_service[service], key=lambda d: (-d.weight, d.text))[
+            :TRACE_LINES_PER_SERVICE
+        ]
+    ]
+    return cap_lines("trace", lines, token_cap)
