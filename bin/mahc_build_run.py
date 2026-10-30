@@ -44,7 +44,11 @@ from helios.evaluation.scoring import _ranked
 from helios.evaluation.trigger_calibration import CORPORA
 from helios.orchestrator.runner import RunOrchestrator
 from helios.pipelines.l_pipe.cache import ResponseCache
-from helios.pipelines.l_pipe.lpipe_config import MODEL_NAME, OLLAMA_BASE_URL
+from helios.pipelines.l_pipe.lpipe_config import (
+    EXPECTED_MODEL_DIGEST,
+    MODEL_NAME,
+    OLLAMA_BASE_URL,
+)
 from helios.pipelines.l_pipe.ollama_client import (
     OllamaClient,
     OllamaGenerateResult,
@@ -67,7 +71,19 @@ class CacheMissError(RuntimeError):
     """The build run needed a model call the cache did not hold."""
 
 
+class LPipeFailedError(RuntimeError):
+    """An L-pipe verdict failed in the build run; MAHC must not be fitted without it."""
+
+
 class _CacheOnlyClient(OllamaClient):
+    """Answers only from the response cache; never contacts the model server."""
+
+    def model_digest(self, timeout_s: float) -> str:
+        del timeout_s
+        if EXPECTED_MODEL_DIGEST is None:
+            raise CacheMissError("the model digest is not pinned (entry 58)")
+        return EXPECTED_MODEL_DIGEST
+
     def generate(self, prompt: str, timeout_s: float) -> OllamaGenerateResult:
         raise CacheMissError(
             "an L-pipe answer is not in the cache; rerun the L-pipe build runs"
@@ -91,7 +107,19 @@ def _cases_from_store(
     for row in store.fetch_all():
         by_run.setdefault(str(row["run_id"]), []).append(row)
     cases = []
-    for run_id, rows in sorted(by_run.items()):
+    failed = [
+        r
+        for rows in by_run.values()
+        for r in rows
+        if r["pipeline"] == "lpipe" and r["status"] == "failed"
+    ]
+    if failed:
+        raise LPipeFailedError(
+            f"{len(failed)} L-pipe verdict(s) failed in the build run"
+        )
+    for run_id, rows in sorted(
+        by_run.items(), key=lambda kv: (str(kv[1][0]["incident_id"]), kv[0])
+    ):
         incident = str(rows[0]["incident_id"])
         label = labels[incident]
         votes = []

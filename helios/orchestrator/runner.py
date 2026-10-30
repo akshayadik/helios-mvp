@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING, Any
 
 from helios.consensus.mahc import run_mahc, run_vote_only
 from helios.consensus.params import load_mahc_params
+from helios.consensus.timing import finish_times
 from helios.graph.khop_pruner import khop_prune
 from helios.graph.structural_bundle import apply_structural_bundle
 from helios.graph.ueg_c_builder import build_ueg_c
@@ -291,11 +292,13 @@ class RunOrchestrator:
         verdicts = [d_verdict, g_verdict, l_verdict]
         # S2.5/S2.6: one fused verdict per run, from the replayed latencies of the
         # pipelines that ran (a skipped pipeline was never dispatched).
-        latency_ms = {
-            v.pipeline.value: v.latency_ms
-            for v in verdicts
-            if v.status != VerdictStatus.SKIPPED
-        }
+        latency_ms = finish_times(
+            {
+                v.pipeline.value: v.latency_ms
+                for v in verdicts
+                if v.status != VerdictStatus.SKIPPED
+            }
+        )
         if self._manifest.mahc_hierarchical:
             signal = signal_type(
                 window,

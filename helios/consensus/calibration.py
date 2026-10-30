@@ -12,7 +12,7 @@ wins; a corpus that cannot reach it gives no floor (stop and report, M-e).
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
@@ -72,12 +72,21 @@ def features(f: Fusion) -> Features:
     )
 
 
-def _pav(scores: np.ndarray, ys: np.ndarray) -> tuple[tuple[float, float], ...]:
-    """Isotonic fit by pool-adjacent-violators: (lowest score, value) per block."""
-    order = np.lexsort((ys, scores))
+def _pav(
+    scores: Sequence[float], ys: Sequence[float]
+) -> tuple[tuple[float, float], ...]:
+    """Isotonic fit: equal scores pooled first, then pool-adjacent-violators.
+
+    Returns (lowest score, value) per block, in increasing score.
+    """
+    groups: dict[float, list[float]] = {}
+    for sc, y in zip(scores, ys, strict=True):
+        g = groups.setdefault(sc, [0, 0])
+        g[0] += y
+        g[1] += 1
     blocks: list[list[float]] = []  # [start score, sum y, count]
-    for i in order:
-        blocks.append([float(scores[i]), float(ys[i]), 1])
+    for sc in sorted(groups):
+        blocks.append([sc, groups[sc][0], groups[sc][1]])
         while (
             len(blocks) > 1
             and blocks[-2][1] / blocks[-2][2] > blocks[-1][1] / blocks[-1][2]
@@ -85,7 +94,7 @@ def _pav(scores: np.ndarray, ys: np.ndarray) -> tuple[tuple[float, float], ...]:
             last = blocks.pop()
             blocks[-1][1] += last[1]
             blocks[-1][2] += last[2]
-    return tuple((round(b[0], _DIGITS), round(b[1] / b[2], _DIGITS)) for b in blocks)
+    return tuple((b[0], round(b[1] / b[2], _DIGITS)) for b in blocks)
 
 
 @dataclass(frozen=True)
@@ -136,14 +145,16 @@ class Calibrator:
 
         result = minimize(loss, np.zeros(z.shape[1] + 1), jac=True, method="L-BFGS-B")
         w = result.x
-        scores = np.round(z @ w[:-1] + w[-1], _DIGITS)
-        return cls(
+        draft = cls(
             coef=tuple(round(float(v), _DIGITS) for v in w[:-1]),
             intercept=round(float(w[-1]), _DIGITS),
             mean=tuple(round(float(v), _DIGITS) for v in mean),
             scale=tuple(round(float(v), _DIGITS) for v in scale),
-            knots=_pav(scores, y),
+            knots=((0, 0),),
         )
+        # Knots on exactly the score predict computes (rounded parameters).
+        scores = [round(draft._score(row), _DIGITS) for row in x]
+        return replace(draft, knots=_pav(scores, list(y)))
 
 
 def choose_floor(

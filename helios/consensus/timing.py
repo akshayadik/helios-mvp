@@ -18,7 +18,7 @@ from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-__all__ = ["CONVERGE_MS", "PROVISIONAL_MS", "Schedule", "schedule"]
+__all__ = ["CONVERGE_MS", "PROVISIONAL_MS", "Schedule", "finish_times", "schedule"]
 
 HELIOS_ENABLE_MAHC_TIMING: bool = True
 
@@ -46,3 +46,15 @@ def schedule(latency_ms: Mapping[str, float]) -> Schedule:
     if last > CONVERGE_MS:
         return Schedule(first, early, None, True)
     return Schedule(first, early, last, False)
+
+
+def finish_times(latency_ms: Mapping[str, float]) -> dict[str, float]:
+    """When each pipeline would finish if run concurrently.
+
+    D-pipe and L-pipe start at the trigger; G-pipe is dispatched only after
+    D-pipe's routing gate, so it finishes at D-pipe's latency plus its own.
+    """
+    out = dict(latency_ms)
+    if "gpipe" in out and "dpipe" in out:
+        out["gpipe"] = out["dpipe"] + out["gpipe"]
+    return out

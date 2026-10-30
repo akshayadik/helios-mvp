@@ -27,3 +27,18 @@ def test_non_convergence_after_90s() -> None:
 
 def test_no_pipelines() -> None:
     assert schedule({}) == Schedule(0, (), 0, False)
+
+
+def test_gpipe_finishes_after_dpipe() -> None:
+    # Review I4: G-pipe is dispatched only after D-pipe's routing gate.
+    from helios.consensus.timing import finish_times
+
+    assert finish_times({"dpipe": 400, "gpipe": 900, "lpipe": 15_000}) == {
+        "dpipe": 400,
+        "gpipe": 1300,
+        "lpipe": 15_000,
+    }
+    assert finish_times({"dpipe": 400, "lpipe": 15_000}) == {
+        "dpipe": 400,
+        "lpipe": 15_000,
+    }

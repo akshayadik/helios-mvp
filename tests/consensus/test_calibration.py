@@ -84,3 +84,24 @@ def test_state_rules() -> None:
     assert state(0.9, 0.8, all_in=False) == State.PROVISIONAL
     assert state(None, 0.8, all_in=True) == State.PROVISIONAL
     assert state(0.9, None, all_in=True) == State.PROVISIONAL
+
+
+def test_tied_scores_are_pooled() -> None:
+    # Review I1: five cases with identical features and 4 hits of 5 predict 0.8,
+    # a second tied group 1 of 2 predicts 0.5 (isotonic over pooled blocks).
+    a = (0.9, 0.1, 0.2, float(2), float(1))
+    b = (0.6, 0.6, 0.5 + 0.2, float(2), float(0))
+    xs = [a] * 5 + [b] * 2
+    ys = [0, 0, 0, 0, 1, 0, 1]
+    ys[:5] = [1, 1, 1, 1, 0]
+    cal = Calibrator.fit(xs, ys)
+    assert cal.predict(a) == pytest.approx(0.8)
+    assert cal.predict(b) == pytest.approx(0.5)
+
+
+def test_training_points_predict_their_own_block() -> None:
+    xs, ys = _toy()
+    cal = Calibrator.fit(xs, ys)
+    once = [cal.predict(x) for x in xs]
+    assert once == [cal.predict(x) for x in xs]
+    assert all(0 <= p <= 1 for p in once)
