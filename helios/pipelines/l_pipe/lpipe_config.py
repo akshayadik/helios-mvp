@@ -26,3 +26,9 @@ LLAMA_SEED: int = 42
 EXPECTED_PROMPT_SHA: str | None = (
     "376e555b0bd07a14667c9d5f09275ce5507ddce443fa01781bd7dc40a9365e47"
 )
+
+# S2.3 workers (design §5.2 to §5.4); fixed in the pre-work deviation entry.
+DIGEST_TOKEN_CAP: int = 2000  # per worker digest, tokens = ceil(characters / 4)
+METRIC_LINES_PER_SERVICE: int = 3
+ONSET_UNITS: int = 3  # a metric line names when a series first moved this far
+MAX_RANKED: int = 5
