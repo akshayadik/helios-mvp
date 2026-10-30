@@ -216,3 +216,22 @@ def test_other_model_fails_lpipe() -> None:
     with pytest.raises(ModelMismatchError):
         _run(_window(OTEL), client)
     assert client.calls == 0
+
+
+def test_confirmatory_refuses_unpinned_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(lpipe_config, "EXPECTED_MODEL_DIGEST", None)
+    window = _window(OTEL, evaluation_phase=EvaluationPhase.CONFIRMATORY)
+    client = FakeClient()
+    set_current_manifest(get_variant("HELIOS-Full"))
+    with pytest.raises(ProvisionalPromptError):
+        run_lpipe(
+            incident_id=window.incident_id,
+            snapshot_hash="s" * 64,
+            evaluation_phase="confirmatory",
+            run_id="r",
+            window=window,
+            trigger=_trigger(_window(OTEL)),
+            root=REPO,
+            client=client,  # type: ignore[arg-type]
+        )
+    assert client.calls == 0

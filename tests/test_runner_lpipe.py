@@ -112,3 +112,36 @@ def test_rerun_gives_equal_lpipe_decisions(tmp_path: Path) -> None:
     second = _lpipe_row(run_variant(tmp_path, "HELIOS-Full", FakeClient(), name="b"))
     for key in ("status", "ranked_candidates", "candidate_scores", "mu", "sigma"):
         assert first[key] == second[key], key
+
+
+def test_wrong_model_stops_before_any_incident(tmp_path: Path) -> None:
+    # Entry 58: the served model is checked at run start, before any pipeline writes.
+    from helios.pipelines.l_pipe.pipeline import ModelMismatchError
+
+    class OtherModel(FakeClient):
+        def model_digest(self, timeout_s: float) -> str:
+            return "another-model"
+
+    client = OtherModel()
+    try:
+        run_variant(tmp_path, "HELIOS-Full", client)
+    except ModelMismatchError:
+        pass
+    else:
+        raise AssertionError("a wrong model must stop the run")
+    store = ResultStore(tmp_path / "r.duckdb")
+    assert store.fetch_all() == []
+    for table in ("trigger_row", "timing_row", "evidence_row"):
+        assert store._con.execute(f"SELECT COUNT(*) FROM {table}").fetchone() == (0,)
+    assert client.calls == 0
+
+
+def test_lpipe_off_does_not_need_the_model(tmp_path: Path) -> None:
+    class Unreachable(FakeClient):
+        def model_digest(self, timeout_s: float) -> str:
+            raise AssertionError("noLLM must not contact the model")
+
+    store = run_variant(tmp_path, "HELIOS-noLLM", Unreachable())
+    assert [r["status"] for r in store.fetch_all() if r["pipeline"] == "lpipe"] == [
+        "skipped"
+    ]

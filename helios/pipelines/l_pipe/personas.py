@@ -60,11 +60,12 @@ def provisional() -> bool:
 def render_prompt(persona: PersonaProfile, digest: Digest, alias: AliasMap) -> str:
     """The worker's prompt over its masked digest.
 
-    Only the per-incident insertions are checked for real names (``Digest.render``
-    refuses a survivor; candidates are aliases). The fixed template is the same for
+    Only the per-incident insertions are checked for real names: the candidate
+    list here, the digest in ``Digest.render``. The fixed template is the same for
     every incident and may use a word that is also a service name ("user").
     """
     candidates = sorted(a for a in alias.backward if a.startswith("svc-"))
+    alias.check(", ".join(candidates))
     text = persona.prompt_path.read_text(encoding="utf-8").format(
         candidates=", ".join(candidates),
         digest=digest.render(alias),

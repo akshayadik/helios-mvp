@@ -5,10 +5,11 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import pandas as pd
 import pyarrow.parquet as pq
+import pytest
 
 from helios.pipelines.l_pipe import lpipe_config
 from helios.pipelines.l_pipe.aliases import build_alias_map
@@ -22,9 +23,6 @@ from helios.schemas.telemetry import TelemetryWindow
 from helios.telemetry.scope import in_scope
 from helios.telemetry.trigger import TriggerRecord, TriggerSource, service_scores
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
-
-if TYPE_CHECKING:
-    import pytest
 
 REPO = Path(__file__).resolve().parents[3]
 
@@ -146,3 +144,13 @@ def test_template_words_are_not_checked_only_inserted_text(tmp_path: Path) -> No
     alias = build_alias_map("x", ["user", "carts"], [])
     ok = Digest("metric", (DigestLine("M1", "carts", "carts cpu up", 3),), 0)
     assert "user traffic" in render_prompt(persona, ok, alias)
+
+
+def test_render_prompt_still_refuses_a_leaking_digest() -> None:
+    from helios.pipelines.l_pipe.aliases import AliasLeakError
+    from helios.pipelines.l_pipe.digests import Digest, DigestLine
+
+    alias = build_alias_map("x", ["ts-order-service"], [])
+    leaky = Digest("metric", (DigestLine("M1", "x", "ts-order-mongo cpu up", 3),), 0)
+    with pytest.raises(AliasLeakError):
+        render_prompt(PERSONAS[0], leaky, alias)

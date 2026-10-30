@@ -51,7 +51,7 @@ if TYPE_CHECKING:
     from helios.schemas.telemetry import TelemetryWindow
     from helios.telemetry.trigger import TriggerRecord
 
-__all__ = ["ModelMismatchError", "ProvisionalPromptError", "run_lpipe"]
+__all__ = ["ModelMismatchError", "ProvisionalPromptError", "run_lpipe", "verify_model"]
 
 _log = logging.getLogger(__name__)
 
@@ -66,8 +66,33 @@ class ModelMismatchError(RuntimeError):
     """The served model is not the one frozen with the prompts (entry 58)."""
 
 
+def verify_model(client: OllamaClient | None = None) -> None:
+    """Raise ModelMismatchError unless the served model is the frozen one (entry 58).
+
+    Called once at the start of an orchestrator run, before any incident. An
+    unreachable endpoint is left to each incident (a FAILED L-pipe verdict).
+    """
+    expected = lpipe_config.EXPECTED_MODEL_DIGEST
+    if expected is None:
+        return
+    client = client or OllamaClient(OLLAMA_BASE_URL, MODEL_NAME)
+    try:
+        served = client.model_digest(timeout_s=TIMEOUT_S)
+    except (OllamaTimeoutError, OllamaConnectionError, OllamaResponseError):
+        return
+    if served != expected:
+        raise ModelMismatchError(
+            f"served model {served[:12]} is not the frozen {expected[:12]}"
+        )
+
+
 def _check_prompts(evaluation_phase: str) -> dict[str, str]:
     shas: dict[str, str] = {p.name: personas.prompt_sha(p) for p in personas.PERSONAS}
+    confirmatory = evaluation_phase == EvaluationPhase.CONFIRMATORY.value
+    if confirmatory and lpipe_config.EXPECTED_MODEL_DIGEST is None:
+        raise ProvisionalPromptError(
+            "the model digest is not pinned; a confirmatory run needs a frozen model"
+        )
     if personas.provisional():
         if evaluation_phase == EvaluationPhase.CONFIRMATORY.value:
             raise ProvisionalPromptError(
