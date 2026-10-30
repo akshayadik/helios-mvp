@@ -202,6 +202,7 @@ def test_orchestrator_run_never_opens_ground_truth(
         lambda **kw: {
             **kw,
             "pipeline": "lpipe",
+            "h_struct": {"outputs": 0, "failed": 0},
             "variant_config_hash": manifest_hash,
             "status": "abstained",
             "snapshot": None,

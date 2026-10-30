@@ -138,6 +138,8 @@ def _worker_record(result: WorkerResult) -> dict[str, Any]:
         "raw": result.raw,
         "cache_hit": result.cache_hit,
         "wall_ms": result.wall_ms,
+        "produced_output": result.produced_output,
+        "invalid_output": result.invalid_output,
     }
 
 

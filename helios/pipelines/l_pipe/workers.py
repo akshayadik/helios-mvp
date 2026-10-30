@@ -85,8 +85,10 @@ class WorkerResult:
     raw: str | None = None
     cache_hit: bool = False
     wall_ms: float = 0
-    # H_struct (S2.4): the model answered, and the answer failed schema validation
-    # (form, a service outside the candidate aliases, or a cited ID not in the digest).
+    # H_struct (S2.4, entry 59): the model answered, and the answer failed schema
+    # validation — form, more than MAX_RANKED services, a service outside the
+    # candidate aliases, a service with no claim, a claim with no citation, or a
+    # cited ID not in the digest (see _fails_schema).
     produced_output: bool = False
     invalid_output: bool = False
 

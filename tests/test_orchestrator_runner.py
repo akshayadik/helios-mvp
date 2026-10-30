@@ -172,6 +172,7 @@ class TestRunOrchestrator:
 def _fake_lpipe(**kwargs: Any) -> dict[str, Any]:
     return {
         "pipeline": "lpipe",
+        "h_struct": {"outputs": 0, "failed": 0},
         "incident_id": kwargs["incident_id"],
         "run_id": kwargs["run_id"],
         "variant_config_hash": get_variant(_VARIANT).compute_variant_config_hash(),

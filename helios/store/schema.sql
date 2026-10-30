@@ -164,9 +164,11 @@ VALUES ('gpipe-evidence-v1')
 ON CONFLICT (tag) DO NOTHING;
 
 -- hstruct-v1 (S2.4): agent outputs and outputs failing schema validation per
--- run and pipeline (metric contract H_struct; owner option b: form, services
--- outside the candidate aliases, cited IDs not in the digest). structural_zero
--- marks a pipeline gated off (no agent calls), recorded as such (contract §H).
+-- run and pipeline (metric contract H_struct; owner option b, entry 59: form,
+-- more than 5 services, services outside the candidate aliases, a service with
+-- no claim, a claim with no citation, cited IDs not in the digest). Written only
+-- for runs whose verdicts are stored (integrity gate passed). structural_zero
+-- marks a pipeline gated off (no agent calls), recorded as such.
 CREATE TABLE IF NOT EXISTS hstruct_row (
     run_id              VARCHAR     NOT NULL,
     incident_id         VARCHAR     NOT NULL,

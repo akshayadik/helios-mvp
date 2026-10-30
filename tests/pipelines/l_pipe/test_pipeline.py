@@ -260,3 +260,12 @@ def test_h_struct_is_zero_without_outputs(monkeypatch: pytest.MonkeyPatch) -> No
     out = _run(_window(OTEL), FakeClient())
     assert out["status"] == "failed"
     assert out["h_struct"] == {"outputs": 0, "failed": 0}
+
+
+def test_evidence_shows_each_workers_h_struct_flags() -> None:
+    out = _run(_window(OTEL), FakeClient())
+    flags = {
+        n: (w["produced_output"], w["invalid_output"])
+        for n, w in out["evidence"]["workers"].items()
+    }
+    assert flags == dict.fromkeys(("metric", "log", "trace"), (True, False))
