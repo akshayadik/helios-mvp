@@ -100,3 +100,54 @@ def test_unmask_round_trip() -> None:
         assert m.unmask(alias) == real
     with pytest.raises(KeyError):
         m.unmask("svc-99")
+
+
+BOUTIQUE = ["adservice", "checkoutservice", "productcatalogservice", "frontend"]
+TRAIN = [
+    "ts-order-service",
+    "ts-order-other-service",
+    "ts-order-mongo",
+    "ts-voucher-mysql",
+    "ts-voucher-service",
+]
+
+
+def test_concatenated_boutique_names_masked() -> None:
+    m = build_alias_map("x", BOUTIQUE, [])
+    text = (
+        "hipstershop.CheckoutService/PlaceOrder checkout failed ProductCatalogService "
+        "product-catalog-service productcatalogservice AdServiceImpl ad-service"
+    )
+    masked = m.mask(text)
+    m.check(masked)
+    low = masked.lower()
+    assert "checkout" not in low and "catalog" not in low
+    assert "PlaceOrder" in masked
+    assert masked.count(m.forward["adservice"]) == 2
+
+
+def test_train_ticket_databases_keep_their_own_alias() -> None:
+    m = build_alias_map("x", TRAIN, [])
+    assert m.mask("ts-order-mongo cpu up") == f"{m.forward['ts-order-mongo']} cpu up"
+    assert m.mask("ts-voucher-mysql slow") == f"{m.forward['ts-voucher-mysql']} slow"
+    assert (
+        m.mask("ts-order-other-service ok")
+        == f"{m.forward['ts-order-other-service']} ok"
+    )
+    assert m.mask("ts-order-service ok") == f"{m.forward['ts-order-service']} ok"
+
+
+def test_check_is_independent_of_masking() -> None:
+    m = build_alias_map("x", BOUTIQUE, [])
+    for leak in ("checkoutservice down", "Product Catalog down", "CheckoutServiceImpl"):
+        with pytest.raises(AliasLeakError):
+            m.check(leak)
+    m.check("address load header GetAds svc-01")
+
+
+def test_unknown_compound_is_not_half_masked() -> None:
+    m = build_alias_map("x", ["ts-order-service"], [])
+    masked = m.mask("ts-order-mongo cpu up")
+    assert m.forward["ts-order-service"] not in masked
+    with pytest.raises(AliasLeakError):
+        m.check(masked)

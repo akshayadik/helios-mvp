@@ -7,12 +7,16 @@ sent, every in-scope service becomes ``svc-NN``, every out-of-scope component
 
 - The alias order is a permutation from SHA-256(incident ID, name):
   deterministic, different per incident, and no seed.
-- A name matches in any spelling a log line, URL, RPC or pod name uses
-  (``checkout``, ``checkoutservice``, ``checkout-service``, ``CheckoutService``)
-  on token or camelCase boundaries, so the stem ``ad`` masks ``AdService`` but
-  not ``address`` or ``GetAds``. Longer names are tried first.
-- ``check`` refuses text in which a real name survives; its message carries a
-  count only, never the name.
+- Matching is on tokens (alphanumeric runs split at camelCase and digits): a
+  run of tokens joined by nothing, ``-``, ``_``, ``.`` or a space that spells
+  a name's scope-key stem, with or without ``service``, is that name
+  (``checkoutservice``, ``CheckoutService``, ``product-catalog``,
+  ``ProductCatalog``). So the stem ``ad`` masks ``AdService`` but not
+  ``address`` or ``GetAds``. Longest run first, so ``ts-order-mongo`` keeps
+  its own alias rather than ``ts-order``'s; a run inside an unknown
+  hyphenated name is left for ``check`` to refuse, never half-masked.
+- ``check`` is independent of ``mask``'s boundary rules and refuses text in
+  which a real name survives; its message carries a count only.
 
 Operation and message words (``PlaceOrder``, "card declined") are kept: they
 are the semantics L-pipe exists to decode.
@@ -25,6 +29,7 @@ import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from helios.telemetry.scope import scope_key
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
 
 if TYPE_CHECKING:
@@ -54,36 +59,30 @@ FEATURE_FLAG_NAMES: frozenset[str] = frozenset(
     }
 )
 
-_SUFFIX = r"(?:[-_]?(?:service|Service|SERVICE))?"
-_LEFT = r"(?:(?<![A-Za-z0-9])|(?<=[a-z0-9])(?=[A-Z]))"
+_SUFFIX = "service"
+_MAX_RUN = 6  # tokens one name can span (ts-order-other-service is 4)
+_JOINS = frozenset({"", "-", "_", ".", " "})
+_TOKEN = re.compile(r"[A-Z]?[a-z]+|[A-Z]+(?![a-z])|[0-9]+")
+_CHUNK = re.compile(r"[A-Za-z0-9]+")
 
 
 class AliasLeakError(RuntimeError):
     """A real name survived masking; the prompt must not be sent."""
 
 
-def _casings(word: str) -> str:
-    forms = dict.fromkeys((word.lower(), word.capitalize(), word.upper()))
-    return "(?:" + "|".join(re.escape(f) for f in forms) + ")"
+def _tokens(text: str) -> list[tuple[int, int, str]]:
+    """(start, end, lowercase token): alphanumeric runs split at camelCase and digits."""
+    out = []
+    for chunk in _CHUNK.finditer(text):
+        for t in _TOKEN.finditer(chunk.group(0)):
+            out.append(
+                (chunk.start() + t.start(), chunk.start() + t.end(), t.group(0).lower())
+            )
+    return out
 
 
-def _parts(name: str) -> list[str]:
-    """Name split on separators and camelCase, trailing ``service`` dropped."""
-    words = [
-        w
-        for chunk in re.split(r"[^A-Za-z0-9]+", name)
-        for w in re.findall(r"[A-Z]?[a-z0-9]+|[A-Z]+(?![a-z])", chunk)
-    ]
-    if len(words) > 1 and words[-1].lower() == "service":
-        words = words[:-1]
-    return words or [name]
-
-
-def _pattern(name: str, *, flag: bool) -> str:
-    if flag:
-        return re.escape(name)
-    body = "[-_]?".join(_casings(w) for w in _parts(name))
-    return body + _SUFFIX
+def _stem(name: str, *, flag: bool) -> str:
+    return name.lower() if flag else scope_key(name)
 
 
 def _order(incident_id: str, names: Sequence[str]) -> list[str]:
@@ -98,42 +97,69 @@ def _labels(prefix: str, names: list[str]) -> dict[str, str]:
     return {n: f"{prefix}-{i:0{width}d}" for i, n in enumerate(names, start=1)}
 
 
+def _runs(text: str, toks: list[tuple[int, int, str]], i: int) -> list[tuple[int, str]]:
+    """(last index, concatenation) of token runs from i, longest first."""
+    out = []
+    joined = toks[i][2]
+    runs = [(i, joined)]
+    for j in range(i + 1, min(i + _MAX_RUN, len(toks))):
+        if text[toks[j - 1][1] : toks[j][0]] not in _JOINS:
+            break
+        joined += toks[j][2]
+        runs.append((j, joined))
+    out.extend(reversed(runs))
+    return out
+
+
+def _hyphen_word(
+    text: str, toks: list[tuple[int, int, str]], k: int, side: int
+) -> bool:
+    """A letter token joined by '-' just before (side -1) or after (+1) the run."""
+    n = k + side
+    if not 0 <= n < len(toks):
+        return False
+    gap = text[toks[n][1] : toks[k][0]] if side < 0 else text[toks[k][1] : toks[n][0]]
+    return gap == "-" and toks[n][2][0].isalpha()
+
+
 @dataclass(frozen=True)
 class AliasMap:
     """Real name ↔ alias for one incident."""
 
     forward: Mapping[str, str]
     backward: Mapping[str, str]
-    _regex: re.Pattern[str]
-    _groups: Mapping[str, str]
+    _stems: Mapping[str, str]
 
-    def _hits(self, text: str) -> list[re.Match[str]]:
-        return [m for m in self._regex.finditer(text) if self._real_hit(m, text)]
-
-    @staticmethod
-    def _real_hit(m: re.Match[str], text: str) -> bool:
-        # An all-capitals match must not run into more capitals ("ADDRESS").
-        end = m.end()
-        token = m.group(0)
-        return not (
-            token.isupper()
-            and end < len(text)
-            and text[end].isalpha()
-            and text[end].isupper()
-        )
-
-    def _name_of(self, m: re.Match[str]) -> str:
-        assert m.lastgroup is not None
-        return self._groups[m.lastgroup]
+    def _name(self, joined: str) -> str | None:
+        if joined in self._stems:
+            return self._stems[joined]
+        if joined.endswith(_SUFFIX) and joined[: -len(_SUFFIX)] in self._stems:
+            return self._stems[joined[: -len(_SUFFIX)]]
+        return None
 
     def mask(self, text: str) -> str:
-        """Every real name replaced by its alias."""
+        """Every real name replaced by its alias.
+
+        Longest token run first; a run inside an unknown hyphenated name
+        (``ts-order-mongo`` when only ``ts-order-service`` is known) is left
+        alone rather than half-masked — ``check`` then refuses the text.
+        """
+        toks = _tokens(text)
         out: list[str] = []
-        pos = 0
-        for m in self._hits(text):
-            out.append(text[pos : m.start()])
-            out.append(self.forward[self._name_of(m)])
-            pos = m.end()
+        pos = i = 0
+        while i < len(toks):
+            for j, joined in _runs(text, toks, i):
+                name = self._name(joined)
+                if name is None:
+                    continue
+                if _hyphen_word(text, toks, i, -1) or _hyphen_word(text, toks, j, 1):
+                    continue
+                out.append(text[pos : toks[i][0]])
+                out.append(self.forward[name])
+                pos = toks[j][1]
+                i = j
+                break
+            i += 1
         out.append(text[pos:])
         return "".join(out)
 
@@ -142,14 +168,21 @@ class AliasMap:
         return self.backward[alias]
 
     def check(self, text: str) -> None:
-        """Raise AliasLeakError if any real name survives in ``text``."""
-        hits = self._hits(text)
+        """Raise AliasLeakError if any real name survives in ``text``.
+
+        Independent of ``mask``'s boundary rules: any token run spelling a
+        name's stem (with or without ``service``), or any token that starts
+        with stem + ``service``, is a leak.
+        """
+        toks = _tokens(text)
+        hits = 0
+        for i in range(len(toks)):
+            if any(self._name(joined) for _, joined in _runs(text, toks, i)) or any(
+                toks[i][2].startswith(stem + _SUFFIX) for stem in self._stems
+            ):
+                hits += 1
         if hits:
-            raise AliasLeakError(f"{len(hits)} real name(s) survived masking")
-
-
-def _by_length(names: Mapping[str, str]) -> list[str]:
-    return sorted(names, key=lambda n: (-len(n), n))
+            raise AliasLeakError(f"{hits} real name(s) survived masking")
 
 
 def build_alias_map(
@@ -164,15 +197,9 @@ def build_alias_map(
         **_labels("dep", deps),
         **_labels("flag", flags),
     }
-    names = _by_length(forward)
-    alternation = "|".join(
-        f"(?P<n{i}>{_pattern(n, flag=n in FEATURE_FLAG_NAMES)})"
-        for i, n in enumerate(names)
-    )
-    regex = re.compile(f"{_LEFT}(?:{alternation})(?![a-z])")
+    stems: dict[str, str] = {}
+    for name in sorted(forward):
+        stems.setdefault(_stem(name, flag=name in FEATURE_FLAG_NAMES), name)
     return AliasMap(
-        forward=forward,
-        backward={a: n for n, a in forward.items()},
-        _regex=regex,
-        _groups={f"n{i}": n for i, n in enumerate(names)},
+        forward=forward, backward={a: n for n, a in forward.items()}, _stems=stems
     )
