@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
+from helios.pipelines.l_pipe.cache import CachedCall, ResponseCache, cache_key
 from helios.pipelines.l_pipe.lpipe_config import (
     LPIPE_MAX_RETRIES,
     MAX_RANKED,
@@ -25,10 +26,11 @@ from helios.pipelines.l_pipe.lpipe_config import (
 )
 from helios.pipelines.l_pipe.ollama_client import (
     OllamaConnectionError,
+    OllamaGenerateResult,
     OllamaResponseError,
     OllamaTimeoutError,
 )
-from helios.pipelines.l_pipe.personas import render_prompt
+from helios.pipelines.l_pipe.personas import prompt_sha, render_prompt
 from helios.pipelines.l_pipe.response_handler import sanitize_llm_output
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
 
@@ -137,28 +139,66 @@ def _validate(
     return tuple(ranked), claims
 
 
+def _call(
+    prompt: str,
+    gateway: LLMGateway,
+    cache: ResponseCache | None,
+    key: str,
+) -> tuple[OllamaGenerateResult, float, bool]:
+    """(result, wall ms, served from cache); model errors propagate."""
+    if cache is not None:
+        hit = cache.get(key)
+        if hit is not None:
+            result = OllamaGenerateResult(
+                hit.text, hit.prompt_tokens, hit.completion_tokens, hit.compute_ms
+            )
+            gateway.replay(result)
+            return result, hit.wall_ms, True
+    t0 = time.monotonic()
+    result = gateway.generate(prompt, timeout_s=TIMEOUT_S)
+    wall = (time.monotonic() - t0) * 1_000
+    if cache is not None:
+        cache.put(
+            key,
+            CachedCall(
+                result.text,
+                result.prompt_tokens,
+                result.completion_tokens,
+                result.compute_ms,
+                wall,
+            ),
+        )
+    return result, wall, False
+
+
 def run_worker(
     persona: PersonaProfile,
     digest: Digest | None,
     alias: AliasMap,
     gateway: LLMGateway,
+    *,
+    cache: ResponseCache | None = None,
+    model_digest: str = "",
 ) -> WorkerResult:
     """Call the model over the worker's digest and validate its answer."""
     if digest is None or not digest.lines:
         return WorkerResult(persona.name, dropped=DropReason.NO_DIGEST)
     prompt = render_prompt(persona, digest, alias)
+    key = cache_key(model_digest, prompt_sha(persona), prompt)
     raw: str | None = None
     wall_ms: float = 0
+    hits: list[bool] = []
     for _ in range(1 + LPIPE_MAX_RETRIES):
         t0 = time.monotonic()
         try:
-            result = gateway.generate(prompt, timeout_s=TIMEOUT_S)
+            result, wall, hit = _call(prompt, gateway, cache, key)
         except (OllamaTimeoutError, OllamaConnectionError, OllamaResponseError) as exc:
             wall_ms += (time.monotonic() - t0) * 1_000
             return WorkerResult(
                 persona.name, dropped=_CALL_DROPS[type(exc)], raw=raw, wall_ms=wall_ms
             )
-        wall_ms += (time.monotonic() - t0) * 1_000
+        wall_ms += wall
+        hits.append(hit)
         raw = result.text
         try:
             answer = _AnswerIn.model_validate(json.loads(sanitize_llm_output(raw)))
@@ -170,9 +210,16 @@ def run_worker(
                 persona.name,
                 dropped=DropReason.NO_VALID_CLAIM,
                 raw=raw,
+                cache_hit=all(hits),
                 wall_ms=wall_ms,
             )
-        return WorkerResult(persona.name, ranked, claims, raw=raw, wall_ms=wall_ms)
+        return WorkerResult(
+            persona.name, ranked, claims, raw=raw, cache_hit=all(hits), wall_ms=wall_ms
+        )
     return WorkerResult(
-        persona.name, dropped=DropReason.SCHEMA, raw=raw, wall_ms=wall_ms
+        persona.name,
+        dropped=DropReason.SCHEMA,
+        raw=raw,
+        cache_hit=all(hits),
+        wall_ms=wall_ms,
     )

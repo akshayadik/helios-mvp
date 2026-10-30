@@ -47,3 +47,6 @@ data/rcaeval/pool/
 # OTel Demo build corpus (S1.2): live recordings, not regenerable, so the sealed
 # captures are committed (about 22 MB), as data/captures/ is.
 !data/otel/build/
+
+# L-pipe response cache (S2.3 design §5.6), local only
+data/cache/
