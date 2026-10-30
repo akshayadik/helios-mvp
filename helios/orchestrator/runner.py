@@ -15,6 +15,7 @@ from __future__ import annotations
 import contextlib
 import time
 import uuid
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from helios.graph.khop_pruner import khop_prune
@@ -29,7 +30,6 @@ from helios.pipelines.g_pipe.params import GPipeParams, load_gpipe_params
 from helios.pipelines.g_pipe.pipeline import run_gpipe, should_run_gpipe
 from helios.pipelines.l_pipe.pipeline import run_lpipe
 from helios.schemas.telemetry import EvaluationPhase
-from helios.schemas.ueg_c import UEGCSnapshot
 from helios.schemas.verdict import (
     PipelineName,
     PipelineVerdict,
@@ -53,9 +53,9 @@ from helios.vcl.snapshot_registry import DuplicateSnapshotError, SnapshotRegistr
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from pathlib import Path
 
     from helios.schemas.telemetry import TelemetryWindow
+    from helios.schemas.ueg_c import UEGCSnapshot
     from helios.vcl.config import VCLManifest
 
 __all__ = ["RunOrchestrator", "incident_graph"]
@@ -63,6 +63,9 @@ __all__ = ["RunOrchestrator", "incident_graph"]
 HELIOS_ENABLE_ORCHESTRATOR: bool = True
 
 _MS_PER_S = 1_000
+_REPO_ROOT = (
+    Path(__file__).resolve().parents[2]
+)  # L-pipe resolves the validated trace roots here
 
 _ANALYTIC_CONSEQUENCE = (
     "C1 gate failure — incident excluded from analysis; "
@@ -240,26 +243,18 @@ class RunOrchestrator:
                 )
         else:
             g_verdict = self._skipped(PipelineName.GPIPE, base)
-        lpipe_snapshot = (
-            ueg_c
-            if ueg_c is not None
-            else UEGCSnapshot(
-                incident_id=incident_id,
-                variant_config_hash=self._config_hash,
-                nodes=[],
-                edges=[],
-                captured_at_iso="",
-            )
-        )
+        # L-pipe reads raw telemetry only, never the graph or D/G output (S2.3 L-a).
         l_verdict, _ = self._dispatch(
             PipelineName.LPIPE,
             base,
             lambda: run_lpipe(
                 incident_id=incident_id,
-                snapshot=lpipe_snapshot,
                 snapshot_hash=snapshot_hash,
                 evaluation_phase=evaluation_phase_str,
                 run_id=run_id,
+                window=window,
+                trigger=trigger,
+                root=_REPO_ROOT,
             ),
         )
         verdicts = [d_verdict, g_verdict, l_verdict]

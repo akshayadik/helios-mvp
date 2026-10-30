@@ -16,7 +16,7 @@ VCLManifest-aware: variant_config_hash from the active manifest.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -100,29 +100,14 @@ def test_full_pipeline_exploratory_row_inserted(
         evaluation_phase="exploratory",
         run_id="smoke-gpipe-001",
     )
-    mock_lpipe_handler_result = (
-        MagicMock(ranked_candidates=["A"], narrative="A caused the issue"),
-        MagicMock(prompt_tokens=10, completion_tokens=20),
-    )
-    with (
-        patch("helios.pipelines.l_pipe.pipeline.PromptRegistry") as mock_reg_cls,
-        patch("helios.pipelines.l_pipe.pipeline.OllamaClient"),
-        patch("helios.pipelines.l_pipe.pipeline.ResponseHandler") as mock_handler_cls,
-    ):
-        mock_reg = MagicMock()
-        mock_reg.render.return_value = "test prompt"
-        mock_reg.prompt_version = "rca_v1"
-        mock_reg_cls.return_value = mock_reg
-        mock_handler = MagicMock()
-        mock_handler.handle.return_value = mock_lpipe_handler_result
-        mock_handler_cls.return_value = mock_handler
-        l_result = run_lpipe(
-            incident_id=_INCIDENT,
-            snapshot=_SMOKE_SNAPSHOT,
-            snapshot_hash=snap_hash,
-            evaluation_phase="exploratory",
-            run_id="smoke-lpipe-001",
-        )
+    from tests.pipelines.l_pipe.test_pipeline import OTEL, FakeClient, _run, _window
+
+    l_result = {
+        **_run(_window(OTEL), FakeClient()),
+        "variant_config_hash": vch,
+        "snapshot_hash": snap_hash,
+    }
+    set_current_manifest(manifest)
 
     # Build and insert PipelineVerdict rows
     for idx, result in enumerate([g_result, l_result]):
@@ -160,10 +145,12 @@ def test_full_pipeline_inactive_flag_blocks_stub(
     with pytest.raises(GatedComponentInactiveError):
         run_lpipe(
             incident_id=_INCIDENT,
-            snapshot=_SMOKE_SNAPSHOT,
             snapshot_hash=_SNAP_HASH,
             evaluation_phase="exploratory",
             run_id="smoke-inactive-001",
+            window=MagicMock(),
+            trigger=MagicMock(),
+            root=MagicMock(),
         )
 
 
