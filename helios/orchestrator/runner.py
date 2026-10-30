@@ -54,6 +54,8 @@ from helios.vcl.snapshot_registry import DuplicateSnapshotError, SnapshotRegistr
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from helios.pipelines.l_pipe.cache import ResponseCache
+    from helios.pipelines.l_pipe.ollama_client import OllamaClient
     from helios.schemas.telemetry import TelemetryWindow
     from helios.schemas.ueg_c import UEGCSnapshot
     from helios.vcl.config import VCLManifest
@@ -90,13 +92,18 @@ class RunOrchestrator:
         external_triggers: Path | None = None,
         dpipe_params: DPipeParams | None = None,
         gpipe_params: GPipeParams | None = None,
+        lpipe_client: OllamaClient | None = None,
+        lpipe_cache: ResponseCache | None = None,
     ) -> None:
         """``detector_params``, ``dpipe_params`` and ``gpipe_params`` default to
-        the frozen files;
+        the frozen files; ``lpipe_client`` defaults to the local Ollama model and
+        ``lpipe_cache`` (S2.3 design §5.6) to none;
         ``external_triggers`` (exploratory only) replaces the detector with
         supplied records."""
         set_current_manifest(manifest)
         self._manifest = manifest
+        self._lpipe_client = lpipe_client
+        self._lpipe_cache = lpipe_cache
         self._reader = CaptureReader(captures_dir, seal_key=hmac_key)
         self._registry = SnapshotRegistry(registry_path)
         self._store = ResultStore(db_path)
@@ -244,7 +251,7 @@ class RunOrchestrator:
         else:
             g_verdict = self._skipped(PipelineName.GPIPE, base)
         # L-pipe reads raw telemetry only, never the graph or D/G output (S2.3 L-a).
-        l_verdict, _ = self._dispatch(
+        l_verdict, l_out = self._dispatch(
             PipelineName.LPIPE,
             base,
             lambda: run_lpipe(
@@ -255,8 +262,14 @@ class RunOrchestrator:
                 window=window,
                 trigger=trigger,
                 root=_REPO_ROOT,
+                client=self._lpipe_client,
+                cache=self._lpipe_cache,
             ),
         )
+        if l_out.get("evidence"):
+            self._store.insert_evidence(
+                run_id, incident_id, PipelineName.LPIPE.value, l_out["evidence"]
+            )
         verdicts = [d_verdict, g_verdict, l_verdict]
 
         gate = MetricIntegrityGate.from_manifest(
@@ -301,10 +314,14 @@ class RunOrchestrator:
             out = call()
         except GatedComponentInactiveError:
             return self._skipped(pipeline, base), {}
-        latency_ms = (time.perf_counter() - wall) * _MS_PER_S
+        # A cached L-pipe call counts its recorded wall time (S2.3 design §5.6).
+        replayed_ms = float(out.get("replayed_ms", 0))
+        latency_ms = (time.perf_counter() - wall) * _MS_PER_S + replayed_ms
         cpu_ms = (time.process_time() - cpu) * _MS_PER_S
         verdict = self._build_verdict(pipeline, base, out, latency_ms, cpu_ms)
-        self._store.insert_timing(base["run_id"], pipeline, started, time.time())
+        self._store.insert_timing(
+            base["run_id"], pipeline, started, time.time() + replayed_ms / _MS_PER_S
+        )
         return verdict, out
 
     @staticmethod

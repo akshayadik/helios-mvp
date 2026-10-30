@@ -15,6 +15,7 @@ import builtins
 import datetime as dt
 import inspect
 import json
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock
@@ -220,3 +221,65 @@ def test_orchestrator_run_never_opens_ground_truth(
     assert opened == []
     rows = (tmp_path / "reconciliation.jsonl").read_text().splitlines()
     assert json.loads(rows[0])["outcome"] == "passed"
+
+
+@pytest.mark.filterwarnings("ignore::scipy.stats.ConstantInputWarning")
+def test_lpipe_prompts_carry_no_label_or_identity(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """S2.3: what the model sees — no incident ID, path, fault name, time or real name."""
+    from helios.adapters.otel_campaign import FAULTS
+    from helios.store.result_store import ResultStore
+    from tests.pipelines.l_pipe.test_pipeline import FakeClient
+    from tests.test_runner_lpipe import KEY, stage_capture
+
+    class Recording(FakeClient):
+        def __init__(self) -> None:
+            super().__init__()
+            self.prompts: list[str] = []
+
+        def generate(self, prompt: str, timeout_s: float) -> Any:
+            self.prompts.append(prompt)
+            return super().generate(prompt, timeout_s)
+
+    captures = tmp_path / "captures"
+    incident_id = stage_capture(captures)
+    (tmp_path / "ground_truth.json").write_text("{}")
+    opened: list[str] = []
+    real_open = builtins.open
+
+    def _open(file: Any, *args: Any, **kwargs: Any) -> Any:
+        if "ground_truth" in str(file):
+            opened.append(str(file))
+        return real_open(file, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "open", _open)
+    client = Recording()
+    variant = get_variant("HELIOS-Full")
+    set_current_manifest(variant)
+    RunOrchestrator(
+        manifest=variant,
+        captures_dir=captures,
+        db_path=tmp_path / "results.duckdb",
+        registry_path=tmp_path / "registry.jsonl",
+        reconciliation_path=tmp_path / "reconciliation.jsonl",
+        exclusion_ledger=MagicMock(spec=AppendOnlyLedger),
+        hmac_key=KEY,
+        lpipe_client=client,  # type: ignore[arg-type]
+    ).run(captures)
+
+    assert opened == []
+    assert len(client.prompts) == 3
+    store = ResultStore(tmp_path / "results.duckdb")
+    run_id = next(
+        str(r["run_id"]) for r in store.fetch_all() if r["pipeline"] == "lpipe"
+    )
+    evidence = store.fetch_evidence(run_id, "lpipe")
+    assert evidence is not None
+    names = list(evidence["candidates"]) + sorted({f.flag for f in FAULTS})
+    for prompt in client.prompts:
+        assert incident_id not in prompt
+        assert "data/" not in prompt and ".parquet" not in prompt
+        assert not re.search(r"\d{4}-\d{2}-\d{2}|\d{9,}", prompt)
+        for name in names:
+            assert not re.search(rf"\b{re.escape(name)}\b", prompt, re.IGNORECASE), name
