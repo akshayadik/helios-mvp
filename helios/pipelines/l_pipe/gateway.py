@@ -83,3 +83,14 @@ class LLMGateway:
             u.accelerator_ms + result.compute_ms,
         )
         return result
+
+    def replay(self, result: OllamaGenerateResult) -> None:
+        """Count a cached call as if it were made (CpR counts every call)."""
+        u = self._usage
+        self._usage = LLMUsage(
+            u.calls + 1,
+            u.failed_calls,
+            u.prompt_tokens + result.prompt_tokens,
+            u.completion_tokens + result.completion_tokens,
+            u.accelerator_ms + result.compute_ms,
+        )

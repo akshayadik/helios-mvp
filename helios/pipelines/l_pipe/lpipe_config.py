@@ -26,3 +26,23 @@ LLAMA_SEED: int = 42
 EXPECTED_PROMPT_SHA: str | None = (
     "376e555b0bd07a14667c9d5f09275ce5507ddce443fa01781bd7dc40a9365e47"
 )
+
+# S2.3 workers (design §5.2 to §5.4); fixed in the pre-work deviation entry.
+DIGEST_TOKEN_CAP: int = 2000  # per worker digest, tokens = ceil(characters / 4)
+METRIC_LINES_PER_SERVICE: int = 3
+ONSET_UNITS: int = 3  # a metric line names when a series first moved this far
+MAX_RANKED: int = 5
+LOG_LINES_PER_SERVICE: int = 4
+LOG_RISE_FACTOR: int = 2  # a template is listed when its rate at least doubles
+TEMPLATE_CHARS: int = 160
+TRACE_LINES_PER_SERVICE: int = 4
+TRACE_MIN_SPANS: int = (
+    3  # spans on each side of the trigger before a median is compared
+)
+TRACE_RISE_FACTOR: int = 2
+# P2 written by the OTel capture: the only trace format build data validated (L-f).
+TRACE_VALIDATED_ROOTS: tuple[str, ...] = ("data/otel",)
+# SHA-256 of prompts/<worker>_v1.txt; None = provisional (not frozen). Frozen in
+# S2.3 PR 2 with a deviation entry; a confirmatory run refuses provisional prompts.
+WORKER_PROMPT_SHAS: dict[str, str | None] = {"metric": None, "log": None, "trace": None}
+LOG_MIN_LINES: int = 3  # lines after the trigger before a template is listed

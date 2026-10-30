@@ -82,3 +82,18 @@ class OllamaClient:
             )
             / _NS_PER_MS,
         )
+
+    def model_digest(self, timeout_s: float) -> str:
+        """The served model's content digest (``/api/tags``), pinned with the prompts."""
+        try:
+            response = requests.get(f"{self._base_url}/api/tags", timeout=timeout_s)
+        except requests.exceptions.Timeout as exc:
+            raise OllamaTimeoutError(str(exc)) from exc
+        except requests.exceptions.ConnectionError as exc:
+            raise OllamaConnectionError(str(exc)) from exc
+        if response.status_code >= 300:
+            raise OllamaResponseError(f"Ollama returned HTTP {response.status_code}")
+        for model in response.json().get("models", []):
+            if model.get("name") == self._model_name:
+                return str(model["digest"])
+        raise OllamaResponseError(f"model {self._model_name!r} is not served")
