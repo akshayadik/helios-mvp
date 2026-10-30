@@ -174,3 +174,53 @@ def test_params_hash_covers_every_field() -> None:
         replace(base, model=replace(model, scale=tuple([2.5] * n))),
     ):
         assert gpipe_params_hash(changed) != h
+
+
+def test_out_of_scope_services_are_never_ranked_or_described(tmp_path: Path) -> None:
+    # PR 1 review I2: sigma and evidence must describe the verdict's suspects.
+    from helios.schemas.ueg_c import (
+        EdgeType,
+        NodeType,
+        UEGCEdge,
+        UEGCNode,
+        UEGCSnapshot,
+    )
+
+    snap = UEGCSnapshot(
+        incident_id="inc-001",
+        variant_config_hash="a" * 64,
+        nodes=[
+            UEGCNode(node_id=s, node_type=NodeType.SERVICE, service_name=s)
+            for s in ("A", "B", "flagd")
+        ],
+        edges=[
+            UEGCEdge(source="A", target="flagd", edge_type=EdgeType.CALL, weight=0.9),
+            UEGCEdge(source="B", target="flagd", edge_type=EdgeType.CALL, weight=0.9),
+        ],
+        captured_at_iso="2026-01-01T00:00:00+00:00",
+    )
+    manifest = get_variant("HELIOS-Full")
+    set_current_manifest(manifest)
+    out = gpipe_rank(snap, {"A": 0.5, "B": 0.4, "flagd": 0.9}, manifest=manifest)
+    assert "flagd" not in out.ranked
+    assert "flagd" not in out.scores
+    assert out.ranked[0] in {"A", "B"}
+
+
+def test_ranker_and_fallback_are_always_recorded(tmp_path: Path) -> None:
+    # PR 1 review I5: confirmatory runs must be able to count feature fallbacks.
+    manifest = get_variant("HELIOS-Full")
+    set_current_manifest(manifest)
+    out = gpipe_rank(_make_snap(), _SEEDS, manifest=manifest, params=_WEIGHTED)
+    assert out.evidence == {"ranker": "ppr", "features": False, "suspects": []}
+    rich = gpipe_rank(
+        _make_snap(),
+        _SEEDS,
+        manifest=manifest,
+        window=_window(tmp_path, _split_rows()),
+        trigger=_trigger(),
+        params=_WEIGHTED,
+        detector=DETECTOR,
+    )
+    assert rich.evidence["ranker"] == "weighted_ppr"
+    assert rich.evidence["features"] is True

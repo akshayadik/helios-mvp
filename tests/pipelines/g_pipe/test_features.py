@@ -200,3 +200,24 @@ def test_self_shift_measures_self_time_so_a_slow_leaf_stands_out(
     )
     assert f is not None
     assert f.table[0, FEATURE_COLUMNS.index("self_shift")] > 0
+
+
+def test_no_degree_features_and_window_normalised_scores(tmp_path: Path) -> None:
+    # PR 1 review C2/I4 (owner 2026-10-30): degree is a per-service constant in
+    # a fixed topology and raw scores scale with the window; neither may enter.
+    assert "in_degree" not in FEATURE_COLUMNS
+    assert "out_degree" not in FEATURE_COLUMNS
+    rows = [
+        *_calls("t1", T0 + 10, T0 + 12),
+        *_calls("t2", T_TRIGGER + 5, T_TRIGGER + 9),
+    ]
+    w = _window(tmp_path, rows)
+    small = compute_features(
+        w, _trigger(), {"a": 1, "b": 2}, {"a": 0.1, "b": 0.3}, ["a", "b"], DETECTOR
+    )
+    large = compute_features(
+        w, _trigger(), {"a": 10, "b": 20}, {"a": 1, "b": 3}, ["a", "b"], DETECTOR
+    )
+    assert small is not None and large is not None
+    assert np.array_equal(small.table, large.table)
+    assert small.table[1, FEATURE_COLUMNS.index("dpipe_score")] == 1

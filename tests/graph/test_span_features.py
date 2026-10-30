@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pandas as pd
+import pytest
 
 from helios.graph.span_features import (
     analyse_spans,
@@ -16,10 +19,13 @@ from helios.graph.span_features import (
 )
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
 _T0 = 1_790_000_000_000_000  # us
 
 
-def _spans(rows: list[tuple[str, str, str | None, str, int, int]]) -> pd.DataFrame:
+def _spans(rows: Sequence[tuple[str, str, str | None, str, int, int]]) -> pd.DataFrame:
     """(trace, span, parent, service, start offset us, end offset us)."""
     return pd.DataFrame(
         {
@@ -167,3 +173,18 @@ def test_shares_count_each_request_once_so_a_stream_cannot_dominate() -> None:
     assert shares["A", "B"] == 0.375  # (0.5 * 3 + 0) / 4
     assert shares["A", "C"] == 0.25  # one request of four
     assert self_share(a)["A"] == 0.5  # median of 0.5, 0.5, 0.5, 0
+
+
+def test_a_span_listed_under_two_services_is_refused() -> None:
+    # PR 1 review C1: the May captures stamped every span of a trace with the
+    # service Jaeger was queried for; such P2 files must never be analysed.
+    rows = [("t", "p", None, "A", 0, 120), ("t", "p", None, "B", 0, 120)]
+    with pytest.raises(ValueError, match="more than one service"):
+        analyse_spans(_spans(rows))
+
+
+def test_numeric_error_status_counts_as_error() -> None:
+    # PR 1 review I1: the RCAEval adapter writes OTel status codes as "2".
+    frame = _spans([("t", "p", None, "A", 0, 120), ("u", "q", None, "A", 0, 120)])
+    frame["status_code"] = ["2", "STATUS_CODE_ERROR"]
+    assert analyse_spans(frame).entries["error"].tolist() == [True, True]

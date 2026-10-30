@@ -62,9 +62,9 @@ def test_survivor_then_faces_plain_ppr() -> None:
     assert select_gpipe({"learned": best, "weighted_ppr": ppr, "ppr": ppr}) == "learned"
 
 
-def test_cases_exclude_image_slow_load_and_count_79(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_cases_are_the_63_v3_cases(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Owner 2026-10-30 (PR 1 review C1): the earlier captures' spans are
+    # attributed to every queried service, so they are not G-pipe build data.
     from helios.evaluation import trigger_calibration as tc
 
     order = json.loads((REPO / "data/otel/build_v3_manifest.json").read_text())[
@@ -80,13 +80,17 @@ def test_cases_exclude_image_slow_load_and_count_79(
     }
     monkeypatch.setattr(tc, "verify_ground_truth", lambda _p, _k: labels)
     cases = gc.load_gpipe_cases(root=REPO, key=b"k")
-    assert len(cases) == 79
-    assert not any(c.fault == "imageSlowLoad" for c in cases)
-    earlier = [c for c in cases if c.stem]
-    assert len(earlier) == 16
-    assert {c.fault for c in earlier} <= {
-        "adHighCpu",
-        "cartFailure",
-        "productCatalogFailure",
-        "recommendationCacheFailure",
-    }
+    assert len(cases) == 63
+    assert not any(c.stem for c in cases)
+
+
+def test_folds_hold_out_whole_root_services() -> None:
+    # PR 1 review C2 (owner 2026-10-30): a held-out fault's root service must
+    # not appear in training (ad is the root of three faults, payment of two).
+    roots = ["ad", "ad", "adService", "payment", "cart", "payment", "email"]
+    folds = gc.root_folds(roots)
+    assert len(folds) == 4  # ad, payment, cart, email
+    for train, test in folds:
+        held = {gc.scope_key(roots[i]) for i in test}
+        assert not held & {gc.scope_key(roots[i]) for i in train}
+    assert sorted(i for _, test in folds for i in test) == list(range(len(roots)))

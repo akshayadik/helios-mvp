@@ -53,6 +53,7 @@ _ENTRY_COLUMNS = [
 ]
 _WAIT_COLUMNS = ["trace_id", "span_id", "caller", "callee", "start_us", "wait_us"]
 _US_PER_S = 1_000_000
+_ERROR_CODES = frozenset({"2", "ERROR", "STATUS_CODE_ERROR"})  # OTel text or enum
 
 
 @dataclass(frozen=True)
@@ -93,6 +94,12 @@ def _interval(row: dict[str, Any]) -> tuple[int, int]:
 
 def analyse_spans(spans: pd.DataFrame) -> SpanAnalysis:
     """Entry spans, their self time and their waits on each callee."""
+    owners = spans.groupby(["trace_id", "span_id"])["service_name"].nunique()
+    if (owners > 1).any():
+        raise ValueError(
+            "a span is listed under more than one service: the capture's span "
+            "attribution is broken (PR 1 review C1)"
+        )
     entries: list[tuple[object, ...]] = []
     waits: list[tuple[object, ...]] = []
     for trace_id, trace in spans.groupby("trace_id", sort=True):
@@ -123,7 +130,7 @@ def analyse_spans(spans: pd.DataFrame) -> SpanAnalysis:
                 c_lo, c_hi = _interval(child)
                 frontier[child_service].append((max(c_lo, lo), min(c_hi, hi)))
             all_wait = _union_length(i for ivs in frontier.values() for i in ivs)
-            error = "ERROR" in str(r.get("status_code", "")).upper()
+            error = str(r.get("status_code", "")).strip().upper() in _ERROR_CODES
             span_id = str(r["span_id"])
             entries.append(
                 (trace_id, span_id, service, lo, hi - lo, (hi - lo) - all_wait, error)

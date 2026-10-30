@@ -21,6 +21,7 @@ from helios.pipelines.g_pipe.gpipe_config import DISAGREEMENT_THRESHOLD
 from helios.pipelines.g_pipe.rankers import plain_ppr, weighted_ppr
 from helios.schemas.ueg_c import UEGCSnapshot  # noqa: TCH001
 from helios.schemas.verdict import VERDICT_SCHEMA_VERSION, VerdictStatus, top1_share
+from helios.telemetry.scope import in_scope
 from helios.vcl import VCLFlag, gated_by
 from helios.vcl.decorators import get_current_manifest
 
@@ -187,13 +188,20 @@ def gpipe_rank(
     else:
         assert params is not None and params.model is not None
         scores = _softmax(params.model.score(features))
+    # Only in-scope services are ranked or described (D-f; PR 1 review I2).
+    scores = {s: v for s, v in scores.items() if in_scope(s)}
     ranked = sorted(scores, key=scores.__getitem__, reverse=True)
+    suspects = evidence_for(features, ranked)["suspects"] if features else []
     return GPipeRanking(
         ranker=ranker,
         scores=scores,
         ranked=ranked,
         sigma=gpipe_sigma(scores, features, ranked[0]) if ranked else None,
-        evidence=evidence_for(features, ranked) if features is not None else {},
+        evidence={
+            "ranker": ranker,
+            "features": features is not None,
+            "suspects": suspects,
+        },
     )
 
 

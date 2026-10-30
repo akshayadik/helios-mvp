@@ -129,6 +129,19 @@ Row S2-M7-ENG02 (planned, effort 3). About 3–4 days: features and evidence (1�
 9. Without spans on both sides of `t`, the feature candidates fall back to plain PPR for that window (denominator stays 79).
 10. "Graph centrality" from the task breakdown = call-graph in- and out-degree among the learned features.
 
+## 8b. PR 1 review amendments (owner, 2026-10-30) — before the selection run
+
+A fresh review of PR 1 found two defects that change the rule signed in deviation entry 54; no selection had run. Owner decision G-i, recorded in deviation entry 55:
+
+1. **Build data = the 63 `otel_build_v3` cases** (9 fault types, 6 root services). The 20 earlier captures are dropped: in their P2 files 88–90% of span IDs appear under several services (up to 9), because the May capture stamped every span of a returned trace with the queried service, so wait shares, call edges and ghost edges are invented there (v3: 0%). This replaces G-f. P2 files with a span under more than one service are now refused.
+2. **The learned ranker is scored leaving one root service out** (6 folds), not one fault type: `ad` is the root of three faults and `payment` of two, so a fault-type fold still trained on the held-out service.
+3. **No degree features; D-pipe and PPR scores divided by the window's largest.** In a fixed topology degree is a per-service constant (an identity proxy, F3), and raw scores scale with the window and graph size. Ten features remain.
+4. The 3-hit margin and the order of comparisons are unchanged (now of 63).
+
+Code fixes from the same review (no rule change): only in-scope services are ranked, so σ and the evidence describe the verdict's suspects; status codes `2`, `ERROR`, `STATUS_CODE_ERROR` count as errors (RCAEval writes `2`); every G-pipe run stores its ranker and whether features were used. Wording made exact in entry 55: the evidence kind (i) is a rise of the **pooled** wait share; the walk gives a service with no requests after `t` a self-loop of one and drops zero-share edges; the learned ranker's scores pass through an order-preserving softmax for μ, and its standardisation uses the training fold only.
+
+Consequence outside S2.2: May results built on the 20 earlier captures (exploratory runs, the May G-pipe threshold) used the same span attribution; recorded as a validity threat, not redone here.
+
 ## 9. Left to the builder
 
 Module layout; the exact pairwise objective and solver; how evidence is attached to the verdict (field and schema version); rounding details within the `canonical_json` rule; report layout.

@@ -48,8 +48,6 @@ __all__ = [
 FEATURE_COLUMNS: tuple[str, ...] = (
     "dpipe_score",
     "ppr_score",
-    "in_degree",
-    "out_degree",
     "callers_led",
     "callees_leading",
     "self_shift",
@@ -124,6 +122,15 @@ def assert_no_identity(columns: Sequence[str], services: Sequence[str]) -> None:
             raise ValueError(f"unknown feature column {column!r}")
 
 
+def _window_share(
+    scores: Mapping[str, float], names: Sequence[str]
+) -> dict[str, float]:
+    """Each score divided by the window's largest (0 when none is positive), so
+    no feature depends on graph size or score scale (PR 1 review I4)."""
+    top = max((float(scores.get(s, 0)) for s in names), default=0)
+    return {s: float(scores.get(s, 0)) / top if top > 0 else 0 for s in names}
+
+
 def _resolve(path: str, root: Path | None) -> Path:
     p = Path(path)
     return p if p.is_absolute() or root is None else root / p
@@ -193,15 +200,15 @@ def compute_features(
     }
     led, leading, leaders = lead_counts(onset, edges)
     shifts = {s: _self_shift(before, after, s) for s in names}
+    dpipe_share = _window_share(dpipe_scores, names)
+    ppr_share = _window_share(ppr_scores, names)
     rows = []
     for s in names:
         pooled = _pooled(wait_after, s)
         rows.append(
             [
-                float(dpipe_scores.get(s, 0)),
-                round(float(ppr_scores.get(s, 0)), _DIGITS),
-                sum(callee == s for _, callee in edges),
-                sum(caller == s for caller, _ in edges),
+                round(dpipe_share[s], _DIGITS),
+                round(ppr_share[s], _DIGITS),
                 led.get(s, 0),
                 leading.get(s, 0),
                 shifts[s],

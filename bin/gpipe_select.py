@@ -32,6 +32,7 @@ from helios.evaluation.gpipe_calibration import (
     MARGIN_HITS,
     GPipeCase,
     load_gpipe_cases,
+    root_folds,
     select_gpipe,
 )
 from helios.evaluation.scoring import score_ranking
@@ -143,21 +144,19 @@ def _hit(ranked: list[str], s: _Scored) -> int:
 
 
 def _learned_lofo(scored: list[_Scored]) -> list[list[str]]:
-    """Each case ranked by a model trained on the other fault types."""
-    rankings: list[list[str]] = []
-    models: dict[str, LinearRanker] = {}
-    for s in scored:
-        if s.features is None:
-            rankings.append(s.ppr)  # no usable split: plain PPR (design §5.1)
-            continue
-        if s.fault not in models:
-            train = [
-                (o.features, o.root, o.stem)
-                for o in scored
-                if o.fault != s.fault and o.features is not None
-            ]
-            models[s.fault] = LinearRanker.fit(train)
-        rankings.append(_ranked(models[s.fault].score(s.features)))
+    """Each case ranked by a model trained on the other root services."""
+    rankings: list[list[str]] = [s.ppr for s in scored]  # fallback: plain PPR
+    for train_idx, test_idx in root_folds([s.root for s in scored]):
+        train = [
+            (f, scored[i].root, scored[i].stem)
+            for i in train_idx
+            if (f := scored[i].features) is not None
+        ]
+        model = LinearRanker.fit(train)
+        for i in test_idx:
+            f = scored[i].features
+            if f is not None:
+                rankings[i] = _ranked(model.score(f))
     return rankings
 
 
