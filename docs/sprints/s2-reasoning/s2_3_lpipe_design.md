@@ -165,4 +165,21 @@ Exact digest line wording; per-service line limits inside the cap; how tokens ar
 
 ## 10. Results
 
-(Filled after the build-data runs.)
+Build runs under entry 57 (llama3.1:8b, Ollama digest `46e0c10c039e…`, HELIOS-Full, frozen trigger). HR@3 hits; reports in `calibration/lpipe_round*.json`.
+
+| Run | Prompts | OTel v3 dev (32) | OTel v3 held-out (31) | RCAEval dev (248) | RCAEval held-out (247) |
+|---|---|---|---|---|---|
+| Round 1 | v1 | 22 | — | 241 | — |
+| Round 2 (first run) | revised | 23 | — | 116 — spoiled: 160 prompts refused by the template-word check (`lpipe_round2_aliasbug.json`) | — |
+| Round 2 (rerun after the fix) | revised | 23 | — | 238 | — |
+| Final (`--final`) | v1 (owner chose round 1, no third round) | 22 | 22 | 241 | 239 |
+
+- **Round 2 revision** (from dev misses: entry points ranked above the culprit; log templates of varying content): net −2 of 280 dev cases, within noise. The owner chose the simpler round 1 prompts and no third round (2026-10-30).
+- **Held-out matches dev** (OTel 22/31 vs 22/32; RCAEval 239/247 vs 241/248): no sign of fitting to dev. Dev reproduced round 1 exactly from the cache.
+- **Workers alone** (final, dev + held-out): OTel — metric 38, log 30, trace 34 of 63; RCAEval — metric 476, log 45 of 495. On OTel held-out the metric worker alone (23) beat the merged L-pipe (22).
+- **k:** OTel — 36 cases with three workers, 23 with two, 4 with one (the log or trace digest is often empty after the trigger). RCAEval — 71 with two, 423 with one, 1 with none (375 of 495 have no logs): there L-pipe is close to a single metric reader.
+- **Drops:** only `no_digest`; no schema, leak or timeout drops in the final run.
+- **Time per incident:** about 15 s on OTel (2–3 calls), 10 s on RCAEval.
+- **Determinism on the real model:** 10/10 dev cases bitwise equal with the cache off (raw answers included).
+- **Dev misses inspected:** mostly culprit versus victim (front-door services ranked first) and emailMemoryLeak (slow leak, metric worker misses it in 4 of 5 dev cases). L-pipe alone (OTel 44/63) is below G-pipe (50/63) on the same cases; S2.5 fuses them.
+- **Frozen** with entry 58: worker prompt SHAs and model digest in `lpipe_config`; a different served model fails L-pipe; a confirmatory run refuses provisional or changed prompts.
