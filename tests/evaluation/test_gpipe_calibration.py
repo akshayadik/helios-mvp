@@ -86,7 +86,7 @@ def test_cases_are_the_63_v3_cases(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_folds_hold_out_whole_root_services() -> None:
     # PR 1 review C2 (owner 2026-10-30): a held-out fault's root service must
-    # not appear in training (ad is the root of three faults, payment of two).
+    # not appear in training (ad is the root of three faults).
     roots = ["ad", "ad", "adService", "payment", "cart", "payment", "email"]
     folds = gc.root_folds(roots)
     assert len(folds) == 4  # ad, payment, cart, email

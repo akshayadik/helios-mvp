@@ -4,9 +4,9 @@ Build labels only; the confirmatory pool is never loaded here. Fixed before
 the selection run:
 
 - Build cases: the 63 ``otel_build_v3`` cases (signed labels; 9 fault types,
-  6 root services). The earlier OTel captures are left out: their spans are
+  7 root services — paymentUnreachable's root is checkout, entry 44). The earlier OTel captures are left out: their spans are
   attributed to every queried service (owner 2026-10-30, PR 1 review C1).
-- The learned ranker is scored leaving one **root service** out (6 folds), so
+- The learned ranker is scored leaving one **root service** out (7 folds), so
   it never trains on the service it is tested on (PR 1 review C2).
 - A more complex candidate beats a simpler one only with at least
   ``MARGIN_HITS`` more top-3 hits **and** more faults better than worse;
