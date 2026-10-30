@@ -57,7 +57,7 @@ PROVISIONAL = MAHCParams(fit_priors([]), None, None, provisional=True)
 
 
 def _calibrated(value: float, floor: float) -> MAHCParams:
-    cal = Calibrator((0,) * 5, 0, (0,) * 5, (1,) * 5, ((-1e9, value),))
+    cal = Calibrator((0,) * 4, 0, (0,) * 4, (1,) * 4, ((-1e9, value),))
     return MAHCParams(fit_priors([]), cal, floor, provisional=False)
 
 

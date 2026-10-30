@@ -42,7 +42,7 @@ L2_STRENGTH: float = 1
 _DIGITS = 6
 _MIN_SCALE = 1e-6
 
-Features = tuple[float, float, float, float, float]
+Features = tuple[float, float, float, float]
 
 
 class State(StrEnum):
@@ -54,12 +54,16 @@ class State(StrEnum):
 
 
 def features(f: Fusion) -> Features:
-    """(top-1 share, entropy / log n, fused sigma, contributing pipelines, agree)."""
+    """(top-1 share, entropy / log n, fused sigma, agree).
+
+    The number of contributing pipelines is not a feature (entry 61): on build
+    data three pipelines occur only on OTel, so it would stand for the dataset.
+    """
     sigma = 1 if f.fused_sigma is None else f.fused_sigma
     agree = 1 if f.top1s_agree else 0
     total = sum(f.scores.values())
     if not f.ranked or total <= 0:
-        return (0, 0, sigma, len(f.contributing), agree)
+        return (0, 0, sigma, agree)
     p = [f.scores[s] / total for s in f.ranked]
     n = len(p)
     entropy = -sum(x * math.log(x) for x in p if x > 0) / math.log(n) if n > 1 else 0
@@ -67,7 +71,6 @@ def features(f: Fusion) -> Features:
         round(p[0], _DIGITS),
         round(entropy, _DIGITS),
         sigma,
-        len(f.contributing),
         agree,
     )
 

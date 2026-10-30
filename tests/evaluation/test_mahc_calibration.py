@@ -102,3 +102,17 @@ def test_report_has_no_incident_ids_and_has_the_curve() -> None:
         "confirmed",
         "hr3_confirmed",
     }
+
+
+def test_report_counts_the_ambiguous_stratum() -> None:
+    # Metric contract: ambiguous = at least two pipelines with a list disagree on top-1.
+    cases = _corpus()
+    report = mc.evaluate(cases)
+    expected = sum(
+        1
+        for c in cases
+        if c.corpus == "otel_build_v3" and len({v.ranked[0] for v in c.votes}) > 1
+    )
+    per = report["by_corpus"]["otel_build_v3"]
+    assert per["ambiguous"] == expected > 0
+    assert set(per) >= {"mahc_hr3_ambiguous", "vote_only_hr3_ambiguous"}

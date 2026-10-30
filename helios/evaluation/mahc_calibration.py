@@ -164,12 +164,15 @@ def evaluate(cases: Sequence[BuildCase]) -> dict[str, Any]:
         idx = [i for i, c in enumerate(cases) if c.corpus == name]
         pipelines = sorted({v.pipeline for i in idx for v in cases[i].votes})
         confirmed = [i for i in idx if floor is not None and cf.conf[i] >= floor]
+        ambiguous = [i for i in idx if len({v.ranked[0] for v in cases[i].votes}) > 1]
+        plain = {i: _hit(vote_only(cases[i].votes).ranked, cases[i].root) for i in idx}
         by_corpus[name] = {
             "cases": len(idx),
             "mahc_hr3": _rate([cf.hit[i] for i in idx]),
-            "vote_only_hr3": _rate(
-                [_hit(vote_only(cases[i].votes).ranked, cases[i].root) for i in idx]
-            ),
+            "vote_only_hr3": _rate([plain[i] for i in idx]),
+            "ambiguous": len(ambiguous),
+            "mahc_hr3_ambiguous": _rate([cf.hit[i] for i in ambiguous]),
+            "vote_only_hr3_ambiguous": _rate([plain[i] for i in ambiguous]),
             "pipelines_hr3": {
                 p: _rate(
                     [
