@@ -28,7 +28,7 @@ from helios.pipelines.d_pipe.params import DPipeParams, load_dpipe_params
 from helios.pipelines.d_pipe.pipeline import run_dpipe
 from helios.pipelines.g_pipe.params import GPipeParams, load_gpipe_params
 from helios.pipelines.g_pipe.pipeline import run_gpipe, should_run_gpipe
-from helios.pipelines.l_pipe.pipeline import run_lpipe
+from helios.pipelines.l_pipe.pipeline import run_lpipe, verify_model
 from helios.schemas.telemetry import EvaluationPhase
 from helios.schemas.verdict import (
     PipelineName,
@@ -146,6 +146,8 @@ class RunOrchestrator:
 
     def run(self, corpus: Path) -> None:
         """Process every incident in corpus through the full C1 path."""
+        if self._manifest.l2c_llm:
+            verify_model(self._lpipe_client)  # entry 58: before any incident writes
         for incident_id in CorpusLoader(corpus).incident_ids():
             self._process_incident(incident_id)
 

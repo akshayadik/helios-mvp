@@ -11,10 +11,15 @@ from typing import Any
 
 import pytest
 
+from helios.pipelines.l_pipe import lpipe_config
 from helios.pipelines.l_pipe import personas as personas_module
 from helios.pipelines.l_pipe.cache import ResponseCache
 from helios.pipelines.l_pipe.ollama_client import OllamaGenerateResult
-from helios.pipelines.l_pipe.pipeline import ProvisionalPromptError, run_lpipe
+from helios.pipelines.l_pipe.pipeline import (
+    ModelMismatchError,
+    ProvisionalPromptError,
+    run_lpipe,
+)
 from helios.schemas.telemetry import EvaluationPhase, TelemetryWindow
 from helios.telemetry.trigger import TriggerRecord, detect, load_detector_params
 from helios.vcl import VCLFlag, get_variant, set_current_manifest  # noqa: F401
@@ -62,7 +67,7 @@ class FakeClient:
         self.max_in_flight = 0
 
     def model_digest(self, timeout_s: float) -> str:
-        return "fake-digest"
+        return lpipe_config.EXPECTED_MODEL_DIGEST or "fake-digest"
 
     def generate(self, prompt: str, timeout_s: float) -> OllamaGenerateResult:
         self.calls += 1
@@ -143,7 +148,11 @@ def test_digest_crash_is_failed(monkeypatch: pytest.MonkeyPatch) -> None:
     assert out["ranked_candidates"] == []
 
 
-def test_confirmatory_refuses_provisional_prompts() -> None:
+def test_confirmatory_refuses_provisional_prompts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    unset = {**lpipe_config.WORKER_PROMPT_SHAS, "metric": None}
+    monkeypatch.setattr(lpipe_config, "WORKER_PROMPT_SHAS", unset)
     window = _window(OTEL, evaluation_phase=EvaluationPhase.CONFIRMATORY)
     client = FakeClient()
     set_current_manifest(get_variant("HELIOS-Full"))
@@ -196,3 +205,33 @@ def test_never_reads_dpipe_or_gpipe() -> None:
             if isinstance(node, ast.Import):
                 for alias in node.names:
                     assert not alias.name.startswith(banned), (path.name, alias.name)
+
+
+def test_other_model_fails_lpipe() -> None:
+    class OtherModel(FakeClient):
+        def model_digest(self, timeout_s: float) -> str:
+            return "another-model"
+
+    client = OtherModel()
+    with pytest.raises(ModelMismatchError):
+        _run(_window(OTEL), client)
+    assert client.calls == 0
+
+
+def test_confirmatory_refuses_unpinned_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(lpipe_config, "EXPECTED_MODEL_DIGEST", None)
+    window = _window(OTEL, evaluation_phase=EvaluationPhase.CONFIRMATORY)
+    client = FakeClient()
+    set_current_manifest(get_variant("HELIOS-Full"))
+    with pytest.raises(ProvisionalPromptError):
+        run_lpipe(
+            incident_id=window.incident_id,
+            snapshot_hash="s" * 64,
+            evaluation_phase="confirmatory",
+            run_id="r",
+            window=window,
+            trigger=_trigger(_window(OTEL)),
+            root=REPO,
+            client=client,  # type: ignore[arg-type]
+        )
+    assert client.calls == 0
