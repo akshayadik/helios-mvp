@@ -18,6 +18,8 @@ import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from helios.consensus.mahc import run_mahc, run_vote_only
+from helios.consensus.params import load_mahc_params
 from helios.graph.khop_pruner import khop_prune
 from helios.graph.structural_bundle import apply_structural_bundle
 from helios.graph.ueg_c_builder import build_ueg_c
@@ -39,6 +41,7 @@ from helios.schemas.verdict import (
 from helios.store.result_store import ResultStore
 from helios.telemetry.reader import CaptureReader
 from helios.telemetry.scope import OUT_OF_SCOPE_SERVICES, filter_in_scope, in_scope
+from helios.telemetry.signal_type import signal_type
 from helios.telemetry.trigger import (
     DetectorParams,
     ExternalTriggerRefusedError,
@@ -54,6 +57,7 @@ from helios.vcl.snapshot_registry import DuplicateSnapshotError, SnapshotRegistr
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from helios.consensus.params import MAHCParams
     from helios.pipelines.l_pipe.cache import ResponseCache
     from helios.pipelines.l_pipe.ollama_client import OllamaClient
     from helios.schemas.telemetry import TelemetryWindow
@@ -94,6 +98,7 @@ class RunOrchestrator:
         gpipe_params: GPipeParams | None = None,
         lpipe_client: OllamaClient | None = None,
         lpipe_cache: ResponseCache | None = None,
+        mahc_params: MAHCParams | None = None,
     ) -> None:
         """``detector_params``, ``dpipe_params`` and ``gpipe_params`` default to
         the frozen files; ``lpipe_client`` defaults to the local Ollama model and
@@ -104,6 +109,7 @@ class RunOrchestrator:
         self._manifest = manifest
         self._lpipe_client = lpipe_client
         self._lpipe_cache = lpipe_cache
+        self._mahc = mahc_params if mahc_params is not None else load_mahc_params()
         self._reader = CaptureReader(captures_dir, seal_key=hmac_key)
         self._registry = SnapshotRegistry(registry_path)
         self._store = ResultStore(db_path)
@@ -137,6 +143,10 @@ class RunOrchestrator:
             if self._gpipe.provisional:
                 raise ProvisionalParametersError(
                     "G-pipe parameters are provisional; freeze them first (S2.2)"
+                )
+            if self._manifest.mahc_hierarchical and self._mahc.provisional:
+                raise ProvisionalParametersError(
+                    "MAHC parameters are provisional; freeze them first (S2.5)"
                 )
         if self._external is not None:
             if window.incident_id not in self._external:
@@ -177,6 +187,7 @@ class RunOrchestrator:
 
         window = verification.window
         snapshot_hash = window.compute_window_hash()
+        confirmatory = window.evaluation_phase == EvaluationPhase.CONFIRMATORY
         trigger = self._trigger_for(window)
         # TTCD/TTT start here (deviation entry 46): graph build and pruning use
         # the trigger, so they are measured analysis, not start-up.
@@ -278,6 +289,29 @@ class RunOrchestrator:
             raise ValueError("L-pipe ran but returned no h_struct counts (S2.4)")
         h_struct = {"outputs": 0, "failed": 0} if structural_zero else l_out["h_struct"]
         verdicts = [d_verdict, g_verdict, l_verdict]
+        # S2.5/S2.6: one fused verdict per run, from the replayed latencies of the
+        # pipelines that ran (a skipped pipeline was never dispatched).
+        latency_ms = {
+            v.pipeline.value: v.latency_ms
+            for v in verdicts
+            if v.status != VerdictStatus.SKIPPED
+        }
+        if self._manifest.mahc_hierarchical:
+            signal = signal_type(
+                window,
+                trigger,
+                root=_REPO_ROOT,
+                bucket_seconds=self._detector.bucket_seconds,
+            )
+            fused = run_mahc(
+                verdicts,
+                signal,
+                self._mahc,
+                latency_ms=latency_ms,
+                confirmatory=confirmatory,
+            )
+        else:
+            fused = run_vote_only(verdicts, latency_ms=latency_ms)
 
         gate = MetricIntegrityGate.from_manifest(
             self._manifest,
@@ -291,6 +325,7 @@ class RunOrchestrator:
         if gate_result.status == "PASS":
             for verdict in verdicts:
                 self._store.insert(verdict)
+            self._store.insert_fusion(run_id, incident_id, self._config_hash, fused)
             # Only stored runs carry H_struct, so A-H7 pairs match the verdicts.
             self._store.insert_hstruct(
                 run_id,
