@@ -134,4 +134,18 @@ def run_dpipe(
             if verdict["ranked_candidates"] and evidence and evidence_ref
             else None
         ),
+        # CoE evidence (S2.7) for the top 5: the post-trigger shift in robust
+        # units, the pre-propagation score and the final score. A record only;
+        # nothing above reads it.
+        "coe_evidence": {
+            "services": [
+                {
+                    "service": s,
+                    "shift": evidence.get(s),
+                    "score": scores.get(s),
+                    "final": score_final[s],
+                }
+                for s in list(verdict["ranked_candidates"])[:5]
+            ]
+        },
     }
