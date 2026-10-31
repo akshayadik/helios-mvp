@@ -276,18 +276,44 @@ class HMACChainedLog:
         """Override to verify post-sign fields; return an error message or None."""
         return None
 
+    def _signing_refusal(self, entries: int) -> str | None:
+        """Anchor-only mode signs monotonically per file (S2.7 review I-1): a
+        keyless append must not unsign a signed file, and a keyed append must not
+        sign bytes that were written without a signature."""
+        if not self.ANCHOR_ED25519 or not self.anchor_path.exists():
+            return None
+        anchor = json.loads(self.anchor_path.read_text(encoding="utf-8"))
+        signed = _ANCHOR_ED25519_FIELD in anchor
+        if signed and self._ed_private is None:
+            return "the anchor is Ed25519-signed and no private key is loaded."
+        if not signed and entries > 0 and self._ed_private is not None:
+            return (
+                "the log is unsigned; signing it now would cover entries written "
+                "without a signature (use a new file)."
+            )
+        return None
+
+    def check_append(self) -> tuple[int, str]:
+        """Raise TamperDetectedError unless the next append is allowed; return
+        the entry count and head signature."""
+        entries, prev_sig = self._tail()
+        if err := self._check_anchor(entries, prev_sig) or self._signing_refusal(
+            entries
+        ):
+            raise TamperDetectedError(f"Refusing to append: {err}")
+        return entries, prev_sig
+
     def append(self, fields: dict[str, Any]) -> dict[str, Any]:
         """Validate required fields, build signed envelope, append JSONL line."""
         if missing := [f for f in self.REQUIRED_FIELDS if not fields.get(f)]:
             raise ValueError(f"Missing required fields: {missing}")
-        entries, prev_sig = self._tail()
+        entries, _ = self._tail()
         if self._ed25519_due(entries + 1) and self._ed_private is None:
             raise ValueError(
                 f"Entry {entries + 1} must be Ed25519-signed "
                 f"(from entry {self.ED25519_FROM_ENTRY}); private key not loaded."
             )
-        if err := self._check_anchor(entries, prev_sig):
-            raise TamperDetectedError(f"Refusing to append: {err}")
+        entries, prev_sig = self.check_append()
         entry: dict[str, Any] = {
             "timestamp_utc": dt.datetime.now(dt.UTC).isoformat().replace("+00:00", "Z"),
             "commit_sha": _resolve_commit_sha(),

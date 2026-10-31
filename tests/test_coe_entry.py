@@ -6,6 +6,8 @@ import copy
 import hashlib
 from typing import Any
 
+import pytest
+
 from helios.consensus.calibration import State
 from helios.consensus.mahc import FusedVerdict
 from helios.consensus.timing import Schedule
@@ -41,8 +43,22 @@ def _verdict(
 def _dpipe_evidence() -> dict[str, Any]:
     return {
         "services": [
-            {"service": "cart", "shift": 4.2, "score": 0.8, "final": 0.8},
-            {"service": "ad", "shift": None, "score": 0.1, "final": 0.1},
+            {
+                "service": "cart",
+                "error": 4.2,
+                "latency": 1.5,
+                "resource": 0.3,
+                "score": 0.8,
+                "final": 0.9,
+            },
+            {
+                "service": "ad",
+                "error": None,
+                "latency": None,
+                "resource": None,
+                "score": 0.1,
+                "final": 0.1,
+            },
         ]
     }
 
@@ -165,7 +181,11 @@ def test_steps_in_order_with_unique_ids() -> None:
     assert [s["id"] for s in entry["steps"]] == STEP_ORDER
     ids = [i["id"] for i in _items(entry)]
     assert len(ids) == len(set(ids))
-    assert {"D:cart:shift", "D:cart:score", "D:cart:final"} <= set(ids)
+    d_cart = {f"D:cart:{k}" for k in ("error", "latency", "resource", "propagation")}
+    assert d_cart | {"D:cart:score", "D:cart:final"} <= set(ids)
+    assert "D:ad:error" not in ids and "D:ad:propagation" not in ids
+    prop = next(i for i in _items(entry) if i["id"] == "D:cart:propagation")
+    assert prop["value"] == pytest.approx(0.1)
     assert {"G:cart:wait_from", "G:cart:leads", "G:cart:self_shift"} <= set(ids)
     assert {"L:log:L1", "L:log:L2", "L:log:claim1"} <= set(ids)
     claim = next(i for i in _items(entry) if i["id"] == "L:log:claim1")

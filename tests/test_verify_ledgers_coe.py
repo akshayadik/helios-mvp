@@ -81,3 +81,17 @@ def test_wrong_public_key_fails(tmp_path: Path, setup: tuple[Path, Any]) -> None
 def test_empty_directory_fails(tmp_path: Path, setup: tuple[Path, Any]) -> None:
     pub, _ = setup
     assert _main(tmp_path, pub) == 1
+
+
+def test_public_only_needs_no_secret(
+    tmp_path: Path, setup: tuple[Path, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Review I-2: an examiner verifies with the public key alone.
+    pub, private = setup
+    path = tmp_path / "runs" / "a.coe.jsonl"
+    _write(path, private)
+    monkeypatch.delenv("DEVIATION_HMAC_SECRET")
+    args = ["--coe", str(tmp_path / "runs"), "--public-key", str(pub)]
+    assert cli.main([*args, "--public-only"]) == 0
+    path.write_text(path.read_text().replace("inc-1", "inc-9"))
+    assert cli.main([*args, "--public-only"]) == 1

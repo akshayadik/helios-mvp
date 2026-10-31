@@ -73,10 +73,11 @@ def test_coe_evidence_top5_fields() -> None:
     services = out["coe_evidence"]["services"]
     assert [s["service"] for s in services] == out["ranked_candidates"][:5]
     for s in services:
-        assert set(s) == {"service", "shift", "score", "final"}
+        assert set(s) == {"service", "error", "latency", "resource", "score", "final"}
         assert s["final"] == out["candidate_scores"][s["service"]]
-        assert s["shift"] is None or isinstance(s["shift"], float)
-    assert any(s["shift"] is not None for s in services)
+        for channel in ("error", "latency", "resource"):
+            assert s[channel] is None or isinstance(s[channel], float)
+    assert any(s["error"] is not None for s in services)
 
 
 @pytest.mark.parametrize("index", sorted(GOLDEN))

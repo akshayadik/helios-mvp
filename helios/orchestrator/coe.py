@@ -87,16 +87,15 @@ def _dpipe_items(evidence: Mapping[str, Any] | None) -> list[dict[str, Any]]:
     items = []
     for s in (evidence or {}).get("services", [])[:_DPIPE_TOP]:
         svc = s["service"]
-        if s.get("shift") is not None:
-            items.append(
-                _item(
-                    f"D:{svc}:shift",
-                    svc,
-                    "post-trigger shift (robust units)",
-                    s["shift"],
-                )
-            )
+        for channel in ("error", "latency", "resource"):
+            if s.get(channel) is not None:
+                text = f"post-trigger {channel} shift (robust units)"
+                items.append(_item(f"D:{svc}:{channel}", svc, text, s[channel]))
         items.append(_item(f"D:{svc}:score", svc, "pre-propagation score", s["score"]))
+        if s["score"] is not None and s["final"] != s["score"]:
+            adjustment = s["final"] - s["score"]
+            text = "propagation adjustment to the score"
+            items.append(_item(f"D:{svc}:propagation", svc, text, adjustment))
         items.append(_item(f"D:{svc}:final", svc, "final D-pipe score", s["final"]))
     return items[:ITEM_CAP]
 

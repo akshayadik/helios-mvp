@@ -13,6 +13,7 @@ pipeline's ranking here, the same way for every pipeline.
 from __future__ import annotations
 
 import contextlib
+import datetime as dt
 import time
 import uuid
 from pathlib import Path
@@ -133,7 +134,7 @@ class RunOrchestrator:
         ``lpipe_cache`` (S2.3 design §5.6) to none;
         ``external_triggers`` (exploratory only) replaces the detector with
         supplied records. The CoE ledger (S2.7) goes to ``coe_path``, by default
-        ``<db stem>.coe.jsonl`` beside the database; ``coe_signer`` (the
+        a new file in ``<db stem>.coe/`` beside the database; ``coe_signer`` (the
         Ed25519 private key) signs its anchor and is required for confirmatory
         runs."""
         set_current_manifest(manifest)
@@ -149,11 +150,15 @@ class RunOrchestrator:
         )
         self._exclusion_ledger = exclusion_ledger
         self._coe_signer = coe_signer
-        self._coe = CoELedger(
-            hmac_key,
-            coe_path or db_path.with_name(f"{db_path.stem}.coe.jsonl"),
-            ed25519_private=coe_signer,
+        # One CoE file per orchestrator run (S2.7 design §4): a fresh file keeps
+        # each run's signing state its own (review I-1).
+        started = dt.datetime.now(dt.UTC).strftime("%Y%m%dT%H%M%SZ")
+        self.coe_path = coe_path or (
+            db_path.parent
+            / f"{db_path.stem}.coe"
+            / f"{started}-{uuid.uuid4().hex[:8]}.coe.jsonl"
         )
+        self._coe = CoELedger(hmac_key, self.coe_path, ed25519_private=coe_signer)
         self._config_hash = manifest.compute_variant_config_hash()
         self._detector = (
             detector_params if detector_params is not None else load_detector_params()
@@ -200,6 +205,7 @@ class RunOrchestrator:
         """Process every incident in corpus through the full C1 path."""
         if self._manifest.l2c_llm:
             verify_model(self._lpipe_client)  # entry 58: before any incident writes
+        self._coe.check_append()  # S2.7: a ledger we cannot extend stops the run here
         for incident_id in CorpusLoader(corpus).incident_ids():
             self._process_incident(incident_id)
 
@@ -286,12 +292,22 @@ class RunOrchestrator:
                 run_id, incident_id, PipelineName.DPIPE.value, d_out["coe_evidence"]
             )
         graph = ueg_c
-        routed = graph is not None and should_run_gpipe(d_routed, self._manifest)
-        routing = {
-            "ran": routed,
-            "gate_value": compute_ppr_disagreement(dpipe_scores),
+        # The gate is evaluated only where routing evaluates it (it raises on
+        # negative scores); the record says why G-pipe did or did not run.
+        routing: dict[str, Any] = {
+            "ran": False,
+            "gate_value": None,
             "threshold": DISAGREEMENT_THRESHOLD,
         }
+        if not (self._manifest.gpipe and self._manifest.l2b_graph):
+            routing["reason"] = "gpipe_off"
+        elif graph is None:
+            routing["reason"] = "no_graph"
+        else:
+            routing["gate_value"] = compute_ppr_disagreement(dpipe_scores)
+            routing["ran"] = should_run_gpipe(d_routed, self._manifest)
+            routing["reason"] = "routed" if routing["ran"] else "below_gate"
+        routed = bool(routing["ran"])
         if graph is not None and routed:
             g_verdict, g_out = self._dispatch(
                 PipelineName.GPIPE,
@@ -378,6 +394,24 @@ class RunOrchestrator:
         gate_result = gate.check_consistency(rows, incident_id=incident_id)
 
         if gate_result.status == "PASS":
+            # Built before anything is stored: a builder error leaves no rows
+            # without their CoE entry (review I-3).
+            coe_entry = build_coe_entry(
+                **{k: str(v) for k, v in base.items()},
+                parameter_hashes=self._parameter_hashes(trigger),
+                trigger=trigger,
+                signal=None if signal is None else signal.value,
+                routing=routing,
+                verdicts=verdicts,
+                evidence={
+                    "dpipe": d_out.get("coe_evidence"),
+                    "gpipe": g_out.get("evidence"),
+                    "lpipe": l_out.get("evidence"),
+                },
+                h_struct={**h_struct, "structural_zero": structural_zero},
+                fused=fused,
+                gate_outcome=gate_result.status,
+            )
             for verdict in verdicts:
                 self._store.insert(verdict)
             self._store.insert_fusion(run_id, incident_id, self._config_hash, fused)
@@ -390,24 +424,7 @@ class RunOrchestrator:
                 failed=int(h_struct["failed"]),
                 structural_zero=structural_zero,
             )
-            self._coe.append(
-                build_coe_entry(
-                    **{k: str(v) for k, v in base.items()},
-                    parameter_hashes=self._parameter_hashes(trigger),
-                    trigger=trigger,
-                    signal=None if signal is None else signal.value,
-                    routing=routing,
-                    verdicts=verdicts,
-                    evidence={
-                        "dpipe": d_out.get("coe_evidence"),
-                        "gpipe": g_out.get("evidence"),
-                        "lpipe": l_out.get("evidence"),
-                    },
-                    h_struct={**h_struct, "structural_zero": structural_zero},
-                    fused=fused,
-                    gate_outcome=gate_result.status,
-                )
-            )
+            self._coe.append(coe_entry)
             self._reconciliation.record(
                 run_id=run_id,
                 incident_id=incident_id,

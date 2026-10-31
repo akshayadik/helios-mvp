@@ -6,10 +6,12 @@ import json
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from helios.orchestrator.coe import CoELedger
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
 from helios.vcl.ed25519 import generate_private_key, load_public_key
-from helios.vcl.hmac_chain import verify_public
+from helios.vcl.hmac_chain import TamperDetectedError, verify_public
 
 KEY = b"k" * 32
 REPO = Path(__file__).resolve().parents[1]
@@ -81,13 +83,49 @@ def test_unsigned_anchor_is_reported_unsigned(tmp_path: Path) -> None:
     assert not ok and "unsigned" in msg
 
 
-def test_unsigned_then_signed_append_verifies(tmp_path: Path) -> None:
+def test_keyed_append_onto_unsigned_log_is_refused(tmp_path: Path) -> None:
+    # Review I-1: signing an unsigned file would launder bytes nobody signed.
     path = tmp_path / "run.coe.jsonl"
     CoELedger(KEY, path).append(_entry(0))
     log = CoELedger(KEY, path, ed25519_private=generate_private_key())
-    log.append(_entry(1))
-    ok, msg = _public(log, path)
-    assert ok, msg
+    with pytest.raises(TamperDetectedError, match="unsigned"):
+        log.append(_entry(1))
+    with pytest.raises(TamperDetectedError, match="unsigned"):
+        log.check_append()
+    assert len(_lines(path)) == 1
+
+
+def test_keyed_first_append_onto_empty_file_is_signed(tmp_path: Path) -> None:
+    path = tmp_path / "run.coe.jsonl"
+    log = CoELedger(KEY, path, ed25519_private=generate_private_key())
+    log.check_append()
+    log.append(_entry(0))
+    assert _public(log, path)[0]
+
+
+def test_keyless_append_onto_signed_anchor_is_refused(tmp_path: Path) -> None:
+    _, path = _signed(tmp_path, n=1)
+    log = CoELedger(KEY, path)
+    with pytest.raises(TamperDetectedError, match="signed"):
+        log.append(_entry(1))
+    assert len(_lines(path)) == 1
+
+
+def test_downgrade_then_launder_is_refused(tmp_path: Path) -> None:
+    # An HMAC-secret holder cuts an entry and writes an unsigned anchor; the
+    # owner's next keyed run must refuse, and verify_public must not pass.
+    private = generate_private_key()
+    path = tmp_path / "run.coe.jsonl"
+    signer = CoELedger(KEY, path, ed25519_private=private)
+    for i in range(2):
+        signer.append(_entry(i))
+    first = _lines(path)[0]
+    path.write_text(first + "\n")
+    forger = CoELedger(KEY, path)
+    forger._write_anchor(1, json.loads(first)["signature"])
+    assert not _public(signer, path)[0]
+    with pytest.raises(TamperDetectedError):
+        CoELedger(KEY, path, ed25519_private=private).append(_entry(9))
 
 
 def test_two_instances_continue_the_chain(tmp_path: Path) -> None:

@@ -305,7 +305,7 @@ def test_coe_entry_carries_no_label_or_injection_time(tmp_path: Path) -> None:
     incident_id = stage_capture(captures)
     variant = get_variant("HELIOS-Full")
     set_current_manifest(variant)
-    RunOrchestrator(
+    orch = RunOrchestrator(
         manifest=variant,
         captures_dir=captures,
         db_path=tmp_path / "results.duckdb",
@@ -315,9 +315,10 @@ def test_coe_entry_carries_no_label_or_injection_time(tmp_path: Path) -> None:
         hmac_key=KEY,
         lpipe_client=FakeClient(),  # type: ignore[arg-type]
         coe_signer=generate_private_key(),
-    ).run(captures)
+    )
+    orch.run(captures)
 
-    text = (tmp_path / "results.coe.jsonl").read_text(encoding="utf-8")
+    text = orch.coe_path.read_text(encoding="utf-8")
     assert text.strip()
     truth = json.loads(
         (REPO / "data/otel/ground_truth_build_v3.json").read_text(encoding="utf-8")

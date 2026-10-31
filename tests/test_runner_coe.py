@@ -14,7 +14,7 @@ from helios.orchestrator.runner import MissingSigningKeyError, RunOrchestrator
 from helios.store.result_store import ResultStore
 from helios.vcl import VCLFlag, get_variant, set_current_manifest  # noqa: F401
 from helios.vcl.ed25519 import generate_private_key
-from helios.vcl.hmac_chain import verify_public
+from helios.vcl.hmac_chain import TamperDetectedError, verify_public
 from tests.pipelines.l_pipe.test_pipeline import OTEL, FakeClient
 from tests.test_runner_lpipe import KEY, stage_capture
 
@@ -26,27 +26,38 @@ pytestmark = pytest.mark.filterwarnings("ignore::scipy.stats.ConstantInputWarnin
 SIGNER = generate_private_key()
 
 
-def _run(
-    tmp_path: Path, variant: str = "HELIOS-Full", *, signer: Any = SIGNER
-) -> tuple[ResultStore, Path]:
+def _orch(
+    tmp_path: Path,
+    variant: str = "HELIOS-Full",
+    *,
+    signer: Any = SIGNER,
+    coe_path: Path | None = None,
+) -> RunOrchestrator:
     captures = tmp_path / "captures"
     if not captures.exists():
         stage_capture(captures)
     manifest = get_variant(variant)
     set_current_manifest(manifest)
-    db = tmp_path / "r.duckdb"
-    RunOrchestrator(
+    return RunOrchestrator(
         manifest=manifest,
         captures_dir=captures,
-        db_path=db,
+        db_path=tmp_path / "r.duckdb",
         registry_path=tmp_path / "r.registry.jsonl",
         reconciliation_path=tmp_path / "r.reconciliation.jsonl",
         exclusion_ledger=MagicMock(spec=AppendOnlyLedger),
         hmac_key=KEY,
         lpipe_client=FakeClient(),  # type: ignore[arg-type]
         coe_signer=signer,
-    ).run(captures)
-    return ResultStore(db), tmp_path / "r.coe.jsonl"
+        coe_path=coe_path,
+    )
+
+
+def _run(
+    tmp_path: Path, variant: str = "HELIOS-Full", *, signer: Any = SIGNER
+) -> tuple[ResultStore, Path]:
+    orch = _orch(tmp_path, variant, signer=signer)
+    orch.run(tmp_path / "captures")
+    return ResultStore(tmp_path / "r.duckdb"), orch.coe_path
 
 
 def _entries(path: Path) -> list[dict[str, Any]]:
@@ -115,6 +126,7 @@ def test_routing_record_below_the_gate(tmp_path: Path) -> None:
     routing = _step(entry, "R")
     assert routing["ran"] is False
     assert routing["gate_value"] < routing["threshold"]
+    assert routing["reason"] == "below_gate"
     assert _step(entry, "P:gpipe")["status"] == "skipped"
     assert _step(entry, "P:gpipe")["items"] == []
 
@@ -129,7 +141,7 @@ def test_excluded_run_has_no_coe_entry(
 
     monkeypatch.setattr(integrity_gate.MetricIntegrityGate, "check_consistency", fail)
     _, path = _run(tmp_path)
-    assert not path.exists() or _entries(path) == []
+    assert not path.exists()
 
 
 def test_no_llm_variant_entry_has_no_l_items(tmp_path: Path) -> None:
@@ -164,7 +176,7 @@ def test_confirmatory_without_key_is_refused(tmp_path: Path) -> None:
     orch._reader._pool_lock = lambda _incident: None
     with pytest.raises(MissingSigningKeyError, match="Ed25519"):
         orch.run(captures)
-    assert not (tmp_path / "r.coe.jsonl").exists()
+    assert not orch.coe_path.exists()
     assert ResultStore(tmp_path / "r.duckdb").fetch_all() == []
 
 
@@ -180,4 +192,75 @@ def test_dpipe_evidence_row_stored(tmp_path: Path) -> None:
     (run_id,) = {str(r["run_id"]) for r in store.fetch_all()}
     stored = store.fetch_evidence(run_id, "dpipe")
     assert stored is not None and stored["services"]
-    assert set(stored["services"][0]) == {"service", "shift", "score", "final"}
+    assert set(stored["services"][0]) == {
+        "service",
+        "error",
+        "latency",
+        "resource",
+        "score",
+        "final",
+    }
+
+
+def test_each_orchestrator_run_writes_its_own_file(tmp_path: Path) -> None:
+    # Spec §4: one CoE file per orchestrator run, beside the results database.
+    _, first = _run(tmp_path)
+    _, second = _run(tmp_path)
+    assert first != second
+    assert first.parent == second.parent == tmp_path / "r.coe"
+    assert len(_entries(first)) == len(_entries(second)) == 1
+
+
+def test_coe_preflight_refuses_before_any_write(tmp_path: Path) -> None:
+    # Review I-3: a ledger that cannot be appended to stops the run up front.
+    path = tmp_path / "shared.coe.jsonl"
+    CoELedger(KEY, path).append(
+        {
+            "run_id": "x",
+            "incident_id": "x",
+            "variant_config_hash": "h",
+            "snapshot_hash": "s",
+            "evaluation_phase": "exploratory",
+            "steps": [{"id": "G"}],
+        }
+    )
+    stage_capture(tmp_path / "captures")
+    orch = _orch(tmp_path, coe_path=path)
+    with pytest.raises(TamperDetectedError):
+        orch.run(tmp_path / "captures")
+    assert ResultStore(tmp_path / "r.duckdb").fetch_all() == []
+
+
+def test_entry_is_built_before_anything_is_stored(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from helios.orchestrator import runner as runner_module
+
+    def boom(**_kw: Any) -> Any:
+        raise RuntimeError("builder failed")
+
+    monkeypatch.setattr(runner_module, "build_coe_entry", boom)
+    with pytest.raises(RuntimeError, match="builder failed"):
+        _run(tmp_path)
+    store = ResultStore(tmp_path / "r.duckdb")
+    assert store.fetch_all() == []
+    assert store.fetch_all_fusion_rows() == []
+
+
+def test_gate_is_not_computed_when_gpipe_is_off(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The routing gate raises on negative D scores; variants that never routed
+    # must not start calling it (review, minor 4 re-graded).
+    from helios.orchestrator import runner as runner_module
+
+    def boom(_scores: Any) -> float:
+        raise ValueError("gate called")
+
+    monkeypatch.setattr(runner_module, "compute_ppr_disagreement", boom)
+    _, path = _run(tmp_path, "HELIOS-D")
+    (entry,) = _entries(path)
+    routing = _step(entry, "R")
+    assert routing["ran"] is False
+    assert routing["gate_value"] is None
+    assert routing["reason"] == "gpipe_off"
