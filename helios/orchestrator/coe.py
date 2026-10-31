@@ -90,7 +90,8 @@ def _dpipe_items(evidence: Mapping[str, Any] | None) -> list[dict[str, Any]]:
         for channel in ("error", "latency", "resource"):
             if s.get(channel) is not None:
                 text = f"post-trigger {channel} shift (robust units)"
-                items.append(_item(f"D:{svc}:{channel}", svc, text, s[channel]))
+                item = _item(f"D:{svc}:{channel}", svc, text, s[channel])
+                items.append({**item, **s.get("levels", {}).get(channel, {})})
         items.append(_item(f"D:{svc}:score", svc, "pre-propagation score", s["score"]))
         if s["score"] is not None and s["final"] != s["score"]:
             adjustment = s["final"] - s["score"]
@@ -208,6 +209,8 @@ def build_coe_entry(
     parameter_hashes: Mapping[str, str],
     trigger: TriggerRecord,
     signal: str | None,
+    window_start: str,
+    window_end: str,
     routing: Mapping[str, Any],
     verdicts: Sequence[PipelineVerdict],
     evidence: Mapping[str, Mapping[str, Any] | None],
@@ -240,6 +243,8 @@ def build_coe_entry(
             "context": list(trigger.context),
             "signal": signal,
             "detector_hash": trigger.detector_hash,
+            "window_start": window_start,
+            "window_end": window_end,
         },
         {"id": "R", **dict(routing)},
     ]

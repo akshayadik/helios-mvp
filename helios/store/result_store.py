@@ -15,6 +15,8 @@ import duckdb
 from helios.vcl.utils import canonical_json
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from helios.consensus.mahc import FusedVerdict
     from helios.consensus.verdict import ConsensusVerdict
     from helios.schemas.verdict import PipelineName, PipelineVerdict
@@ -351,6 +353,48 @@ class ResultStore:
             "structural_zero) VALUES (?, ?, ?, ?, ?, ?)",
             [run_id, incident_id, pipeline, outputs, failed, structural_zero],
         )
+
+    def insert_narrative(
+        self, run_id: str, incident_id: str, step: Mapping[str, Any]
+    ) -> None:
+        """Store a run's narrative (S2.8): CoE step N plus counts for the report."""
+        slots = step["slots"]
+        self._con.execute(
+            "INSERT INTO narrative_row (run_id, incident_id, narrator, slots_json, "
+            "rendered, attempts, fallbacks, prompt_tokens, completion_tokens, "
+            "wall_ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [
+                run_id,
+                incident_id,
+                step["narrator"],
+                canonical_json(slots),
+                step["rendered"],
+                sum(int(s["attempts"]) for s in slots.values()),
+                sum(bool(s["fallback"]) for s in slots.values()),
+                int(step["cost"]["prompt_tokens"]),
+                int(step["cost"]["completion_tokens"]),
+                float(step["measured"]["wall_ms"]),
+            ],
+        )
+
+    def _narrative_rows(self, where: str, args: list[Any]) -> list[dict[str, Any]]:
+        cur = self._con.execute(f"SELECT * FROM narrative_row {where}", args)
+        cols = [d[0] for d in cur.description or []]
+        out = []
+        for values in cur.fetchall():
+            row = dict(zip(cols, values, strict=True))
+            row["slots"] = json.loads(row.pop("slots_json"))
+            out.append(row)
+        return out
+
+    def fetch_narrative(self, run_id: str) -> dict[str, Any] | None:
+        """The narrative of one run, or None."""
+        rows = self._narrative_rows("WHERE run_id = ?", [run_id])
+        return rows[0] if rows else None
+
+    def fetch_all_narrative_rows(self) -> list[dict[str, Any]]:
+        """Every stored narrative, ordered by run."""
+        return self._narrative_rows("ORDER BY run_id", [])
 
     def fetch_hstruct(self, run_id: str) -> list[dict[str, Any]]:
         """The H_struct counts of a run, one per pipeline."""

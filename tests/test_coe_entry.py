@@ -50,6 +50,9 @@ def _dpipe_evidence() -> dict[str, Any]:
                 "resource": 0.3,
                 "score": 0.8,
                 "final": 0.9,
+                "levels": {
+                    "latency": {"before": 120.0, "after": 900.0, "unit": "ms"},
+                },
             },
             {
                 "service": "ad",
@@ -145,6 +148,8 @@ def _build(**over: Any) -> dict[str, Any]:
             detector_hash="d" * 64,
         ),
         "signal": "error",
+        "window_start": "2026-10-28T14:42:23+00:00",
+        "window_end": "2026-10-28T14:56:23+00:00",
         "routing": {"ran": True, "gate_value": 0.31, "threshold": 0.2},
         "verdicts": [
             _verdict(PipelineName.DPIPE, ["cart", "ad"]),
@@ -296,3 +301,20 @@ def test_deterministic() -> None:
     assert a != b  # measured latency differs ...
     assert _strip_measured(a) == _strip_measured(b)  # ... nothing else does
     assert _build() == copy.deepcopy(a)
+
+
+def test_d_items_carry_levels() -> None:
+    items = {i["id"]: i for i in _items(_build())}
+    latency = items["D:cart:latency"]
+    assert (latency["before"], latency["after"], latency["unit"]) == (
+        120.0,
+        900.0,
+        "ms",
+    )
+    assert "before" not in items["D:cart:error"]
+
+
+def test_t_step_has_window_bounds() -> None:
+    t = _build()["steps"][0]
+    assert t["window_start"] == "2026-10-28T14:42:23+00:00"
+    assert t["window_end"] == "2026-10-28T14:56:23+00:00"

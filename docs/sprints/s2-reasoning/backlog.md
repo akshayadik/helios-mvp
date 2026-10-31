@@ -32,7 +32,7 @@ Each item: what was observed, why it matters, the evidence, and where it is best
 |---|---|---|---|---|
 | S2-BL-13 | **Timing:** first-publication time excludes graph building (entry 46 counts it in TTT); the 90 s cutoff can flip the state between reruns; timing is specific to the M5 Pro; replay assumes G-pipe starts after D-pipe | TTT and non-convergence comparability | Entries 46, 60; `helios/consensus/timing.py` | Scoring path (S4) must add graph-build time; report hardware |
 | S2-BL-14 | **H_struct option (b):** counts invented services and evidence IDs as well as malformed answers; noLLM is a structural zero; rows only for stored runs | A-H7 reading | Entry 59 | Chapter 4 definition; chair call |
-| S2-BL-15 | **Narrative (IN1) not built yet;** noLLM, D and G need a model-free narrator because S2.9 rates noLLM narratives | Otherwise "noLLM" contains an LLM | Design S2.3 §5.5 | S2.8 design |
+| S2-BL-15 | ~~**Narrative (IN1) not built yet;** noLLM, D and G need a model-free narrator because S2.9 rates noLLM narratives~~ **Resolved 2026-10-31 (S2.8, owner N-a):** noLLM, D and G use a deterministic template narrator and never call a model (test `test_nollm_d_g_make_no_model_call`) | Otherwise "noLLM" contains an LLM | Design S2.3 §5.5; S2.8 design §2 | Closed (S2.8) |
 
 ## D. Engineering and process debt
 

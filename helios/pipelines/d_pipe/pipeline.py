@@ -64,6 +64,7 @@ def run_dpipe(
     scorer = AnomalyScorer(w_error=w_error, w_resource=w_resource)
     evidence: dict[str, float] = {}
     channels: dict[str, dict[str, float]] = {}
+    levels: dict[str, dict[str, dict[str, float | str]]] = {}
     steps = parsed.steps
     split_usable = trigger is not None and (
         any(t < trigger.trigger_time_s for t in steps)
@@ -71,7 +72,8 @@ def run_dpipe(
     )
     if trigger is not None and split_usable:
         scored = scorer.score_split(parsed, split_s=trigger.trigger_time_s)
-        scores, evidence, channels = scored.scores, scored.evidence, scored.channels
+        scores, evidence = scored.scores, scored.evidence
+        channels, levels = scored.channels, scored.levels
     else:
         scores = scorer.score(
             parsed.error_deltas, parsed.latency_means, parsed.p1_services
@@ -150,6 +152,7 @@ def run_dpipe(
                     },
                     "score": scores.get(s),
                     "final": score_final[s],
+                    "levels": levels.get(s, {}),
                 }
                 for s in list(verdict["ranked_candidates"])[:5]
             ]

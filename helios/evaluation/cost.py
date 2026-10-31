@@ -25,7 +25,7 @@ import yaml
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Iterable, Mapping
 
     from helios.schemas.telemetry import TelemetryWindow
     from helios.schemas.verdict import PipelineVerdict
@@ -193,15 +193,22 @@ class IncidentUsage:
 
 
 def incident_usage(
-    verdicts: Iterable[PipelineVerdict], *, storage_bytes: int = 0
+    verdicts: Iterable[PipelineVerdict],
+    *,
+    storage_bytes: int = 0,
+    narrative: Mapping[str, Any] | None = None,
 ) -> IncidentUsage:
-    """Sum the cost usage of one run's verdicts (skipped pipelines add nothing)."""
+    """Sum the cost usage of one run's verdicts (skipped pipelines add nothing)
+    and, when given, its stored narrative row's tokens (S2.8: narrator tokens
+    count in CpR)."""
     verdicts = list(verdicts)
     if len({v.run_id for v in verdicts}) > 1:
         raise ValueError("verdicts of more than one run")
     return IncidentUsage(
-        prompt_tokens=sum(v.cost.prompt_tokens for v in verdicts),
-        completion_tokens=sum(v.cost.completion_tokens for v in verdicts),
+        prompt_tokens=sum(v.cost.prompt_tokens for v in verdicts)
+        + int((narrative or {}).get("prompt_tokens", 0)),
+        completion_tokens=sum(v.cost.completion_tokens for v in verdicts)
+        + int((narrative or {}).get("completion_tokens", 0)),
         cpu_ms=sum(v.cost.cpu_ms for v in verdicts),
         gpu_ms=sum(v.cost.gpu_ms for v in verdicts),
         storage_bytes=storage_bytes,

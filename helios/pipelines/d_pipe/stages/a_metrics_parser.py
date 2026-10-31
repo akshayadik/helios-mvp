@@ -28,6 +28,8 @@ from helios.pipelines.d_pipe.dpipe_config import (
 )
 from helios.vcl import VCLFlag  # noqa: F401 -- flag-guard compliance
 
+# Error series counted from HTTP/gRPC status codes in the latency histograms.
+ERROR_STATUS_SOURCE = "http_grpc_error_status"
 HTTP_METRIC: str = "http_server_duration_milliseconds_bucket"
 GRPC_METRIC: str = "rpc_server_duration_milliseconds_bucket"
 HTTP_ERROR_CODES: frozenset[str] = frozenset({"500", "503"})
@@ -48,6 +50,9 @@ class ParsedMetrics:
     steps: list[float]
     p1_services: list[str]
     resource_values: dict[str, dict[str, list[float]]] = field(default_factory=dict)
+    # The metric each error and latency series came from (S2.8 raw levels:
+    # its unit); resource series are keyed by metric name already.
+    metric_names: dict[str, dict[str, str]] = field(default_factory=dict)
 
 
 def _diff_series(agg: pd.Series) -> list[float]:
@@ -127,6 +132,7 @@ class MetricsParser:
 
         error_deltas: dict[str, list[float]] = {}
         latency_means: dict[str, list[float]] = {}
+        metric_names: dict[str, dict[str, str]] = {}
 
         for svc in services:
             svc_df = df[df["service"] == svc]
@@ -147,6 +153,7 @@ class MetricsParser:
                 agg_err = err_combined.groupby("timestamp")["value"].sum()
                 agg_err = agg_err.reindex(timestamps, fill_value=0)
                 error_deltas[svc] = _diff_series(agg_err)
+                metric_names.setdefault(svc, {})["error"] = ERROR_STATUS_SOURCE
 
             # Latency extraction: one mean per timestamp from histogram buckets
             lat_metric = (
@@ -169,6 +176,7 @@ class MetricsParser:
                 means.append(_histogram_mean(bucket_counts))
             if means:
                 latency_means[svc] = means
+                metric_names.setdefault(svc, {})["latency"] = lat_metric
 
         steps = list(timestamps[1:])
         resource_values: dict[str, dict[str, list[float]]] = {}
@@ -185,12 +193,15 @@ class MetricsParser:
             )
             if latency is not None and svc not in latency_means:
                 latency_means[svc] = _at_steps(svc_df, latency, steps)
+                metric_names.setdefault(svc, {})["latency"] = latency
             for name in RCAEVAL_ERROR_NAMES:
                 if name in names and svc not in error_deltas:
                     error_deltas[svc] = _at_steps(svc_df, name, steps)
+                    metric_names.setdefault(svc, {})["error"] = name
             for name in OTEL_SPAN_ERROR_NAMES:
                 if name in names and svc not in error_deltas:
                     error_deltas[svc] = _counter_deltas(svc_df, name, timestamps)
+                    metric_names.setdefault(svc, {})["error"] = name
             for name in sorted(names & {*RCAEVAL_RESOURCE_NAMES, *OTEL_RESOURCE_NAMES}):
                 resource_values.setdefault(svc, {})[name] = _at_steps(
                     svc_df, name, steps
@@ -207,4 +218,5 @@ class MetricsParser:
             steps=steps,
             p1_services=p1_services,
             resource_values=resource_values,
+            metric_names=metric_names,
         )

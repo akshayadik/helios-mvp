@@ -73,7 +73,15 @@ def test_coe_evidence_top5_fields() -> None:
     services = out["coe_evidence"]["services"]
     assert [s["service"] for s in services] == out["ranked_candidates"][:5]
     for s in services:
-        assert set(s) == {"service", "error", "latency", "resource", "score", "final"}
+        assert set(s) == {
+            "service",
+            "error",
+            "latency",
+            "resource",
+            "score",
+            "final",
+            "levels",
+        }
         assert s["final"] == out["candidate_scores"][s["service"]]
         for channel in ("error", "latency", "resource"):
             assert s[channel] is None or isinstance(s[channel], float)
@@ -122,3 +130,49 @@ def test_abstained_has_empty_evidence(tmp_path: Path) -> None:
     )
     assert out["ranked_candidates"] == []
     assert out["coe_evidence"] == {"services": []}
+
+
+def test_levels_before_after_and_unit() -> None:
+    out = _run_build(9)
+    services = {s["service"]: s for s in out["coe_evidence"]["services"]}
+    cart = services["cart"]["levels"]["latency"]
+    assert cart["unit"] == "ms"
+    assert isinstance(cart["before"], float) and isinstance(cart["after"], float)
+    assert services["cart"]["latency"] > 0 and cart["after"] > cart["before"]
+    for s in services.values():
+        assert set(s["levels"]) <= {"error", "latency", "resource"}
+        for level in s["levels"].values():
+            assert set(level) == {"before", "after", "unit"} and level["unit"]
+
+
+def test_no_split_has_no_levels(tmp_path: Path) -> None:
+    import datetime as dt
+
+    from helios.schemas.telemetry import EvaluationPhase
+
+    window = TelemetryWindow(
+        incident_id="inc-nosplit",
+        variant_config_hash="a" * 64,
+        window_start_iso=dt.datetime(2026, 1, 1, tzinfo=dt.UTC).isoformat(),
+        window_end_iso=dt.datetime(2026, 1, 1, 0, 5, tzinfo=dt.UTC).isoformat(),
+        evaluation_phase=EvaluationPhase.EXPLORATORY,
+        p1_metrics_path=str(_run_build.__globals__["REPO"] / _otel_p1(9)),
+        p2_traces_path=None,
+        p3_logs_path=None,
+    )
+    out = run_dpipe(
+        window=window,
+        ueg_c=None,
+        incident_id="inc-nosplit",
+        snapshot_hash="b" * 64,
+        variant_config_hash="a" * 64,
+        evaluation_phase=EvaluationPhase.EXPLORATORY,
+        run_id="run-001",
+    )
+    assert out["ranked_candidates"]
+    assert all(s["levels"] == {} for s in out["coe_evidence"]["services"])
+
+
+def _otel_p1(index: int) -> str:
+    path = sorted((REPO / "data/otel/build_v3").glob("*/manifest.json"))[index]
+    return str(json.loads(path.read_text())["p1_metrics_path"])
