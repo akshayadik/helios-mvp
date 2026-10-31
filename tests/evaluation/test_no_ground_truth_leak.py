@@ -290,3 +290,51 @@ def test_lpipe_prompts_carry_no_label_or_identity(
         assert not re.search(r"\d{4}-\d{2}-\d{2}|\d{9,}", prompt)
         for name in names:
             assert not re.search(rf"\b{re.escape(name)}\b", prompt, re.IGNORECASE), name
+
+
+@pytest.mark.filterwarnings("ignore::scipy.stats.ConstantInputWarning")
+def test_coe_entry_carries_no_label_or_injection_time(tmp_path: Path) -> None:
+    """S2.7: the CoE ledger holds no fault name, case name, label key or injection
+    time (the ground truth is read here, by the test, only to compare)."""
+    from helios.adapters.otel_campaign import FAULTS
+    from helios.vcl.ed25519 import generate_private_key
+    from tests.pipelines.l_pipe.test_pipeline import FakeClient
+    from tests.test_runner_lpipe import KEY, stage_capture
+
+    captures = tmp_path / "captures"
+    incident_id = stage_capture(captures)
+    variant = get_variant("HELIOS-Full")
+    set_current_manifest(variant)
+    orch = RunOrchestrator(
+        manifest=variant,
+        captures_dir=captures,
+        db_path=tmp_path / "results.duckdb",
+        registry_path=tmp_path / "registry.jsonl",
+        reconciliation_path=tmp_path / "reconciliation.jsonl",
+        exclusion_ledger=MagicMock(spec=AppendOnlyLedger),
+        hmac_key=KEY,
+        lpipe_client=FakeClient(),  # type: ignore[arg-type]
+        coe_signer=generate_private_key(),
+    )
+    orch.run(captures)
+
+    text = orch.coe_path.read_text(encoding="utf-8")
+    assert text.strip()
+    truth = json.loads(
+        (REPO / "data/otel/ground_truth_build_v3.json").read_text(encoding="utf-8")
+    )["cases"][incident_id]
+    for flag in sorted({f.flag for f in FAULTS}):
+        assert not re.search(rf"\b{re.escape(flag)}\b", text, re.IGNORECASE), flag
+    assert truth["case"] not in text
+    inject = dt.datetime.fromisoformat(truth["inject_time"])
+    start = dt.datetime.fromisoformat(truth["window_start"])
+    assert truth["inject_time"] not in text
+    assert str(inject.timestamp()) not in text
+    offset = (inject - start).total_seconds()
+    for line in text.splitlines():
+        trigger = next(s for s in json.loads(line)["steps"] if s["id"] == "T")
+        # The detector's trigger is computed from telemetry; it must not simply
+        # be the injection offset copied in.
+        assert trigger["trigger_time_s"] != offset
+    keys = set(re.findall(r'"([a-z_]+)":', text))
+    assert not {k for k in keys if any(w in k for w in (*LEAK_WORDS, "fault"))}

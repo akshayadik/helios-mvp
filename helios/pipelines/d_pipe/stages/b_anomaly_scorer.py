@@ -46,6 +46,9 @@ class ScoredServices:
 
     scores: dict[str, float]
     evidence: dict[str, float] = field(default_factory=dict)
+    # Per-channel shifts (error, latency, resource) behind ``evidence``; a CoE
+    # record only (S2.7), nothing scores on it.
+    channels: dict[str, dict[str, float]] = field(default_factory=dict)
 
 
 def _shift(
@@ -118,7 +121,11 @@ class AnomalyScorer:
             for s in parsed.p1_services
         }
         evidence = {s: max(err[s], lat[s], res[s]) for s in parsed.p1_services}
-        return ScoredServices(scores=scores, evidence=evidence)
+        channels = {
+            s: {"error": err[s], "latency": lat[s], "resource": res[s]}
+            for s in parsed.p1_services
+        }
+        return ScoredServices(scores=scores, evidence=evidence, channels=channels)
 
     def score(
         self,

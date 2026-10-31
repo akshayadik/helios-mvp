@@ -13,24 +13,43 @@ pipeline's ranking here, the same way for every pipeline.
 from __future__ import annotations
 
 import contextlib
+import datetime as dt
 import time
 import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from helios.consensus.mahc import run_mahc, run_vote_only
-from helios.consensus.params import load_mahc_params
+from helios.consensus.params import load_mahc_params, mahc_params_hash
 from helios.consensus.timing import finish_times
 from helios.graph.khop_pruner import khop_prune
 from helios.graph.structural_bundle import apply_structural_bundle
 from helios.graph.ueg_c_builder import build_ueg_c
 from helios.integrity_gate import AppendOnlyLedger, MetricIntegrityGate
+from helios.orchestrator.coe import CoELedger, build_coe_entry
 from helios.orchestrator.corpus import CorpusLoader
 from helios.orchestrator.ledger import ReconciliationLedger
-from helios.pipelines.d_pipe.params import DPipeParams, load_dpipe_params
+from helios.pipelines.d_pipe.params import (
+    DPipeParams,
+    dpipe_params_hash,
+    load_dpipe_params,
+)
 from helios.pipelines.d_pipe.pipeline import run_dpipe
-from helios.pipelines.g_pipe.params import GPipeParams, load_gpipe_params
-from helios.pipelines.g_pipe.pipeline import run_gpipe, should_run_gpipe
+from helios.pipelines.g_pipe.gpipe_config import DISAGREEMENT_THRESHOLD
+from helios.pipelines.g_pipe.params import (
+    GPipeParams,
+    gpipe_params_hash,
+    load_gpipe_params,
+)
+from helios.pipelines.g_pipe.pipeline import (
+    compute_ppr_disagreement,
+    run_gpipe,
+    should_run_gpipe,
+)
+from helios.pipelines.l_pipe.lpipe_config import (
+    EXPECTED_MODEL_DIGEST,
+    WORKER_PROMPT_SHAS,
+)
 from helios.pipelines.l_pipe.pipeline import run_lpipe, verify_model
 from helios.schemas.telemetry import EvaluationPhase
 from helios.schemas.verdict import (
@@ -49,6 +68,7 @@ from helios.telemetry.trigger import (
     ProvisionalParametersError,
     TriggerRecord,
     detect,
+    detector_hash,
     load_detector_params,
     load_external_triggers,
 )
@@ -57,6 +77,8 @@ from helios.vcl.snapshot_registry import DuplicateSnapshotError, SnapshotRegistr
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
     from helios.consensus.params import MAHCParams
     from helios.pipelines.l_pipe.cache import ResponseCache
@@ -80,6 +102,10 @@ _ANALYTIC_CONSEQUENCE = (
 )
 
 
+class MissingSigningKeyError(RuntimeError):
+    """A confirmatory run needs the Ed25519 key to sign its CoE ledger (S2.7)."""
+
+
 class RunOrchestrator:
     """Coordinate a corpus run through the full C1 gating path."""
 
@@ -100,12 +126,17 @@ class RunOrchestrator:
         lpipe_client: OllamaClient | None = None,
         lpipe_cache: ResponseCache | None = None,
         mahc_params: MAHCParams | None = None,
+        coe_path: Path | None = None,
+        coe_signer: Ed25519PrivateKey | None = None,
     ) -> None:
         """``detector_params``, ``dpipe_params`` and ``gpipe_params`` default to
         the frozen files; ``lpipe_client`` defaults to the local Ollama model and
         ``lpipe_cache`` (S2.3 design §5.6) to none;
         ``external_triggers`` (exploratory only) replaces the detector with
-        supplied records."""
+        supplied records. The CoE ledger (S2.7) goes to ``coe_path``, by default
+        a new file in ``<db stem>.coe/`` beside the database; ``coe_signer`` (the
+        Ed25519 private key) signs its anchor and is required for confirmatory
+        runs."""
         set_current_manifest(manifest)
         self._manifest = manifest
         self._lpipe_client = lpipe_client
@@ -118,6 +149,16 @@ class RunOrchestrator:
             key=hmac_key, log_path=reconciliation_path
         )
         self._exclusion_ledger = exclusion_ledger
+        self._coe_signer = coe_signer
+        # One CoE file per orchestrator run (S2.7 design §4): a fresh file keeps
+        # each run's signing state its own (review I-1).
+        started = dt.datetime.now(dt.UTC).strftime("%Y%m%dT%H%M%SZ")
+        self.coe_path = coe_path or (
+            db_path.parent
+            / f"{db_path.stem}.coe"
+            / f"{started}-{uuid.uuid4().hex[:8]}.coe.jsonl"
+        )
+        self._coe = CoELedger(hmac_key, self.coe_path, ed25519_private=coe_signer)
         self._config_hash = manifest.compute_variant_config_hash()
         self._detector = (
             detector_params if detector_params is not None else load_detector_params()
@@ -149,6 +190,11 @@ class RunOrchestrator:
                 raise ProvisionalParametersError(
                     "MAHC parameters are provisional; freeze them first (S2.5)"
                 )
+            if self._coe_signer is None:
+                raise MissingSigningKeyError(
+                    "confirmatory runs need the Ed25519 private key to sign the "
+                    "CoE ledger (S2.7)"
+                )
         if self._external is not None:
             if window.incident_id not in self._external:
                 raise ValueError("no supplied trigger for this incident")
@@ -159,6 +205,7 @@ class RunOrchestrator:
         """Process every incident in corpus through the full C1 path."""
         if self._manifest.l2c_llm:
             verify_model(self._lpipe_client)  # entry 58: before any incident writes
+        self._coe.check_append()  # S2.7: a ledger we cannot extend stops the run here
         for incident_id in CorpusLoader(corpus).incident_ids():
             self._process_incident(incident_id)
 
@@ -240,8 +287,28 @@ class RunOrchestrator:
         # Routing sees what the stored D-pipe verdict shows: in-scope only (D-f).
         d_routed = _in_scope_output(d_out) if d_out else d_out
         dpipe_scores: dict[str, float] = d_routed.get("candidate_scores", {})
+        if "coe_evidence" in d_out:
+            self._store.insert_evidence(
+                run_id, incident_id, PipelineName.DPIPE.value, d_out["coe_evidence"]
+            )
         graph = ueg_c
-        if graph is not None and should_run_gpipe(d_routed, self._manifest):
+        # The gate is evaluated only where routing evaluates it (it raises on
+        # negative scores); the record says why G-pipe did or did not run.
+        routing: dict[str, Any] = {
+            "ran": False,
+            "gate_value": None,
+            "threshold": DISAGREEMENT_THRESHOLD,
+        }
+        if not (self._manifest.gpipe and self._manifest.l2b_graph):
+            routing["reason"] = "gpipe_off"
+        elif graph is None:
+            routing["reason"] = "no_graph"
+        else:
+            routing["gate_value"] = compute_ppr_disagreement(dpipe_scores)
+            routing["ran"] = should_run_gpipe(d_routed, self._manifest)
+            routing["reason"] = "routed" if routing["ran"] else "below_gate"
+        routed = bool(routing["ran"])
+        if graph is not None and routed:
             g_verdict, g_out = self._dispatch(
                 PipelineName.GPIPE,
                 base,
@@ -263,7 +330,7 @@ class RunOrchestrator:
                     run_id, incident_id, PipelineName.GPIPE.value, g_out["evidence"]
                 )
         else:
-            g_verdict = self._skipped(PipelineName.GPIPE, base)
+            g_verdict, g_out = self._skipped(PipelineName.GPIPE, base), {}
         # L-pipe reads raw telemetry only, never the graph or D/G output (S2.3 L-a).
         l_verdict, l_out = self._dispatch(
             PipelineName.LPIPE,
@@ -299,6 +366,7 @@ class RunOrchestrator:
                 if v.status != VerdictStatus.SKIPPED
             }
         )
+        signal = None
         if self._manifest.mahc_hierarchical:
             signal = signal_type(
                 window,
@@ -326,6 +394,24 @@ class RunOrchestrator:
         gate_result = gate.check_consistency(rows, incident_id=incident_id)
 
         if gate_result.status == "PASS":
+            # Built before anything is stored: a builder error leaves no rows
+            # without their CoE entry (review I-3).
+            coe_entry = build_coe_entry(
+                **{k: str(v) for k, v in base.items()},
+                parameter_hashes=self._parameter_hashes(trigger),
+                trigger=trigger,
+                signal=None if signal is None else signal.value,
+                routing=routing,
+                verdicts=verdicts,
+                evidence={
+                    "dpipe": d_out.get("coe_evidence"),
+                    "gpipe": g_out.get("evidence"),
+                    "lpipe": l_out.get("evidence"),
+                },
+                h_struct={**h_struct, "structural_zero": structural_zero},
+                fused=fused,
+                gate_outcome=gate_result.status,
+            )
             for verdict in verdicts:
                 self._store.insert(verdict)
             self._store.insert_fusion(run_id, incident_id, self._config_hash, fused)
@@ -338,6 +424,7 @@ class RunOrchestrator:
                 failed=int(h_struct["failed"]),
                 structural_zero=structural_zero,
             )
+            self._coe.append(coe_entry)
             self._reconciliation.record(
                 run_id=run_id,
                 incident_id=incident_id,
@@ -352,6 +439,20 @@ class RunOrchestrator:
                 outcome="excluded",
                 gate_check=gate_result.gate_check or "",
             )
+
+    def _parameter_hashes(self, trigger: TriggerRecord) -> dict[str, str]:
+        """What the run's decisions were made with (CoE entry, design §5.1)."""
+        hashes = {
+            "detector": trigger.detector_hash or detector_hash(self._detector),
+            "dpipe": dpipe_params_hash(self._dpipe),
+            "gpipe": gpipe_params_hash(self._gpipe),
+            "mahc": mahc_params_hash(self._mahc),
+        }
+        if self._manifest.l2c_llm:
+            hashes["lpipe_model"] = EXPECTED_MODEL_DIGEST or ""
+            for name, sha in sorted(WORKER_PROMPT_SHAS.items()):
+                hashes[f"lpipe_prompt_{name}"] = sha or ""
+        return hashes
 
     def _dispatch(
         self,

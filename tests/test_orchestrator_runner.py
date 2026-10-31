@@ -719,7 +719,7 @@ class TestGPipeS22:
         assert seen["detector"] == load_detector_params()
         con = duckdb.connect(str(tmp_path / "results.duckdb"))
         stored = con.execute(
-            "SELECT pipeline, evidence_json FROM evidence_row"
+            "SELECT pipeline, evidence_json FROM evidence_row WHERE pipeline = 'gpipe'"
         ).fetchall()
         assert [(p, json.loads(e)) for p, e in stored] == [("gpipe", evidence)]
 
