@@ -52,6 +52,7 @@ from helios.pipelines.l_pipe.lpipe_config import (
 )
 from helios.pipelines.l_pipe.ollama_client import (
     OllamaClient,
+    OllamaConnectionError,
     OllamaGenerateResult,
 )
 from helios.store.result_store import ResultStore
@@ -86,6 +87,10 @@ class _CacheOnlyClient(OllamaClient):
         return EXPECTED_MODEL_DIGEST
 
     def generate(self, prompt: str, timeout_s: float) -> OllamaGenerateResult:
+        if prompt.startswith("HELIOS-NARRATOR"):
+            # S2.8: the narrator never changes fusion; without a model it falls
+            # back to the template, as it would with the server down.
+            raise OllamaConnectionError("cache-only build run: no narrator model")
         raise CacheMissError(
             "an L-pipe answer is not in the cache; rerun the L-pipe build runs"
         )

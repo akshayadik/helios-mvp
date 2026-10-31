@@ -90,6 +90,25 @@ def _evidence_lines(entry: Mapping[str, Any]) -> list[str]:
     return lines
 
 
+def _slot_words(slot: str, params: NarratorParams | None) -> str:
+    """The frozen words a sentence in this slot may use (N-j)."""
+    if params is None:
+        return ""
+    words: set[str] = set(params.vocabulary.get("common", ()))
+    for kind in SLOT_KINDS[slot]:
+        words |= set(params.vocabulary.get(kind, ()))
+    if slot == "story":
+        words |= {w for ws in params.direction_words.values() for w in ws}
+        words |= {w for ws in params.channel_words.values() for w in ws}
+        words |= set(params.rank_words)
+    if slot == "contradictions":
+        words |= set(params.rank_words) | set(params.pipeline_words)
+    if slot == "verification":
+        words |= set(params.verbs)
+        words |= {w for ws in params.channel_words.values() for w in ws}
+    return ", ".join(sorted(words))
+
+
 def render_prompt(
     slot: str,
     entry: Mapping[str, Any],
@@ -116,6 +135,7 @@ def render_prompt(
             f"PREVIOUS ANSWER: {previous}\nFix or drop the rejected claims.\n"
         )
     return PROMPT_TEMPLATE.format(
+        vocabulary=_slot_words(slot, params),
         slot=slot,
         task=_TASKS[slot],
         kinds=", ".join(SLOT_KINDS[slot]),

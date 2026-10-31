@@ -263,3 +263,15 @@ def test_check_frozen_refuses_provisional(
         tool, "load_mahc_params", lambda: MAHCParams(fit_priors([]), None, None, True)
     )
     assert tool.main(["--check-frozen"]) == 2
+
+
+def test_cache_only_client_lets_the_narrator_fall_back() -> None:
+    # S2.8: HELIOS-Full now narrates; a narrator call must fall back to the
+    # template (connection error), while an L-pipe miss stays a hard error.
+    from helios.pipelines.l_pipe.ollama_client import OllamaConnectionError
+
+    client = tool._CacheOnlyClient("http://h:1", "m")
+    with pytest.raises(OllamaConnectionError):
+        client.generate("HELIOS-NARRATOR\nSLOT: story", 1)
+    with pytest.raises(tool.CacheMissError):
+        client.generate("worker prompt", 1)

@@ -22,6 +22,7 @@ The owner's rule *(owner)*: **every displayed claim cites evidence that exists a
 | N-f | **Numbers are normalised before comparison:** percent ↔ fraction, ms ↔ s, "~" / "about" allowed; equal within ±1% relative or at the precision the sentence states | owner, 2026-10-31 |
 | N-g | **Verification steps** are accepted only if: the target is a fused top-3 suspect, or its caller or callee through a cited G-pipe edge; any time lies inside the incident window around the trigger; the verb is from a frozen read-only list (query, inspect, verify, check, filter); the modality matches the cited item (D → metric, L → log or trace, G → edge or connection); at least one citation. Fallback: the template's step for the top suspect | owner, 2026-10-31 |
 | N-i | **Raw before/after levels in the evidence.** D-pipe's `coe_evidence` gains, per top-5 service and channel, the median level before and after the trigger with its unit, from the series D-pipe already reads; additive (ranking, μ, σ, decision hash unchanged and re-pinned); the CoE items `D:<svc>:<channel>` carry them, so sentences can state concrete levels and N-f's normalisation applies | owner, 2026-10-31 |
+| N-j | **Closed vocabulary** (after the whole-branch review showed containment alone lets negations, invented causes and reversed edges through): the LLM still writes each sentence, but every word must come from a frozen per-kind word list (connectives, synonyms, the claim's own service names, numbers from the claim's own item, its units); the sentence must agree with the claim's fields (rank word, channel, direction, caller before callee, pipeline name); a log claim quotes its snippet in double quotes; no line breaks, brackets or citation IDs inside a sentence. A shift claim needs its own `D:<svc>:<channel>` item (the log-line path of §5.2 is dropped). The lists are frozen with the prompt (entry C) | owner, 2026-10-31 |
 | N-h | **Machine verification report** beside the rater labels, with no human labour: first-pass acceptance rate, rejections by failure mode, retry success, slot fallback rate, per variant | owner, 2026-10-31 |
 
 Carried from S2.3 §5.5: the contradiction list is computed by code (the narrator explains it, never finds it); `primary_culprit`, μ, σ and confidence are filled by code; the narrator never changes a ranking or states a number the code did not supply.
@@ -67,7 +68,7 @@ Stored as JSON (claims with kinds, fields, cites, sentence, verdict) and rendere
 
 | Kind | Fields | Accepted when |
 |---|---|---|
-| `shift` | service, channel (error / latency / resource), direction (up / down), cites | a cited `D:<service>:<channel>` item exists with a shift of that sign; or a cited L line for that service |
+| `shift` | service, channel (error / latency / resource), direction (up / down), cites | a cited `D:<service>:<channel>` item exists whose levels (or shift) go that way (N-j: no log-line path) |
 | `call_structure` | caller, callee, feature (wait / lead / ghost edge), cites | a cited `G:<callee>:wait_from` (or `leads`, `ghost_edges`) item holds that directed edge |
 | `log_message` | service, snippet, cites | the snippet occurs verbatim in a cited `L:<worker>:<line>` text of that service |
 | `ranking` | service, rank, cites | the service holds that rank in the fused ranking; cites the `F` step |

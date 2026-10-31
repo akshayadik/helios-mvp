@@ -191,3 +191,12 @@ def test_first_draft_counts() -> None:
         1,
         1,
     )
+
+
+def test_prompt_lists_the_slot_vocabulary() -> None:
+    story = render_prompt("story", ENTRY, P)
+    steps = render_prompt("verification", ENTRY, P)
+    assert "ALLOWED WORDS" in story
+    assert "suspect" in story and "waiting" in story and "logged" in story
+    assert "incoming" in steps and "query" in steps
+    assert "incoming" not in story.split("ALLOWED WORDS")[1].split("\n")[0]

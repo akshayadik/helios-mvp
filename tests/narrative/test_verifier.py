@@ -238,12 +238,13 @@ def test_numbers_normalised() -> None:
         "cart latency rose to ~900 ms.",
         "cart latency rose to about 0.9 seconds.",
         "cart latency rose from 120ms to 900ms.",
+        "cart latency climbed from 120 ms to 900 ms after the trigger.",
     ):
         claim = base.model_copy(update={"sentence": sentence})
         assert verify(claim, ENTRY, P) is None, sentence
     ad = c(
         "shift",
-        "ad CPU rose from 42% to 94%.",
+        "ad cpu use rose from 42% to 94%.",
         ["D:ad:resource"],
         service="ad",
         channel="resource",
@@ -253,13 +254,20 @@ def test_numbers_normalised() -> None:
 
 
 def test_ids_ranks_and_times_are_not_evidence_numbers() -> None:
-    claim = SUPPORTED["ranking"].model_copy(
-        update={
-            "sentence": "At 14:51 cart became the #1 and top-3 suspect (see L12).",
-            "rank": 1,
-        }
+    # Rank words, p99 and HH:MM are not checked as evidence numbers; under the
+    # closed vocabulary (N-j) IDs and "#1" may not appear in a sentence at all.
+    step = SUPPORTED["verification_step"].model_copy(
+        update={"sentence": "Query cart p99 latency between 14:50 and 14:55."}
     )
-    assert verify(claim, ENTRY, P) is None
+    assert verify(step, ENTRY, P) is None
+    ranked = SUPPORTED["ranking"].model_copy(
+        update={"sentence": "cart is the first and most likely suspect."}
+    )
+    assert verify(ranked, ENTRY, P) is None
+    ids = SUPPORTED["ranking"].model_copy(
+        update={"sentence": "cart is the #1 suspect (see L12)."}
+    )
+    assert verify(ids, ENTRY, P) is not None
 
 
 def test_number_not_in_evidence() -> None:
@@ -320,7 +328,8 @@ def test_ranking_claim_may_cite_score_items_shift_may_not() -> None:
     assert verify(shift, ENTRY, P) == Reason.KIND_MISMATCH
 
 
-def test_shift_may_be_grounded_by_a_log_line() -> None:
+def test_shift_may_not_be_grounded_by_a_log_line() -> None:
+    # N-j: a shift claim needs its own D-pipe item.
     claim = c(
         "shift",
         "cart errors rose.",
@@ -329,7 +338,7 @@ def test_shift_may_be_grounded_by_a_log_line() -> None:
         channel="error",
         direction="up",
     )
-    assert verify(claim, ENTRY, P) is None
+    assert verify(claim, ENTRY, P) == Reason.KIND_MISMATCH
 
 
 def test_log_snippet_text_is_not_rechecked() -> None:

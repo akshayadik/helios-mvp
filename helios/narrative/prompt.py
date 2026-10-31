@@ -37,6 +37,9 @@ Rules:
 - A call_structure claim gives caller and callee exactly as the evidence does.
 - Times are UTC within the incident window.
 - Allowed kinds in this slot: {kinds}.
+- Use only the ALLOWED WORDS below, plus the claim's own service names,
+  numbers from its own evidence and their units. No other words: no
+  negations, no causes, no actions that change a system.
 
 Claim fields by kind:
 - ranking: service, rank (1-3), cites ["F"]
@@ -48,6 +51,8 @@ Claim fields by kind:
   (metric|log|edge); the sentence starts with the verb; read-only checks only;
   at most {max_steps} steps
 Every claim also has "kind", "sentence" and "cites".
+
+ALLOWED WORDS: {vocabulary}
 
 INCIDENT WINDOW (UTC): {window}
 FUSED VERDICT: {fused}

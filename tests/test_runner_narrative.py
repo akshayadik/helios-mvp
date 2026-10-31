@@ -45,7 +45,11 @@ def test_full_run_has_llm_narrative_in_coe_entry(tmp_path: Path) -> None:
     store, path = _run(tmp_path)
     step = _narrative(path)
     assert step["narrator"] == "llm"
-    assert any(s["attempts"] for s in step["slots"].values())
+    # Review I8: an accepted LLM claim travels runner -> store -> ledger.
+    story = step["slots"]["story"]
+    assert (story["source"], story["attempts"], story["fallback"]) == ("llm", 1, False)
+    assert story["claims"][0]["kind"] == "ranking"
+    assert any(s["fallback"] for s in step["slots"].values() if s["attempts"])
     (run_id,) = {str(r["run_id"]) for r in store.fetch_all()}
     row = store.fetch_narrative(run_id)
     assert row is not None and row["rendered"] == step["rendered"]
@@ -183,3 +187,19 @@ def test_cpr_counts_narrator_tokens(tmp_path: Path) -> None:
         base.completion_tokens + narrative["completion_tokens"]
     )
     assert incident_usage(verdicts, narrative=None) == base
+
+
+def test_narrator_hashes_in_the_signed_entry(tmp_path: Path) -> None:
+    from helios.narrative.params import narrator_params_hash
+    from helios.narrative.prompt import NARRATOR_PROMPT_SHA
+
+    _, full = _run(tmp_path / "full")
+    _, nollm = _run(tmp_path / "nollm", "HELIOS-noLLM")
+    _, noexpl = _run(tmp_path / "noexpl", "HELIOS-noExpl")
+    (f,), (n,), (x,) = _entries(full), _entries(nollm), _entries(noexpl)
+    params_hash = narrator_params_hash(load_narrator_params())
+    assert f["parameter_hashes"]["narrator_params"] == params_hash
+    assert f["parameter_hashes"]["narrator_prompt"] == NARRATOR_PROMPT_SHA
+    assert n["parameter_hashes"]["narrator_params"] == params_hash
+    assert "narrator_prompt" not in n["parameter_hashes"]
+    assert "narrator_params" not in x["parameter_hashes"]

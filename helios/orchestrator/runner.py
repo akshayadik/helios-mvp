@@ -28,7 +28,7 @@ from helios.graph.ueg_c_builder import build_ueg_c
 from helios.integrity_gate import AppendOnlyLedger, MetricIntegrityGate
 from helios.narrative import prompt as narrator_prompt
 from helios.narrative.engine import run_narrative
-from helios.narrative.params import load_narrator_params
+from helios.narrative.params import load_narrator_params, narrator_params_hash
 from helios.orchestrator.coe import CoELedger, build_coe_entry
 from helios.orchestrator.corpus import CorpusLoader
 from helios.orchestrator.ledger import ReconciliationLedger
@@ -480,6 +480,10 @@ class RunOrchestrator:
             "gpipe": gpipe_params_hash(self._gpipe),
             "mahc": mahc_params_hash(self._mahc),
         }
+        if self._manifest.coe_narrative:
+            hashes["narrator_params"] = narrator_params_hash(self._narrator)
+            if self._manifest.l2c_llm:
+                hashes["narrator_prompt"] = narrator_prompt.NARRATOR_PROMPT_SHA
         if self._manifest.l2c_llm:
             hashes["lpipe_model"] = EXPECTED_MODEL_DIGEST or ""
             for name, sha in sorted(WORKER_PROMPT_SHAS.items()):

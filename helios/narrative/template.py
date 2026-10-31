@@ -129,13 +129,25 @@ def _graph_claim(entry: Mapping[str, Any], svc: str) -> Claim | None:
     return None
 
 
-def _log_claim(entry: Mapping[str, Any], svc: str) -> Claim | None:
+def _snippet(text: str, params: NarratorParams) -> str | None:
+    """The first words of a log line, cut at a word boundary, as long as the
+    verifier requires (N-j); None when the line is too short or multi-line."""
+    raw = text.strip()
+    if "\n" in raw or '"' in raw:
+        return None
+    if len(raw) > _SNIPPET_CHARS:
+        cut = raw[:_SNIPPET_CHARS]
+        raw = cut[: cut.rfind(" ")] if " " in cut else ""
+        raw = raw.strip()
+    return raw if len(raw) >= params.min_snippet_chars else None
+
+
+def _log_claim(
+    entry: Mapping[str, Any], svc: str, params: NarratorParams
+) -> Claim | None:
     for item in _items(entry, "L:", svc):
-        text = " ".join(str(item.get("text", "")).split())
-        if not text:
-            continue
-        snippet = text[:_SNIPPET_CHARS].strip()
-        if snippet != text[: len(snippet)] or snippet not in str(item["text"]):
+        snippet = _snippet(str(item.get("text", "")), params)
+        if snippet is None:
             continue
         return Claim(
             kind=ClaimKind.LOG_MESSAGE,
@@ -147,7 +159,9 @@ def _log_claim(entry: Mapping[str, Any], svc: str) -> Claim | None:
     return None
 
 
-def _story(entry: Mapping[str, Any], ranked: list[str]) -> list[Claim]:
+def _story(
+    entry: Mapping[str, Any], ranked: list[str], params: NarratorParams
+) -> list[Claim]:
     claims: list[Claim] = []
     for rank, svc in enumerate(ranked[:3], start=1):
         claims.append(
@@ -163,7 +177,7 @@ def _story(entry: Mapping[str, Any], ranked: list[str]) -> list[Claim]:
             claims.append(_shift_claim(shift, svc))
         if graph := _graph_claim(entry, svc):
             claims.append(graph)
-        if log := _log_claim(entry, svc):
+        if log := _log_claim(entry, svc, params):
             claims.append(log)
     return claims
 
@@ -258,7 +272,7 @@ def template_slots(
     if not ranked:
         return {slot: [] for slot in SLOTS}
     return {
-        "story": _story(entry, ranked),
+        "story": _story(entry, ranked, params),
         "contradictions": _contradictions(entry, ranked[0]),
         "verification": _verification(entry, ranked[0], params),
     }

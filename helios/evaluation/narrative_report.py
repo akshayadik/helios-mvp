@@ -38,7 +38,9 @@ def _shape(values: list[int]) -> dict[str, float | int | None]:
 
 def _one(rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     slots = [s for r in rows for s in r["slots"].values()]
-    called = [s for s in slots if s["attempts"] > 0]
+    # A slot the narrator tried to fill: a model call, or a fallback before
+    # any call (model unreachable at the digest check).
+    called = [s for s in slots if s["attempts"] > 0 or s["fallback"]]
     retried = [s for s in called if s["attempts"] > 1]
     displayed = [c for s in slots for c in s["claims"]]
     reasons: Counter[str] = Counter(str(r[1]) for s in slots for r in s["rejections"])
@@ -60,8 +62,26 @@ def _one(rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
             sum(1 for s in called if s["fallback"]), len(called)
         ),
         "rejections": dict(sorted(reasons.items())),
-        "sentence_words": _shape([len(c["sentence"].split()) for c in displayed]),
-        "claims_per_slot": _shape([len(s["claims"]) for s in slots if s["claims"]]),
+        "style": {
+            source: {
+                "sentence_words": _shape(
+                    [
+                        len(c["sentence"].split())
+                        for s in slots
+                        if s["source"] == source
+                        for c in s["claims"]
+                    ]
+                ),
+                "claims_per_slot": _shape(
+                    [
+                        len(s["claims"])
+                        for s in slots
+                        if s["source"] == source and s["claims"]
+                    ]
+                ),
+            }
+            for source in sorted({str(s["source"]) for s in slots})
+        },
     }
 
 
