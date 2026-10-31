@@ -48,6 +48,10 @@ The three peer pipelines produce calibrated verdicts; MAHC fuses them with calib
   - **Chair call, mid-November 2026:** opportunity-cost figure, retention and review minutes, disclosure of the May capture defects (T13, T17); **from S2.1:** TTCD and TTT measured from the shared detection trigger (deviation entry 46, changes metric contract §4), the 5% false-trigger limit and how false triggers are handled, and the out-of-scope service list (entry 47). A call-reference doc with an outcomes table is prepared before the call.
   - **IRB (L1):** in progress, submission expected around 2026-11-03.
 
+## Backlog to revisit
+
+Observations and shortcomings from S2.1–S2.5 (19 items: confirmatory threats, weak components, measurement details, engineering debt) are in [backlog.md](backlog.md). Owner 2026-10-31: reviewed and fixed after the remaining S2 tasks; items that change what a confirmatory test measures go through a deviation entry and the OSF addendum before `build-freeze`.
+
 ## Expected deviation entries
 
 Detector parameters for the trigger (S2.1); G-pipe model and parameters (S2.2); prompts and model version (S2.3); λ and calibration method (S2.5); presentation-order seed block for the labelling tool (S2.9); any rubric decision that changes what H_fact measures.
