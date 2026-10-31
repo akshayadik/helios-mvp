@@ -199,6 +199,7 @@ def test_dpipe_evidence_row_stored(tmp_path: Path) -> None:
         "resource",
         "score",
         "final",
+        "levels",
     }
 
 

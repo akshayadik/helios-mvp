@@ -401,6 +401,8 @@ class RunOrchestrator:
                 parameter_hashes=self._parameter_hashes(trigger),
                 trigger=trigger,
                 signal=None if signal is None else signal.value,
+                window_start=window.window_start_iso,
+                window_end=window.window_end_iso,
                 routing=routing,
                 verdicts=verdicts,
                 evidence={
