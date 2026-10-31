@@ -79,7 +79,7 @@ from helios.vcl.decorators import GatedComponentInactiveError, set_current_manif
 from helios.vcl.snapshot_registry import DuplicateSnapshotError, SnapshotRegistry
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Collection
 
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
@@ -217,13 +217,15 @@ class RunOrchestrator:
             return self._external[window.incident_id]
         return detect(window, self._detector)
 
-    def run(self, corpus: Path) -> None:
-        """Process every incident in corpus through the full C1 path."""
+    def run(self, corpus: Path, incidents: Collection[str] | None = None) -> None:
+        """Process every incident in corpus through the full C1 path, or only
+        those named in ``incidents`` (a build round's split, S2.8)."""
         if self._manifest.l2c_llm:
             verify_model(self._lpipe_client)  # entry 58: before any incident writes
         self._coe.check_append()  # S2.7: a ledger we cannot extend stops the run here
         for incident_id in CorpusLoader(corpus).incident_ids():
-            self._process_incident(incident_id)
+            if incidents is None or incident_id in incidents:
+                self._process_incident(incident_id)
 
     def _process_incident(self, incident_id: str) -> None:
         run_id = str(uuid.uuid4())
