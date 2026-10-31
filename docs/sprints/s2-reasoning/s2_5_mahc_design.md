@@ -1,6 +1,6 @@
 # S2.5 — MAHC with calibrated confidence (IN2), and S2.6 vote-only · design
 
-**Tasks:** S2.5 (tracking S2-M7-ENG05) and S2.6 (S2-M7-ENG06) · **Date:** 2026-10-30 · **Status:** draft for owner approval (builder check done 2026-10-30) · **Depends on:** frozen detector (entry 52), D-pipe (53), G-pipe (54–56), L-pipe (57–58), H_struct (59) · **Owner decisions:** marked *owner* (2026-10-30)
+**Tasks:** S2.5 (tracking S2-M7-ENG05) and S2.6 (S2-M7-ENG06) · **Date:** 2026-10-30 · **Status:** approved by the owner 2026-10-30; frozen 2026-10-31 (entries 60-63) · **Depends on:** frozen detector (entry 52), D-pipe (53), G-pipe (54–56), L-pipe (57–58), H_struct (59) · **Owner decisions:** marked *owner* (2026-10-30)
 
 **Flag:** MAHC is gated by `VCLFlag.MAHC_HIERARCHICAL` (`mahc_hierarchical`); OFF = vote-only fusion (HELIOS-noConsensus).
 
@@ -126,4 +126,50 @@ The exact keyword lists' spelling (fixed before the run); how the consensus verd
 
 ## 10. Results
 
-(Filled after the build run.)
+Build runs of `bin/mahc_build_run.py` (HELIOS-Full over `otel_build_v3` and `rcaeval_build`, frozen pipelines, cached L-pipe answers, nested cross-fitting). Reports in `calibration/mahc_run{1,2,3}.json`. The fused lists, and so HR@3 of MAHC and vote-only, are identical in all three runs; only the calibrator differs.
+
+| Run | Rules | Calibrator | Floor | OTel confirmed (HR@3) | RCAEval confirmed (HR@3) | Outcome |
+|---|---|---|---|---|---|---|
+| 1 | entry 60 | 5 features | 0.895833 | 22 / 63 (0.818) | 495 / 495 (0.974) | withdrawn (entry 61): the largest weight was on the pipeline count, a dataset proxy (3 pipelines only on OTel) |
+| 2 | + entry 61 | 4 features | 0.893333 | 29 / 63 (0.828) | 310 / 495 (0.977) | withdrawn (entry 62): L2 on the mean loss shrank every weight to ~0; isotonic fitted 229 noise steps; 44 held-out cases at confidence 0 were 88.6% right |
+| 3 | + entry 62 | L2 on the summed loss, isotonic steps of ≥ 20 | **0.914286** | **27 / 63 (0.852)**; the other 36 at 0.72 | **308 / 495 (0.990)**; the other 187 at 0.95 | **frozen (entry 63)**, reproduced byte for byte |
+
+**HR@3 (all runs):**
+
+| | OTel v3 (63) | RCAEval build (495) |
+|---|---|---|
+| MAHC | 0.7778 | 0.9737 |
+| Vote-only (S2.6) | 0.7619 | 0.9737 |
+| D-pipe alone | 0.7619 | 0.9455 |
+| G-pipe alone | 0.7273 (44 routed cases) | — (no traces) |
+| L-pipe alone | 0.6984 | 0.9717 |
+| Ambiguous stratum (top-1s differ): MAHC / vote-only | 39 cases: 0.718 / 0.692 | 141 cases: 0.936 / 0.943 |
+
+**Frozen calibrator (run 3):** weights on standardised features — fused sigma −1.342, entropy −0.847, agree +0.421, top-1 share −0.369; 16 isotonic steps. Priors: global D 0.92, G 0.73, L 0.94; by signal type for D and L (latency, resource, unclassified); G and the error type on the global prior (fewer than 30 cases). Signal type is unclassified on 34 of 63 OTel cases and 31 of 495 RCAEval cases.
+
+**Findings:**
+
+- MAHC adds one case over vote-only and D-pipe on OTel and none on RCAEval, where D-pipe and L-pipe usually agree. **A-H4 is near null on build data** (ambiguous stratum +1 on OTel, −1 on RCAEval): for the chair call with A-H4's power.
+- **The confidence discriminates modestly:** OTel 0.85 confirmed vs 0.72 provisional; RCAEval 0.99 vs 0.95 — 38% of RCAEval build cases would go to a human although 95% are right. Held-out confidence runs below the observed rate (conservative), reflecting folds that hold out whole systems.
+- **The routing gate costs G-pipe cases on OTel:** G-pipe runs on 44 of 63 cases; ungated it scored 50 of 63 in the S2.2 selection run, above the fused 49. For S3.1 (router).
+- Process: two changes were made after inspecting build runs; both removed demonstrable defects (a dataset proxy; numerical over-regularisation), each under a signed entry before the next run, and each withdrawn run is kept as evidence.
+
+### Frozen parameters on the build cases (PR 2 review; `calibration/mahc_frozen_check.json`)
+
+The floor was chosen on cross-fitted confidences and is applied with the refit calibrator. Applied in-sample (an upper bound, not a held-out estimate):
+
+| | Confirmed (HR@3) | Provisional (HR@3) | Cross-fitted confirmed |
+|---|---|---|---|
+| OTel v3 (63) | 33 (0.879) | 30 (0.667) | 27 |
+| RCAEval build (495) | 445 (0.980) | 50 (0.920) | 308 |
+
+**A third pipeline lowers confidence.** On the 44 OTel cases where G-pipe voted, the frozen MAHC confirms 16 with G-pipe's vote and 30 without it (14 cases flip to PROVISIONAL, none the other way); mean confidence 0.84 vs 0.90; HR@3 0.705 with G-pipe vs 0.682 without. The channel is agreement and fused sigma (a third list disagrees more often and G-pipe's sigma is often high), not the removed pipeline count. Reading:
+
+- It is not a dataset proxy on the pool. G-pipe runs only when the routing gate opens (D-pipe's scores disagree, `should_run_gpipe`), on build and pool alike: three contributing pipelines mark the cases D-pipe itself found ambiguous. Those cases are harder (HR@3 about 0.70), and without G-pipe's vote the calibrator would confirm them at 0.90 while 68% are right; with it, the confidence is the more honest of the two.
+- It is a thin regime. All three-pipeline build cases are OTel (44), because the RCAEval build cases have no traces; the pool's RCAEval cases with traces will reach this regime for the first time. **The pool analysis must report the confirmed share and HR@3 separately for cases with and without G-pipe** (and the state flips with and without G-pipe's vote), as here.
+
+### Notes on the frozen calibrator
+
+- The 16 isotonic knots carry 6 distinct confidence levels (adjacent blocks with equal rates are not merged; 11 knots are 1.0). Resolution is 6 levels, not 16.
+- The top-1 share weight is negative (−0.369) although a higher share should raise confidence; it is collinear with entropy (−0.847), and the pair should be read together.
+- Entry 61's consequence says run 2 "is fitted and frozen"; run 2 was withdrawn and entry 62 records it.

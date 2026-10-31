@@ -1,0 +1,34 @@
+{
+  "by_corpus": {
+    "otel_build_v3": {
+      "cases": 63,
+      "confirmed": 33,
+      "hr3_confirmed": 0.8788,
+      "hr3_provisional": 0.6667,
+      "provisional": 30
+    },
+    "rcaeval_build": {
+      "cases": 495,
+      "confirmed": 445,
+      "hr3_confirmed": 0.9798,
+      "hr3_provisional": 0.92,
+      "provisional": 50
+    }
+  },
+  "cases": 558,
+  "excluded": 0,
+  "frozen_hash": "85adf6c5b45b6a5f22b09b4752a82c931c29b67863003ad903f02a15dae36a5f",
+  "gpipe_effect": {
+    "otel_build_v3": {
+      "cases_with_gpipe": 44,
+      "confirmed_with": 16,
+      "confirmed_without": 30,
+      "flips_confirmed_to_provisional": 14,
+      "flips_provisional_to_confirmed": 0,
+      "hr3_with": 0.7045,
+      "hr3_without": 0.6818,
+      "mean_confidence_with": 0.8392,
+      "mean_confidence_without": 0.898
+    }
+  }
+}

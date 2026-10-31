@@ -53,10 +53,11 @@ D = _verdict(PipelineName.DPIPE, ["cart", "ad"], 0.2)
 G = _verdict(PipelineName.GPIPE, ["ad", "cart"], 0.3)
 L = _verdict(PipelineName.LPIPE, ["cart"], 0.4)
 FAST = {"dpipe": 100, "gpipe": 200, "lpipe": 9_000}
+PROVISIONAL = MAHCParams(fit_priors([]), None, None, provisional=True)
 
 
 def _calibrated(value: float, floor: float) -> MAHCParams:
-    cal = Calibrator((0,) * 5, 0, (0,) * 5, (1,) * 5, ((-1e9, value),))
+    cal = Calibrator((0,) * 4, 0, (0,) * 4, (1,) * 4, ((-1e9, value),))
     return MAHCParams(fit_priors([]), cal, floor, provisional=False)
 
 
@@ -67,11 +68,11 @@ def _full() -> None:
 
 def test_provisional_params_refused_in_confirmatory() -> None:
     with pytest.raises(ProvisionalParamsError):
-        run_mahc([D], RES, load_mahc_params(), latency_ms=FAST, confirmatory=True)
+        run_mahc([D], RES, PROVISIONAL, latency_ms=FAST, confirmatory=True)
 
 
-def test_provisional_file_has_neutral_priors_and_no_floor() -> None:
-    p = load_mahc_params()
+def test_provisional_params_have_neutral_priors_and_no_floor() -> None:
+    p = PROVISIONAL
     assert p.provisional and p.calibrator is None and p.floor is None
     assert p.priors.lookup("dpipe", RES) == (1, "global")
 
@@ -137,4 +138,21 @@ def test_vote_only_confirmed_unless_non_converged_or_empty() -> None:
 def test_gated_off_raises_inactive() -> None:
     set_current_manifest(get_variant("HELIOS-noConsensus"))
     with pytest.raises(GatedComponentInactiveError):
-        run_mahc([D], RES, load_mahc_params(), latency_ms=FAST, confirmatory=False)
+        run_mahc([D], RES, PROVISIONAL, latency_ms=FAST, confirmatory=False)
+
+
+def test_frozen_mahc_params_match_the_report() -> None:
+    # Entry 63: MAHC frozen from build run 3 (calibration/mahc_run3.json, entries 60-62).
+    import json
+    from pathlib import Path
+
+    repo = Path(__file__).resolve().parents[2]
+    report = json.loads(
+        (repo / "docs/sprints/s2-reasoning/calibration/mahc_run3.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    frozen = load_mahc_params()
+    assert not frozen.provisional
+    assert frozen.floor == report["floor"]
+    assert mahc_params_hash(frozen) == report["refit_hash"]

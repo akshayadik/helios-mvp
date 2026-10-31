@@ -89,7 +89,11 @@ def test_full_stores_a_mahc_fusion_row(
 ) -> None:
     row = _fusion(_run(tmp_path, monkeypatch, "HELIOS-Full", "full"))
     assert row["method"] == "mahc"
-    assert row["state"] == "provisional"  # provisional parameters: no floor yet
+    assert row["state"] in {"confirmed", "provisional"}
+    from helios.consensus.params import load_mahc_params
+
+    # A calibrated confidence exactly when the parameters are frozen.
+    assert (row["confidence"] is None) == load_mahc_params().provisional
     assert row["evidence"]["signal"] == "unclassified"
     assert row["ranked"][0] == "svc-b"
 
@@ -132,12 +136,13 @@ def test_rerun_equal_fusion(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
 
 
 def test_confirmatory_run_refuses_provisional_mahc_params(tmp_path: Path) -> None:
-    from helios.consensus.params import load_mahc_params
+    from helios.consensus.params import MAHCParams
+    from helios.consensus.priors import fit_priors
     from helios.telemetry.trigger import ProvisionalParametersError
     from tests.test_orchestrator_runner import _make_orchestrator
 
     orch = _make_orchestrator(tmp_path, tmp_path / "captures")
-    assert load_mahc_params().provisional
+    orch._mahc = MAHCParams(fit_priors([]), None, None, provisional=True)
     window = MagicMock(evaluation_phase="confirmatory")
     orch._detector = MagicMock(provisional=False)
     orch._dpipe = MagicMock(provisional=False)

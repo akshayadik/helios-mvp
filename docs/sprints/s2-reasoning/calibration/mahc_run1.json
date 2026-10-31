@@ -1,0 +1,258 @@
+{
+  "by_corpus": {
+    "otel_build_v3": {
+      "cases": 63,
+      "confirmed": 22,
+      "hr3_confirmed": 0.8182,
+      "mahc_hr3": 0.7778,
+      "pipelines_hr3": {
+        "dpipe": 0.7619,
+        "gpipe": 0.7273,
+        "lpipe": 0.6984
+      },
+      "pipelines_with_list": {
+        "dpipe": 63,
+        "gpipe": 44,
+        "lpipe": 63
+      },
+      "signal_types": {
+        "error": 9,
+        "latency": 9,
+        "resource": 11,
+        "unclassified": 34
+      },
+      "vote_only_hr3": 0.7619
+    },
+    "rcaeval_build": {
+      "cases": 495,
+      "confirmed": 495,
+      "hr3_confirmed": 0.9737,
+      "mahc_hr3": 0.9737,
+      "pipelines_hr3": {
+        "dpipe": 0.9455,
+        "lpipe": 0.9717
+      },
+      "pipelines_with_list": {
+        "dpipe": 495,
+        "lpipe": 494
+      },
+      "signal_types": {
+        "error": 2,
+        "latency": 250,
+        "resource": 212,
+        "unclassified": 31
+      },
+      "vote_only_hr3": 0.9737
+    }
+  },
+  "calibration_curve": [
+    {
+      "bin": [
+        0.0,
+        0.1
+      ],
+      "cases": 3,
+      "hr3": 0.3333,
+      "mean_confidence": 0.0
+    },
+    {
+      "bin": [
+        0.1,
+        0.2
+      ],
+      "cases": 0,
+      "hr3": null,
+      "mean_confidence": null
+    },
+    {
+      "bin": [
+        0.2,
+        0.3
+      ],
+      "cases": 0,
+      "hr3": null,
+      "mean_confidence": null
+    },
+    {
+      "bin": [
+        0.3,
+        0.4
+      ],
+      "cases": 0,
+      "hr3": null,
+      "mean_confidence": null
+    },
+    {
+      "bin": [
+        0.4,
+        0.5
+      ],
+      "cases": 0,
+      "hr3": null,
+      "mean_confidence": null
+    },
+    {
+      "bin": [
+        0.5,
+        0.6
+      ],
+      "cases": 9,
+      "hr3": 1.0,
+      "mean_confidence": 0.5748
+    },
+    {
+      "bin": [
+        0.6,
+        0.7
+      ],
+      "cases": 20,
+      "hr3": 0.85,
+      "mean_confidence": 0.6567
+    },
+    {
+      "bin": [
+        0.7,
+        0.8
+      ],
+      "cases": 8,
+      "hr3": 0.375,
+      "mean_confidence": 0.7257
+    },
+    {
+      "bin": [
+        0.8,
+        0.9
+      ],
+      "cases": 32,
+      "hr3": 1.0,
+      "mean_confidence": 0.8946
+    },
+    {
+      "bin": [
+        0.9,
+        1.0
+      ],
+      "cases": 486,
+      "hr3": 0.965,
+      "mean_confidence": 0.9639
+    }
+  ],
+  "cases": 558,
+  "excluded": 0,
+  "floor": 0.895833,
+  "refit": {
+    "calibrator": {
+      "coef": [
+        0.006926,
+        -0.005974,
+        -0.040877,
+        -0.060829,
+        0.039615
+      ],
+      "intercept": 2.983921,
+      "knots": [
+        [
+          2.659212,
+          0.0
+        ],
+        [
+          2.660675,
+          0.0
+        ],
+        [
+          2.661826,
+          0.685714
+        ],
+        [
+          2.766658,
+          0.866667
+        ],
+        [
+          2.880363,
+          0.92
+        ],
+        [
+          2.895782,
+          0.920635
+        ],
+        [
+          2.921347,
+          0.962963
+        ],
+        [
+          2.954717,
+          0.976744
+        ],
+        [
+          3.002318,
+          0.987805
+        ],
+        [
+          3.031384,
+          0.995516
+        ]
+      ],
+      "mean": [
+        0.12037,
+        0.931503,
+        0.566343,
+        2.077061,
+        0.677419
+      ],
+      "scale": [
+        0.048116,
+        0.022748,
+        0.327339,
+        0.273325,
+        0.467464
+      ]
+    },
+    "floor": 0.895833,
+    "priors": {
+      "by_signal": {
+        "latency": {
+          "dpipe": 0.945157,
+          "lpipe": 0.97921
+        },
+        "resource": {
+          "dpipe": 0.979602,
+          "lpipe": 0.984582
+        },
+        "unclassified": {
+          "dpipe": 0.669964,
+          "lpipe": 0.681183
+        }
+      },
+      "counts": {
+        "error": {
+          "dpipe": 11,
+          "gpipe": 9,
+          "lpipe": 11
+        },
+        "latency": {
+          "dpipe": 259,
+          "gpipe": 0,
+          "lpipe": 259
+        },
+        "resource": {
+          "dpipe": 223,
+          "gpipe": 6,
+          "lpipe": 223
+        },
+        "unclassified": {
+          "dpipe": 65,
+          "gpipe": 29,
+          "lpipe": 64
+        }
+      },
+      "global": {
+        "dpipe": 0.924731,
+        "gpipe": 0.727273,
+        "lpipe": 0.940754
+      }
+    },
+    "provisional": false
+  },
+  "refit_hash": "3ffa7455528f0cbd87c67ead0e6ba18f1433a1970b95307c63146185f8c4bb57",
+  "variant": "HELIOS-Full"
+}
