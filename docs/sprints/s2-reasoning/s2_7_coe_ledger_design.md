@@ -1,6 +1,6 @@
 # S2.7 — Chain-of-Evidence ledger · design
 
-**Task:** S2.7 (tracking S2-M7-ENG07) · **Date:** 2026-10-31 · **Status:** draft for owner approval (builder check done 2026-10-31) · **Depends on:** S2.5 (fusion_row, frozen MAHC, entries 60–63), S2.4 (H_struct), S2.3 (L-pipe evidence), S2.2 (G-pipe evidence), the HMAC-chained anchored ledgers (S0) and the deviation log's Ed25519 layer (entry 35) · **Owner decisions:** marked *owner* (2026-10-31)
+**Task:** S2.7 (tracking S2-M7-ENG07) · **Date:** 2026-10-31 · **Status:** approved 2026-10-31; built (§10), deviation entry 64 · **Depends on:** S2.5 (fusion_row, frozen MAHC, entries 60–63), S2.4 (H_struct), S2.3 (L-pipe evidence), S2.2 (G-pipe evidence), the HMAC-chained anchored ledgers (S0) and the deviation log's Ed25519 layer (entry 35) · **Owner decisions:** marked *owner* (2026-10-31)
 
 **Flag:** the ledger is audit infrastructure and is written for every variant (like the reconciliation ledger); `VCLFlag.COE_NARRATIVE` gates only the narrator (S2.8), never the ledger.
 
@@ -115,4 +115,41 @@ Exact item text wording; which D-pipe intermediate fields map to which signal na
 
 ## 10. Results
 
-(Filled after the build.)
+Built 2026-10-31 on branch `s2/coe` (commits `57c5584`..`90f38aa`); deviation entry 64 (`d5f859b4c98aca08`).
+
+**What was built**
+
+| Part | Where | Notes |
+|---|---|---|
+| Anchor-only Ed25519 mode | `helios/vcl/hmac_chain.py` (`ANCHOR_ED25519`, `check_append`, `verify_public(from_entry=None)`) | Opt-in; the deviation log is unchanged (regression test on the real log: 64 entries, 30 Ed25519-signed) |
+| `CoELedger`, entry builder | `helios/orchestrator/coe.py` (`build_coe_entry`, `row_ref`, `fusion_record`, `ITEM_CAP = 30`) | Steps T, R, P:dpipe, P:gpipe, P:lpipe, F, G; items `{id, service, text, value}` (claims add `cites`) |
+| D-pipe evidence | `run_dpipe` → `coe_evidence`; `ScoredServices.channels` | Top 5: error, latency and resource shifts (robust units), pre-propagation score, final score; stored as an `evidence_row` (pipeline `dpipe`) |
+| Runner wiring | `helios/orchestrator/runner.py` | One file per orchestrator run: `<db stem>.coe/<UTC start>-<8 hex>.coe.jsonl` (gitignored); pre-flight `check_append` in `run()`; entry built before any store write, appended after; confirmatory runs refuse without the key |
+| Verification | `bin/verify_ledgers.py --coe DIR [--public-only] [--public-key PATH]` | HMAC chain plus signed anchor; `--public-only` needs no secret |
+| CLI key | `bin/helios_run.py` | `DEVIATION_ED25519_PRIVATE_KEY` checked against the committed public key |
+
+**Builder's calls (§9)**
+
+- D-pipe items: `D:<svc>:error|latency|resource` (omitted when no usable trigger split), `D:<svc>:propagation` (final minus pre-propagation score, only when non-zero), `D:<svc>:score`, `D:<svc>:final`: at most six per service, thirty for the top 5.
+- G-pipe items skip empty `wait_from`, `leads` and `ghost_edges` (`self_shift` always).
+- L-pipe items: lines and claims per worker in worker-name order; the raw model text and worker wall time stay in the evidence row (referenced by hash), not in the entry. A cite that is not a digest line of that worker is dropped from `cites`.
+- Routing record `R`: `ran`, `gate_value` (only where routing evaluates the gate), `threshold`, `reason` (`gpipe_off`, `no_graph`, `below_gate`, `routed`).
+- `refs`: each pipeline step's verdict decision hash (checkable against `result_row.decision_hash`) and SHA-256 of the canonical stored evidence and fusion rows. The fusion ref and the schedule-derived F fields (state, first ranking, non-convergence) follow the replayed timing, as the stored fusion row does; latency, CPU and publication times sit under `measured`.
+
+**Whole-branch review (fresh reviewer): 0 Critical, 4 Important, all fixed test-first**
+
+1. *Signature downgrade and laundering:* a holder of the HMAC secret alone could cut entries, write an unsigned anchor, and have the owner's next keyed run sign the edited file. Fixed by monotonic signing per file (a keyless append onto a signed file and a keyed append onto a non-empty unsigned file are refused) and one file per orchestrator run (§4). This reverses the plan's Review Focus 5 ("unsigned then keyed append verifies"), which was the laundering path.
+2. *No public-key-only check:* `--public-only` added.
+3. *Rows stored without their entry on a builder or ledger error:* pre-flight in `run()`; entry built before the inserts.
+4. *D-pipe shift not split by signal (§5.2):* per-channel shifts and the propagation adjustment added; ranking unchanged.
+
+A fifth finding (the routing gate evaluated for every variant, and it raises on negative scores) was re-graded Important and fixed. Six minors are deferred (see the review ledger): timing-dependent fusion ref (documented above), decision hash as the verdict ref, evidence-presence predicate (latent), dropped invalid cites, `anchor_unsigned` popped for every ledger kind, model-digest fallback.
+
+**Test evidence**
+
+- D-pipe ranked list, μ, σ and decision hash on two OTel build windows recorded before the change and unchanged after (`tests/pipelines/d_pipe/test_coe_evidence.py`).
+- Tamper tests: edited, removed, reordered and truncated entries each fail `verify()` and `verify_public`; downgrade-then-launder refused; unsigned anchors reported unsigned (`tests/test_coe_ledger.py`).
+- Builder: step order, unique IDs, soft cap (a claim citing line 38 of 40 keeps it; 35 claims keep all 35 cited lines), refs, no fused list, determinism outside `measured` (`tests/test_coe_entry.py`).
+- Runner: one entry per stored run with refs matching the stored rows, G items when routed, below-gate record, excluded run gives no entry, noLLM has no `L:` items, HELIOS-D never evaluates the gate, confirmatory refusal without the key, pre-flight and build-before-store (`tests/test_runner_coe.py`).
+- Leakage: no fault flag name, case name, label key or injection time in a staged run's CoE file; mutation-checked (`tests/evaluation/test_no_ground_truth_leak.py`).
+- Full suite green, coverage 95.90%.
