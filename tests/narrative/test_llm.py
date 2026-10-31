@@ -167,3 +167,27 @@ def test_fallback_keeps_both_attempts_reasons() -> None:
     client = Scripted({**{k: [v] for k, v in GOOD.items()}, "story": [BAD_RANK, junk]})
     out, _ = _run(client)
     assert out["story"].rejections == ((0, "rank_mismatch"), (-1, "schema"))
+
+
+def test_first_draft_counts() -> None:
+    two = json.dumps(
+        [
+            {
+                **SUPPORTED["ranking"].model_dump(mode="json", exclude_none=True),
+                "rank": 2,
+            },
+            SUPPORTED["shift"].model_dump(mode="json", exclude_none=True),
+        ]
+    )
+    client = Scripted(
+        {**{k: [v] for k, v in GOOD.items()}, "story": [two, GOOD["story"]]}
+    )
+    out, _ = _run(client)
+    assert (out["story"].drafted_first, out["story"].accepted_first) == (2, 1)
+    assert (
+        out["contradictions"].drafted_first,
+        out["contradictions"].accepted_first,
+    ) == (
+        1,
+        1,
+    )

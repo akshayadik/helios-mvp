@@ -63,6 +63,10 @@ class SlotResult:
     rejections: tuple[tuple[int, str], ...] = ()
     fallback: bool = False
     wall_ms: float = 0
+    # The first draft's claim count and how many of them the verifier accepted
+    # (owner N-h: first-pass acceptance rate).
+    drafted_first: int = 0
+    accepted_first: int = 0
 
 
 def _clock(iso: Any) -> str:
@@ -210,6 +214,7 @@ def llm_slots(
         last: list[tuple[int, str]] = []
         seen: list[tuple[int, str]] = []
         wall = 0.0
+        first = (0, 0)
         for attempt in range(1, _MAX_ATTEMPTS + 1):
             prompt = render_prompt(
                 slot, entry, params, previous=previous, rejections=last
@@ -217,9 +222,18 @@ def llm_slots(
             raw, ms = _call(prompt, gateway, cache, model_digest)
             wall += ms
             claims, last = _judge(slot, raw, entry, params)
+            if attempt == 1:
+                bad = {i for i, _ in last if i >= 0}
+                first = (len(claims), len(claims) - len(bad))
             if not last:
                 out[slot] = SlotResult(
-                    "llm", tuple(claims), attempt, tuple(seen), wall_ms=wall
+                    "llm",
+                    tuple(claims),
+                    attempt,
+                    tuple(seen),
+                    wall_ms=wall,
+                    drafted_first=first[0],
+                    accepted_first=first[1],
                 )
                 break
             seen += last
@@ -232,5 +246,7 @@ def llm_slots(
                 tuple(seen),
                 fallback=True,
                 wall_ms=wall,
+                drafted_first=first[0],
+                accepted_first=first[1],
             )
     return out

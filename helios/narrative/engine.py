@@ -55,6 +55,8 @@ class Narrative:
                     "attempts": r.attempts,
                     "fallback": r.fallback,
                     "rejections": [list(x) for x in r.rejections],
+                    "drafted_first": r.drafted_first,
+                    "accepted_first": r.accepted_first,
                     "claims": [
                         c.model_dump(mode="json", exclude_none=True) for c in r.claims
                     ],
