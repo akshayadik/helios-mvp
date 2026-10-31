@@ -8,6 +8,7 @@ from itertools import pairwise
 import pytest
 
 from helios.consensus.calibration import (
+    MIN_BLOCK,
     Calibrator,
     State,
     choose_floor,
@@ -87,16 +88,30 @@ def test_state_rules() -> None:
 
 
 def test_tied_scores_are_pooled() -> None:
-    # Review I1: five cases with identical features and 4 hits of 5 predict 0.8,
-    # a second tied group 1 of 2 predicts 0.5 (isotonic over pooled blocks).
+    # Review I1: tied groups keep their own rate; groups of 25 (>= MIN_BLOCK).
     a = (0.9, 0.1, 0.2, float(1))
     b = (0.6, 0.6, 0.5 + 0.2, float(0))
-    xs = [a] * 5 + [b] * 2
-    ys = [0, 0, 0, 0, 1, 0, 1]
-    ys[:5] = [1, 1, 1, 1, 0]
+    xs = [a] * 25 + [b] * 25
+    ys = [1] * 20 + [0] * 5 + [1] * 10 + [0] * 15
     cal = Calibrator.fit(xs, ys)
     assert cal.predict(a) == pytest.approx(0.8)
-    assert cal.predict(b) == pytest.approx(0.5)
+    assert cal.predict(b) == pytest.approx(0.4)
+
+
+def test_l2_is_relative_to_the_summed_loss() -> None:
+    # Entry 62: L2 strength 1 on the summed log-loss; a clear signal keeps its weight.
+    xs = [(s / 100, 0.5 + 0.1, 0.2, float(1)) for s in range(200)]
+    ys = [1 if x[0] >= 1 else 0 for x in xs]
+    assert abs(Calibrator.fit(xs, ys).coef[0]) > 1
+
+
+def test_isotonic_blocks_hold_at_least_min_block_cases() -> None:
+    # Entry 62: a lone extreme miss cannot make a step of value 0.
+    xs = [(s / 100, 0.6, 0.2, float(1)) for s in range(100)]
+    ys = [0] + [1] * 99
+    cal = Calibrator.fit(xs, ys)
+    assert len(cal.knots) <= 100 // MIN_BLOCK
+    assert cal.predict((-5.0 + 4, 0.6, 0.2, float(1))) >= 0.9
 
 
 def test_training_points_predict_their_own_block() -> None:

@@ -28,6 +28,7 @@ if TYPE_CHECKING:
 
 __all__ = [
     "FLOOR_TARGET",
+    "MIN_BLOCK",
     "Calibrator",
     "State",
     "choose_floor",
@@ -38,7 +39,8 @@ __all__ = [
 HELIOS_ENABLE_MAHC_CALIBRATION: bool = True
 
 FLOOR_TARGET: float = 0.8  # owner decision M-c
-L2_STRENGTH: float = 1
+L2_STRENGTH: float = 1  # on the summed log-loss (entry 62)
+MIN_BLOCK: int = 20  # cases per isotonic step (entry 62)
 _DIGITS = 6
 _MIN_SCALE = 1e-6
 
@@ -78,18 +80,32 @@ def features(f: Fusion) -> Features:
 def _pav(
     scores: Sequence[float], ys: Sequence[float]
 ) -> tuple[tuple[float, float], ...]:
-    """Isotonic fit: equal scores pooled first, then pool-adjacent-violators.
+    """Isotonic fit over blocks of at least MIN_BLOCK cases (entry 62).
 
-    Returns (lowest score, value) per block, in increasing score.
+    Equal scores are pooled; consecutive scores are then gathered into starting
+    blocks of at least MIN_BLOCK cases (a short tail joins the last block), and
+    pool-adjacent-violators merges blocks until their rates increase. Returns
+    (lowest score, rate) per block, in increasing score.
     """
     groups: dict[float, list[float]] = {}
     for sc, y in zip(scores, ys, strict=True):
         g = groups.setdefault(sc, [0, 0])
         g[0] += y
         g[1] += 1
-    blocks: list[list[float]] = []  # [start score, sum y, count]
+    start: list[list[float]] = []  # [lowest score, sum y, count]
     for sc in sorted(groups):
-        blocks.append([sc, groups[sc][0], groups[sc][1]])
+        if start and start[-1][2] < MIN_BLOCK:
+            start[-1][1] += groups[sc][0]
+            start[-1][2] += groups[sc][1]
+        else:
+            start.append([sc, groups[sc][0], groups[sc][1]])
+    if len(start) > 1 and start[-1][2] < MIN_BLOCK:
+        tail = start.pop()
+        start[-1][1] += tail[1]
+        start[-1][2] += tail[2]
+    blocks: list[list[float]] = []
+    for block in start:
+        blocks.append(list(block))
         while (
             len(blocks) > 1
             and blocks[-2][1] / blocks[-2][2] > blocks[-1][1] / blocks[-1][2]
@@ -141,8 +157,9 @@ class Calibrator:
             margin = z @ w[:-1] + w[-1]
             p = 1 / (1 + np.exp(-margin))
             value = np.logaddexp(0, margin).mean() - (y * margin).mean()
-            value += L2_STRENGTH * (w[:-1] @ w[:-1]) / 2
-            grad_w = z.T @ (p - y) / len(y) + L2_STRENGTH * w[:-1]
+            # L2 on the summed loss, written per case: strength / n (entry 62).
+            value += L2_STRENGTH * (w[:-1] @ w[:-1]) / (2 * len(y))
+            grad_w = z.T @ (p - y) / len(y) + L2_STRENGTH * w[:-1] / len(y)
             grad_b = (p - y).mean()
             return float(value), np.append(grad_w, grad_b)
 
