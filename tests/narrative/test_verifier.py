@@ -112,7 +112,7 @@ SUPPORTED = {
     ),
     "log_message": c(
         "log_message",
-        "cart logged that its connection pool was exhausted.",
+        'cart logged "connection pool exhausted".',
         ["L:log:L12"],
         service="cart",
         snippet="connection pool exhausted",
@@ -330,3 +330,57 @@ def test_shift_may_be_grounded_by_a_log_line() -> None:
         direction="up",
     )
     assert verify(claim, ENTRY, P) is None
+
+
+def test_log_snippet_text_is_not_rechecked() -> None:
+    # The quoted snippet is verified verbatim; its own numbers, times and names
+    # are evidence, not new claims.
+    entry = {
+        "steps": [
+            *[s for s in ENTRY["steps"] if s["id"] != "P:lpipe"],
+            {
+                "id": "P:lpipe",
+                "ranked": ["cart"],
+                "items": [
+                    {
+                        "id": "L:log:L3",
+                        "service": "cart",
+                        "text": "cart -> payment timeout after 30s at 13:02",
+                        "value": None,
+                    }
+                ],
+            },
+        ]
+    }
+    claim = c(
+        "log_message",
+        'cart logged: "cart -> payment timeout after 30s at 13:02"',
+        ["L:log:L3"],
+        service="cart",
+        snippet="cart -> payment timeout after 30s at 13:02",
+    )
+    assert verify(claim, entry, P) is None
+    outside = claim.model_copy(
+        update={"sentence": 'cart logged: "timeout after 30s" 45 times.'}
+    )
+    assert verify(outside, entry, P) == Reason.SNIPPET_NOT_FOUND
+
+
+def test_time_window_crossing_midnight() -> None:
+    entry = {
+        "steps": [
+            {
+                "id": "T",
+                "window_start": "2026-10-28T23:52:47+00:00",
+                "window_end": "2026-10-29T00:11:02+00:00",
+            },
+            *[s for s in ENTRY["steps"] if s["id"] != "T"],
+        ]
+    }
+    step = SUPPORTED["verification_step"]
+    ok = step.model_copy(
+        update={"sentence": "Query cart latency between 23:52 and 00:11."}
+    )
+    assert verify(ok, entry, P) is None
+    late = step.model_copy(update={"sentence": "Query cart latency at 00:30."})
+    assert verify(late, entry, P) == Reason.TIME_OUT_OF_WINDOW

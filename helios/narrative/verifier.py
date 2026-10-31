@@ -165,6 +165,8 @@ def _time_ok(text: str, entry: Mapping[str, Any]) -> bool:
         if hh > 23 or mm > 59:
             return False
         when = start.replace(hour=hh, minute=mm, second=ss, microsecond=0)
+        if when < lo:  # a window that crosses midnight
+            when += dt.timedelta(days=1)
         if not lo <= when <= end:
             return False
     return True
@@ -237,7 +239,10 @@ def _check_kind(
         if not lines:
             return Reason.KIND_MISMATCH
         snippet = str(claim.snippet)
-        ok = any(snippet and snippet in str(i.get("text", "")) for i in lines)
+        # Verbatim in a cited line, and what the sentence actually quotes.
+        ok = snippet in claim.sentence and any(
+            snippet and snippet in str(i.get("text", "")) for i in lines
+        )
         return None if ok else Reason.SNIPPET_NOT_FOUND
     if claim.kind == ClaimKind.RANKING:
         ranked = list(fusion.get("ranked") or [])
@@ -322,17 +327,22 @@ def verify(
     if reason := _check_kind(claim, entry, cited):
         return reason
     services = entry_services(entry)
-    if mentions(claim.sentence, services) - _allowed(claim, entry, cited):
+    # A log claim's snippet was checked verbatim against the cited line; what
+    # it quotes is evidence, so only the rest of the sentence is contained.
+    sentence = claim.sentence
+    if claim.kind == ClaimKind.LOG_MESSAGE and claim.snippet:
+        sentence = sentence.replace(claim.snippet, " ")
+    if mentions(sentence, services) - _allowed(claim, entry, cited):
         return Reason.FOREIGN_SERVICE
     if claim.kind == ClaimKind.SHIFT and claim.direction:
         opposite = "down" if claim.direction == "up" else "up"
-        tokens = set(re.findall(r"[a-z]+", claim.sentence.lower()))
+        tokens = set(re.findall(r"[a-z]+", sentence.lower()))
         if tokens & set(params.direction_words.get(opposite, ())):
             return Reason.WRONG_DIRECTION
-    if not _time_ok(claim.sentence, entry):
+    if not _time_ok(sentence, entry):
         return Reason.TIME_OUT_OF_WINDOW
     evidence = _evidence_numbers(cited)
-    text = _strip_non_numbers(claim.sentence, services)
+    text = _strip_non_numbers(sentence, services)
     for m in _NUMBER.finditer(text):
         if not _matches(m.group(1), m.group(2), evidence, params.rel_tolerance):
             return Reason.NUMBER_NOT_IN_EVIDENCE
