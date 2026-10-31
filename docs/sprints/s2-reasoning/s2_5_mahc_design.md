@@ -153,3 +153,23 @@ Build runs of `bin/mahc_build_run.py` (HELIOS-Full over `otel_build_v3` and `rca
 - **The confidence discriminates modestly:** OTel 0.85 confirmed vs 0.72 provisional; RCAEval 0.99 vs 0.95 — 38% of RCAEval build cases would go to a human although 95% are right. Held-out confidence runs below the observed rate (conservative), reflecting folds that hold out whole systems.
 - **The routing gate costs G-pipe cases on OTel:** G-pipe runs on 44 of 63 cases; ungated it scored 50 of 63 in the S2.2 selection run, above the fused 49. For S3.1 (router).
 - Process: two changes were made after inspecting build runs; both removed demonstrable defects (a dataset proxy; numerical over-regularisation), each under a signed entry before the next run, and each withdrawn run is kept as evidence.
+
+### Frozen parameters on the build cases (PR 2 review; `calibration/mahc_frozen_check.json`)
+
+The floor was chosen on cross-fitted confidences and is applied with the refit calibrator. Applied in-sample (an upper bound, not a held-out estimate):
+
+| | Confirmed (HR@3) | Provisional (HR@3) | Cross-fitted confirmed |
+|---|---|---|---|
+| OTel v3 (63) | 33 (0.879) | 30 (0.667) | 27 |
+| RCAEval build (495) | 445 (0.980) | 50 (0.920) | 308 |
+
+**A third pipeline lowers confidence.** On the 44 OTel cases where G-pipe voted, the frozen MAHC confirms 16 with G-pipe's vote and 30 without it (14 cases flip to PROVISIONAL, none the other way); mean confidence 0.84 vs 0.90; HR@3 0.705 with G-pipe vs 0.682 without. The channel is agreement and fused sigma (a third list disagrees more often and G-pipe's sigma is often high), not the removed pipeline count. Reading:
+
+- It is not a dataset proxy on the pool. G-pipe runs only when the routing gate opens (D-pipe's scores disagree, `should_run_gpipe`), on build and pool alike: three contributing pipelines mark the cases D-pipe itself found ambiguous. Those cases are harder (HR@3 about 0.70), and without G-pipe's vote the calibrator would confirm them at 0.90 while 68% are right; with it, the confidence is the more honest of the two.
+- It is a thin regime. All three-pipeline build cases are OTel (44), because the RCAEval build cases have no traces; the pool's RCAEval cases with traces will reach this regime for the first time. **The pool analysis must report the confirmed share and HR@3 separately for cases with and without G-pipe** (and the state flips with and without G-pipe's vote), as here.
+
+### Notes on the frozen calibrator
+
+- The 16 isotonic knots carry 6 distinct confidence levels (adjacent blocks with equal rates are not merged; 11 knots are 1.0). Resolution is 6 levels, not 16.
+- The top-1 share weight is negative (−0.369) although a higher share should raise confidence; it is collinear with entropy (−0.847), and the pair should be read together.
+- Entry 61's consequence says run 2 "is fitted and frozen"; run 2 was withdrawn and entry 62 records it.
