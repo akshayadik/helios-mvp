@@ -231,3 +231,35 @@ def test_run_number_names_the_report(
     assert tool.main(["--run", "2"]) == 0
     assert (tmp_path / "mahc_run2.json").is_file()
     assert not (tmp_path / "mahc_run1.json").exists()
+
+
+def test_check_frozen_writes_the_check(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from helios.consensus.calibration import Calibrator
+    from helios.consensus.params import MAHCParams
+    from helios.consensus.priors import fit_priors
+
+    _patch(monkeypatch, tmp_path, _cases(right=True))
+    cal = Calibrator((0,) * 4, 0, (0,) * 4, (1,) * 4, ((-1e9, 0.5 + 0.45),))
+    params = MAHCParams(fit_priors([]), cal, 0.9, provisional=False)
+    monkeypatch.setattr(tool, "load_mahc_params", lambda: params)
+    assert tool.main(["--check-frozen"]) == 0
+    check = json.loads(
+        (tmp_path / "mahc_frozen_check.json").read_text(encoding="utf-8")
+    )
+    assert check["by_corpus"]["otel_build_v3"]["confirmed"] == 20
+    assert check["frozen_hash"] and "gpipe_effect" in check
+
+
+def test_check_frozen_refuses_provisional(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from helios.consensus.params import MAHCParams
+    from helios.consensus.priors import fit_priors
+
+    _patch(monkeypatch, tmp_path, _cases(right=True))
+    monkeypatch.setattr(
+        tool, "load_mahc_params", lambda: MAHCParams(fit_priors([]), None, None, True)
+    )
+    assert tool.main(["--check-frozen"]) == 2

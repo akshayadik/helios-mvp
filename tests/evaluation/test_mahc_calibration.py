@@ -116,3 +116,34 @@ def test_report_counts_the_ambiguous_stratum() -> None:
     per = report["by_corpus"]["otel_build_v3"]
     assert per["ambiguous"] == expected > 0
     assert set(per) >= {"mahc_hr3_ambiguous", "vote_only_hr3_ambiguous"}
+
+
+def test_frozen_check_reports_refit_confirmed_and_gpipe_effect() -> None:
+    # PR 2 review: confirmed share under the frozen (refit) calibrator, and how
+    # G-pipe's vote moves confidence and state on cases where it ran.
+    from helios.consensus.calibration import Calibrator
+    from helios.consensus.params import MAHCParams
+    from helios.consensus.priors import fit_priors
+
+    cases = []
+    for i in range(24):
+        root = f"svc-{i % 3}"
+        votes = [Vote("dpipe", (root, "svc-x"), 0.3), Vote("lpipe", (root,), 0.4)]
+        if i % 2:
+            votes.append(Vote("gpipe", ("svc-x", root), 1))
+        cases.append(
+            BuildCase(f"id{i}", "otel_build_v3", "ad", RES, tuple(votes), root)
+        )
+    sigma_only = Calibrator(
+        (0, 0, -1, 0), 0, (0,) * 4, (1,) * 4, ((-1e9, 0.5), (-0.37, 0.95))
+    )
+    params = MAHCParams(fit_priors([]), sigma_only, 0.9, provisional=False)
+    report = mc.frozen_check(cases, params)
+    otel = report["by_corpus"]["otel_build_v3"]
+    assert otel["cases"] == 24 and otel["confirmed"] + otel["provisional"] == 24
+    g = report["gpipe_effect"]["otel_build_v3"]
+    assert g["cases_with_gpipe"] == 12
+    assert (
+        g["confirmed_with"] < g["confirmed_without"]
+    )  # G at sigma 1 raises fused sigma
+    assert g["mean_confidence_with"] < g["mean_confidence_without"]

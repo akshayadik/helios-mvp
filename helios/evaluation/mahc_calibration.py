@@ -20,7 +20,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from helios.consensus.calibration import Calibrator, choose_floor, features
+from helios.consensus.calibration import (
+    Calibrator,
+    State,
+    choose_floor,
+    features,
+    state,
+)
 from helios.consensus.mahc import Fusion, Vote, fuse
 from helios.consensus.priors import PriorCase, PriorTable, fit_priors
 from helios.consensus.vote_only import vote_only
@@ -30,6 +36,7 @@ from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from helios.consensus.params import MAHCParams
     from helios.telemetry.signal_type import SignalType
 
 __all__ = [
@@ -41,6 +48,7 @@ __all__ = [
     "cross_fit",
     "evaluate",
     "fit_priors",
+    "frozen_check",
     "inner_calibrator",
     "outer_folds",
     "prior_case",
@@ -200,3 +208,65 @@ def evaluate(cases: Sequence[BuildCase]) -> dict[str, Any]:
         "by_corpus": by_corpus,
         "calibration_curve": _curve(cf.conf, cf.hit),
     }
+
+
+def _frozen(
+    case: BuildCase, params: MAHCParams, votes: Sequence[Vote]
+) -> tuple[float | None, State, int]:
+    priors = {
+        v.pipeline: params.priors.lookup(v.pipeline, case.signal)[0] for v in votes
+    }
+    f = fuse(votes, priors)
+    cal = params.calibrator
+    conf = cal.predict(features(f)) if cal is not None and f.ranked else None
+    return conf, state(conf, params.floor, all_in=True), _hit(f.ranked, case.root)
+
+
+def frozen_check(cases: Sequence[BuildCase], params: MAHCParams) -> dict[str, Any]:
+    """The frozen parameters applied to the build cases (in-sample, PR 2 review).
+
+    Per corpus: confirmed and provisional counts and their HR@3 under the refit
+    calibrator (the floor was chosen on cross-fitted confidences). And, on cases
+    where G-pipe voted, the same with and without G-pipe's vote: how a third
+    pipeline moves confidence and state through agreement and fused sigma.
+    """
+    by_corpus: dict[str, Any] = {}
+    gpipe: dict[str, Any] = {}
+    for name in sorted({c.corpus for c in cases}):
+        mine = [c for c in cases if c.corpus == name]
+        runs = [_frozen(c, params, c.votes) for c in mine]
+        confirmed = [h for _, s, h in runs if s == State.CONFIRMED]
+        provisional = [h for _, s, h in runs if s != State.CONFIRMED]
+        by_corpus[name] = {
+            "cases": len(mine),
+            "confirmed": len(confirmed),
+            "provisional": len(provisional),
+            "hr3_confirmed": _rate(confirmed),
+            "hr3_provisional": _rate(provisional),
+        }
+        with_g = [c for c in mine if any(v.pipeline == "gpipe" for v in c.votes)]
+        if not with_g:
+            continue
+        both = [
+            (
+                _frozen(c, params, c.votes),
+                _frozen(c, params, [v for v in c.votes if v.pipeline != "gpipe"]),
+            )
+            for c in with_g
+        ]
+        gpipe[name] = {
+            "cases_with_gpipe": len(with_g),
+            "confirmed_with": sum(a[1] == State.CONFIRMED for a, _ in both),
+            "confirmed_without": sum(b[1] == State.CONFIRMED for _, b in both),
+            "flips_confirmed_to_provisional": sum(
+                a[1] != State.CONFIRMED and b[1] == State.CONFIRMED for a, b in both
+            ),
+            "flips_provisional_to_confirmed": sum(
+                a[1] == State.CONFIRMED and b[1] != State.CONFIRMED for a, b in both
+            ),
+            "mean_confidence_with": _rate([a[0] or 0 for a, _ in both]),
+            "mean_confidence_without": _rate([b[0] or 0 for _, b in both]),
+            "hr3_with": _rate([a[2] for a, _ in both]),
+            "hr3_without": _rate([b[2] for _, b in both]),
+        }
+    return {"by_corpus": by_corpus, "gpipe_effect": gpipe}

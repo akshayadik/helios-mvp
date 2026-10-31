@@ -130,3 +130,13 @@ def test_features_do_not_count_pipelines() -> None:
     )
     assert features(two) == features(three)
     assert len(features(two)) == 4
+
+
+def test_pav_blocks_and_short_tail() -> None:
+    # PR 2 review: 41 increasing cases -> blocks of 20 and 21 (a tail of 1 joins the last).
+    from helios.consensus.calibration import _pav
+
+    scores = [float(i) for i in range(41)]
+    ys = [0] * 20 + [1] * 21
+    assert _pav(scores, ys) == ((0, 0), (20, 1))
+    assert len(_pav(scores[:19], ys[:19])) == 1  # fewer than MIN_BLOCK: one block

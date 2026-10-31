@@ -37,6 +37,7 @@ from helios.evaluation.mahc_calibration import (
     BuildCase,
     evaluate,
     fit_priors,
+    frozen_check,
     inner_calibrator,
     prior_case,
 )
@@ -179,11 +180,44 @@ def collect_cases(*, key: bytes) -> tuple[list[BuildCase], dict[str, int]]:
     return cases, {"excluded": excluded}
 
 
+def _check_frozen() -> int:
+    params = load_mahc_params()
+    if params.provisional:
+        print(
+            "[mahc] MAHC parameters are provisional: nothing to check", file=sys.stderr
+        )
+        return 2
+    cases, counts = collect_cases(key=load_key())
+    check = frozen_check(cases, params)
+    check.update(
+        {"frozen_hash": mahc_params_hash(params), "cases": len(cases), **counts}
+    )
+    text = json.dumps(json.loads(canonical_json(check)), indent=2, sort_keys=True)
+    REPORT_DIR.mkdir(parents=True, exist_ok=True)
+    (REPORT_DIR / "mahc_frozen_check.json").write_text(text + "\n", encoding="utf-8")
+    for name, g in check["by_corpus"].items():
+        print(
+            f"[mahc] {name}: confirmed {g['confirmed']} (HR@3 {g['hr3_confirmed']}), "
+            f"provisional {g['provisional']} (HR@3 {g['hr3_provisional']})"
+        )
+    for name, g in check["gpipe_effect"].items():
+        print(
+            f"[mahc] {name}: with G-pipe confirmed {g['confirmed_with']}, "
+            f"without {g['confirmed_without']} of {g['cases_with_gpipe']}"
+        )
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--corpus", choices=("build", "pool"), default="build")
     parser.add_argument(
         "--run", type=int, default=1, help="names the report mahc_run<N>.json"
+    )
+    parser.add_argument(
+        "--check-frozen",
+        action="store_true",
+        help="apply the frozen parameters to the build cases (no fit)",
     )
     args = parser.parse_args(argv)
     if args.corpus == "pool":
@@ -195,6 +229,8 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 2
+    if args.check_frozen:
+        return _check_frozen()
     cases, counts = collect_cases(key=load_key())
     report = evaluate(cases)
     idx = list(range(len(cases)))
