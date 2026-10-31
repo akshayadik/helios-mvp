@@ -1,6 +1,6 @@
 # S2.8 — Narrative Engine with grounding verifier · design
 
-**Task:** S2.8 (tracking S2-M7-ENG08) · **Date:** 2026-10-31 · **Status:** draft for owner approval (builder check done 2026-10-31) · **Depends on:** S2.7 (CoE entry and evidence namespace, entry 64), S2.5 (fused verdict), S2.3 (L-pipe model, cache, aliases, entries 57–58) · **Owner decisions:** marked *owner* (2026-10-31)
+**Task:** S2.8 (tracking S2-M7-ENG08) · **Date:** 2026-10-31 · **Status:** approved 2026-10-31 (builder check done; N-j added after the whole-branch review); PR 1 built, deviation entries 65–66 · **Depends on:** S2.7 (CoE entry and evidence namespace, entry 64), S2.5 (fused verdict), S2.3 (L-pipe model, cache, aliases, entries 57–58) · **Owner decisions:** marked *owner* (2026-10-31)
 
 **Flag:** `VCLFlag.COE_NARRATIVE` gates the Narrative Engine (OFF = the ranked list only, HELIOS-noExpl). Which narrator writes is decided by `l2c_llm`: on → the LLM narrator; off → the template narrator. The verifier runs on every narrative.
 
@@ -152,4 +152,11 @@ Exact template sentences (within the shapes the prompt asks for); the direction 
 
 ## 10. Results
 
-(Filled after the build.)
+**PR 1 (engine), built 2026-10-31** on branch `s2/narrator` (commits `ca8f4f3`..`2f6ef51`); deviation entries 65 (H_fact against cited evidence, N-e, `405f0b659017`) and 66 (narrator rules, closed vocabulary, additive CoE fields, `907b88c2a71c`).
+
+- Whole-branch review (fresh reviewer): 5 Critical and 8 Important. The Criticals showed that containment alone let negations, invented causes and reversed edges through; the owner chose a closed vocabulary (N-j), and every finding was fixed test-first (33 adversarial cases in `tests/narrative/test_verifier_adversarial.py`, plus field-agreement tests). A ninth fix found during the pass: `bin/mahc_build_run.py`'s cache-only client now lets the narrator fall back to the template.
+- Template narrator on every build case (63 OTel + 495 RCAEval, HELIOS-Full and HELIOS-noLLM): 1,116 CoE entries, 10,355 claims, 0 rejected.
+- Ranking, μ, σ and decision hash unchanged (D-pipe golden test); full local gate green, coverage 95.84%.
+- Deferred minors: digest call before checking whether any slot needs the model; the extra-steps index counts in `accepted_first`; the no-split levels test covers `trigger=None` only; relative offsets ("5 minutes after") are rejected.
+
+**PR 2 (prompt rounds and freeze):** filled after the rounds (entry C).
