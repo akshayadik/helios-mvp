@@ -1,0 +1,10 @@
+{
+  "provisional": true,
+  "rel_tolerance": 0.01,
+  "max_steps": 3,
+  "verbs": ["query", "inspect", "verify", "check", "filter"],
+  "direction_words": {
+    "up": ["rose", "rise", "rises", "rising", "increased", "increase", "increases", "increasing", "spiked", "spike", "spikes", "climbed", "jumped", "grew", "higher", "elevated", "surged", "doubled", "tripled"],
+    "down": ["fell", "fall", "falls", "falling", "dropped", "drop", "drops", "decreased", "decrease", "decreases", "declined", "lower", "recovered", "shrank", "reduced", "halved"]
+  }
+}
