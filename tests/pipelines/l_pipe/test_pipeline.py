@@ -76,6 +76,9 @@ class FakeClient:
         try:
             if self.answer is not None:
                 return OllamaGenerateResult(self.answer, *_USAGE)
+            if prompt.startswith("HELIOS-NARRATOR"):
+                # S2.8 narrator: no claims, so each slot falls back to the template.
+                return OllamaGenerateResult("[]", *_USAGE)
             line_id, svc = _LINE.findall(prompt)[0]
             text = json.dumps(
                 {

@@ -26,6 +26,9 @@ from helios.graph.khop_pruner import khop_prune
 from helios.graph.structural_bundle import apply_structural_bundle
 from helios.graph.ueg_c_builder import build_ueg_c
 from helios.integrity_gate import AppendOnlyLedger, MetricIntegrityGate
+from helios.narrative import prompt as narrator_prompt
+from helios.narrative.engine import run_narrative
+from helios.narrative.params import load_narrator_params
 from helios.orchestrator.coe import CoELedger, build_coe_entry
 from helios.orchestrator.corpus import CorpusLoader
 from helios.orchestrator.ledger import ReconciliationLedger
@@ -81,6 +84,7 @@ if TYPE_CHECKING:
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
     from helios.consensus.params import MAHCParams
+    from helios.narrative.params import NarratorParams
     from helios.pipelines.l_pipe.cache import ResponseCache
     from helios.pipelines.l_pipe.ollama_client import OllamaClient
     from helios.schemas.telemetry import TelemetryWindow
@@ -128,6 +132,7 @@ class RunOrchestrator:
         mahc_params: MAHCParams | None = None,
         coe_path: Path | None = None,
         coe_signer: Ed25519PrivateKey | None = None,
+        narrator_params: NarratorParams | None = None,
     ) -> None:
         """``detector_params``, ``dpipe_params`` and ``gpipe_params`` default to
         the frozen files; ``lpipe_client`` defaults to the local Ollama model and
@@ -142,6 +147,9 @@ class RunOrchestrator:
         self._lpipe_client = lpipe_client
         self._lpipe_cache = lpipe_cache
         self._mahc = mahc_params if mahc_params is not None else load_mahc_params()
+        self._narrator = (
+            narrator_params if narrator_params is not None else load_narrator_params()
+        )
         self._reader = CaptureReader(captures_dir, seal_key=hmac_key)
         self._registry = SnapshotRegistry(registry_path)
         self._store = ResultStore(db_path)
@@ -189,6 +197,14 @@ class RunOrchestrator:
             if self._manifest.mahc_hierarchical and self._mahc.provisional:
                 raise ProvisionalParametersError(
                     "MAHC parameters are provisional; freeze them first (S2.5)"
+                )
+            if self._manifest.coe_narrative and (
+                self._narrator.provisional
+                or (self._manifest.l2c_llm and narrator_prompt.PROVISIONAL)
+            ):
+                raise ProvisionalParametersError(
+                    "narrator prompt or parameters are provisional; freeze them "
+                    "first (S2.8)"
                 )
             if self._coe_signer is None:
                 raise MissingSigningKeyError(
@@ -414,6 +430,18 @@ class RunOrchestrator:
                 fused=fused,
                 gate_outcome=gate_result.status,
             )
+            # S2.8: the narrative is part of the signed entry (step N); a model
+            # error falls back to the template inside the narrator.
+            narrative = None
+            if self._manifest.coe_narrative:
+                narrative = run_narrative(
+                    coe_entry,
+                    params=self._narrator,
+                    llm=self._manifest.l2c_llm,
+                    client=self._lpipe_client,
+                    cache=self._lpipe_cache,
+                ).as_step()
+                coe_entry["steps"].append(narrative)
             for verdict in verdicts:
                 self._store.insert(verdict)
             self._store.insert_fusion(run_id, incident_id, self._config_hash, fused)
@@ -426,6 +454,8 @@ class RunOrchestrator:
                 failed=int(h_struct["failed"]),
                 structural_zero=structural_zero,
             )
+            if narrative is not None:
+                self._store.insert_narrative(run_id, incident_id, narrative)
             self._coe.append(coe_entry)
             self._reconciliation.record(
                 run_id=run_id,

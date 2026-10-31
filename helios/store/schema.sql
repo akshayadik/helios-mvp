@@ -206,3 +206,22 @@ CREATE TABLE IF NOT EXISTS fusion_row (
 INSERT INTO schema_tag (tag)
 VALUES ('fusion-v1')
 ON CONFLICT (tag) DO NOTHING;
+
+-- narrative-v1 (S2.8): the narrative of a stored run — template or LLM, its
+-- slots with their claims, retries and fallbacks, and the narrator's tokens.
+CREATE TABLE IF NOT EXISTS narrative_row (
+    run_id               VARCHAR     NOT NULL PRIMARY KEY,
+    incident_id          VARCHAR     NOT NULL,
+    narrator             VARCHAR     NOT NULL,
+    slots_json           VARCHAR     NOT NULL,
+    rendered             VARCHAR     NOT NULL,
+    attempts             INTEGER     NOT NULL,
+    fallbacks            INTEGER     NOT NULL,
+    prompt_tokens        INTEGER     NOT NULL,
+    completion_tokens    INTEGER     NOT NULL,
+    wall_ms              DOUBLE      NOT NULL
+);
+
+INSERT INTO schema_tag (tag)
+VALUES ('narrative-v1')
+ON CONFLICT (tag) DO NOTHING;

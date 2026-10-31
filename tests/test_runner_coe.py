@@ -155,7 +155,17 @@ def test_no_llm_variant_entry_has_no_l_items(tmp_path: Path) -> None:
     )
 
 
-def test_confirmatory_without_key_is_refused(tmp_path: Path) -> None:
+def test_confirmatory_without_key_is_refused(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import dataclasses
+
+    from helios.narrative import prompt as narrator_prompt
+    from helios.narrative.params import load_narrator_params
+
+    # Narrator frozen-looking, so the key refusal is the one under test.
+    monkeypatch.setattr(narrator_prompt, "PROVISIONAL", False)
+    frozen = dataclasses.replace(load_narrator_params(), provisional=False)
     captures = tmp_path / "captures"
     raw = json.loads(OTEL.read_text())
     raw["evaluation_phase"] = "confirmatory"
@@ -172,6 +182,7 @@ def test_confirmatory_without_key_is_refused(tmp_path: Path) -> None:
         exclusion_ledger=MagicMock(spec=AppendOnlyLedger),
         hmac_key=KEY,
         lpipe_client=FakeClient(),  # type: ignore[arg-type]
+        narrator_params=frozen,
     )
     orch._reader._pool_lock = lambda _incident: None
     with pytest.raises(MissingSigningKeyError, match="Ed25519"):

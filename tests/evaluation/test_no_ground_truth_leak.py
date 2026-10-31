@@ -276,7 +276,16 @@ def test_lpipe_prompts_carry_no_label_or_identity(
     ).run(captures)
 
     assert opened == []
+    # S2.8: the narrator's prompts use real names by design (s2_8 design §4);
+    # the worker prompts are the masked ones checked here.
+    narrator = [p for p in client.prompts if p.startswith("HELIOS-NARRATOR")]
+    client.prompts = [p for p in client.prompts if not p.startswith("HELIOS-NARRATOR")]
     assert len(client.prompts) == 3
+    for prompt in narrator:
+        assert incident_id not in prompt
+        assert "data/" not in prompt and ".parquet" not in prompt
+        for flag in sorted({f.flag for f in FAULTS}):
+            assert not re.search(rf"\b{re.escape(flag)}\b", prompt, re.IGNORECASE)
     store = ResultStore(tmp_path / "results.duckdb")
     run_id = next(
         str(r["run_id"]) for r in store.fetch_all() if r["pipeline"] == "lpipe"
@@ -320,6 +329,9 @@ def test_coe_entry_carries_no_label_or_injection_time(tmp_path: Path) -> None:
 
     text = orch.coe_path.read_text(encoding="utf-8")
     assert text.strip()
+    # S2.8: the narrative (step N, rendered text) is scanned with the rest.
+    (entry,) = [json.loads(x) for x in text.splitlines()]
+    assert any(s["id"] == "N" and s["rendered"] for s in entry["steps"])
     truth = json.loads(
         (REPO / "data/otel/ground_truth_build_v3.json").read_text(encoding="utf-8")
     )["cases"][incident_id]
