@@ -16,6 +16,8 @@ R5  Immutable columns (1-9, 16) must not change between commits.
 R6  Task_ID must match S0-D{day}-{TYPE}{nn} (sprint rows) or S{n}-M{m}-{TYPE}{nn} (milestone rows).
 R7  Day field must be 1-5 for sprint rows; '-' is valid for milestone rows.
 R8  Type field must be one of ENG / RES / EVAL / GATE.
+R9  A task row present at the previous revision must still be present and
+    parsable (rows are never deleted; a malformed row is never skipped).
 
 Exit codes
 ----------
@@ -138,10 +140,10 @@ def parse_rows(text: str) -> list[list[str]]:
     """
     Extract task rows from the tracker markdown.
 
-    A task row is any pipe-delimited line that:
-      - has exactly EXPECTED_COL_COUNT cells, and
-      - whose first cell looks like a task identifier (starts with 'S' followed
-        by a digit, e.g. S0, S1, S2 — i.e. any stage).
+    A task row is any line starting with '|' whose first cell looks like a task
+    identifier (starts with 'S' followed by a digit, e.g. S0, S1, S2 — any
+    stage), whatever its cell count and whether or not it ends with '|'
+    (S2-M7-ENG11): a malformed row is returned so R0 reports it, never skipped.
 
     This accepts malformed Task_IDs (so R6 can flag them) while still rejecting
     table headers, separator rows, prose, and the summary statistics table.
@@ -151,11 +153,15 @@ def parse_rows(text: str) -> list[list[str]]:
     rows: list[list[str]] = []
     for raw_line in text.splitlines():
         line = raw_line.strip()
-        if not line.startswith("|") or not line.endswith("|"):
+        if not line.startswith("|"):
             continue
-        # Split by pipe and discard the leading/trailing empty cells.
-        parts = [c.strip() for c in line.split("|")[1:-1]]
-        if len(parts) != EXPECTED_COL_COUNT:
+        # Split by pipe and drop the leading empty cell (and the trailing one
+        # when the line closes with a pipe).
+        cells = line.split("|")[1:]
+        if line.endswith("|"):
+            cells = cells[:-1]
+        parts = [c.strip() for c in cells]
+        if not parts:
             continue
         first = parts[0]
         # Task-ID cells start with 'S' + a digit (stage prefix). Header cells
@@ -371,6 +377,17 @@ def validate(current_text: str, previous_text: str | None) -> list[Violation]:
         for prow in parse_rows(previous_text):
             if prow and len(prow) == EXPECTED_COL_COUNT:
                 prev_lookup[prow[COL_TASK_ID]] = prow
+
+    # R9: a row valid at the previous revision must still be there.
+    current_ids = {row[COL_TASK_ID] for row in current_rows if row}
+    for task_id in sorted(set(prev_lookup) - current_ids):
+        violations.append(
+            Violation(
+                task_id=task_id,
+                rule="R9",
+                detail="row present at the previous revision is missing now",
+            )
+        )
 
     for i, row in enumerate(current_rows, start=1):
         shape_v = validate_row_shape(row, i)

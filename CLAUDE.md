@@ -209,7 +209,7 @@ L4  Auto-Remediation
 | `disjointness_audit.yml` | Feature-flag disjointness — Stage 5 stub; exits 0 on `ImportError` until `helios/vcl/disjointness.py` is implemented |
 | `ledger_verification.yml` | `log_deviation.py verify-public` (Ed25519, public key only, no secret) + HMAC chain integrity + `verify_ledgers.py` (anchors); the HMAC part **fails** if `DEVIATION_HMAC_SECRET` is missing (only fork PRs skip, with a warning) |
 
-### Tracking schema rules (R1–R8)
+### Tracking schema rules (R0–R9)
 
 Enforced by `scripts/validate_tracking.py` as a pre-commit hook (working tree vs HEAD) and in CI with `--range BASE..HEAD`, which validates **every commit** that touched the tracker against its own parent(s). Before 2026-10-22 CI ran the bare form on a checkout, comparing the file with itself, so R4/R5 never fired in CI. Merge commits: a row is reported only if invalid against every parent. Audit a branch locally with `python3 scripts/validate_tracking.py --range origin/main..HEAD`.
 
@@ -221,6 +221,8 @@ Enforced by `scripts/validate_tracking.py` as a pre-commit hook (working tree vs
 - **R6** Task_ID format: `S0-D{1-5}-{ENG|RES|EVAL|GATE}{nn}`.
 - **R7** Day must be 1–5.
 - **R8** Type must be ENG, RES, EVAL, or GATE.
+- **R0** A task-like row (first cell `S<digit>…`) must have exactly 18 cells; a wrong count or a missing trailing `|` is reported, never skipped (S2-M7-ENG11).
+- **R9** A task row present at the previous revision must still be present and parsable: rows are never deleted. Before S2-M7-ENG11 a malformed row was silently dropped, so a column-shifted DONE row passed as valid (S2.3).
 
 ---
 
