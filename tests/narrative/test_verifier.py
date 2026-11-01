@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 from typing import Any
 
 import pytest
@@ -393,3 +394,40 @@ def test_time_window_crossing_midnight() -> None:
     assert verify(ok, entry, P) is None
     late = step.model_copy(update={"sentence": "Query cart latency at 00:30."})
     assert verify(late, entry, P) == Reason.TIME_OUT_OF_WINDOW
+
+
+def _with_metric_line() -> dict[str, Any]:
+    entry = copy.deepcopy(ENTRY)
+    lpipe = next(s for s in entry["steps"] if s["id"] == "P:lpipe")
+    lpipe["items"].insert(
+        0,
+        {
+            "id": "L:metric:M1",
+            "service": "cart",
+            "text": "cart span_mean_latency_milliseconds up 6.2 robust units",
+            "value": None,
+        },
+    )
+    return entry
+
+
+def test_logged_claim_needs_a_log_line_not_a_metric_digest_line() -> None:
+    # Round 3 smoke: "cart logged <metric digest line>" was accepted.
+    entry = _with_metric_line()
+    claim = c(
+        "log_message",
+        'cart logged "cart span_mean_latency_milliseconds up".',
+        ["L:metric:M1"],
+        service="cart",
+        snippet="cart span_mean_latency_milliseconds up",
+    )
+    assert verify(claim, entry, P) == Reason.KIND_MISMATCH
+    step = c(
+        "verification_step",
+        "Filter cart logs between 14:42 and 14:56.",
+        ["L:metric:M1"],
+        target_service="cart",
+        action_verb="filter",
+        modality="log",
+    )
+    assert verify(step, entry, P) == Reason.MODALITY_MISMATCH

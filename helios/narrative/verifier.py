@@ -27,6 +27,7 @@ if TYPE_CHECKING:
     from helios.narrative.params import NarratorParams
 
 __all__ = [
+    "LOG_PREFIX",
     "Reason",
     "direction_of",
     "edge_holds",
@@ -58,7 +59,10 @@ class Reason(StrEnum):
     MALFORMED_SENTENCE = "malformed_sentence"
 
 
-_MODALITY_PREFIX = {"metric": "D:", "log": "L:", "edge": "G:"}
+# Only the L-pipe log worker's lines are logs; its metric and trace digest
+# lines are summaries and are never quoted as "logged" (round 3 smoke).
+LOG_PREFIX = "L:log:"
+_MODALITY_PREFIX = {"metric": "D:", "log": LOG_PREFIX, "edge": "G:"}
 _TIME = re.compile(r"(\d{1,2}):(\d{2})(?::(\d{2}))?")
 _NUMBER = re.compile(r"(\d+(?:\.\d+)?)(%|ms|s)?")
 _CITE = re.compile(r"\b[DGL]:\S")
@@ -195,7 +199,7 @@ def _check_kind(
         lines = [
             i
             for i in cited
-            if i["id"].startswith("L:") and i.get("service") == claim.service
+            if i["id"].startswith(LOG_PREFIX) and i.get("service") == claim.service
         ]
         if not lines:
             return Reason.KIND_MISMATCH

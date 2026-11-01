@@ -79,19 +79,11 @@ class FakeClient:
             if self.answer is not None:
                 return OllamaGenerateResult(self.answer, *_USAGE)
             if prompt.startswith("HELIOS-NARRATOR"):
-                # S2.8 narrator: the story slot gets one valid ranking claim (an
-                # accepted LLM claim); other slots get none and fall back.
-                top = re.search(r"FUSED VERDICT: 1\. (\S+?),? ", prompt)
-                if "SLOT: story" in prompt and top:
-                    svc = top.group(1).rstrip(",")
-                    claim = {
-                        "kind": "ranking",
-                        "service": svc,
-                        "rank": 1,
-                        "cites": ["F"],
-                        "sentence": f"{svc} is the top suspect.",
-                    }
-                    return OllamaGenerateResult(json.dumps([claim]), *_USAGE)
+                # S2.8 narrator (owner (b)): the story slot picks its first
+                # candidate, the top suspect's ranking (an accepted LLM pick);
+                # other slots answer nothing and fall back.
+                if "SLOT: story" in prompt and "C1 | ranking |" in prompt:
+                    return OllamaGenerateResult(json.dumps({"claims": ["C1"]}), *_USAGE)
                 return OllamaGenerateResult("[]", *_USAGE)
             line_id, svc = _LINE.findall(prompt)[0]
             text = json.dumps(

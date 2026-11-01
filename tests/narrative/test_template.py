@@ -79,3 +79,61 @@ def test_one_contradiction_per_disagreeing_pipeline() -> None:
     assert [c.pipeline for c in slots["contradictions"]] == ["gpipe"]
     assert len(slots["verification"]) <= P.max_steps
     assert all(c.kind.value == "verification_step" for c in slots["verification"])
+
+
+def test_candidates_pass_the_verifier_and_cover_the_template() -> None:
+    # Owner decision (b), 2026-11-01: the LLM picks from these; code wrote them.
+    from helios.narrative.template import candidate_claims
+
+    cands = candidate_claims(ENTRY, P)
+    for slot, claims in template_slots(ENTRY, P).items():
+        assert [verify(c, ENTRY, P) for c in cands[slot]] == [None] * len(cands[slot])
+        assert set(claims) <= set(cands[slot]), slot
+        assert len(set(cands[slot])) == len(cands[slot])
+
+
+def test_candidates_offer_every_edge_line_and_step() -> None:
+    from helios.narrative.template import candidate_claims
+
+    cands = candidate_claims(ENTRY, P)
+    edges = {
+        (c.caller, c.callee, c.feature)
+        for c in cands["story"]
+        if c.kind.value == "call_structure"
+    }
+    assert edges == {
+        ("frontend", "cart", "wait"),
+        ("checkout", "cart", "lead"),
+        ("cart", "redis", "ghost"),
+    }
+    shifts = {(c.service, c.channel) for c in cands["story"] if c.kind.value == "shift"}
+    assert {("cart", "latency"), ("cart", "error"), ("ad", "resource")} <= shifts
+    targets = {c.target_service for c in cands["verification"]}
+    assert targets == {"cart", "ad", "payment"}
+
+
+@pytest.mark.parametrize("variant", ["HELIOS-Full", "HELIOS-noLLM"])
+def test_candidates_pass_the_verifier_on_staged_runs(
+    tmp_path: Path, variant: str
+) -> None:
+    from helios.narrative.template import candidate_claims
+    from tests.test_runner_coe import _run
+
+    _, path = _run(tmp_path, variant)
+    for line in path.read_text().splitlines():
+        entry = json.loads(line)
+        for claims in candidate_claims(entry, P).values():
+            assert [verify(c, entry, P) for c in claims] == [None] * len(claims)
+
+
+def test_metric_digest_lines_are_never_called_logs() -> None:
+    from helios.narrative.template import candidate_claims
+    from tests.narrative.test_verifier import _with_metric_line
+
+    entry = _with_metric_line()
+    slots = template_slots(entry, P)
+    cands = candidate_claims(entry, P)
+    for claims in (*slots.values(), *cands.values()):
+        for claim in claims:
+            assert "L:metric:M1" not in claim.cites, claim.sentence
+    assert any(c.kind.value == "log_message" for c in slots["story"])

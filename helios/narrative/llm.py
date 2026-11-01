@@ -1,8 +1,13 @@
-"""LLM narrator (S2.8 design §5.4; owner decisions N-b, N-d).
+"""LLM narrator (S2.8 design §5.4; owner decisions N-b, N-d and (b)).
 
-One call per slot through L-pipe's gateway and response cache; every claim is
-verified; a slot with any rejection gets one retry carrying the reasons, then
-the template narrator's slot. A model error never fails the run.
+Owner decision (b), 2026-11-01, after prompt rounds 1-2: the model chooses and
+orders claims; code writes every sentence. Per slot the model sees numbered
+candidate claims (``candidate_claims``: the template's wording, each already
+accepted by the verifier) and answers with candidate IDs, constrained by a
+JSON schema listing only those IDs. One call per slot through L-pipe's gateway
+and response cache; an answer with an unknown, repeated or surplus pick gets
+one retry carrying the reasons, then the template narrator's slot. A model
+error never fails the run.
 """
 
 from __future__ import annotations
@@ -15,15 +20,10 @@ import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from helios.narrative.claims import SLOTS, Claim, ClaimSchemaError, parse_slot
-from helios.narrative.prompt import (
-    NARRATOR_PROMPT_SHA,
-    PROMPT_TEMPLATE,
-    SLOT_KINDS,
-)
-from helios.narrative.schema import MAX_CLAIMS, slot_schema
-from helios.narrative.template import template_slots
-from helios.narrative.verifier import Reason, verify
+from helios.narrative.claims import SLOTS, Claim
+from helios.narrative.prompt import MAX_PICKS, NARRATOR_PROMPT_SHA, PROMPT_TEMPLATE
+from helios.narrative.template import candidate_claims, template_slots
+from helios.narrative.verifier import Reason
 from helios.pipelines.l_pipe.cache import CachedCall, cache_key
 from helios.pipelines.l_pipe.ollama_client import (
     OllamaConnectionError,
@@ -40,24 +40,23 @@ if TYPE_CHECKING:
     from helios.pipelines.l_pipe.cache import ResponseCache
     from helios.pipelines.l_pipe.gateway import LLMGateway
 
-__all__ = ["MODEL_ERROR", "SlotResult", "llm_slots", "render_prompt"]
+__all__ = ["MODEL_ERROR", "SlotResult", "llm_slots", "pick_schema", "render_prompt"]
 
 MODEL_ERROR = "model_error"
 TIMEOUT_S = 180.0
 _MAX_ATTEMPTS = 2
 _TASKS = {
-    "story": "say what happened: the ranking of the top suspects and, for each, "
-    "the evidence behind it.",
-    "contradictions": "explain, for each disagreeing pipeline, which service it "
-    "ranks first and the evidence it cites.",
-    "verification": "propose read-only checks an engineer can run to confirm the "
-    "top suspect.",
+    "story": "tell what happened: which services are the top suspects and the "
+    "evidence that matters most for each.",
+    "contradictions": "show where the pipelines disagree with the fused verdict.",
+    "verification": "choose the read-only checks an engineer should run first to "
+    "confirm the top suspect.",
 }
 
 
 @dataclass(frozen=True)
 class SlotResult:
-    """One slot as displayed: who wrote it, its claims and how it got there."""
+    """One slot as displayed: who chose it, its claims and how it got there."""
 
     source: str
     claims: tuple[Claim, ...]
@@ -65,7 +64,7 @@ class SlotResult:
     rejections: tuple[tuple[int, str], ...] = ()
     fallback: bool = False
     wall_ms: float = 0
-    # The first draft's claim count and how many of them the verifier accepted
+    # The first answer's pick count and how many of them were valid
     # (owner N-h: first-pass acceptance rate).
     drafted_first: int = 0
     accepted_first: int = 0
@@ -75,46 +74,38 @@ def _clock(iso: Any) -> str:
     return dt.datetime.fromisoformat(str(iso)).strftime("%H:%M") if iso else "?"
 
 
-def _evidence_lines(entry: Mapping[str, Any]) -> list[str]:
-    lines = []
-    for step in entry["steps"]:
-        for item in step.get("items", []):
-            if ":claim" in item["id"]:
-                continue
-            values = [f"value={item.get('value')}"]
-            for key in ("before", "after", "unit"):
-                if key in item:
-                    values.append(f"{key}={item[key]}")
-            lines.append(
-                f"{item['id']} | {item.get('service')} | {item.get('text')} | "
-                + " ".join(values)
-            )
-    return lines
+def _most(slot: str, params: NarratorParams) -> int:
+    return params.max_steps if slot == "verification" else MAX_PICKS[slot]
 
 
-def _slot_words(slot: str, params: NarratorParams | None) -> str:
-    """The frozen words a sentence in this slot may use (N-j)."""
-    if params is None:
-        return ""
-    words: set[str] = set(params.vocabulary.get("common", ()))
-    for kind in SLOT_KINDS[slot]:
-        words |= set(params.vocabulary.get(kind, ()))
-    if slot == "story":
-        words |= {w for ws in params.direction_words.values() for w in ws}
-        words |= {w for ws in params.channel_words.values() for w in ws}
-        words |= set(params.rank_words)
-    if slot == "contradictions":
-        words |= set(params.rank_words) | set(params.pipeline_words)
-    if slot == "verification":
-        words |= set(params.verbs)
-        words |= {w for ws in params.channel_words.values() for w in ws}
-    return ", ".join(sorted(words))
+def _ids(candidates: Sequence[Claim]) -> list[str]:
+    return [f"C{n}" for n in range(1, len(candidates) + 1)]
+
+
+def pick_schema(
+    slot: str, candidates: Sequence[Claim], params: NarratorParams
+) -> dict[str, Any]:
+    """The answer format: a list of distinct candidate IDs, at most the slot's
+    limit (sent to the model; the picks are checked again on return)."""
+    return {
+        "type": "object",
+        "properties": {
+            "claims": {
+                "type": "array",
+                "items": {"enum": _ids(candidates)},
+                "minItems": 1,
+                "maxItems": min(_most(slot, params), len(candidates)),
+            }
+        },
+        "required": ["claims"],
+        "additionalProperties": False,
+    }
 
 
 def render_prompt(
     slot: str,
     entry: Mapping[str, Any],
-    params: NarratorParams | None = None,
+    params: NarratorParams,
     *,
     previous: str | None = None,
     rejections: Sequence[tuple[int, str]] = (),
@@ -129,30 +120,27 @@ def render_prompt(
         f"{p} (top: {(steps.get(f'P:{p}', {}).get('ranked') or ['?'])[0]})"
         for p in fusion.get("disagree") or []
     ]
+    candidates = candidate_claims(entry, params)[slot]
     retry = ""
     if previous is not None:
-        reasons = "; ".join(f"claim {i}: {r}" for i, r in rejections)
+        reasons = "; ".join(f"pick {i}: {r}" for i, r in rejections)
         retry = (
             f"\nYOUR PREVIOUS ANSWER WAS REJECTED ({reasons}).\n"
-            f"PREVIOUS ANSWER: {previous}\nFix or drop the rejected claims.\n"
+            f"PREVIOUS ANSWER: {previous}\nPick only listed IDs, each once.\n"
         )
     return PROMPT_TEMPLATE.format(
-        vocabulary=_slot_words(slot, params),
         slot=slot,
         task=_TASKS[slot],
-        kinds=", ".join(SLOT_KINDS[slot]),
-        verbs="|".join(params.verbs if params else ()),
-        most=(
-            min(params.max_steps, MAX_CLAIMS)
-            if params and slot == "verification"
-            else MAX_CLAIMS
-        ),
+        most=min(_most(slot, params), len(candidates)),
         window=f"{_clock(trigger.get('window_start'))} to "
         f"{_clock(trigger.get('window_end'))}",
         fused=f"{fused} (confidence {fusion.get('confidence')}, "
-        f"state {fusion.get('state')}) [F]",
+        f"state {fusion.get('state')})",
         disagree=", ".join(disagree) or "none",
-        evidence="\n".join(_evidence_lines(entry)),
+        candidates="\n".join(
+            f"{cid} | {c.kind.value} | {c.sentence}"
+            for cid, c in zip(_ids(candidates), candidates, strict=True)
+        ),
         retry=retry,
     )
 
@@ -201,26 +189,33 @@ def _call(
 
 
 def _judge(
-    slot: str, raw: str | None, entry: Mapping[str, Any], params: NarratorParams
-) -> tuple[list[Claim], list[tuple[int, str]]]:
+    raw: str | None, candidates: Sequence[Claim], most: int
+) -> tuple[list[Claim], list[tuple[int, str]], int]:
+    """The picked claims in the model's order, the rejections, and how many
+    picks the answer made."""
     if raw is None:
-        return [], [(-1, MODEL_ERROR)]
+        return [], [(-1, MODEL_ERROR)], 0
     try:
-        claims = parse_slot(raw)
-    except ClaimSchemaError:
-        return [], [(-1, Reason.SCHEMA.value)]
-    if not claims:
-        return [], [(-1, Reason.SCHEMA.value)]
+        data: Any = json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        return [], [(-1, Reason.SCHEMA.value)], 0
+    picks = data.get("claims") if isinstance(data, dict) else data
+    if not isinstance(picks, list) or not picks:
+        return [], [(-1, Reason.SCHEMA.value)], 0
+    by_id = dict(zip(_ids(candidates), candidates, strict=True))
+    claims: list[Claim] = []
     rejections: list[tuple[int, str]] = []
-    allowed = SLOT_KINDS[slot]
-    for n, claim in enumerate(claims):
-        if claim.kind.value not in allowed:
+    seen: set[str] = set()
+    for n, pick in enumerate(picks):
+        if not isinstance(pick, str) or pick in seen or n >= most:
             rejections.append((n, Reason.SCHEMA.value))
-        elif reason := verify(claim, entry, params):
-            rejections.append((n, reason.value))
-    if slot == "verification" and len(claims) > params.max_steps:
-        rejections.append((params.max_steps, Reason.SCHEMA.value))
-    return claims, rejections
+        elif pick not in by_id:
+            rejections.append((n, Reason.UNKNOWN_ID.value))
+        else:
+            claims.append(by_id[pick])
+        if isinstance(pick, str):
+            seen.add(pick)
+    return claims, rejections, len(picks)
 
 
 def llm_slots(
@@ -231,29 +226,30 @@ def llm_slots(
     cache: ResponseCache | None,
     model_digest: str,
 ) -> dict[str, SlotResult]:
-    """Each slot from the model, verified; else the template's slot."""
+    """Each slot as the model picked it; else the template's slot."""
     template = template_slots(entry, params)
+    candidates = candidate_claims(entry, params)
     out: dict[str, SlotResult] = {}
     for slot in SLOTS:
-        if not template[slot]:
-            out[slot] = SlotResult("template", (), attempts=0)
+        if not template[slot] or not candidates[slot]:
+            out[slot] = SlotResult("template", tuple(template[slot]), attempts=0)
             continue
+        schema = pick_schema(slot, candidates[slot], params)
+        most = min(_most(slot, params), len(candidates[slot]))
         previous: str | None = None
         last: list[tuple[int, str]] = []
         seen: list[tuple[int, str]] = []
         wall = 0.0
         first = (0, 0)
-        schema = slot_schema(slot, entry, params)
         for attempt in range(1, _MAX_ATTEMPTS + 1):
             prompt = render_prompt(
                 slot, entry, params, previous=previous, rejections=last
             )
             raw, ms = _call(prompt, gateway, cache, model_digest, schema)
             wall += ms
-            claims, last = _judge(slot, raw, entry, params)
+            claims, last, picked = _judge(raw, candidates[slot], most)
             if attempt == 1:
-                bad = {i for i, _ in last if i >= 0}
-                first = (len(claims), len(claims) - len(bad))
+                first = (picked, len(claims) if picked else 0)
             if not last:
                 out[slot] = SlotResult(
                     "llm",

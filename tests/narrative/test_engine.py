@@ -11,7 +11,7 @@ from helios.narrative.params import load_narrator_params
 from helios.pipelines.l_pipe.ollama_client import OllamaConnectionError
 from helios.vcl import VCLFlag, get_variant, set_current_manifest
 from helios.vcl.decorators import GatedComponentInactiveError
-from tests.narrative.test_llm import DIGEST, GOOD, NoCalls, Scripted
+from tests.narrative.test_llm import _USAGE, DIGEST, GOOD, NoCalls, Scripted
 from tests.narrative.test_verifier import ENTRY
 
 P = load_narrator_params()
@@ -35,7 +35,10 @@ def test_llm_narrative_step_n() -> None:
     n = run_narrative(ENTRY, params=P, llm=True, client=client, cache=None)  # type: ignore[arg-type]
     step = n.as_step()
     assert step["id"] == "N" and step["narrator"] == "llm"
-    assert step["cost"] == {"prompt_tokens": 300, "completion_tokens": 60}
+    assert step["cost"] == {
+        "prompt_tokens": 3 * _USAGE[0],
+        "completion_tokens": 3 * _USAGE[1],
+    }
     assert set(step["measured"]) == {"wall_ms"}
     assert set(step["slots"]) == {"story", "contradictions", "verification"}
     story = step["slots"]["story"]
