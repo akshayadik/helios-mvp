@@ -15,7 +15,9 @@ from __future__ import annotations
 import dataclasses
 import hashlib
 import json
+import math
 import random
+from collections import Counter
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -139,8 +141,15 @@ def build_set(
         pool, pool_meta, _ = _sources(plant_from)
     seed = derived_seed([s for s, _, _ in sources], rubric_sha)
     rng = random.Random(seed)
+    # Per kind, at most the overall planted ratio of its real claims plus one,
+    # so no kind a rater sees is mostly planted.
+    real_kinds = Counter(c.kind.value for _, c, _ in sources)
+    ratio = planted_share / (1 - planted_share)
+    limit = {k: math.ceil(n * ratio) + 1 for k, n in real_kinds.items()}
     planted = (
-        plant(pool, planted_share, rng, params, n_real=len(sources)) if sources else []
+        plant(pool, planted_share, rng, params, n_real=len(sources), kind_limit=limit)
+        if sources
+        else []
     )
     by_src = {s: e for s, _, e in [*sources, *pool]}
     meta_all = {**pool_meta, **meta}

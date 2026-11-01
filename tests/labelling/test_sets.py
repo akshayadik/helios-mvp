@@ -93,7 +93,7 @@ def test_set_items_have_one_shape_and_planted_are_spread() -> None:
     share = sum(planted) / len(planted)
     # Every fixture entry is the same narrative, so unique corruptions run short
     # (review C1: no repeats); the share stays near, never above, the target.
-    assert 1 / 5 <= share <= 1 / 4 + 1 / 50
+    assert 0 < share <= 1 / 4 + 1 / 50
     assert s.manifest["counts"]["planted"] == sum(planted)
 
 
@@ -141,6 +141,30 @@ def test_planted_items_come_from_distinct_sources_and_never_repeat() -> None:
     assert len(set(shown)) == len(shown)
     real_kinds = {i["kind"] for i in s.items if not s.key[i["item"]]["planted"]}
     assert {i["kind"] for i in planted} == real_kinds
+
+
+def test_planted_kinds_follow_the_real_mix() -> None:
+    # A rare kind must not become mostly planted (14 of 17 log items were):
+    # per kind, planted at most the overall ratio of its real claims plus one.
+    import math
+
+    own = entries(8)
+    for e in own:  # keep log claims rare among the real ones
+        for st in e["steps"]:
+            if st["id"] == "N" and e["run_id"] != own[0]["run_id"]:
+                story = st["slots"]["story"]["claims"]
+                st["slots"]["story"]["claims"] = [
+                    c for c in story if c["kind"] != "log_message"
+                ]
+    other = [entry(n, ARMS[n % 2]) for n in range(200, 260)]
+    s = build_set(
+        own, planted_share=1 / 4, rubric_sha=RUBRIC, params=P, plant_from=other
+    )
+    real = [i["kind"] for i in s.items if not s.key[i["item"]]["planted"]]
+    planted = [i["kind"] for i in _planted(s)]
+    for kind in set(real) | set(planted):
+        cap = math.ceil(real.count(kind) * (1 / 4) / (3 / 4)) + 1
+        assert planted.count(kind) <= cap, (kind, planted.count(kind), cap)
 
 
 def test_planted_sources_can_come_from_other_cases() -> None:

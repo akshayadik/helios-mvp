@@ -183,6 +183,7 @@ def plant(
     params: NarratorParams,
     *,
     n_real: int | None = None,
+    kind_limit: Mapping[str, int] | None = None,
 ) -> list[tuple[str, Claim, str]]:
     """(source key, planted claim, category) so that planted claims make up
     ``share`` of all claims shown beside ``n_real`` real ones (default: as
@@ -190,7 +191,9 @@ def plant(
     whose sentence and cites repeat an earlier one is not used (review C1).
     Every category first gets a floor of about a tenth of the planted claims
     from its own shuffled queue, so rare kinds (log claims) are still
-    covered; the rest follow the sources' kind mix, categories kept balanced."""
+    covered; the rest follow the sources' kind mix, categories kept balanced.
+    ``kind_limit`` caps planted claims per claim kind, so no kind shown to a
+    rater is mostly planted."""
     real = len(sources) if n_real is None else n_real
     want = round(share * real / (1 - share))
     order = list(range(len(sources)))
@@ -200,13 +203,19 @@ def plant(
     used: set[int] = set()
     out: list[tuple[str, Claim, str]] = []
 
+    kinds: dict[str, int] = {}
+
     def take(idx: int, category: str) -> bool:
         key, claim, entry = sources[idx]
+        kind = claim.kind.value
+        if kind_limit is not None and kinds.get(kind, 0) >= kind_limit.get(kind, 0):
+            return False
         planted = corrupt(claim, entry, category, rng, params)
         if planted is None or (planted.sentence, planted.cites) in seen:
             return False
         seen.add((planted.sentence, planted.cites))
         used.add(idx)
+        kinds[kind] = kinds.get(kind, 0) + 1
         count[category] += 1
         out.append((key, planted, category))
         return True
