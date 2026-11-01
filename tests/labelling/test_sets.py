@@ -91,7 +91,9 @@ def test_set_items_have_one_shape_and_planted_are_spread() -> None:
         longest = max(longest, run)
     assert longest <= 6
     share = sum(planted) / len(planted)
-    assert abs(share - 1 / 4) < 1 / 50
+    # Every fixture entry is the same narrative, so unique corruptions run short
+    # (review C1: no repeats); the share stays near, never above, the target.
+    assert 1 / 5 <= share <= 1 / 4 + 1 / 50
     assert s.manifest["counts"]["planted"] == sum(planted)
 
 

@@ -118,3 +118,13 @@ def test_planted_and_real_items_have_the_same_shape() -> None:
                 real = claim.model_dump(mode="json", exclude_none=True)
                 fake = planted.model_dump(mode="json", exclude_none=True)
                 assert set(real) == set(fake), (category, claim.kind)
+
+
+def test_numeric_drift_never_makes_an_impossible_percentage() -> None:
+    # Review M2: "150% of its time" gives a planted claim away.
+    claim = SUPPORTED["call_structure"]  # "frontend spent 94% of its time ..."
+    for seed in range(20):
+        planted = corrupt(claim, ENTRY, "numeric_drift", random.Random(seed), P)
+        assert planted is not None
+        (pct,) = re.findall(r"(\d+(?:\.\d+)?)%", planted.sentence)
+        assert float(pct) <= 10**2, planted.sentence

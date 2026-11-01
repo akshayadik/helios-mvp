@@ -53,6 +53,9 @@ _SERVICE_FIELD = {
 }
 
 
+_PERCENT_MAX = 10**2
+
+
 def _name(name: str) -> re.Pattern[str]:
     return re.compile(rf"(?<![\w-]){re.escape(name)}(?![\w-])")
 
@@ -70,9 +73,11 @@ def _numeric(claim: Claim, rng: random.Random) -> Iterator[Claim]:
     for m in spots:
         text = m.group()
         places = len(text.split(".")[1]) if "." in text else 0
+        percent = claim.sentence[m.end() : m.end() + 1] == "%"
         for factor in rng.sample(_FACTORS, len(_FACTORS)):
             new = f"{float(text) * factor:.{places}f}"
-            if new != text:
+            # A share above the whole would give the planted claim away (review M2).
+            if new != text and not (percent and float(new) > _PERCENT_MAX):
                 s = claim.sentence
                 yield claim.model_copy(
                     update={"sentence": s[: m.start()] + new + s[m.end() :]}
