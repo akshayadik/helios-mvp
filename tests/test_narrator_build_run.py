@@ -142,3 +142,23 @@ def test_narrator_client_lets_only_narrator_prompts_reach_the_model(
     assert client.generate("HELIOS-NARRATOR\nSLOT: story", 1).text == "[]"
     with pytest.raises(CacheMissError):
         client.generate("worker prompt", 1)
+
+
+def test_final_after_the_freeze_ignores_only_the_provisional_flag(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Freezing flips params.provisional; a held-out re-run of the chosen round
+    # stays allowed, any other parameter change is still refused.
+    import dataclasses
+
+    from helios.narrative.params import load_narrator_params
+
+    _stage(tmp_path, monkeypatch)
+    assert tool.main(["--round", "1"]) == 0
+    params = load_narrator_params()
+    frozen = dataclasses.replace(params, provisional=not params.provisional)
+    monkeypatch.setattr(tool, "load_narrator_params", lambda: frozen)
+    assert tool._chosen_matches(1) is None
+    changed = dataclasses.replace(frozen, max_steps=frozen.max_steps + 1)
+    monkeypatch.setattr(tool, "load_narrator_params", lambda: changed)
+    assert tool._chosen_matches(1) is not None

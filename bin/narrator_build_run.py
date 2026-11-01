@@ -20,6 +20,7 @@ parameters are those of that round. Writes
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import json
 import sys
 import tempfile
@@ -129,9 +130,13 @@ def _chosen_matches(n: int) -> str | None:
     report = json.loads(path.read_text(encoding="utf-8"))
     if report.get("narrator_prompt_sha") != NARRATOR_PROMPT_SHA:
         return f"the narrator prompt differs from round {n}'s"
-    if report.get("narrator_params_hash") != narrator_params_hash(
-        load_narrator_params()
-    ):
+    # The freeze flips only ``provisional``; any other difference is refused.
+    params = load_narrator_params()
+    as_run = {
+        narrator_params_hash(dataclasses.replace(params, provisional=flag))
+        for flag in (True, False)
+    }
+    if report.get("narrator_params_hash") not in as_run:
         return f"the narrator parameters differ from round {n}'s"
     return None
 
