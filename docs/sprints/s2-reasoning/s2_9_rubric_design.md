@@ -143,4 +143,23 @@ Row S2-M7-RES01 (IN_PROGRESS at start, DONE when κ ≥ 0.7 on training, rubric 
 
 ## 10. Results
 
-(Filled after the build.)
+**PR 1 (instrument), built 2026-11-01** on branch `s2/rubric`. Row S2-M7-RES01 stays IN_PROGRESS: κ ≥ 0.7 needs both raters (rater 2 due 30 Nov).
+
+| Part | Where |
+|---|---|
+| Annotations ledger, own Ed25519 anchor key (R-n) | `helios/labelling/annotations.py`; `bin/verify_ledgers.py --annotations` |
+| Claim and evidence cards (top-3 header, template-only log cards, "evidence not found", context cards) | `helios/labelling/cards.py` |
+| Planted claims, one corruption per category, each rejected by the S2.8 verifier for its reason | `helios/labelling/planted.py` |
+| Labelling set: masked `set.json`, sealed `key.json`, derived seed (R-o), write-once, pool refused, no ground truth | `helios/labelling/sets.py`, `bin/labelling_set.py` (`--per-arm`, `--exclude-sets`, `--onboarding`) |
+| κ, consensus (R-i, R-m), H_fact per arm, case and rater, planted-claim detection, blinding check | `helios/evaluation/rater_agreement.py` |
+| Labelling server and page (layout B, loopback, a key per person in the link fragment, lock rule, adjudicator queue, onboarding answers, blinding question) | `helios/labelling/session.py`, `helios/labelling/page.html`, `bin/label_server.py` |
+| Build ledgers, stratified training selection, onboarding set | `bin/labelling_runs.py`, `helios/labelling/training.py` |
+| Rubric draft with worked examples from build data | `docs/research/h_fact_rubric.md` |
+
+**Builder's calls while building** (all in the plan ledger): optional label fields validated by the ledger class; number corruptions scale values (no unit swap); an undefined κ counts as below 0.7; a new sitting after a 30-minute pause; raters may revisit a label until both have labelled it; the batch build tool signs CoE anchors with the CoE key, the server only with the annotations key; contradiction and verification-step cards add the pipeline ranking, fused verdict and incident window the verifier checks (found while writing the worked examples).
+
+**Build data ready for training:** signed ledgers for HELIOS-Full and HELIOS-noLLM on both build corpora (1,116 entries, all verify with the public key, none excluded); training round 1 = 528 items (396 real claims from 25 + 25 narratives, 132 planted, 26–27 per category, every claim kind); onboarding = 38 items (18 real, 20 planted). Smoke test of the real server on a scratch copy: page served, keyless request refused, an item served without any arm, run or planted field, one label recorded.
+
+**Gate:** full local gate green, coverage 95.83%.
+
+**PR 2 (training, owner-led):** annotations key (`label_server.py keygen`), three people, tunnel; onboarding; rounds until κ ≥ 0.7; rubric frozen by hash; deviation entry of §6.
