@@ -98,3 +98,23 @@ def test_cli_never_opens_ground_truth(
     monkeypatch.setattr(builtins, "open", _open)
     assert tool.main(_args(d, pub, rubric, tmp_path / "set")) == 0
     assert opened == []
+
+
+def test_cli_training_round_and_onboarding(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    d, pub, rubric = _ledgers(tmp_path, monkeypatch)
+    one = tmp_path / "round1"
+    assert tool.main([*_args(d, pub, rubric, one), "--per-arm", "1"]) == 0
+    key1 = json.loads((one / "key.json").read_text("utf-8"))
+    cases1 = {v["incident_id"] for v in key1.values()}
+    assert len({v["run_id"] for v in key1.values()}) == 2  # one narrative per arm
+    two = tmp_path / "round2"
+    args2 = [*_args(d, pub, rubric, two), "--per-arm", "1", "--exclude-sets", str(one)]
+    assert tool.main(args2) == 0
+    key2 = json.loads((two / "key.json").read_text("utf-8"))
+    assert cases1.isdisjoint({v["incident_id"] for v in key2.values()})
+    onb = tmp_path / "onboarding"
+    assert tool.main([*_args(d, pub, rubric, onb), "--onboarding"]) == 0
+    manifest = json.loads((onb / "manifest.json").read_text("utf-8"))
+    assert manifest["purpose"] == "onboarding"

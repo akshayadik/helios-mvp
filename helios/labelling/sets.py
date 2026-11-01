@@ -35,6 +35,7 @@ __all__ = [
     "CONFIRMATORY_PLANTED_SHARE",
     "TRAINING_PLANTED_SHARE",
     "LabellingSet",
+    "assemble",
     "build_set",
     "derived_seed",
     "rater_order",
@@ -144,25 +145,36 @@ def build_set(
             )
         )
     rng.shuffle(rows)
+    return assemble(
+        rows,
+        seed,
+        {
+            "rubric_sha": rubric_sha,
+            "planted_share": planted_share,
+            "sources": sorted(meta),
+            "counts": {
+                "entries": len(entries),
+                "skipped": skipped,
+                "real": len(sources),
+                "planted": len(planted),
+            },
+            "ledgers": [],
+        },
+    )
+
+
+Row = tuple[str, "Claim", "Mapping[str, Any]", dict[str, Any]]
+
+
+def assemble(rows: Sequence[Row], seed: int, manifest: dict[str, Any]) -> LabellingSet:
+    """A set from (row key, claim, entry, key info) rows, in the given order:
+    opaque IDs from the seed and row key; ``manifest`` gains the seed."""
     items, key = [], {}
     for row_key, claim, entry, k in rows:
         item_id = _opaque(seed, row_key)
         items.append(_item(item_id, claim, entry))
         key[item_id] = k
-    manifest = {
-        "seed": seed,
-        "rubric_sha": rubric_sha,
-        "planted_share": planted_share,
-        "sources": sorted(meta),
-        "counts": {
-            "entries": len(entries),
-            "skipped": skipped,
-            "real": len(sources),
-            "planted": len(planted),
-        },
-        "ledgers": [],
-    }
-    return LabellingSet(items, key, manifest)
+    return LabellingSet(items, key, {"seed": seed, **manifest})
 
 
 def _dump(obj: Any) -> bytes:

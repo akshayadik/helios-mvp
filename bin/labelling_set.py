@@ -27,9 +27,11 @@ from helios.labelling.sets import (
     CONFIRMATORY_PLANTED_SHARE,
     TRAINING_PLANTED_SHARE,
     build_set,
+    derived_seed,
     rubric_sha,
     write_set,
 )
+from helios.labelling.training import onboarding_set, select_training
 from helios.narrative.params import load_narrator_params
 from helios.orchestrator.coe import CoELedger
 from helios.telemetry.pool_lock import build_frozen
@@ -83,6 +85,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--share", choices=sorted(SHARES), required=True)
     parser.add_argument("--rubric", type=Path, required=True)
     parser.add_argument("--public-key", type=Path, default=PUBLIC_KEY_FILE)
+    parser.add_argument(
+        "--per-arm", type=int, help="a training round: this many narratives per arm"
+    )
+    parser.add_argument(
+        "--exclude-sets",
+        type=Path,
+        nargs="*",
+        default=[],
+        metavar="SET_DIR",
+        help="earlier rounds whose cases are not reused",
+    )
+    parser.add_argument("--onboarding", action="store_true", help="the onboarding set")
     args = parser.parse_args(argv)
     loaded = _load(args.coe, load_key(), args.public_key)
     if isinstance(loaded, str):
@@ -98,12 +112,28 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 2
-    s = build_set(
-        entries,
-        planted_share=SHARES[args.share],
-        rubric_sha=rubric_sha(args.rubric),
-        params=load_narrator_params(),
-    )
+    params, rubric = load_narrator_params(), rubric_sha(args.rubric)
+    run_ids = sorted(str(e.get("run_id")) for e in entries)
+    if args.onboarding:
+        s = onboarding_set(entries, seed=derived_seed(run_ids, rubric), params=params)
+    else:
+        if args.per_arm is not None:
+            used: set[str] = set()
+            for earlier in args.exclude_sets:
+                key = json.loads((earlier / "key.json").read_text("utf-8"))
+                used |= {str(v["incident_id"]) for v in key.values()}
+            entries = [
+                dict(e)
+                for e in select_training(
+                    entries,
+                    n_per_arm=args.per_arm,
+                    seed=derived_seed(run_ids, rubric),
+                    exclude_cases=used,
+                )
+            ]
+        s = build_set(
+            entries, planted_share=SHARES[args.share], rubric_sha=rubric, params=params
+        )
     s.manifest["ledgers"] = ledgers
     write_set(s, args.out)
     print(f"[labelling] {json.dumps(s.manifest['counts'], sort_keys=True)}")
