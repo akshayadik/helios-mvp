@@ -1,6 +1,6 @@
 # S2.8 — Narrative Engine with grounding verifier · design
 
-**Task:** S2.8 (tracking S2-M7-ENG08) · **Date:** 2026-10-31 · **Status:** approved 2026-10-31 (builder check done; N-j added after the whole-branch review); PR 1 and PR 2 built, deviation entries 65–67; narrator frozen · **Depends on:** S2.7 (CoE entry and evidence namespace, entry 64), S2.5 (fused verdict), S2.3 (L-pipe model, cache, aliases, entries 57–58) · **Owner decisions:** marked *owner* (2026-10-31)
+**Task:** S2.8 (tracking S2-M7-ENG08) · **Date:** 2026-10-31 · **Status:** approved 2026-10-31 (builder check done; N-j added after the whole-branch review); PR 1 and PR 2 built, deviation entries 65–68; narrator frozen · **Depends on:** S2.7 (CoE entry and evidence namespace, entry 64), S2.5 (fused verdict), S2.3 (L-pipe model, cache, aliases, entries 57–58) · **Owner decisions:** marked *owner* (2026-10-31)
 
 **Flag:** `VCLFlag.COE_NARRATIVE` gates the Narrative Engine (OFF = the ranked list only, HELIOS-noExpl). Which narrator writes is decided by `l2c_llm`: on → the LLM narrator; off → the template narrator. The verifier runs on every narrative.
 
@@ -173,4 +173,17 @@ Exact template sentences (within the shapes the prompt asks for); the direction 
 - Bug found in the round 3 smoke test and fixed test-first, both narrators: log claims and log checks could quote an L-pipe metric or trace digest line as "logged"; they now cite only L-pipe log lines (`L:log:…`).
 - Build-wide after the fix: 1,116 CoE entries, 22,091 template and candidate claims, 0 rejected.
 - Style (held-out): Full 7.1-8.2 words per sentence and 3.4-3.6 claims per slot; noLLM 6.3-7.6 words and 3.5-4.3 claims. Full and noLLM now share the wording; they differ in which supported claims are shown and their order.
-- Deferred: the template prints zero as "0.000"; the PR 1 minors above.
+- **Caveat to N-h:** in pick mode the model's answer is constrained to candidate IDs, so 100% first-pass acceptance and 0% fallback hold by construction. They measure schema compliance, are not comparable with rounds 1-2, and are not evidence of grounding; grounding rests on the verifier, which accepts every candidate before it is offered.
+
+**Whole-branch review of PR 2 (fresh reviewer), entry 68 (`da4f44b5cf0b`): 1 Critical, 4 Important, all fixed test-first**
+
+1. *Log quotes were digest wording:* L-pipe log lines are digests (`<svc> log template "<text>": b lines before trigger, a after`, or `<svc> N error-level lines after trigger, M before`). Template lines were skipped (they contain quotes), so every quote came from a severity-count line. A log quote must now be a whole-word run of the template text inside the quotes (`log_template_text`); severity lines are never quoted. Build-wide, HELIOS-Full log quotes went from 12 (OTel) and 0 (RCAEval), all digest wording, to 97 and 310 quotes of logged templates.
+2. *Prompt inputs outside the SHA:* task texts, pick limits, candidate and retry lines and the schema shape are pinned by `test_frozen_prompt_inputs_outside_the_template_are_pinned`; the SHA definition is unchanged.
+3. *Duplicate candidate sentences* (a ghost edge between two top-3 services): deduplicated; wait shares that round to 0% are no longer stated.
+4. *Candidates cover the template* is now tested on staged runs; an empty candidate list beside a template slot is a counted fallback.
+5. The leak test now fails if the narrator makes no call, and checks narrator prompts for dates.
+
+Also fixed: the build tool refused `--final` after the freeze (the parameters hash covers the provisional flag); it now ignores only that flag. Entry 68 corrects entry 67: noLLM, D and G have no L-pipe evidence, so the log fixes change HELIOS-Full only. Held-out re-run on the fixed, frozen narrator: 100% / 0% fallback. Build-wide: 1,116 entries, 22,484 template and candidate claims, 0 rejected.
+
+- Deferred minors: trivially small shifts offered as candidates; zero printed as "0.000"; the build tool overwrites existing reports and does not check the report's split, round or model digest; the freeze test does not compare model digests; `_call` catches only Ollama errors; no `uniqueItems` in the pick schema; an empty PREVIOUS ANSWER after a model error; verifier helpers public but unused outside it; the PR 1 minors above.
+- Owner's call (raised, not changed): Full's story is capped at 5 picks while the template's runs to 12 claims; verification candidates include suspects 2-3 though the task says "confirm the top suspect".
