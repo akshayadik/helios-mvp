@@ -1,0 +1,149 @@
+{
+  "corpora": {
+    "otel_build_v3": {
+      "cases": 32,
+      "excluded": 0,
+      "llm": {
+        "claims_displayed": 270,
+        "first_pass_claim_acceptance": 1.0,
+        "first_pass_slot_acceptance": 1.0,
+        "narratives": 32,
+        "rejections": {},
+        "retry_success": null,
+        "slot_fallback_rate": 0.0,
+        "slots_called": 79,
+        "style": {
+          "llm": {
+            "claims_per_slot": {
+              "max": 5,
+              "mean": 3.417722,
+              "median": 3,
+              "n": 79
+            },
+            "sentence_words": {
+              "max": 11,
+              "mean": 8.155556,
+              "median": 8.0,
+              "n": 270
+            }
+          },
+          "template": {
+            "claims_per_slot": {
+              "max": null,
+              "mean": null,
+              "median": null,
+              "n": 0
+            },
+            "sentence_words": {
+              "max": null,
+              "mean": null,
+              "median": null,
+              "n": 0
+            }
+          }
+        }
+      },
+      "template": {
+        "claims_displayed": 302,
+        "first_pass_claim_acceptance": null,
+        "first_pass_slot_acceptance": null,
+        "narratives": 32,
+        "rejections": {},
+        "retry_success": null,
+        "slot_fallback_rate": null,
+        "slots_called": 0,
+        "style": {
+          "template": {
+            "claims_per_slot": {
+              "max": 9,
+              "mean": 4.314286,
+              "median": 2.0,
+              "n": 70
+            },
+            "sentence_words": {
+              "max": 11,
+              "mean": 7.52649,
+              "median": 8.0,
+              "n": 302
+            }
+          }
+        }
+      }
+    },
+    "rcaeval_build": {
+      "cases": 248,
+      "excluded": 0,
+      "llm": {
+        "claims_displayed": 1998,
+        "first_pass_claim_acceptance": 1.0,
+        "first_pass_slot_acceptance": 1.0,
+        "narratives": 248,
+        "rejections": {},
+        "retry_success": null,
+        "slot_fallback_rate": 0.0,
+        "slots_called": 568,
+        "style": {
+          "llm": {
+            "claims_per_slot": {
+              "max": 5,
+              "mean": 3.517606,
+              "median": 3.0,
+              "n": 568
+            },
+            "sentence_words": {
+              "max": 11,
+              "mean": 7.05956,
+              "median": 7.0,
+              "n": 1998
+            }
+          },
+          "template": {
+            "claims_per_slot": {
+              "max": null,
+              "mean": null,
+              "median": null,
+              "n": 0
+            },
+            "sentence_words": {
+              "max": null,
+              "mean": null,
+              "median": null,
+              "n": 0
+            }
+          }
+        }
+      },
+      "template": {
+        "claims_displayed": 1732,
+        "first_pass_claim_acceptance": null,
+        "first_pass_slot_acceptance": null,
+        "narratives": 248,
+        "rejections": {},
+        "retry_success": null,
+        "slot_fallback_rate": null,
+        "slots_called": 0,
+        "style": {
+          "template": {
+            "claims_per_slot": {
+              "max": 6,
+              "mean": 3.49899,
+              "median": 3,
+              "n": 495
+            },
+            "sentence_words": {
+              "max": 8,
+              "mean": 6.32448,
+              "median": 7.0,
+              "n": 1732
+            }
+          }
+        }
+      }
+    }
+  },
+  "model_digest": "46e0c10c039e019119339687c3c1757cc81b9da49709a3b3924863ba87ca666e",
+  "narrator_params_hash": "a8d984af8a9866cd7185dcc95e0d22148a6e1b9773f581c11b1b4df3677190ad",
+  "narrator_prompt_sha": "e2d2242fdf00de6a001d9716e6a4a0e9ead72149c52f561be4b9dea7d9295aab",
+  "round": 3,
+  "split": "dev"
+}

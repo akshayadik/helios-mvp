@@ -11,6 +11,7 @@ import datetime as dt
 from typing import TYPE_CHECKING, Any
 
 from helios.narrative.claims import SLOTS, Claim, ClaimKind
+from helios.narrative.verifier import LOG_PREFIX, log_template_text, verify
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
 
 if TYPE_CHECKING:
@@ -18,7 +19,7 @@ if TYPE_CHECKING:
 
     from helios.narrative.params import NarratorParams
 
-__all__ = ["template_slots"]
+__all__ = ["candidate_claims", "template_slots"]
 
 _ORDINALS = ("top", "second", "third")
 _PIPELINES = {"dpipe": "D-pipe", "gpipe": "G-pipe", "lpipe": "L-pipe"}
@@ -91,14 +92,26 @@ def _shift_claim(item: Mapping[str, Any], svc: str) -> Claim:
     )
 
 
+def _percent(share: float) -> str:
+    return f"{share * 100:.0f}"
+
+
+def _shares(value: Any) -> dict[str, float]:
+    """Wait shares worth stating: those that do not round to 0% (review M1)."""
+    if not isinstance(value, dict):
+        return {}
+    return {k: v for k, v in value.items() if _percent(v) != "0"}
+
+
 def _graph_claim(entry: Mapping[str, Any], svc: str) -> Claim | None:
     items = {i["id"]: i for i in _items(entry, f"G:{svc}:", svc)}
     wait = items.get(f"G:{svc}:wait_from")
-    if wait and isinstance(wait.get("value"), dict) and wait["value"]:
-        caller, share = max(wait["value"].items(), key=lambda kv: (kv[1], kv[0]))
+    if wait and _shares(wait.get("value")):
+        shares = _shares(wait.get("value"))
+        caller, share = max(shares.items(), key=lambda kv: (kv[1], kv[0]))
         return Claim(
             kind=ClaimKind.CALL_STRUCTURE,
-            sentence=f"{caller} spent {share * 100:.0f}% of its time waiting on {svc}.",
+            sentence=f"{caller} spent {_percent(share)}% of its time waiting on {svc}.",
             cites=(wait["id"],),
             caller=caller,
             callee=svc,
@@ -129,6 +142,57 @@ def _graph_claim(entry: Mapping[str, Any], svc: str) -> Claim | None:
     return None
 
 
+def _graph_claims(entry: Mapping[str, Any], svc: str) -> list[Claim]:
+    """Every call-graph claim about ``svc`` (the template keeps only the first)."""
+    items = {i["id"]: i for i in _items(entry, f"G:{svc}:", svc)}
+    out = []
+    wait = items.get(f"G:{svc}:wait_from")
+    if wait:
+        for caller, share in sorted(
+            _shares(wait.get("value")).items(), key=lambda kv: (-kv[1], kv[0])
+        ):
+            out.append(
+                Claim(
+                    kind=ClaimKind.CALL_STRUCTURE,
+                    sentence=(
+                        f"{caller} spent {_percent(share)}% of its time waiting on "
+                        f"{svc}."
+                    ),
+                    cites=(wait["id"],),
+                    caller=caller,
+                    callee=svc,
+                    feature="wait",
+                )
+            )
+    leads = items.get(f"G:{svc}:leads")
+    if leads and isinstance(leads.get("value"), list):
+        for caller in sorted(leads["value"]):
+            out.append(
+                Claim(
+                    kind=ClaimKind.CALL_STRUCTURE,
+                    sentence=f"{svc} moved before its caller {caller}.",
+                    cites=(leads["id"],),
+                    caller=caller,
+                    callee=svc,
+                    feature="lead",
+                )
+            )
+    ghosts = items.get(f"G:{svc}:ghost_edges")
+    if ghosts and isinstance(ghosts.get("value"), list):
+        for caller, callee in sorted(ghosts["value"]):
+            out.append(
+                Claim(
+                    kind=ClaimKind.CALL_STRUCTURE,
+                    sentence=f"{caller} started calling {callee} after the trigger.",
+                    cites=(ghosts["id"],),
+                    caller=caller,
+                    callee=callee,
+                    feature="ghost",
+                )
+            )
+    return out
+
+
 def _snippet(text: str, params: NarratorParams) -> str | None:
     """The first words of a log line, cut at a word boundary, as long as the
     verifier requires (N-j); None when the line is too short or multi-line."""
@@ -142,21 +206,30 @@ def _snippet(text: str, params: NarratorParams) -> str | None:
     return raw if len(raw) >= params.min_snippet_chars else None
 
 
+def _log_claims(
+    entry: Mapping[str, Any], svc: str, params: NarratorParams
+) -> list[Claim]:
+    out = []
+    for item in _items(entry, LOG_PREFIX, svc):
+        logged = log_template_text(str(item.get("text", "")))
+        snippet = None if logged is None else _snippet(logged, params)
+        if snippet is not None:
+            out.append(
+                Claim(
+                    kind=ClaimKind.LOG_MESSAGE,
+                    sentence=f'{svc} logged "{snippet}".',
+                    cites=(item["id"],),
+                    service=svc,
+                    snippet=snippet,
+                )
+            )
+    return out
+
+
 def _log_claim(
     entry: Mapping[str, Any], svc: str, params: NarratorParams
 ) -> Claim | None:
-    for item in _items(entry, "L:", svc):
-        snippet = _snippet(str(item.get("text", "")), params)
-        if snippet is None:
-            continue
-        return Claim(
-            kind=ClaimKind.LOG_MESSAGE,
-            sentence=f'{svc} logged "{snippet}".',
-            cites=(item["id"],),
-            service=svc,
-            snippet=snippet,
-        )
-    return None
+    return next(iter(_log_claims(entry, svc, params)), None)
 
 
 def _story(
@@ -217,6 +290,11 @@ def _clock(iso: str) -> str:
 def _verification(
     entry: Mapping[str, Any], top: str, params: NarratorParams
 ) -> list[Claim]:
+    return _checks(entry, top)[: params.max_steps]
+
+
+def _checks(entry: Mapping[str, Any], top: str) -> list[Claim]:
+    """Read-only checks on one service: its strongest metric, logs, calls."""
     t = _steps(entry)["T"]
     if not t.get("window_start") or not t.get("window_end"):
         return []
@@ -237,7 +315,7 @@ def _verification(
                 modality="metric",
             )
         )
-    logs = _items(entry, "L:", top)
+    logs = _items(entry, LOG_PREFIX, top)
     if logs:
         steps.append(
             Claim(
@@ -261,7 +339,7 @@ def _verification(
                 modality="edge",
             )
         )
-    return steps[: params.max_steps]
+    return steps
 
 
 def template_slots(
@@ -276,3 +354,61 @@ def template_slots(
         "contradictions": _contradictions(entry, ranked[0]),
         "verification": _verification(entry, ranked[0], params),
     }
+
+
+def _ranking(ranked: list[str]) -> list[Claim]:
+    return [
+        Claim(
+            kind=ClaimKind.RANKING,
+            sentence=f"{svc} is the {_ORDINALS[rank - 1]} suspect.",
+            cites=("F",),
+            service=svc,
+            rank=rank,
+        )
+        for rank, svc in enumerate(ranked[:3], start=1)
+    ]
+
+
+def candidate_claims(
+    entry: Mapping[str, Any], params: NarratorParams
+) -> dict[str, list[Claim]]:
+    """Every claim per slot the entry supports, in the template's wording
+    (owner decision (b), 2026-11-01): the LLM narrator picks and orders from
+    these. Only claims the verifier accepts are offered; a superset of the
+    template's own slots."""
+    ranked = list(_steps(entry)["F"].get("ranked") or [])
+    if not ranked:
+        return {slot: [] for slot in SLOTS}
+    story: list[Claim] = []
+    steps: list[Claim] = []
+    for svc in ranked[:3]:
+        story += [
+            _shift_claim(i, svc)
+            for i in _items(entry, f"D:{svc}:", svc)
+            if i["id"].split(":")[-1] in _CHANNEL_LABEL
+            and isinstance(i.get("value"), int | float)
+            and i["value"] > 0
+        ]
+        story += _graph_claims(entry, svc) + _log_claims(entry, svc, params)
+        steps += _checks(entry, svc)
+    out = {
+        "story": _ranking(ranked) + story,
+        "contradictions": _contradictions(entry, ranked[0]),
+        "verification": steps,
+    }
+    return {slot: _unique(claims, entry, params) for slot, claims in out.items()}
+
+
+def _unique(
+    claims: list[Claim], entry: Mapping[str, Any], params: NarratorParams
+) -> list[Claim]:
+    """Verified claims, each sentence once (review I2: a ghost edge between two
+    top-3 services is in both services' items)."""
+    seen: set[tuple[str, str]] = set()
+    out = []
+    for c in claims:
+        key = (c.kind.value, c.sentence)
+        if key not in seen and verify(c, entry, params) is None:
+            seen.add(key)
+            out.append(c)
+    return out

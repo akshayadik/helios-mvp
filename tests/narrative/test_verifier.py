@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 from typing import Any
 
 import pytest
@@ -65,7 +66,8 @@ ENTRY: dict[str, Any] = {
                 {
                     "id": "L:log:L12",
                     "service": "cart",
-                    "text": "cart: connection pool exhausted after 30s",
+                    "text": 'cart log template "connection pool exhausted after <DUR>": '
+                    "2 lines before trigger, 40 after",
                     "value": None,
                 },
                 {
@@ -354,7 +356,8 @@ def test_log_snippet_text_is_not_rechecked() -> None:
                     {
                         "id": "L:log:L3",
                         "service": "cart",
-                        "text": "cart -> payment timeout after 30s at 13:02",
+                        "text": 'cart log template "cart -> payment timeout after '
+                        '30s at 13:02": 0 lines before trigger, 5 after',
                         "value": None,
                     }
                 ],
@@ -393,3 +396,73 @@ def test_time_window_crossing_midnight() -> None:
     assert verify(ok, entry, P) is None
     late = step.model_copy(update={"sentence": "Query cart latency at 00:30."})
     assert verify(late, entry, P) == Reason.TIME_OUT_OF_WINDOW
+
+
+def _with_metric_line() -> dict[str, Any]:
+    entry = copy.deepcopy(ENTRY)
+    lpipe = next(s for s in entry["steps"] if s["id"] == "P:lpipe")
+    lpipe["items"].insert(
+        0,
+        {
+            "id": "L:metric:M1",
+            "service": "cart",
+            "text": "cart span_mean_latency_milliseconds up 6.2 robust units",
+            "value": None,
+        },
+    )
+    return entry
+
+
+def test_logged_claim_needs_a_log_line_not_a_metric_digest_line() -> None:
+    # Round 3 smoke: "cart logged <metric digest line>" was accepted.
+    entry = _with_metric_line()
+    claim = c(
+        "log_message",
+        'cart logged "cart span_mean_latency_milliseconds up".',
+        ["L:metric:M1"],
+        service="cart",
+        snippet="cart span_mean_latency_milliseconds up",
+    )
+    assert verify(claim, entry, P) == Reason.KIND_MISMATCH
+    step = c(
+        "verification_step",
+        "Filter cart logs between 14:42 and 14:56.",
+        ["L:metric:M1"],
+        target_service="cart",
+        action_verb="filter",
+        modality="log",
+    )
+    assert verify(step, entry, P) == Reason.MODALITY_MISMATCH
+
+
+SEVERITY_LINE = "cart 38 error-level lines after trigger, 9 before"
+
+
+def _with_severity_line() -> dict[str, Any]:
+    entry = copy.deepcopy(ENTRY)
+    lpipe = next(s for s in entry["steps"] if s["id"] == "P:lpipe")
+    lpipe["items"].insert(
+        0, {"id": "L:log:L1", "service": "cart", "text": SEVERITY_LINE, "value": None}
+    )
+    return entry
+
+
+def test_log_snippet_must_come_from_the_quoted_template() -> None:
+    # Review C1: L-pipe log lines are digests; only the template text inside
+    # the quotes is something the service logged.
+    entry = _with_severity_line()
+
+    def logged(snippet: str, cite: str) -> Reason | None:
+        claim = c(
+            "log_message",
+            f'cart logged "{snippet}".',
+            [cite],
+            service="cart",
+            snippet=snippet,
+        )
+        return verify(claim, entry, P)
+
+    assert logged("connection pool exhausted", "L:log:L12") is None
+    assert logged("38 error-level lines after", "L:log:L1") == Reason.SNIPPET_NOT_FOUND
+    assert logged("2 lines before trigger", "L:log:L12") == Reason.SNIPPET_NOT_FOUND
+    assert logged("cart log template", "L:log:L12") == Reason.SNIPPET_NOT_FOUND

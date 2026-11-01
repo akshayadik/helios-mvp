@@ -16,7 +16,7 @@ the orchestrator, so the two never overlap.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from helios.pipelines.l_pipe.ollama_client import (
     OllamaConnectionError,
@@ -62,10 +62,15 @@ class LLMGateway:
     def usage(self) -> LLMUsage:
         return self._usage
 
-    def generate(self, prompt: str, timeout_s: float) -> OllamaGenerateResult:
+    def generate(
+        self, prompt: str, timeout_s: float, schema: dict[str, Any] | None = None
+    ) -> OllamaGenerateResult:
+        """``schema`` is passed on only when given (the narrator's output
+        format, S2.8); L-pipe calls are unchanged."""
         u = self._usage
+        extra = {} if schema is None else {"schema": schema}
         try:
-            result = self._client.generate(prompt, timeout_s=timeout_s)
+            result = self._client.generate(prompt, timeout_s=timeout_s, **extra)
         except (OllamaTimeoutError, OllamaConnectionError, OllamaResponseError):
             self._usage = LLMUsage(
                 u.calls + 1,

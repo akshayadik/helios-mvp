@@ -86,7 +86,10 @@ class _CacheOnlyClient(OllamaClient):
             raise CacheMissError("the model digest is not pinned (entry 58)")
         return EXPECTED_MODEL_DIGEST
 
-    def generate(self, prompt: str, timeout_s: float) -> OllamaGenerateResult:
+    def generate(
+        self, prompt: str, timeout_s: float, schema: dict[str, Any] | None = None
+    ) -> OllamaGenerateResult:
+        del schema
         if prompt.startswith("HELIOS-NARRATOR"):
             # S2.8: the narrator never changes fusion; without a model it falls
             # back to the template, as it would with the server down.

@@ -69,7 +69,9 @@ class FakeClient:
     def model_digest(self, timeout_s: float) -> str:
         return lpipe_config.EXPECTED_MODEL_DIGEST or "fake-digest"
 
-    def generate(self, prompt: str, timeout_s: float) -> OllamaGenerateResult:
+    def generate(
+        self, prompt: str, timeout_s: float, schema: dict[str, Any] | None = None
+    ) -> OllamaGenerateResult:
         self.calls += 1
         self.in_flight += 1
         self.max_in_flight = max(self.max_in_flight, self.in_flight)
@@ -77,19 +79,11 @@ class FakeClient:
             if self.answer is not None:
                 return OllamaGenerateResult(self.answer, *_USAGE)
             if prompt.startswith("HELIOS-NARRATOR"):
-                # S2.8 narrator: the story slot gets one valid ranking claim (an
-                # accepted LLM claim); other slots get none and fall back.
-                top = re.search(r"FUSED VERDICT: 1\. (\S+?),? ", prompt)
-                if "SLOT: story" in prompt and top:
-                    svc = top.group(1).rstrip(",")
-                    claim = {
-                        "kind": "ranking",
-                        "service": svc,
-                        "rank": 1,
-                        "cites": ["F"],
-                        "sentence": f"{svc} is the top suspect.",
-                    }
-                    return OllamaGenerateResult(json.dumps([claim]), *_USAGE)
+                # S2.8 narrator (owner (b)): the story slot picks its first
+                # candidate, the top suspect's ranking (an accepted LLM pick);
+                # other slots answer nothing and fall back.
+                if "SLOT: story" in prompt and "C1 | ranking |" in prompt:
+                    return OllamaGenerateResult(json.dumps({"claims": ["C1"]}), *_USAGE)
                 return OllamaGenerateResult("[]", *_USAGE)
             line_id, svc = _LINE.findall(prompt)[0]
             text = json.dumps(
@@ -254,8 +248,10 @@ def test_confirmatory_refuses_unpinned_model(monkeypatch: pytest.MonkeyPatch) ->
 
 def test_h_struct_counts_outputs_and_failures() -> None:
     class LogCitesNothingReal(FakeClient):
-        def generate(self, prompt: str, timeout_s: float) -> OllamaGenerateResult:
-            out = super().generate(prompt, timeout_s)
+        def generate(
+            self, prompt: str, timeout_s: float, schema: dict[str, Any] | None = None
+        ) -> OllamaGenerateResult:
+            out = super().generate(prompt, timeout_s, schema)
             if "Evidence, log changes" in prompt:
                 return OllamaGenerateResult(out.text.replace('"L', '"T'), *_USAGE)
             return out

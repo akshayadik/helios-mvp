@@ -245,9 +245,9 @@ def test_lpipe_prompts_carry_no_label_or_identity(
             super().__init__()
             self.prompts: list[str] = []
 
-        def generate(self, prompt: str, timeout_s: float) -> Any:
+        def generate(self, prompt: str, timeout_s: float, schema: Any = None) -> Any:
             self.prompts.append(prompt)
-            return super().generate(prompt, timeout_s)
+            return super().generate(prompt, timeout_s, schema)
 
     captures = tmp_path / "captures"
     incident_id = stage_capture(captures)
@@ -281,8 +281,11 @@ def test_lpipe_prompts_carry_no_label_or_identity(
     narrator = [p for p in client.prompts if p.startswith("HELIOS-NARRATOR")]
     client.prompts = [p for p in client.prompts if not p.startswith("HELIOS-NARRATOR")]
     assert len(client.prompts) == 3
+    assert narrator  # review M2: never pass because the narrator made no call
     for prompt in narrator:
         assert incident_id not in prompt
+        # Dates would date the incident; HH:MM inside the window is by design.
+        assert not re.search(r"\d{4}-\d{2}-\d{2}", prompt)
         assert "data/" not in prompt and ".parquet" not in prompt
         for flag in sorted({f.flag for f in FAULTS}):
             assert not re.search(rf"\b{re.escape(flag)}\b", prompt, re.IGNORECASE)

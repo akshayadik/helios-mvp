@@ -79,3 +79,107 @@ def test_one_contradiction_per_disagreeing_pipeline() -> None:
     assert [c.pipeline for c in slots["contradictions"]] == ["gpipe"]
     assert len(slots["verification"]) <= P.max_steps
     assert all(c.kind.value == "verification_step" for c in slots["verification"])
+
+
+def test_candidates_pass_the_verifier_and_cover_the_template() -> None:
+    # Owner decision (b), 2026-11-01: the LLM picks from these; code wrote them.
+    from helios.narrative.template import candidate_claims
+
+    cands = candidate_claims(ENTRY, P)
+    for slot, claims in template_slots(ENTRY, P).items():
+        assert [verify(c, ENTRY, P) for c in cands[slot]] == [None] * len(cands[slot])
+        assert set(claims) <= set(cands[slot]), slot
+        assert len(set(cands[slot])) == len(cands[slot])
+
+
+def test_candidates_offer_every_edge_line_and_step() -> None:
+    from helios.narrative.template import candidate_claims
+
+    cands = candidate_claims(ENTRY, P)
+    edges = {
+        (c.caller, c.callee, c.feature)
+        for c in cands["story"]
+        if c.kind.value == "call_structure"
+    }
+    assert edges == {
+        ("frontend", "cart", "wait"),
+        ("checkout", "cart", "lead"),
+        ("cart", "redis", "ghost"),
+    }
+    shifts = {(c.service, c.channel) for c in cands["story"] if c.kind.value == "shift"}
+    assert {("cart", "latency"), ("cart", "error"), ("ad", "resource")} <= shifts
+    targets = {c.target_service for c in cands["verification"]}
+    assert targets == {"cart", "ad", "payment"}
+
+
+@pytest.mark.parametrize("variant", ["HELIOS-Full", "HELIOS-noLLM"])
+def test_candidates_pass_the_verifier_on_staged_runs(
+    tmp_path: Path, variant: str
+) -> None:
+    from helios.narrative.template import candidate_claims
+    from tests.test_runner_coe import _run
+
+    _, path = _run(tmp_path, variant)
+    for line in path.read_text().splitlines():
+        entry = json.loads(line)
+        cands = candidate_claims(entry, P)
+        for claims in cands.values():
+            assert [verify(c, entry, P) for c in claims] == [None] * len(claims)
+        # Review I3: the template's slots are always among the candidates.
+        for slot, claims in template_slots(entry, P).items():
+            assert set(claims) <= set(cands[slot]), slot
+
+
+def test_metric_digest_lines_are_never_called_logs() -> None:
+    from helios.narrative.template import candidate_claims
+    from tests.narrative.test_verifier import _with_metric_line
+
+    entry = _with_metric_line()
+    slots = template_slots(entry, P)
+    cands = candidate_claims(entry, P)
+    for claims in (*slots.values(), *cands.values()):
+        for claim in claims:
+            assert "L:metric:M1" not in claim.cites, claim.sentence
+    assert any(c.kind.value == "log_message" for c in slots["story"])
+
+
+def test_log_claims_quote_only_template_text() -> None:
+    from helios.narrative.template import candidate_claims
+    from tests.narrative.test_verifier import _with_severity_line
+
+    entry = _with_severity_line()
+    for claims in (
+        *template_slots(entry, P).values(),
+        *candidate_claims(entry, P).values(),
+    ):
+        for claim in claims:
+            if claim.kind.value == "log_message":
+                assert claim.cites == ("L:log:L12",), claim.sentence
+                assert claim.snippet == "connection pool exhausted after <DUR>"
+
+
+def test_candidates_never_repeat_a_sentence_or_state_a_zero_share() -> None:
+    # Review I2: a ghost edge between two top-3 services sits in both services'
+    # items; M1: a share that rounds to 0% is not worth stating.
+    from helios.narrative.template import candidate_claims
+
+    entry = copy.deepcopy(ENTRY)
+    gpipe = next(s for s in entry["steps"] if s["id"] == "P:gpipe")
+    for item in gpipe["items"]:
+        if item["id"] == "G:cart:ghost_edges":
+            item["value"] = [["cart", "ad"]]
+        if item["id"] == "G:cart:wait_from":
+            item["value"] = {"frontend": 0.94, "checkout": 0.003}
+    gpipe["items"].append(
+        {
+            "id": "G:ad:ghost_edges",
+            "service": "ad",
+            "text": "x",
+            "value": [["cart", "ad"]],
+        }
+    )
+    story = candidate_claims(entry, P)["story"]
+    sentences = [c.sentence for c in story]
+    assert len(sentences) == len(set(sentences))
+    assert "cart started calling ad after the trigger." in sentences
+    assert not any("0% of its time" in s for s in sentences)

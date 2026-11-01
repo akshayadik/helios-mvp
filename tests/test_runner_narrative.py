@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import json
 from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock
@@ -32,7 +33,7 @@ P = load_narrator_params()
 class NoModel(FakeClient):
     """Fails on any model call: template-only variants must never call."""
 
-    def generate(self, prompt: str, timeout_s: float) -> Any:
+    def generate(self, prompt: str, timeout_s: float, schema: Any = None) -> Any:
         raise AssertionError("model called")
 
 
@@ -168,6 +169,8 @@ def test_confirmatory_refuses_provisional_narrator(tmp_path: Path) -> None:
         hmac_key=KEY,
         lpipe_client=NoModel(),  # type: ignore[arg-type]
         coe_signer=SIGNER,
+        # The file is frozen (entry C); the refusal still guards a provisional one.
+        narrator_params=dataclasses.replace(P, provisional=True),
     )
     orch._reader._pool_lock = lambda _incident: None
     with pytest.raises(ProvisionalParametersError, match="narrator"):
@@ -203,3 +206,60 @@ def test_narrator_hashes_in_the_signed_entry(tmp_path: Path) -> None:
     assert n["parameter_hashes"]["narrator_params"] == params_hash
     assert "narrator_prompt" not in n["parameter_hashes"]
     assert "narrator_params" not in x["parameter_hashes"]
+
+
+def test_run_can_be_limited_to_named_incidents(tmp_path: Path) -> None:
+    # S2.8 Task 10: a prompt round runs only its split of a corpus.
+    from tests.pipelines.l_pipe.test_pipeline import REPO
+
+    captures = tmp_path / "captures"
+    first, second = sorted((REPO / "data/otel/build_v3").glob("*/manifest.json"))[9:11]
+    keep = stage_capture(captures, first)
+    stage_capture(captures, second)
+    manifest = get_variant("HELIOS-noLLM")
+    set_current_manifest(manifest)
+    RunOrchestrator(
+        manifest=manifest,
+        captures_dir=captures,
+        db_path=tmp_path / "r.duckdb",
+        registry_path=tmp_path / "r.registry.jsonl",
+        reconciliation_path=tmp_path / "r.reconciliation.jsonl",
+        exclusion_ledger=MagicMock(spec=AppendOnlyLedger),
+        hmac_key=KEY,
+        lpipe_client=NoModel(),  # type: ignore[arg-type]
+        coe_signer=SIGNER,
+    ).run(captures, incidents={keep})
+    from helios.store.result_store import ResultStore
+
+    store = ResultStore(tmp_path / "r.duckdb")
+    assert {str(r["incident_id"]) for r in store.fetch_all()} == {keep}
+    assert len(store.fetch_all_narrative_rows()) == 1
+
+
+def test_confirmatory_refuses_a_provisional_narrator_prompt(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from helios.narrative import prompt as narrator_prompt
+
+    monkeypatch.setattr(narrator_prompt, "PROVISIONAL", True)
+    captures = tmp_path / "captures"
+    raw = json.loads(OTEL.read_text())
+    raw["evaluation_phase"] = "confirmatory"
+    src = tmp_path / "m.json"
+    src.write_text(json.dumps(raw))
+    stage_capture(captures, src)
+    manifest = get_variant("HELIOS-Full")
+    orch = RunOrchestrator(
+        manifest=manifest,
+        captures_dir=captures,
+        db_path=tmp_path / "r.duckdb",
+        registry_path=tmp_path / "r.registry.jsonl",
+        reconciliation_path=tmp_path / "r.reconciliation.jsonl",
+        exclusion_ledger=MagicMock(spec=AppendOnlyLedger),
+        hmac_key=KEY,
+        lpipe_client=FakeClient(),  # type: ignore[arg-type]
+        coe_signer=SIGNER,
+    )
+    orch._reader._pool_lock = lambda _incident: None
+    with pytest.raises(ProvisionalParametersError, match="narrator"):
+        orch.run(captures)

@@ -68,12 +68,35 @@ def test_empty_cites_parse_and_are_left_to_the_verifier() -> None:
     assert c.cites == ()
 
 
-def test_params_file_is_provisional_and_hash_stable() -> None:
+def test_params_file_contents_and_hash_stable() -> None:
     params = load_narrator_params()
-    assert params.provisional is True
     assert {"query", "inspect", "verify", "check", "filter"} == set(params.verbs)
     assert "rose" in params.direction_words["up"]
     assert "fell" in params.direction_words["down"]
     assert params.max_steps == 3
     assert narrator_params_hash(params) == narrator_params_hash(load_narrator_params())
     assert len(narrator_params_hash(params)) == 64
+
+
+def test_narrator_frozen_from_round_3() -> None:
+    # Entry C: round 3 (owner decision (b)) chosen; held-out run with the same
+    # prompt and parameters; only the provisional flags change at the freeze.
+    import dataclasses
+    from pathlib import Path
+
+    from helios.narrative import prompt
+
+    reports = (
+        Path(__file__).resolve().parents[2] / "docs/sprints/s2-reasoning/calibration"
+    )
+    round3 = json.loads((reports / "narrator_round3.json").read_text("utf-8"))
+    final = json.loads((reports / "narrator_final.json").read_text("utf-8"))
+    params = load_narrator_params()
+    assert prompt.PROVISIONAL is False and params.provisional is False
+    assert final["chosen_round"] == 3 and final["split"] == "heldout"
+    assert round3["narrator_prompt_sha"] == prompt.NARRATOR_PROMPT_SHA
+    assert final["narrator_prompt_sha"] == prompt.NARRATOR_PROMPT_SHA
+    as_run = dataclasses.replace(params, provisional=True)
+    assert narrator_params_hash(as_run) == round3["narrator_params_hash"]
+    # Held-out re-run on the frozen file after the review fixes (entry 68).
+    assert narrator_params_hash(params) == final["narrator_params_hash"]

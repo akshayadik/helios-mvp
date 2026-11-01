@@ -1,0 +1,163 @@
+{
+  "corpora": {
+    "otel_build_v3": {
+      "cases": 32,
+      "excluded": 0,
+      "llm": {
+        "claims_displayed": 406,
+        "first_pass_claim_acceptance": 0.121622,
+        "first_pass_slot_acceptance": 0.0,
+        "narratives": 32,
+        "rejections": {
+          "foreign_service": 107,
+          "kind_mismatch": 115,
+          "malformed_sentence": 2,
+          "modality_mismatch": 88,
+          "model_error": 4,
+          "not_in_disagree": 63,
+          "rank_mismatch": 13,
+          "schema": 145,
+          "snippet_not_found": 24,
+          "unknown_id": 20,
+          "word_not_allowed": 240,
+          "wrong_direction": 73,
+          "wrong_edge": 22
+        },
+        "retry_success": 0.012048,
+        "slot_fallback_rate": 0.987952,
+        "slots_called": 83,
+        "style": {
+          "llm": {
+            "claims_per_slot": {
+              "max": 2,
+              "mean": 2,
+              "median": 2,
+              "n": 1
+            },
+            "sentence_words": {
+              "max": 3,
+              "mean": 3,
+              "median": 3.0,
+              "n": 2
+            }
+          },
+          "template": {
+            "claims_per_slot": {
+              "max": 12,
+              "mean": 4.926829,
+              "median": 3.0,
+              "n": 82
+            },
+            "sentence_words": {
+              "max": 13,
+              "mean": 8.356436,
+              "median": 8.0,
+              "n": 404
+            }
+          }
+        }
+      },
+      "template": {
+        "claims_displayed": 302,
+        "first_pass_claim_acceptance": null,
+        "first_pass_slot_acceptance": null,
+        "narratives": 32,
+        "rejections": {},
+        "retry_success": null,
+        "slot_fallback_rate": null,
+        "slots_called": 0,
+        "style": {
+          "template": {
+            "claims_per_slot": {
+              "max": 9,
+              "mean": 4.314286,
+              "median": 2.0,
+              "n": 70
+            },
+            "sentence_words": {
+              "max": 11,
+              "mean": 7.52649,
+              "median": 8.0,
+              "n": 302
+            }
+          }
+        }
+      }
+    },
+    "rcaeval_build": {
+      "cases": 248,
+      "excluded": 0,
+      "llm": {
+        "claims_displayed": 2734,
+        "first_pass_claim_acceptance": 0.033951,
+        "first_pass_slot_acceptance": 0.0,
+        "narratives": 248,
+        "rejections": {
+          "foreign_service": 1180,
+          "kind_mismatch": 261,
+          "missing_cite": 27,
+          "modality_mismatch": 1356,
+          "model_error": 19,
+          "not_in_disagree": 212,
+          "rank_mismatch": 88,
+          "schema": 739,
+          "snippet_not_found": 2211,
+          "unknown_id": 1240,
+          "verb_not_allowed": 16,
+          "word_not_allowed": 2233,
+          "wrong_direction": 522
+        },
+        "retry_success": 0.0,
+        "slot_fallback_rate": 1.0,
+        "slots_called": 570,
+        "style": {
+          "template": {
+            "claims_per_slot": {
+              "max": 9,
+              "mean": 4.796491,
+              "median": 2.0,
+              "n": 570
+            },
+            "sentence_words": {
+              "max": 13,
+              "mean": 8.200073,
+              "median": 7.0,
+              "n": 2734
+            }
+          }
+        }
+      },
+      "template": {
+        "claims_displayed": 1732,
+        "first_pass_claim_acceptance": null,
+        "first_pass_slot_acceptance": null,
+        "narratives": 248,
+        "rejections": {},
+        "retry_success": null,
+        "slot_fallback_rate": null,
+        "slots_called": 0,
+        "style": {
+          "template": {
+            "claims_per_slot": {
+              "max": 6,
+              "mean": 3.49899,
+              "median": 3,
+              "n": 495
+            },
+            "sentence_words": {
+              "max": 8,
+              "mean": 6.32448,
+              "median": 7.0,
+              "n": 1732
+            }
+          }
+        }
+      }
+    }
+  },
+  "model_digest": "46e0c10c039e019119339687c3c1757cc81b9da49709a3b3924863ba87ca666e",
+  "narrator_params_hash": "a8d984af8a9866cd7185dcc95e0d22148a6e1b9773f581c11b1b4df3677190ad",
+  "narrator_prompt_sha": "883538cc9e17e45ce6d35cfebfd2bba29c5cc883cbe946ba03d6f399283685f2",
+  "round": 1,
+  "split": "dev"
+}
