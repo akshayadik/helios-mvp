@@ -4,7 +4,7 @@
 
 **Update cadence:** On any tracking-doc add/remove/rename
 **Owner module:** Researcher (solo)
-**Last updated:** 2026-10-27 (S1 exit documentation sync: rows re-checked against the repository; OTel build corpus, validity threats, lead-time L9)
+**Last updated:** 2026-11-01 (S2 exit documentation sync: dashboard, tracker, sprint folder)
 
 ---
 
@@ -27,12 +27,12 @@ Status key: ✅ current · ⚠️ stale (content predates the October re-baselin
 |---|----------|------|---------|-------------------|----------------|--------------|--------|
 | 1 | Ablation Architecture | `ablation_architecture.md` | Architectural decision record | Stage 0 | On any pipeline/component architectural change | 2026-10-26 | ✅ Current (v0.12: D2 flag names; UEG-C schema-draft-v0.2, Algorithm 5 pruner, verdict schema-draft-v0.5) |
 | 2 | Calibration Thresholds | `calibration_thresholds.md` | Thresholds used by the integrity gate | Stage 1 | After threshold tuning | 2026-10-29 | ⚠️ May values on the OTel corpus. S2.1 froze the detection trigger and D-pipe parameters, S2.2 the G-pipe ranker, on build data in `data/frozen/` (`trigger_detector.json`, `dpipe_params.json`, `gpipe_params.json`; deviation entries 52, 53, 56; reports in `docs/sprints/s2-reasoning/`); the remaining thresholds are recalibrated in S2–S3. K-hop K and top-n are recorded in `s1_7_khop_pruner.md` and entry 40 (re-checked on the S1.2 corpus at the S1 exit) |
-| 3 | Dashboard | `dashboard.md` | Sprint Gantt, architecture, evidence grid, integrity snapshot | Stage 0 | At every sprint exit | 2026-10-27 | ✅ Current (S1 exit) |
+| 3 | Dashboard | `dashboard.md` | Sprint Gantt, architecture, evidence grid, integrity snapshot | Stage 0 | At every sprint exit | 2026-11-01 | ✅ Current (S2 exit) |
 | 4 | Data Collection Log | `data_collection_log.md` | Per-incident capture record; imported corpora as summaries | Stage 0 | After every capture or import | 2026-10-27 | ✅ Current (20 OTel captures; RCAEval build 495 and pool 240; OTel build corpus 63, S1.2) |
 | 5 | Deviation Log | `deviation_log.md` | Mirror of `deviation_log.jsonl` | Stage 0 | After every `bin/log_deviation.py` append | 2026-10-31 | ✅ Current (68 entries) |
 | 6 | Disjointness Audit Log | `disjointness_audit_log.md` | Every DisjointnessAuditor run | Stage 1 | After each audit run | 2026-05-21 | ✅ Current as a history (3 entries, May flag names); next entry at S5.2 certification |
 | 7 | Ground Truth Labelling | `ground_truth_labelling.md` | Fault → root-cause labels, OTel corpus | Stage 0 | On corpus expansion or label correction | 2026-10-27 | ✅ Current: 20 May OTel labels listed; RCAEval and OTel build labels are signed files (pointers added at the S1 exit) |
-| 8 | Helios MVP Tracking | `helios_mvp_tracking.md` | Task tracker with SHAs and evidence (schema R1–R8) | Stage 0 | Every task start and finish | 2026-10-27 | ✅ Current (Milestone 6 = S1 closed; S2-M5-RES05 open) |
+| 8 | Helios MVP Tracking | `helios_mvp_tracking.md` | Task tracker with SHAs and evidence (schema R0–R9) | Stage 0 | Every task start and finish | 2026-11-01 | ✅ Current (Milestone 7 = S2 closed; S2-M7-RES01 rater training and S2-M5-RES05 open) |
 | 9 | Hypothesis–Variant–Metric Mapping | `hypothesis_variant_metric_mapping.md` | Readable view of Families A, B, E | Stage 0 | On analysis-plan change | 2026-10-24 | ✅ Current (generated from `helios/research/analysis_plan.py`) |
 | 10 | Price Book | `price_book.md` | Cost coefficients for CpR | Stage 2 | Frozen at `build-freeze` | 2026-10-27 | 🟢 price-book-v2 (S1.10, deviation entries 42-43): AWS primary profile fully verified against AWS price data (S3 Standard checked 2026-10-27); GCP and Azure sensitivity profiles unverified; read by `helios/evaluation/cost.py` |
 | 11 | Prompt Version Registry | `prompt_version_registry.md` | Frozen L-pipe prompts with SHA | Stage 3 | Before each prompt change | 2026-05-19 | ✅ Current (rca_v1); new prompts in S2.3 |
@@ -41,7 +41,7 @@ Status key: ✅ current · ⚠️ stale (content predates the October re-baselin
 | 14 | Seed Register | `seed_register.md` | Seed registry | Stage 0 | Before any new seed is used | 2026-10-24 | ✅ Current (binding register SEED-SA0-01, entry 34) |
 | 15 | Snapshot Hash Registry | `snapshot_hash_registry.md` | Incident → snapshot hash mirror | Stage 0 | After every capture | 2026-05-15 | ✅ Current: its source `data/snapshot_registry.jsonl` was reset on purpose in `b24955c` (May re-capture) and is recreated by runs; checked in S1.1 |
 | 16 | Tracking Documents Register | `tracking_documents_register.md` | This index | Stage 0 | On any tracking-doc add/remove/rename and at every sprint exit | 2026-10-27 | ✅ Current |
-| 17 | Validity Tracking | `validity_tracking.md` | Threat-to-validity register | Stage 0 | After each new threat | 2026-10-30 | ✅ Current (21 threats; T20 May captures' span attribution, T21 OTel-to-pool shift of G-pipe (S2.2); S0 findings and S1 findings T10–T17 added; T18–T19 with the trigger; T14 extended in S2.1) |
+| 17 | Validity Tracking | `validity_tracking.md` | Threat-to-validity register | Stage 0 | After each new threat | 2026-11-01 | ✅ Current (22 threats; T22 A-H7 narrowed by the pick-and-order narrator; T12 rewritten for the S2.9 instrument) |
 | 18 | VCL Manifest Tracking | `vcl_manifest_tracking.md` | Variant configuration hashes | Stage 0 | After every VCL change or new variant | 2026-10-24 | ✅ Current (15 variants; confirmatory hashes match OSF deposit 1) |
 | 19 | E2E Product Plan | `helios_e2e_product_plan_2026-10.md` | Schedule, principles, decisions D1–D12 | Stage A | On a plan change approved by the owner | 2026-10-24 | ✅ Current |
 | 20 | Task Breakdown | `helios_task_breakdown.md` | Every task as a module (authoritative steps) | Stage A | When a task is added or changed | 2026-10-26 | ✅ Current (S1.3 no-go and the S2.1 detection trigger recorded) |
@@ -50,7 +50,7 @@ Status key: ✅ current · ⚠️ stale (content predates the October re-baselin
 | 23 | S0.1 Dataset Check | `s0_1_dataset_check.md` | RCAEval / AIOpsLab findings F1–F5 | Stage A / S0 | Fixed record | 2026-10-23 | ✅ Final |
 | 24 | S0.3 Corpus and Run Design | `s0_3_d11_corpus_run_design.md` | Approved D11 design | Stage A / S0 | Addendum only (e.g. AIOpsLab) | 2026-10-26 | ✅ Final (approved); S1.3 note: AIOpsLab no-go, no addendum |
 | 25 | S0.11 Lead-time Register | `s0_11_lead_time_register.md` | Owner lead-time items L1–L10 | Stage A / S0 | When an item's status changes | 2026-10-27 | ✅ Current (open; L1 IRB in progress, L9 Docker 16 GB done, L10 partly done) |
-| 26 | Sprint plans and exit reports | `docs/sprints/` | One folder per sprint: `plan.md` and `exit_report.md` | Stage A | Plan before each sprint; exit report at each exit | 2026-10-27 | ✅ Current (S0 and S1 closed; S2 plan refreshed; S3–S5, E, A, Stage B planned) |
+| 26 | Sprint plans and exit reports | `docs/sprints/` | One folder per sprint: `plan.md` and `exit_report.md` | Stage A | Plan before each sprint; exit report at each exit | 2026-11-01 | ✅ Current (S0, S1 and S2 closed; S3 plan to refresh before it starts) |
 
 Historical, not maintained: `stage0_gap_analysis.md` (May Stage 0 gap analysis), `HELIOS_MVP_Execution_plan_v0.6.md` (May plan).
 
