@@ -16,7 +16,8 @@ __all__ = [
     "SLOT_KINDS",
 ]
 
-PROVISIONAL = True
+# Frozen from round 3 (owner decision (b)), entry C.
+PROVISIONAL = False
 
 SLOT_KINDS: dict[str, tuple[str, ...]] = {
     "story": ("ranking", "shift", "call_structure", "log_message"),
