@@ -112,3 +112,29 @@ def test_missing_evidence_card() -> None:
 
 def test_no_step_n_gives_no_claims() -> None:
     assert displayed_claims(ENTRY) == []
+
+
+def test_contradiction_and_step_cards_show_what_the_verifier_checks() -> None:
+    # Task 8 finding: a rater must see the pipeline's ranking and the fused
+    # verdict for a contradiction, and the incident window for a step.
+    contradiction = Claim(
+        kind=ClaimKind.CONTRADICTION,
+        sentence="G-pipe ranks ad first, while the fused verdict ranks cart first.",
+        cites=("G:ad:self_shift",),
+        pipeline="gpipe",
+        service="ad",
+    )
+    cards = {c.id: c for c in cards_for(contradiction, ENTRY)}
+    assert cards["P:gpipe"].values == {"top": ["ad", "cart"]}
+    assert cards["F"].values == {"top": ["cart", "ad", "payment"]}
+    assert "G:ad:self_shift" in cards
+    step = Claim(
+        kind=ClaimKind.VERIFICATION_STEP,
+        sentence="Query cart latency between 14:50 and 14:55.",
+        cites=("D:cart:latency",),
+        target_service="cart",
+        action_verb="query",
+        modality="metric",
+    )
+    window = {c.id: c for c in cards_for(step, ENTRY)}["T"]
+    assert window.values == {"start": "14:42", "end": "14:56"}
