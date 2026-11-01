@@ -1,6 +1,6 @@
 # S2.8 — Narrative Engine with grounding verifier · design
 
-**Task:** S2.8 (tracking S2-M7-ENG08) · **Date:** 2026-10-31 · **Status:** approved 2026-10-31 (builder check done; N-j added after the whole-branch review); PR 1 built, deviation entries 65–66 · **Depends on:** S2.7 (CoE entry and evidence namespace, entry 64), S2.5 (fused verdict), S2.3 (L-pipe model, cache, aliases, entries 57–58) · **Owner decisions:** marked *owner* (2026-10-31)
+**Task:** S2.8 (tracking S2-M7-ENG08) · **Date:** 2026-10-31 · **Status:** approved 2026-10-31 (builder check done; N-j added after the whole-branch review); PR 1 and PR 2 built, deviation entries 65–67; narrator frozen · **Depends on:** S2.7 (CoE entry and evidence namespace, entry 64), S2.5 (fused verdict), S2.3 (L-pipe model, cache, aliases, entries 57–58) · **Owner decisions:** marked *owner* (2026-10-31)
 
 **Flag:** `VCLFlag.COE_NARRATIVE` gates the Narrative Engine (OFF = the ranked list only, HELIOS-noExpl). Which narrator writes is decided by `l2c_llm`: on → the LLM narrator; off → the template narrator. The verifier runs on every narrative.
 
@@ -24,6 +24,7 @@ The owner's rule *(owner)*: **every displayed claim cites evidence that exists a
 | N-i | **Raw before/after levels in the evidence.** D-pipe's `coe_evidence` gains, per top-5 service and channel, the median level before and after the trigger with its unit, from the series D-pipe already reads; additive (ranking, μ, σ, decision hash unchanged and re-pinned); the CoE items `D:<svc>:<channel>` carry them, so sentences can state concrete levels and N-f's normalisation applies | owner, 2026-10-31 |
 | N-j | **Closed vocabulary** (after the whole-branch review showed containment alone lets negations, invented causes and reversed edges through): the LLM still writes each sentence, but every word must come from a frozen per-kind word list (connectives, synonyms, the claim's own service names, numbers from the claim's own item, its units); the sentence must agree with the claim's fields (rank word, channel, direction, caller before callee, pipeline name); a log claim quotes its snippet in double quotes; no line breaks, brackets or citation IDs inside a sentence. A shift claim needs its own `D:<svc>:<channel>` item (the log-line path of §5.2 is dropped). The lists are frozen with the prompt (entry C) | owner, 2026-10-31 |
 | N-h | **Machine verification report** beside the rater labels, with no human labour: first-pass acceptance rate, rejections by failure mode, retry success, slot fallback rate, per variant | owner, 2026-10-31 |
+| N-k | **Pick and order (option (b))**, after prompt rounds 1-2 (slot fallback 99-100%, then 28-66%): the LLM narrator chooses and orders claims from a code-written candidate list (every claim the CoE entry supports, in the template's wording, each accepted by the verifier); code writes every sentence; the model answers with candidate IDs under a JSON schema listing only those IDs (at most 5 story, 3 contradictions, max_steps verification). Supersedes N-b's "the LLM emits the sentence" and makes N-j's word rules hold by construction; N-d retry and fallback unchanged (entry 67) | owner, 2026-11-01 |
 
 Carried from S2.3 §5.5: the contradiction list is computed by code (the narrator explains it, never finds it); `primary_culprit`, μ, σ and confidence are filled by code; the narrator never changes a ranking or states a number the code did not supply.
 
@@ -159,4 +160,17 @@ Exact template sentences (within the shapes the prompt asks for); the direction 
 - Ranking, μ, σ and decision hash unchanged (D-pipe golden test); full local gate green, coverage 95.84%.
 - Deferred minors: digest call before checking whether any slot needs the model; the extra-steps index counts in `accepted_first`; the no-split levels test covers `trigger=None` only; relative offsets ("5 minutes after") are rejected.
 
-**PR 2 (prompt rounds and freeze):** filled after the rounds (entry C).
+**PR 2 (prompt rounds and freeze), 2026-11-01** on branch `s2/narrator-freeze` (commits `edb1394`..`adb2497`); deviation entry 67 (`529bde17dad0`). Build tool `bin/narrator_build_run.py` (dev split per round, held-out once for the chosen round with matching prompt and parameters, no ground truth read, L-pipe answers from the cache only); reports in `docs/sprints/s2-reasoning/calibration/narrator_round{1,2,3}.json` and `narrator_final.json`.
+
+| Round (dev: 32 OTel + 248 RCAEval) | First-draft claims accepted (OTel / RCAEval) | Slots replaced by the template | Notes |
+|---|---|---|---|
+| 1: LLM writes, closed vocabulary | 12% / 3% | 99% / 100% | 23 model errors (timeouts on long answers); retries fixed about 1% |
+| 2: + field-level output schema, at most 3 claims, example shapes | 83% / 58% | 28% / 66% | numbers, words, contradiction wording the main rejections; retries fixed at most 4% |
+| 3: pick and order (N-k) | 100% / 100% | 0% / 0% | no rejections, no model errors; about 35 minutes |
+| Held-out, round 3 (31 + 247) | 100% / 100% | 0% / 0% | run once, same prompt and parameters |
+
+- Frozen: prompt SHA `e2d2242f…9aab` (`PROVISIONAL = False`), `narrator_params.json` `provisional: false`, hash `b64405d8…f1d4` (identical to the rounds' `a8d984af…90ad` except the flag; `test_narrator_frozen_from_round_3`).
+- Bug found in the round 3 smoke test and fixed test-first, both narrators: log claims and log checks could quote an L-pipe metric or trace digest line as "logged"; they now cite only L-pipe log lines (`L:log:…`).
+- Build-wide after the fix: 1,116 CoE entries, 22,091 template and candidate claims, 0 rejected.
+- Style (held-out): Full 7.1-8.2 words per sentence and 3.4-3.6 claims per slot; noLLM 6.3-7.6 words and 3.5-4.3 claims. Full and noLLM now share the wording; they differ in which supported claims are shown and their order.
+- Deferred: the template prints zero as "0.000"; the PR 1 minors above.
