@@ -38,8 +38,6 @@ SITTING_GAP_S = 30 * 60  # a pause longer than this starts a new sitting
 _UNSUPPORTED = "unsupported"
 _LLM_ARM = "HELIOS-Full"  # blinding check: A = language model, B = fixed rules
 
-Labels = "Mapping[tuple[str, str], Mapping[str, Any]]"
-
 
 def cohen_kappa(a: Sequence[str], b: Sequence[str]) -> float | None:
     """Cohen's κ for two equal-length label lists; None when undefined."""
