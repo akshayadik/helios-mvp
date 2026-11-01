@@ -32,6 +32,7 @@ __all__ = [
     "direction_of",
     "edge_holds",
     "entry_services",
+    "log_template_text",
     "mentions",
     "names_in",
     "verify",
@@ -62,6 +63,19 @@ class Reason(StrEnum):
 # Only the L-pipe log worker's lines are logs; its metric and trace digest
 # lines are summaries and are never quoted as "logged" (round 3 smoke).
 LOG_PREFIX = "L:log:"
+# An L-pipe log line is a digest; only the template text between its quotes is
+# something the service logged (review C1). Severity-count lines have none.
+_LOG_TEMPLATE = re.compile(
+    r'^\S+ log template "(?P<text>.*)": \d+ lines before trigger, \d+ after$'
+)
+
+
+def log_template_text(line: str) -> str | None:
+    """The logged template inside an L-pipe log digest line, or None."""
+    m = _LOG_TEMPLATE.match(line.strip())
+    return m.group("text") if m else None
+
+
 _MODALITY_PREFIX = {"metric": "D:", "log": LOG_PREFIX, "edge": "G:"}
 _TIME = re.compile(r"(\d{1,2}):(\d{2})(?::(\d{2}))?")
 _NUMBER = re.compile(r"(\d+(?:\.\d+)?)(%|ms|s)?")
@@ -205,7 +219,11 @@ def _check_kind(
             return Reason.KIND_MISMATCH
         snippet = str(claim.snippet or "")
         ok = any(
-            _snippet_ok(snippet, str(i.get("text", "")), params.min_snippet_chars)
+            _snippet_ok(
+                snippet,
+                log_template_text(str(i.get("text", ""))) or "",
+                params.min_snippet_chars,
+            )
             for i in lines
         )
         return None if ok else Reason.SNIPPET_NOT_FOUND

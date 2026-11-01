@@ -122,8 +122,12 @@ def test_candidates_pass_the_verifier_on_staged_runs(
     _, path = _run(tmp_path, variant)
     for line in path.read_text().splitlines():
         entry = json.loads(line)
-        for claims in candidate_claims(entry, P).values():
+        cands = candidate_claims(entry, P)
+        for claims in cands.values():
             assert [verify(c, entry, P) for c in claims] == [None] * len(claims)
+        # Review I3: the template's slots are always among the candidates.
+        for slot, claims in template_slots(entry, P).items():
+            assert set(claims) <= set(cands[slot]), slot
 
 
 def test_metric_digest_lines_are_never_called_logs() -> None:
@@ -137,3 +141,45 @@ def test_metric_digest_lines_are_never_called_logs() -> None:
         for claim in claims:
             assert "L:metric:M1" not in claim.cites, claim.sentence
     assert any(c.kind.value == "log_message" for c in slots["story"])
+
+
+def test_log_claims_quote_only_template_text() -> None:
+    from helios.narrative.template import candidate_claims
+    from tests.narrative.test_verifier import _with_severity_line
+
+    entry = _with_severity_line()
+    for claims in (
+        *template_slots(entry, P).values(),
+        *candidate_claims(entry, P).values(),
+    ):
+        for claim in claims:
+            if claim.kind.value == "log_message":
+                assert claim.cites == ("L:log:L12",), claim.sentence
+                assert claim.snippet == "connection pool exhausted after <DUR>"
+
+
+def test_candidates_never_repeat_a_sentence_or_state_a_zero_share() -> None:
+    # Review I2: a ghost edge between two top-3 services sits in both services'
+    # items; M1: a share that rounds to 0% is not worth stating.
+    from helios.narrative.template import candidate_claims
+
+    entry = copy.deepcopy(ENTRY)
+    gpipe = next(s for s in entry["steps"] if s["id"] == "P:gpipe")
+    for item in gpipe["items"]:
+        if item["id"] == "G:cart:ghost_edges":
+            item["value"] = [["cart", "ad"]]
+        if item["id"] == "G:cart:wait_from":
+            item["value"] = {"frontend": 0.94, "checkout": 0.003}
+    gpipe["items"].append(
+        {
+            "id": "G:ad:ghost_edges",
+            "service": "ad",
+            "text": "x",
+            "value": [["cart", "ad"]],
+        }
+    )
+    story = candidate_claims(entry, P)["story"]
+    sentences = [c.sentence for c in story]
+    assert len(sentences) == len(set(sentences))
+    assert "cart started calling ad after the trigger." in sentences
+    assert not any("0% of its time" in s for s in sentences)

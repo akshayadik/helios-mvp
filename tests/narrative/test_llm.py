@@ -193,3 +193,48 @@ def test_cache_key_covers_the_schema(tmp_path: Path, monkeypatch: Any) -> None:
     client = Scripted({k: [v] for k, v in GOOD.items()})
     _run(client, cache)
     assert len(client.prompts) == 3
+
+
+def test_template_slot_without_candidates_is_a_fallback(monkeypatch: Any) -> None:
+    # Review I3: never show an unverified template slot as if no call was due.
+    from helios.narrative import llm
+
+    monkeypatch.setattr(
+        llm, "candidate_claims", lambda e, p: {**candidate_claims(e, p), "story": []}
+    )
+    out, _ = _run(Scripted({k: [v] for k, v in GOOD.items()}))
+    story = out["story"]
+    assert (story.source, story.attempts, story.fallback) == ("template", 0, True)
+    assert list(story.claims) == template_slots(ENTRY, P)["story"]
+
+
+def test_frozen_prompt_inputs_outside_the_template_are_pinned() -> None:
+    # Review I1: NARRATOR_PROMPT_SHA covers PROMPT_TEMPLATE only; the task
+    # texts, pick limits, candidate and retry lines and the schema shape are
+    # what else the model sees. Changing any of them changes this pin, which
+    # needs a deviation entry (the narrator is frozen, entry 67).
+    import hashlib
+
+    from helios.narrative.prompt import MAX_PICKS
+
+    seen = {
+        slot: {
+            "prompt": render_prompt(
+                slot,
+                ENTRY,
+                P,
+                previous=_picks("C9"),
+                rejections=((0, "unknown_id"),),
+            ),
+            "schema": pick_schema(slot, CANDS[slot], P),
+        }
+        for slot in GOOD
+    }
+    bundle = json.dumps({"seen": seen, "max_picks": MAX_PICKS}, sort_keys=True)
+    digest = hashlib.sha256(bundle.encode("utf-8")).hexdigest()
+    assert digest == PINNED_PROMPT_INPUTS
+
+
+PINNED_PROMPT_INPUTS = (
+    "c0cd179d33e431f96e72a660b9b03fd926527f8a690fa09a304331524ea644e7"
+)

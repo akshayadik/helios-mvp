@@ -1,6 +1,8 @@
 """Narrator prompt, round 3: the model picks and orders code-written claims
-(S2.8 design §5.4, §5.7; owner decision (b), 2026-11-01). Provisional until
-the prompt round is chosen and frozen by SHA in a deviation entry (entry C)."""
+(S2.8 design §5.4, §5.7; owner decision (b), 2026-11-01). Frozen by SHA in
+deviation entry 67; what else the model sees is pinned by
+tests/narrative/test_llm.py::test_frozen_prompt_inputs_outside_the_template_are_pinned.
+"""
 
 from __future__ import annotations
 
@@ -13,17 +15,10 @@ __all__ = [
     "NARRATOR_PROMPT_SHA",
     "PROMPT_TEMPLATE",
     "PROVISIONAL",
-    "SLOT_KINDS",
 ]
 
 # Frozen from round 3 (owner decision (b)), entry C.
 PROVISIONAL = False
-
-SLOT_KINDS: dict[str, tuple[str, ...]] = {
-    "story": ("ranking", "shift", "call_structure", "log_message"),
-    "contradictions": ("contradiction",),
-    "verification": ("verification_step",),
-}
 
 MAX_PICKS: dict[str, int] = {"story": 5, "contradictions": 3}
 """Claims the model may pick per slot; verification uses params.max_steps."""

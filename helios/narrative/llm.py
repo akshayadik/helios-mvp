@@ -231,8 +231,15 @@ def llm_slots(
     candidates = candidate_claims(entry, params)
     out: dict[str, SlotResult] = {}
     for slot in SLOTS:
-        if not template[slot] or not candidates[slot]:
-            out[slot] = SlotResult("template", tuple(template[slot]), attempts=0)
+        if not template[slot]:
+            out[slot] = SlotResult("template", (), attempts=0)
+            continue
+        if not candidates[slot]:
+            # Never expected (candidates cover the template); shown as a fallback
+            # so the report counts it (review I3).
+            out[slot] = SlotResult(
+                "template", tuple(template[slot]), attempts=0, fallback=True
+            )
             continue
         schema = pick_schema(slot, candidates[slot], params)
         most = min(_most(slot, params), len(candidates[slot]))

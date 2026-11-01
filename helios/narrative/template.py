@@ -11,7 +11,7 @@ import datetime as dt
 from typing import TYPE_CHECKING, Any
 
 from helios.narrative.claims import SLOTS, Claim, ClaimKind
-from helios.narrative.verifier import LOG_PREFIX, verify
+from helios.narrative.verifier import LOG_PREFIX, log_template_text, verify
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
 
 if TYPE_CHECKING:
@@ -92,14 +92,26 @@ def _shift_claim(item: Mapping[str, Any], svc: str) -> Claim:
     )
 
 
+def _percent(share: float) -> str:
+    return f"{share * 100:.0f}"
+
+
+def _shares(value: Any) -> dict[str, float]:
+    """Wait shares worth stating: those that do not round to 0% (review M1)."""
+    if not isinstance(value, dict):
+        return {}
+    return {k: v for k, v in value.items() if _percent(v) != "0"}
+
+
 def _graph_claim(entry: Mapping[str, Any], svc: str) -> Claim | None:
     items = {i["id"]: i for i in _items(entry, f"G:{svc}:", svc)}
     wait = items.get(f"G:{svc}:wait_from")
-    if wait and isinstance(wait.get("value"), dict) and wait["value"]:
-        caller, share = max(wait["value"].items(), key=lambda kv: (kv[1], kv[0]))
+    if wait and _shares(wait.get("value")):
+        shares = _shares(wait.get("value"))
+        caller, share = max(shares.items(), key=lambda kv: (kv[1], kv[0]))
         return Claim(
             kind=ClaimKind.CALL_STRUCTURE,
-            sentence=f"{caller} spent {share * 100:.0f}% of its time waiting on {svc}.",
+            sentence=f"{caller} spent {_percent(share)}% of its time waiting on {svc}.",
             cites=(wait["id"],),
             caller=caller,
             callee=svc,
@@ -135,15 +147,15 @@ def _graph_claims(entry: Mapping[str, Any], svc: str) -> list[Claim]:
     items = {i["id"]: i for i in _items(entry, f"G:{svc}:", svc)}
     out = []
     wait = items.get(f"G:{svc}:wait_from")
-    if wait and isinstance(wait.get("value"), dict):
+    if wait:
         for caller, share in sorted(
-            wait["value"].items(), key=lambda kv: (-kv[1], kv[0])
+            _shares(wait.get("value")).items(), key=lambda kv: (-kv[1], kv[0])
         ):
             out.append(
                 Claim(
                     kind=ClaimKind.CALL_STRUCTURE,
                     sentence=(
-                        f"{caller} spent {share * 100:.0f}% of its time waiting on "
+                        f"{caller} spent {_percent(share)}% of its time waiting on "
                         f"{svc}."
                     ),
                     cites=(wait["id"],),
@@ -199,7 +211,8 @@ def _log_claims(
 ) -> list[Claim]:
     out = []
     for item in _items(entry, LOG_PREFIX, svc):
-        snippet = _snippet(str(item.get("text", "")), params)
+        logged = log_template_text(str(item.get("text", "")))
+        snippet = None if logged is None else _snippet(logged, params)
         if snippet is not None:
             out.append(
                 Claim(
@@ -383,7 +396,19 @@ def candidate_claims(
         "contradictions": _contradictions(entry, ranked[0]),
         "verification": steps,
     }
-    return {
-        slot: list(dict.fromkeys(c for c in claims if verify(c, entry, params) is None))
-        for slot, claims in out.items()
-    }
+    return {slot: _unique(claims, entry, params) for slot, claims in out.items()}
+
+
+def _unique(
+    claims: list[Claim], entry: Mapping[str, Any], params: NarratorParams
+) -> list[Claim]:
+    """Verified claims, each sentence once (review I2: a ghost edge between two
+    top-3 services is in both services' items)."""
+    seen: set[tuple[str, str]] = set()
+    out = []
+    for c in claims:
+        key = (c.kind.value, c.sentence)
+        if key not in seen and verify(c, entry, params) is None:
+            seen.add(key)
+            out.append(c)
+    return out
