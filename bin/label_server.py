@@ -41,6 +41,7 @@ from helios.labelling.annotations import (
     ANNOTATIONS_HMAC_ENV_VAR,
     ANNOTATIONS_PUBLIC_KEY_FILE,
     AnnotationLedger,
+    history,
     load_annotations_hmac,
 )
 from helios.labelling.session import LabellingSession, SessionError
@@ -167,61 +168,90 @@ def run_forever(httpd: ThreadingHTTPServer) -> None:
         httpd.server_close()
 
 
-def _serve(args: argparse.Namespace) -> int:
+def _ledger(args: argparse.Namespace) -> AnnotationLedger | str:
+    """The set's annotations ledger with the server's own keys, or why not."""
     import os
 
     leaked = sorted(k for k in os.environ if k.startswith("DEVIATION_"))
     if leaked:
-        print(
-            f"[label] refused: deviation secrets in the environment: {leaked}",
-            file=sys.stderr,
-        )
-        return 2
+        return f"deviation secrets in the environment: {leaked}"
     hmac_key = load_annotations_hmac()
     if hmac_key is None:
-        print(f"[label] refused: needs {ANNOTATIONS_HMAC_ENV_VAR}", file=sys.stderr)
-        return 2
+        return f"needs {ANNOTATIONS_HMAC_ENV_VAR}"
     public = load_public_key_file(args.public_key)
     value = os.getenv(ANNOTATIONS_ENV_VAR)
     if public is None or not value:
-        print(
-            f"[label] refused: needs {ANNOTATIONS_ENV_VAR} and {args.public_key}",
-            file=sys.stderr,
-        )
-        return 2
+        return f"needs {ANNOTATIONS_ENV_VAR} and {args.public_key}"
     private = load_private_key(value)
     if public_key_pem(private) != args.public_key.read_bytes():
-        print(
-            "[label] refused: the annotations key does not match its public key",
-            file=sys.stderr,
-        )
-        return 2
+        return "the annotations key does not match its public key"
+    return AnnotationLedger(
+        hmac_key,
+        args.set / f"{args.set.name}.annotations.jsonl",
+        ed25519_private=private,
+    )
+
+
+def _session(
+    args: argparse.Namespace, people: dict[str, Any], **kw: Any
+) -> LabellingSession | str:
+    ledger = _ledger(args)
+    if isinstance(ledger, str):
+        return ledger
+    try:
+        return LabellingSession(args.set, ledger, people, **kw)
+    except SessionError as exc:
+        return str(exc)
+
+
+def _refused(why: str) -> int:
+    print(f"[label] refused: {why}", file=sys.stderr)
+    return 2
+
+
+def _serve(args: argparse.Namespace) -> int:
     people = json.loads(args.people.read_text("utf-8"))
     lock = acquire_set_lock(args.set)
     if lock is None:
-        print("[label] refused: another server is using this set", file=sys.stderr)
-        return 2
+        return _refused("another server is using this set")
     try:
-        ledger = AnnotationLedger(
-            hmac_key,
-            args.set / f"{args.set.name}.annotations.jsonl",
-            ed25519_private=private,
+        session = _session(
+            args, people, mode=args.mode, adjudicate_all=args.adjudicate_all
         )
-        try:
-            session = LabellingSession(
-                args.set,
-                ledger,
-                people,
-                mode=args.mode,
-                adjudicate_all=args.adjudicate_all,
-            )
-        except SessionError as exc:
-            print(f"[label] refused: {exc}", file=sys.stderr)
-            return 2
+        if isinstance(session, str):
+            return _refused(session)
         httpd = make_server(session, port=args.port)
         port = httpd.server_address[1]
         print(f"[label] serving on {LOOPBACK}:{port} ({len(session.items)} items)")
         run_forever(httpd)
+        return 0
+    finally:
+        lock.close()
+
+
+def _reopen(args: argparse.Namespace) -> int:
+    """Reopen one person's labels given between two server timestamps, for
+    relabelling a sitting under the detection floor (R-m, review I5)."""
+    manifest = json.loads((args.set / "manifest.json").read_text("utf-8"))
+    mode = "onboarding" if manifest.get("purpose") == "onboarding" else "label"
+    people = {args.person: {"key_sha256": "", "role": "rater"}}
+    lock = acquire_set_lock(args.set)
+    if lock is None:
+        return _refused("stop the server first")
+    try:
+        session = _session(args, people, mode=mode)
+        if isinstance(session, str):
+            return _refused(session)
+        items = sorted(
+            {
+                str(e["item"])
+                for e in history(session.ledger, ("label",))
+                if e["person"] == args.person
+                and args.start <= str(e["timestamp_utc"]) <= args.end
+            }
+        )
+        n = session.reopen(args.person, items)
+        print(f"[label] reopened {n} labels of {args.person}")
         return 0
     finally:
         lock.close()
@@ -278,10 +308,19 @@ def main(argv: list[str] | None = None) -> int:
     add.add_argument("--people", type=Path, default=DEFAULT_PEOPLE)
     keygen = sub.add_parser("keygen")
     keygen.add_argument("--public-key", type=Path, default=ANNOTATIONS_PUBLIC_KEY_FILE)
+    reopen = sub.add_parser("reopen", help="R-m: relabel a sitting under the floor")
+    reopen.add_argument("--set", type=Path, required=True)
+    reopen.add_argument("--person", required=True)
+    reopen.add_argument("--from", dest="start", required=True, help="timestamp_utc")
+    reopen.add_argument("--to", dest="end", required=True, help="timestamp_utc")
+    reopen.add_argument("--public-key", type=Path, default=ANNOTATIONS_PUBLIC_KEY_FILE)
     args = parser.parse_args(argv)
-    return {"serve": _serve, "add-person": _add_person, "keygen": _keygen}[args.cmd](
-        args
-    )
+    return {
+        "serve": _serve,
+        "add-person": _add_person,
+        "keygen": _keygen,
+        "reopen": _reopen,
+    }[args.cmd](args)
 
 
 if __name__ == "__main__":

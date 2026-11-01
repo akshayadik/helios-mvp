@@ -21,7 +21,7 @@ import random
 import time
 from typing import TYPE_CHECKING, Any
 
-from helios.labelling.annotations import AnnotationLedger, latest
+from helios.labelling.annotations import REOPENED, AnnotationLedger, history, latest
 from helios.labelling.sets import rater_order
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
 
@@ -112,7 +112,35 @@ class LabellingSession:
     # -- state ----------------------------------------------------------------
 
     def _labels(self) -> dict[tuple[str, str], dict[str, Any]]:
-        return latest(self.ledger, "label")
+        """Each person's standing label per item; a reopen (R-m relabel)
+        withdraws it until the person labels the item again."""
+        state: dict[tuple[str, str], dict[str, Any] | None] = {}
+        for e in history(self.ledger, ("label", "reopen")):
+            pair = (str(e["item"]), str(e["person"]))
+            state[pair] = e if e["kind"] == "label" else None
+        return {pair: e for pair, e in state.items() if e is not None}
+
+    def reopen(self, person: str, items: list[str]) -> int:
+        """Reopen ``person``'s labels on ``items`` for relabelling (a sitting
+        under the detection floor, R-m); returns how many were reopened."""
+        labels = self._labels()
+        n = 0
+        for item in items:
+            if (item, person) in labels:
+                self.ledger.append(
+                    {
+                        "set_hash": self.manifest["set_sha256"],
+                        "item": item,
+                        "person": person,
+                        "kind": "reopen",
+                        "verdict": REOPENED,
+                        "category": "",
+                        "note": "",
+                        "dwell_ms": 0,
+                    }
+                )
+                n += 1
+        return n
 
     def _locked(self, item: str, labels: Mapping[tuple[str, str], Any]) -> bool:
         return all((item, r) in labels for r in self._raters())

@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Any
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping, Sequence
+    from collections.abc import Iterable, Mapping, Sequence
 
 __all__ = [
     "DETECTION_FLOOR",
@@ -161,15 +161,18 @@ def _when(entry: Mapping[str, Any]) -> dt.datetime:
 
 
 def detection(
-    labels: Mapping[tuple[str, str], Mapping[str, Any]],
+    entries: Iterable[Mapping[str, Any]],
     key: Mapping[str, Mapping[str, Any]],
 ) -> dict[str, Any]:
-    """Per person: planted claims caught per category, false alarms on real
-    claims, and each sitting's catch rate against the floor."""
+    """Per person, over every label they gave (relabels included, so a sitting
+    below the floor stays visible after it is relabelled; review I5): planted
+    claims caught per category, false alarms on real claims, and each
+    sitting's catch rate against the floor."""
     out: dict[str, Any] = {}
-    for person in sorted({p for _, p in labels}):
+    entries = list(entries)
+    for person in sorted({str(e["person"]) for e in entries}):
         mine = sorted(
-            ((item, e) for (item, p), e in labels.items() if p == person),
+            ((str(e["item"]), e) for e in entries if e["person"] == person),
             key=lambda ie: _when(ie[1]),
         )
         per_cat: dict[str, list[int]] = defaultdict(lambda: [0, 0])
@@ -253,9 +256,11 @@ def agreement_report(
     adjudications: Mapping[tuple[str, str], Mapping[str, Any]],
     guesses: Mapping[tuple[str, str], Mapping[str, Any]],
     key: Mapping[str, Mapping[str, Any]],
+    history: Sequence[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """κ (all items and real only), consensus counts, H_fact, per-rater
-    tables, planted-claim detection and the blinding check."""
+    tables, planted-claim detection (over ``history``, every label entry, when
+    given) and the blinding check."""
     r1, r2 = _raters(labels)
     both = sorted(item for item in key if (item, r1) in labels and (item, r2) in labels)
     real = [i for i in both if not key[i].get("planted")]
@@ -288,6 +293,13 @@ def agreement_report(
         },
         "h_fact": facts,
         "per_rater": per_rater_h_fact(labels, key),
-        "detection": detection(labels, key),
+        "detection": detection(
+            (
+                history
+                if history is not None
+                else [{**e, "item": i, "person": p} for (i, p), e in labels.items()]
+            ),
+            key,
+        ),
         "blinding": _blinding(guesses, key),
     }

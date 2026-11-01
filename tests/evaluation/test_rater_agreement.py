@@ -134,7 +134,9 @@ def test_detection_floor_flags_a_sitting() -> None:
         labels[f"p{j}", "R1"] = _lab(verdict, ts=f"2026-12-01T12:0{j - 5}:00Z")
     labels["r0", "R1"] = _lab(U, ts="2026-12-01T12:09:00Z")  # a false alarm
     labels["r1", "R1"] = _lab(S, ts="2026-12-01T12:09:30Z")
-    got = detection(labels, key)["R1"]
+    got = detection(
+        [{**e, "item": i, "person": p} for (i, p), e in labels.items()], key
+    )["R1"]
     assert [s["below_floor"] for s in got["sittings"]] == [False, True]
     assert got["sittings"][1]["caught"] == 3 and got["sittings"][1]["planted"] == 5
     assert got["false_alarm"] == 1 / 2
@@ -188,3 +190,19 @@ def test_blinding_hit_rate_and_report() -> None:
 def test_consensus_needs_two_raters() -> None:
     with pytest.raises(ValueError, match="two raters"):
         consensus({("r0", "R1"): _lab(S)}, {}, _key(1), kappa=KAPPA_THRESHOLD)
+
+
+def test_detection_keeps_a_relabelled_sitting() -> None:
+    # Review I5: detection reads the full history, so relabelling a failed
+    # sitting never hides it.
+    key = _key(0, n_planted=5)
+    history = [
+        {**_lab(S, ts=f"2026-12-01T10:0{j}:00Z"), "item": f"p{j}", "person": "R1"}
+        for j in range(5)
+    ]
+    history += [
+        {**_lab(U, ts=f"2026-12-02T10:0{j}:00Z"), "item": f"p{j}", "person": "R1"}
+        for j in range(5)
+    ]
+    got = detection(history, key)["R1"]
+    assert [s["below_floor"] for s in got["sittings"]] == [True, False]

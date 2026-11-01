@@ -25,8 +25,10 @@ __all__ = [
     "CATEGORIES",
     "GUESSES",
     "KINDS",
+    "REOPENED",
     "VERDICTS",
     "AnnotationLedger",
+    "history",
     "latest",
     "load_annotations_hmac",
 ]
@@ -47,7 +49,8 @@ CATEGORIES: tuple[str, ...] = (
     "log_quote_mismatch",
     "missing_citation",
 )
-KINDS: tuple[str, ...] = ("label", "adjudication", "blind_guess")
+KINDS: tuple[str, ...] = ("label", "adjudication", "blind_guess", "reopen")
+REOPENED = "reopened"  # the verdict of a reopen entry (R-m relabel, review I5)
 VERDICTS: tuple[str, ...] = ("supported", "unsupported")
 GUESSES: tuple[str, ...] = ("A", "B", "unsure")  # blinding check (R-k)
 
@@ -57,7 +60,10 @@ def _check(fields: dict[str, Any]) -> None:
     category = fields.get("category", "")
     if kind not in KINDS:
         raise ValueError(f"unknown annotation kind {kind!r}")
-    if kind == "blind_guess":
+    if kind == "reopen":
+        if verdict != REOPENED or category:
+            raise ValueError("a reopen entry has verdict 'reopened' and no category")
+    elif kind == "blind_guess":
         if verdict not in GUESSES or category:
             raise ValueError("a blinding-check answer is A, B or unsure")
     elif verdict not in VERDICTS:
@@ -93,6 +99,15 @@ def load_annotations_hmac() -> bytes | None:
     it is missing or shorter than 32 bytes."""
     value = os.getenv(ANNOTATIONS_HMAC_ENV_VAR, "")
     return value.encode("utf-8") if len(value) >= _MIN_SECRET_BYTES else None
+
+
+def history(ledger: AnnotationLedger, kinds: tuple[str, ...]) -> list[dict[str, Any]]:
+    """Every entry of the given kinds, in ledger order."""
+    path = ledger._path
+    if not path.exists():
+        return []
+    entries = (json.loads(x) for x in path.read_text("utf-8").splitlines() if x.strip())
+    return [e for e in entries if e.get("kind") in kinds]
 
 
 def latest(

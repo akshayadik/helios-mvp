@@ -198,3 +198,29 @@ def test_second_server_on_one_set_is_refused(tmp_path: Path) -> None:
     lock = tool.acquire_set_lock(tmp_path / "set")
     assert lock is not None
     lock.close()
+
+
+def test_reopen_command_reopens_a_window_of_labels(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # Review I5: the owner reopens a sitting below the floor for relabelling.
+    from helios.labelling.annotations import history
+    from tests.labelling.test_session import KEY, SIGNER
+
+    session = make(tmp_path)
+    for _ in range(3):
+        item = session.next_item("R1")
+        assert item is not None
+        session.submit("R1", item["item"], "supported", "", "")
+    stamps = [e["timestamp_utc"] for e in history(session.ledger, ("label",))]
+    pub = tmp_path / "ann.pub.pem"
+    pub.write_bytes(public_key_pem(SIGNER))
+    for name in ("DEVIATION_HMAC_SECRET", "DEVIATION_ED25519_PRIVATE_KEY"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv(ANNOTATIONS_HMAC_ENV_VAR, KEY.decode())
+    monkeypatch.setenv(ANNOTATIONS_ENV_VAR, private_key_to_env_value(SIGNER))
+    args = ["reopen", "--set", str(tmp_path / "set"), "--person", "R1"]
+    args += ["--from", stamps[0], "--to", stamps[1], "--public-key", str(pub)]
+    assert tool.main(args) == 0
+    assert "reopened 2" in capsys.readouterr().out
+    assert len(history(session.ledger, ("reopen",))) == 2

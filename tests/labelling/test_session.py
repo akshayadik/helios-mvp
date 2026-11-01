@@ -249,3 +249,26 @@ def test_blinding_prompt_every_25_labels(tmp_path: Path) -> None:
     s.submit_guess("R1", prompt["item"], "A")
     assert s.blinding_prompt("R1") is None
     assert latest(s.ledger, "blind_guess")[prompt["item"], "R1"]["verdict"] == "A"
+
+
+def test_reopen_lets_a_rater_relabel_a_locked_item(tmp_path: Path) -> None:
+    # Review I5 (R-m): a sitting below the detection floor is relabelled,
+    # even where the other rater has labelled the item since.
+    s = make(tmp_path)
+    first = s.next_item("R1")
+    assert first is not None
+    s.submit("R1", first["item"], "supported", "", "")
+    while (nxt := s.next_item("R2")) is not None and nxt["item"] != first["item"]:
+        s.submit("R2", nxt["item"], "supported", "", "")
+        if (b := s.blinding_prompt("R2")) is not None:
+            s.submit_guess("R2", b["item"], "unsure")
+    s.submit("R2", first["item"], "supported", "", "")
+    with pytest.raises(SessionError, match="locked"):
+        s.revisit("R1", first["item"])
+    assert s.reopen("R1", [first["item"]]) == 1
+    again = s.next_item("R1")
+    assert again is not None and again["item"] == first["item"]
+    s.submit("R1", first["item"], "unsupported", "numeric_drift", "relabelled")
+    assert latest(s.ledger, "label")[first["item"], "R1"]["verdict"] == "unsupported"
+    nxt = s.next_item("R1")
+    assert nxt is None or nxt["item"] != first["item"]
