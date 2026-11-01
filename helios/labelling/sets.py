@@ -93,14 +93,11 @@ def _opaque(seed: int, key: str) -> str:
     return hashlib.sha256(f"{seed}|{key}".encode()).hexdigest()[:_ID_HEX]
 
 
-def build_set(
+def _sources(
     entries: Sequence[Mapping[str, Any]],
-    *,
-    planted_share: float,
-    rubric_sha: str,
-    params: NarratorParams,
-) -> LabellingSet:
-    """Items, key and manifest for ``entries`` (odd entries skipped and counted)."""
+) -> tuple[list[tuple[str, Claim, Mapping[str, Any]]], dict[str, dict[str, Any]], int]:
+    """Every displayed claim of the usable entries, its key information, and
+    how many entries were skipped (other arm, no claims, no fused ranking)."""
     sources: list[tuple[str, Claim, Mapping[str, Any]]] = []
     meta: dict[str, dict[str, Any]] = {}
     skipped = 0
@@ -120,11 +117,33 @@ def build_set(
                 "incident_id": entry["incident_id"],
                 "slot": slot,
                 "index": index,
+                "kind": claim.kind.value,
             }
+    return sources, meta, skipped
+
+
+def build_set(
+    entries: Sequence[Mapping[str, Any]],
+    *,
+    planted_share: float,
+    rubric_sha: str,
+    params: NarratorParams,
+    plant_from: Sequence[Mapping[str, Any]] | None = None,
+) -> LabellingSet:
+    """Items, key and manifest for ``entries`` (odd entries skipped and
+    counted). Planted claims are made from ``plant_from`` when given (other
+    cases, so a planted claim never sits beside its own source; review M3)."""
+    sources, meta, skipped = _sources(entries)
+    pool, pool_meta = sources, meta
+    if plant_from is not None:
+        pool, pool_meta, _ = _sources(plant_from)
     seed = derived_seed([s for s, _, _ in sources], rubric_sha)
     rng = random.Random(seed)
-    planted = plant(sources, planted_share, rng, params) if sources else []
-    by_src = {s: e for s, _, e in sources}
+    planted = (
+        plant(pool, planted_share, rng, params, n_real=len(sources)) if sources else []
+    )
+    by_src = {s: e for s, _, e in [*sources, *pool]}
+    meta_all = {**pool_meta, **meta}
     rows: list[tuple[str, Claim, Mapping[str, Any], dict[str, Any]]] = []
     for src, claim, entry in sources:
         rows.append(
@@ -141,7 +160,7 @@ def build_set(
                 f"planted/{n}/{src}",
                 claim,
                 by_src[src],
-                {**meta[src], "planted": True, "category": category, "source": src},
+                {**meta_all[src], "planted": True, "category": category, "source": src},
             )
         )
     rng.shuffle(rows)

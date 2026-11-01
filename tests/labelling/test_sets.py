@@ -123,3 +123,31 @@ def test_write_once(tmp_path: Path) -> None:
     write_set(s, tmp_path / "set")
     with pytest.raises(FileExistsError):
         write_set(s, tmp_path / "set")
+
+
+def _planted(s: Any) -> list[dict[str, Any]]:
+    return [i for i in s.items if s.key[i["item"]]["planted"]]
+
+
+def test_planted_items_come_from_distinct_sources_and_never_repeat() -> None:
+    # Review C1: one shared cursor made 132 planted items from 8 sources.
+    s = build_set(entries(32), planted_share=1 / 4, rubric_sha=RUBRIC, params=P)
+    planted = _planted(s)
+    sources = [s.key[i["item"]]["source"] for i in planted]
+    assert len(set(sources)) == len(planted)
+    shown = [(i["sentence"], json.dumps(i["cards"], sort_keys=True)) for i in planted]
+    assert len(set(shown)) == len(shown)
+    real_kinds = {i["kind"] for i in s.items if not s.key[i["item"]]["planted"]}
+    assert {i["kind"] for i in planted} == real_kinds
+
+
+def test_planted_sources_can_come_from_other_cases() -> None:
+    # Review M3: a planted claim should not sit beside its own source.
+    own, other = entries(8), [entry(n, ARMS[n % 2]) for n in range(100, 140)]
+    s = build_set(
+        own, planted_share=1 / 4, rubric_sha=RUBRIC, params=P, plant_from=other
+    )
+    runs = {e["run_id"] for e in own}
+    planted = _planted(s)
+    assert planted and all(s.key[i["item"]]["run_id"] not in runs for i in planted)
+    assert s.manifest["counts"]["planted"] == len(planted)

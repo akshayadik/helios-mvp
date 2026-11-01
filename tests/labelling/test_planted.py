@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import random
 import re
+from random import Random as Rng
 from typing import Any
 
 import pytest
@@ -84,12 +85,22 @@ def _sources(n: int) -> list[tuple[str, Any, Any]]:
 
 
 def test_plant_share_and_balance() -> None:
-    out = plant(_sources(240), 1 / 4, random.Random(11), P)
-    assert len(out) == 80  # 80 of 320 shown is a quarter
-    assert {cat for _, _, cat in out} == set(CATEGORIES)
-    for key, claim, cat in out:
-        assert key.startswith("src")
+    # 30 real claims at a quarter: 10 planted, two per category.
+    out = plant(_sources(240), 1 / 4, Rng(11), P, n_real=30)
+    assert len(out) == 10  # 10 of 40 shown is a quarter
+    cats = [cat for _, _, cat in out]
+    assert set(cats) == set(CATEGORIES)
+    assert max(map(cats.count, CATEGORIES)) - min(map(cats.count, CATEGORIES)) <= 2
+    for _, claim, cat in out:
         assert verify(claim, ENTRY, P) in EXPECTED_REASON[cat]
+
+
+def test_plant_never_repeats_a_source_or_a_sentence() -> None:
+    # Review C1: the 240 sources are 6 claims repeated, so only the unique
+    # corruptions are used and the shortfall shows in the count.
+    out = plant(_sources(240), 1 / 4, Rng(11), P)
+    assert len({key for key, _, _ in out}) == len(out) < 80
+    assert len({(c.sentence, c.cites) for _, c, _ in out}) == len(out)
 
 
 def test_plant_is_deterministic_for_a_seed() -> None:

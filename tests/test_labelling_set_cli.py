@@ -108,7 +108,10 @@ def test_cli_training_round_and_onboarding(
     assert tool.main([*_args(d, pub, rubric, one), "--per-arm", "1"]) == 0
     key1 = json.loads((one / "key.json").read_text("utf-8"))
     cases1 = {v["incident_id"] for v in key1.values()}
-    assert len({v["run_id"] for v in key1.values()}) == 2  # one narrative per arm
+    real_runs = {v["run_id"] for v in key1.values() if not v["planted"]}
+    assert len(real_runs) == 2  # one narrative per arm
+    planted_runs = {v["run_id"] for v in key1.values() if v["planted"]}
+    assert planted_runs and planted_runs.isdisjoint(real_runs)  # review M3
     two = tmp_path / "round2"
     args2 = [*_args(d, pub, rubric, two), "--per-arm", "1", "--exclude-sets", str(one)]
     assert tool.main(args2) == 0

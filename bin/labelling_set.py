@@ -114,25 +114,33 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     params, rubric = load_narrator_params(), rubric_sha(args.rubric)
     run_ids = sorted(str(e.get("run_id")) for e in entries)
+    # Cases of earlier sets (rounds, onboarding) are never reused (review M10).
+    used: set[str] = set()
+    for earlier in args.exclude_sets:
+        key = json.loads((earlier / "key.json").read_text("utf-8"))
+        used |= {str(v["incident_id"]) for v in key.values()}
+    fresh = [e for e in entries if str(e.get("incident_id")) not in used]
     if args.onboarding:
-        s = onboarding_set(entries, seed=derived_seed(run_ids, rubric), params=params)
+        s = onboarding_set(fresh, seed=derived_seed(run_ids, rubric), params=params)
     else:
+        plant_from = None
         if args.per_arm is not None:
-            used: set[str] = set()
-            for earlier in args.exclude_sets:
-                key = json.loads((earlier / "key.json").read_text("utf-8"))
-                used |= {str(v["incident_id"]) for v in key.values()}
-            entries = [
-                dict(e)
-                for e in select_training(
-                    entries,
-                    n_per_arm=args.per_arm,
-                    seed=derived_seed(run_ids, rubric),
-                    exclude_cases=used,
-                )
-            ]
+            chosen = select_training(
+                fresh,
+                n_per_arm=args.per_arm,
+                seed=derived_seed(run_ids, rubric),
+                exclude_cases=set(),
+            )
+            cases = {str(e["incident_id"]) for e in chosen}
+            # Planted claims come from build cases outside the round (review M3).
+            plant_from = [e for e in fresh if str(e["incident_id"]) not in cases]
+            entries = [dict(e) for e in chosen]
         s = build_set(
-            entries, planted_share=SHARES[args.share], rubric_sha=rubric, params=params
+            entries,
+            planted_share=SHARES[args.share],
+            rubric_sha=rubric,
+            params=params,
+            plant_from=plant_from,
         )
     s.manifest["ledgers"] = ledgers
     write_set(s, args.out)
