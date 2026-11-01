@@ -65,10 +65,19 @@ class LabellingSession:
         )
         self._by_id = {i["item"]: i for i in self.items}
         self.ledger = ledger
-        if ledger._path.exists():
+        # A ledger or an anchor means labels exist: a missing ledger beside an
+        # anchor is tampering, not a fresh set (review I2).
+        if ledger._path.exists() or ledger.anchor_path.exists():
             ok, msg = ledger.verify()
             if not ok:
                 raise SessionError(f"annotations ledger failed verification: {msg}")
+        # Answers from the key are shown only on an onboarding set (review I4).
+        onboarding_set = self.manifest.get("purpose") == "onboarding"
+        if (mode == "onboarding") != onboarding_set:
+            raise SessionError(
+                f"mode {mode!r} does not match the set: onboarding sets need mode "
+                "'onboarding', and only they"
+            )
         self.people = dict(people)
         self.mode = mode
         self.adjudicate_all = adjudicate_all

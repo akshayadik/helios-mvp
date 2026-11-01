@@ -156,17 +156,49 @@ def test_adjudicator_sees_only_disagreements_unattributed(tmp_path: Path) -> Non
     assert not any(key[i]["planted"] for i in seen)
 
 
+def _onboarding(tmp_path: Path) -> LabellingSession:
+    d = tmp_path / "onb"
+    if not d.exists():
+        s = build_set(entries(4), planted_share=1 / 4, rubric_sha="r" * 64, params=P)
+        s.manifest["purpose"] = "onboarding"
+        write_set(s, d)
+    ledger = AnnotationLedger(KEY, d / "onb.annotations.jsonl", ed25519_private=SIGNER)
+    return LabellingSession(d, ledger, people(), mode="onboarding", clock=Clock())
+
+
 def test_onboarding_mode_returns_answer_after_label(tmp_path: Path) -> None:
-    s = make(tmp_path, mode="onboarding")
+    s = _onboarding(tmp_path)
     item = s.next_item("R1")
     assert item is not None
     answer = s.submit("R1", item["item"], "supported", "", "")
-    k = _key(tmp_path)[item["item"]]
+    k = json.loads((tmp_path / "onb" / "key.json").read_text("utf-8"))[item["item"]]
     assert answer == {"planted": k["planted"], "category": k["category"]}
     labelling = make(tmp_path / "other")
     nxt = labelling.next_item("R1")
     assert nxt is not None
     assert labelling.submit("R1", nxt["item"], "supported", "", "") is None
+
+
+def test_mode_must_match_the_set(tmp_path: Path) -> None:
+    # Review I4: one wrong flag must never show the key's answers on a real set.
+    with pytest.raises(SessionError, match="onboarding"):
+        make(tmp_path, mode="onboarding")
+    _onboarding(tmp_path)
+    d = tmp_path / "onb"
+    ledger = AnnotationLedger(KEY, d / "onb.annotations.jsonl", ed25519_private=SIGNER)
+    with pytest.raises(SessionError, match="onboarding"):
+        LabellingSession(d, ledger, people(), mode="label", clock=Clock())
+
+
+def test_deleted_ledger_with_anchor_refuses_to_start(tmp_path: Path) -> None:
+    # Review I2: a missing ledger whose anchor remains is tampering, not a fresh set.
+    s = make(tmp_path)
+    item = s.next_item("R1")
+    assert item is not None
+    s.submit("R1", item["item"], "supported", "", "")
+    s.ledger._path.unlink()
+    with pytest.raises(SessionError, match="ledger"):
+        make(tmp_path)
 
 
 def test_restart_resumes_from_ledger(tmp_path: Path) -> None:

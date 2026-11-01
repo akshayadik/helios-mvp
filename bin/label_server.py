@@ -21,6 +21,7 @@ deviation-log key).
 from __future__ import annotations
 
 import argparse
+import fcntl
 import hashlib
 import ipaddress
 import json
@@ -30,7 +31,7 @@ import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import IO, TYPE_CHECKING, Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -54,7 +55,7 @@ from helios.vcl.ed25519 import (
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-__all__ = ["main", "make_server", "run_forever"]
+__all__ = ["acquire_set_lock", "main", "make_server", "run_forever"]
 
 LOOPBACK = str(ipaddress.IPv4Address(socket.INADDR_LOOPBACK))
 DEFAULT_PORT = 8765
@@ -134,6 +135,8 @@ def _handler(session: LabellingSession) -> type[BaseHTTPRequestHandler]:
                         self._send(404)
             except (SessionError, ValueError, KeyError, TypeError) as exc:
                 self._json({"error": str(exc)}, status=400)
+            except (RuntimeError, OSError) as exc:  # ledger tampering, disk (review I2)
+                self._json({"error": f"ledger or storage error: {exc}"}, status=500)
 
     return Handler
 
@@ -143,6 +146,18 @@ def make_server(
 ) -> ThreadingHTTPServer:
     """The HTTP server for ``session``, bound to the loopback interface only."""
     return ThreadingHTTPServer((LOOPBACK, port), _handler(session))
+
+
+def acquire_set_lock(set_dir: Path) -> IO[str] | None:
+    """An exclusive lock on the set for this process, or None if another
+    server holds it: two writers would fork the ledger's chain (review I3)."""
+    handle = (set_dir / ".serve.lock").open("a")
+    try:
+        fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        handle.close()
+        return None
+    return handle
 
 
 def run_forever(httpd: ThreadingHTTPServer) -> None:
@@ -182,24 +197,34 @@ def _serve(args: argparse.Namespace) -> int:
         )
         return 2
     people = json.loads(args.people.read_text("utf-8"))
-    ledger = AnnotationLedger(
-        hmac_key,
-        args.set / f"{args.set.name}.annotations.jsonl",
-        ed25519_private=private,
-    )
-    try:
-        session = LabellingSession(
-            args.set, ledger, people, mode=args.mode, adjudicate_all=args.adjudicate_all
-        )
-    except SessionError as exc:
-        print(f"[label] refused: {exc}", file=sys.stderr)
+    lock = acquire_set_lock(args.set)
+    if lock is None:
+        print("[label] refused: another server is using this set", file=sys.stderr)
         return 2
-    httpd = make_server(session, port=args.port)
-    print(
-        f"[label] serving on {LOOPBACK}:{httpd.server_address[1]} ({len(session.items)} items)"
-    )
-    run_forever(httpd)
-    return 0
+    try:
+        ledger = AnnotationLedger(
+            hmac_key,
+            args.set / f"{args.set.name}.annotations.jsonl",
+            ed25519_private=private,
+        )
+        try:
+            session = LabellingSession(
+                args.set,
+                ledger,
+                people,
+                mode=args.mode,
+                adjudicate_all=args.adjudicate_all,
+            )
+        except SessionError as exc:
+            print(f"[label] refused: {exc}", file=sys.stderr)
+            return 2
+        httpd = make_server(session, port=args.port)
+        port = httpd.server_address[1]
+        print(f"[label] serving on {LOOPBACK}:{port} ({len(session.items)} items)")
+        run_forever(httpd)
+        return 0
+    finally:
+        lock.close()
 
 
 def _add_person(args: argparse.Namespace) -> int:

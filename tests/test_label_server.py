@@ -164,3 +164,37 @@ def test_add_person_and_keygen(
     assert ANNOTATIONS_ENV_VAR + "=" in printed and pub.exists()
     assert ANNOTATIONS_HMAC_ENV_VAR + "=" in printed
     assert tool.main(["keygen", "--public-key", str(pub)]) == 2  # never replaces a key
+
+
+def test_ledger_error_is_a_json_500(
+    server: tuple[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Review I2: a ledger failure must answer, not drop the connection.
+    from helios.vcl.hmac_chain import TamperDetectedError
+
+    base, session = server
+
+    def boom(*_a: Any, **_k: Any) -> None:
+        raise TamperDetectedError("anchor mismatch")
+
+    monkeypatch.setattr(session, "submit", boom)
+    status, body = _call(
+        base,
+        "/api/label",
+        PEOPLE_KEYS["R1"],
+        {"item": "x", "verdict": "supported", "category": "", "note": ""},
+    )
+    assert status == 500 and b"ledger" in body
+
+
+def test_second_server_on_one_set_is_refused(tmp_path: Path) -> None:
+    # Review I3: two writers would fork the ledger's chain.
+    import fcntl
+
+    make(tmp_path)
+    with (tmp_path / "set" / ".serve.lock").open("w") as held:
+        fcntl.flock(held, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        assert tool.acquire_set_lock(tmp_path / "set") is None
+    lock = tool.acquire_set_lock(tmp_path / "set")
+    assert lock is not None
+    lock.close()
