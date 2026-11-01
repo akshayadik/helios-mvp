@@ -1,0 +1,109 @@
+"""Planted claims (S2.9 design §5.2, owner decision R-f): one corruption per
+error category, each rejected by the S2.8 verifier for the matching reason."""
+
+from __future__ import annotations
+
+import random
+import re
+from typing import Any
+
+import pytest
+
+from helios.labelling.planted import CATEGORIES, EXPECTED_REASON, corrupt, plant
+from helios.narrative.params import load_narrator_params
+from helios.narrative.verifier import verify
+from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
+from tests.narrative.test_verifier import ENTRY, SUPPORTED
+
+P = load_narrator_params()
+
+# Which categories can apply to which claim kind on ENTRY.
+APPLIES = {
+    "numeric_drift": {"shift", "call_structure"},
+    "entity_mismatch": {
+        "shift",
+        "call_structure",
+        "log_message",
+        "ranking",
+        "contradiction",
+        "verification_step",
+    },
+    "directional_inversion": {"shift"},
+    "log_quote_mismatch": {"log_message"},
+    "missing_citation": {
+        "shift",
+        "call_structure",
+        "log_message",
+        "ranking",
+        "contradiction",
+        "verification_step",
+    },
+}
+
+
+@pytest.mark.parametrize("category", CATEGORIES)
+def test_each_category_is_rejected_by_the_verifier_with_its_reason(
+    category: str,
+) -> None:
+    for kind, claim in SUPPORTED.items():
+        planted = corrupt(claim, ENTRY, category, random.Random(7), P)
+        if kind not in APPLIES[category]:
+            assert planted is None, (category, kind)
+            continue
+        assert planted is not None, (category, kind)
+        assert verify(planted, ENTRY, P) in EXPECTED_REASON[category], (
+            category,
+            kind,
+            planted.sentence,
+        )
+
+
+@pytest.mark.parametrize("category", CATEGORIES)
+def test_corruptions_keep_the_sentence_shape(category: str) -> None:
+    for claim in SUPPORTED.values():
+        planted = corrupt(claim, ENTRY, category, random.Random(3), P)
+        if planted is None:
+            continue
+        assert planted.kind == claim.kind
+        assert "\n" not in planted.sentence
+        assert abs(len(planted.sentence.split()) - len(claim.sentence.split())) <= 2
+
+
+def test_numbers_move_beyond_tolerance_and_keep_their_unit() -> None:
+    planted = corrupt(SUPPORTED["shift"], ENTRY, "numeric_drift", random.Random(1), P)
+    assert planted is not None
+    nums = re.findall(r"(\d+(?:\.\d+)?) ms", planted.sentence)
+    assert len(nums) == 2 and nums != ["120", "900"]
+    moved = [float(a) / float(b) for a, b in zip(nums, ["120", "900"], strict=True)]
+    assert any(abs(r - 1) > 10 * P.rel_tolerance for r in moved)
+
+
+def _sources(n: int) -> list[tuple[str, Any, Any]]:
+    claims = list(SUPPORTED.values())
+    return [(f"src{i}", claims[i % len(claims)], ENTRY) for i in range(n)]
+
+
+def test_plant_share_and_balance() -> None:
+    out = plant(_sources(240), 1 / 4, random.Random(11), P)
+    assert len(out) == 80  # 80 of 320 shown is a quarter
+    assert {cat for _, _, cat in out} == set(CATEGORIES)
+    for key, claim, cat in out:
+        assert key.startswith("src")
+        assert verify(claim, ENTRY, P) in EXPECTED_REASON[cat]
+
+
+def test_plant_is_deterministic_for_a_seed() -> None:
+    a = plant(_sources(60), 1 / 4, random.Random(5), P)
+    b = plant(_sources(60), 1 / 4, random.Random(5), P)
+    assert a == b
+    assert a != plant(_sources(60), 1 / 4, random.Random(6), P)
+
+
+def test_planted_and_real_items_have_the_same_shape() -> None:
+    for category in CATEGORIES:
+        for claim in SUPPORTED.values():
+            planted = corrupt(claim, ENTRY, category, random.Random(2), P)
+            if planted is not None:
+                real = claim.model_dump(mode="json", exclude_none=True)
+                fake = planted.model_dump(mode="json", exclude_none=True)
+                assert set(real) == set(fake), (category, claim.kind)
