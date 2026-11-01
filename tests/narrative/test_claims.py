@@ -98,4 +98,5 @@ def test_narrator_frozen_from_round_3() -> None:
     assert final["narrator_prompt_sha"] == prompt.NARRATOR_PROMPT_SHA
     as_run = dataclasses.replace(params, provisional=True)
     assert narrator_params_hash(as_run) == round3["narrator_params_hash"]
-    assert narrator_params_hash(as_run) == final["narrator_params_hash"]
+    # Held-out re-run on the frozen file after the review fixes (entry 68).
+    assert narrator_params_hash(params) == final["narrator_params_hash"]
