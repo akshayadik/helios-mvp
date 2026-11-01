@@ -1,6 +1,6 @@
 # Sprint S2 — Reasoning, consensus, narratives · plan
 
-**Window:** 7–25 Dec 2026 (15 working days); may start early once the owner confirms, as S1 did (S1 closed 2026-10-27, about five weeks ahead) · **Milestone:** S2-M7 · **Exit tag:** `rb-s2-exit` · **Status:** in progress — started early on 2026-10-27 (owner); end date unchanged
+**Window:** 7–25 Dec 2026 (15 working days); may start early once the owner confirms, as S1 did (S1 closed 2026-10-27, about five weeks ahead) · **Milestone:** S2-M7 · **Exit tag:** `rb-s2-exit` · **Status:** closed 2026-11-01 — started early on 2026-10-27 (owner); [exit report](exit_report.md); S2.9 rater training scheduled before S5
 
 Task details: `docs/tracking/helios_task_breakdown.md` § Sprint S2 (authoritative).
 

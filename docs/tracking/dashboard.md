@@ -2,7 +2,7 @@
 
 _Manual until a weekly CI job regenerates the dynamic sections. Refreshed at every sprint exit (see `docs/sprints/README.md`)._
 
-**Last updated:** 2026-10-27 (S1 exit documentation sync)
+**Last updated:** 2026-11-01 (S2 exit documentation sync)
 
 ## Sprint progress (manual)
 
@@ -38,7 +38,8 @@ gantt
 |---|---|---|
 | S0 Foundation | Closed 2026-10-24 | `rb-s0-exit`; [exit report](../sprints/s0-foundation/exit_report.md) |
 | S1 Data and graph | Closed 2026-10-27 (started early, 2026-10-24) | `rb-s1-exit`; [exit report](../sprints/s1-data-graph/exit_report.md) |
-| S2 Reasoning, consensus, narratives | Next (plan refreshed at the S1 exit) | — |
+| S2 Reasoning, consensus, narratives | Closed 2026-11-01 (started early, 2026-10-27); S2.9 rater training scheduled before S5 | `rb-s2-exit` (local until the next push); [exit report](../sprints/s2-reasoning/exit_report.md) |
+| S3 Routing and learning | Next (plan refresh before it starts) | — |
 
 ## Architecture flow (manual; updated when ablation_architecture.md changes)
 
@@ -75,9 +76,11 @@ Legend: ✅ ≥80% complete · 🟡 partial · ⏳ not yet started · ❌ blocke
 
 ## Integrity snapshot (manual)
 
-| Invariant | Status | Evidence (as of 2026-10-27 unless stated) |
+| Invariant | Status | Evidence (as of 2026-11-01 unless stated) |
 |---|---|---|
-| Deviation log (HMAC chain + Ed25519) | ✅ | 45 entries; `verify-public` passes with the public key only; entries 35–45 Ed25519-signed |
+| Deviation log (HMAC chain + Ed25519) | ✅ | 68 entries; `verify-public` passes with the public key only; entries 35–68 Ed25519-signed |
+| Chain-of-Evidence ledgers (S2.7) | ✅ | One signed file per orchestrator run (HMAC per entry, Ed25519 anchor); `verify_ledgers.py --coe DIR [--public-only]`; build ledgers for rater training verify (1,116 entries) |
+| Annotations ledger (S2.9) | ✅ (no labels yet) | Own HMAC secret and Ed25519 key (`.env.labelling`); `verify_ledgers.py --annotations DIR`; the labelling server refuses deviation secrets |
 | Reconciliation ledger | ✅ | 25 entries; chain and anchor verified |
 | Exclusion ledger | ✅ (empty) | Anchor present; populated from phase E |
 | Capture content seals | ✅ | 20 exploratory OTel captures (`verify_captures.py`); RCAEval 240 pool + 495 build sealed (S1.1); 63 OTel build cases (`capture_campaign.py verify`, S1.2) |
@@ -91,13 +94,13 @@ Legend: ✅ ≥80% complete · 🟡 partial · ⏳ not yet started · ❌ blocke
 
 ## Latest deviation log entries (manual)
 
-*Source: `deviation_log.jsonl` — 45 entries; 6 most recent shown. Full text: `deviation_log.md`.*
+*Source: `deviation_log.jsonl` — 68 entries; 6 most recent shown. Full text: `deviation_log.md`.*
 
 | # | Date | Change (short) | sig[:12] |
 |---|---|---|---|
-| 40 | 2026-10-26 | K-hop pruner (Algorithm 5), K = 3, top-n = 50, 50-node floor | `daaadbfbc9f4` |
-| 41 | 2026-10-26 | Verdict contract, PipelineVerdict schema-draft-v0.5 | `c18f15184f03` |
-| 42 | 2026-10-26 | Price book price-book-v1, five-component CpR | `bde2a2b267e2` |
-| 43 | 2026-10-26 | Price book price-book-v2, AWS / GCP / Azure profiles | `7ab2dd0ba7e2` |
-| 44 | 2026-10-26 | OTel Demo build corpus and capture protocol | `b28bb3faa2d1` |
-| 45 | 2026-10-26 | Jaeger span service-label defect fixed (May captures affected) | `32297014b287` |
+| 63 | 2026-10-31 | MAHC frozen from build run 3 (floor, priors, calibrator) | `01d2d49a8e6a` |
+| 64 | 2026-10-31 | Chain-of-Evidence ledger, unified evidence namespace | `d5f859b4c98a` |
+| 65 | 2026-10-31 | H_fact judged against cited evidence, not ground truth | `405f0b659017` |
+| 66 | 2026-10-31 | Narrator rules: template for noLLM/D/G, verifier, closed vocabulary | `907b88c2a71c` |
+| 67 | 2026-11-01 | Narrator frozen: LLM picks and orders verified claims (owner N-k) | `529bde17dad0` |
+| 68 | 2026-11-01 | Narrator review fixes: log quotes from logged templates only | `da4f44b5cf0b` |
