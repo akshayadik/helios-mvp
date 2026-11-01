@@ -92,7 +92,7 @@ def _entity(
         return
     field = _SERVICE_FIELD.get(claim.kind)
     old = getattr(claim, field) if field else None
-    if not old:
+    if field is None or not old:
         return
     others = sorted(entry_services(entry) - {old})
     rng.shuffle(others)
