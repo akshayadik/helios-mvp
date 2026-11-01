@@ -23,7 +23,7 @@
             },
             "sentence_words": {
               "max": 11,
-              "mean": 8.197761,
+              "mean": 8.242537,
               "median": 8.0,
               "n": 268
             }
@@ -92,8 +92,8 @@
               "n": 560
             },
             "sentence_words": {
-              "max": 11,
-              "mean": 7.064741,
+              "max": 19,
+              "mean": 7.12251,
               "median": 7.0,
               "n": 2008
             }
@@ -143,7 +143,7 @@
     }
   },
   "model_digest": "46e0c10c039e019119339687c3c1757cc81b9da49709a3b3924863ba87ca666e",
-  "narrator_params_hash": "a8d984af8a9866cd7185dcc95e0d22148a6e1b9773f581c11b1b4df3677190ad",
+  "narrator_params_hash": "b64405d879dc2b78260e1d2e3015b7f3257bbdb433c77e04ac060d72cf54f1d4",
   "narrator_prompt_sha": "e2d2242fdf00de6a001d9716e6a4a0e9ead72149c52f561be4b9dea7d9295aab",
   "split": "heldout"
 }
