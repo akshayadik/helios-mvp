@@ -32,7 +32,7 @@ P = load_narrator_params()
 class NoModel(FakeClient):
     """Fails on any model call: template-only variants must never call."""
 
-    def generate(self, prompt: str, timeout_s: float) -> Any:
+    def generate(self, prompt: str, timeout_s: float, schema: Any = None) -> Any:
         raise AssertionError("model called")
 
 

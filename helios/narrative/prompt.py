@@ -1,4 +1,4 @@
-"""Narrator prompt, round 1 (S2.8 design §5.4, §5.7). Provisional until the
+"""Narrator prompt, round 2 (S2.8 design §5.4, §5.7). Provisional until the
 prompt round is chosen and frozen by SHA in a deviation entry (entry C)."""
 
 from __future__ import annotations
@@ -22,35 +22,35 @@ You write one part of an incident narrative for an on-call engineer.
 SLOT: {slot}
 Task: {task}
 
-Every statement is one claim. Each claim cites evidence IDs from the list
-below and nothing else. A claim is shown only if its cited evidence exists and
-supports it; unsupported claims are discarded.
+Write at most {most} claims: the ones the engineer needs most. Each claim is
+one short sentence. The answer format lists every claim you may make, with its
+fields already filled from the evidence; pick claims from it, fill "cites" and
+write the "sentence". A claim is shown only if its sentence says exactly what
+its fields say; otherwise the whole slot is replaced.
 
-Rules:
-- Cite only IDs listed under EVIDENCE (or F for the fused ranking).
-- One fact per claim. Name only the services the claim is about.
-- Use only numbers that appear in the cited evidence. You may round them, write
-  a fraction as a percent, or ms as seconds. Never invent a number.
-- A shift claim's direction (up or down) must match the cited evidence.
-- A log_message claim quotes its snippet verbatim, in double quotes, and the
-  snippet must occur in the cited log line.
-- A call_structure claim gives caller and callee exactly as the evidence does.
-- Times are UTC within the incident window.
-- Allowed kinds in this slot: {kinds}.
-- Use only the ALLOWED WORDS below, plus the claim's own service names,
-  numbers from its own evidence and their units. No other words: no
-  negations, no causes, no actions that change a system.
+How to write the sentence:
+- Use only the ALLOWED WORDS below, the claim's own service names, and numbers
+  copied from its own evidence line with their unit. No other words.
+- Follow the example shape of the claim's kind (X, Y and Z stand for service
+  names; use the real names):
+  ranking: "X is the top suspect." / "X is the second suspect."
+  shift: "X latency rose from 120 ms to 900 ms." / "X errors rose sharply
+  after the trigger."
+  call_structure: wait "Y spent 94% of its time waiting on X." / lead "X moved
+  before its caller Y." / ghost "Y started calling X after the trigger."
+  log_message: X logged "connection pool exhausted".
+  contradiction: "G-pipe ranks Y first, while the fused verdict ranks X first."
+  verification_step: "Query X latency between 14:42 and 14:56." / "Filter X
+  logs between 14:42 and 14:56." / "Inspect X incoming calls between 14:42 and
+  14:56." The sentence starts with the action verb ({verbs}).
+- A log snippet is an exact run of whole words from the cited log line, at
+  least 12 characters, copied character for character. Put the same text in
+  "snippet" and, in double quotes, in the sentence. No other quotes.
+- One line per sentence; no brackets, no evidence IDs in the sentence.
+- Times are HH:MM (UTC) inside the incident window, in verification steps only.
 
-Claim fields by kind:
-- ranking: service, rank (1-3), cites ["F"]
-- shift: service, channel (error|latency|resource), direction (up|down)
-- call_structure: caller, callee, feature (wait|lead|ghost)
-- log_message: service, snippet
-- contradiction: pipeline (dpipe|gpipe|lpipe), service (that pipeline's top suspect)
-- verification_step: target_service, action_verb ({verbs}), modality
-  (metric|log|edge); the sentence starts with the verb; read-only checks only;
-  at most {max_steps} steps
-Every claim also has "kind", "sentence" and "cites".
+Evidence IDs: F is the fused verdict; D: is a D-pipe metric, L: an L-pipe log
+line, G: a G-pipe call-graph edge.
 
 ALLOWED WORDS: {vocabulary}
 

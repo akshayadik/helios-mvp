@@ -132,7 +132,9 @@ def test_narrator_client_lets_only_narrator_prompts_reach_the_model(
         OllamaGenerateResult,
     )
 
-    def served(self: Any, prompt: str, timeout_s: float) -> OllamaGenerateResult:
+    def served(
+        self: Any, prompt: str, timeout_s: float, schema: Any = None
+    ) -> OllamaGenerateResult:
         return OllamaGenerateResult("[]", 1, 1)
 
     monkeypatch.setattr(OllamaClient, "generate", served)

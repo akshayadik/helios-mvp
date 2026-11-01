@@ -48,12 +48,16 @@ class Scripted:
     def __init__(self, answers: dict[str, list[Any]]) -> None:
         self.answers = {k: list(v) for k, v in answers.items()}
         self.prompts: list[str] = []
+        self.schemas: list[dict[str, Any] | None] = []
 
     def model_digest(self, timeout_s: float) -> str:
         return DIGEST
 
-    def generate(self, prompt: str, timeout_s: float) -> OllamaGenerateResult:
+    def generate(
+        self, prompt: str, timeout_s: float, schema: dict[str, Any] | None = None
+    ) -> OllamaGenerateResult:
         self.prompts.append(prompt)
+        self.schemas.append(schema)
         slot = next(s for s in self.answers if f"SLOT: {s}" in prompt)
         answer = self.answers[slot].pop(0)
         if isinstance(answer, Exception):
@@ -65,7 +69,9 @@ class NoCalls:
     def model_digest(self, timeout_s: float) -> str:
         return DIGEST
 
-    def generate(self, prompt: str, timeout_s: float) -> OllamaGenerateResult:
+    def generate(
+        self, prompt: str, timeout_s: float, schema: dict[str, Any] | None = None
+    ) -> OllamaGenerateResult:
         raise AssertionError("no model call expected")
 
 
@@ -200,3 +206,24 @@ def test_prompt_lists_the_slot_vocabulary() -> None:
     assert "suspect" in story and "waiting" in story and "logged" in story
     assert "incoming" in steps and "query" in steps
     assert "incoming" not in story.split("ALLOWED WORDS")[1].split("\n")[0]
+
+
+def test_each_slot_call_sends_its_schema() -> None:
+    from helios.narrative.schema import slot_schema
+
+    client = Scripted({k: [v] for k, v in GOOD.items()})
+    _run(client)
+    slots = [next(s for s in GOOD if f"SLOT: {s}" in p) for p in client.prompts]
+    assert client.schemas == [slot_schema(s, ENTRY, P) for s in slots]
+
+
+def test_cache_key_covers_the_schema(tmp_path: Path, monkeypatch: Any) -> None:
+    # A schema change must never replay an answer drafted under another schema.
+    from helios.narrative import llm
+
+    cache = ResponseCache(tmp_path / "c.sqlite")
+    _run(Scripted({k: [v] for k, v in GOOD.items()}), cache)
+    monkeypatch.setattr(llm, "slot_schema", lambda *_a: {"type": "object"})
+    client = Scripted({k: [v] for k, v in GOOD.items()})
+    _run(client, cache)
+    assert len(client.prompts) == 3

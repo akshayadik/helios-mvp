@@ -26,7 +26,15 @@ if TYPE_CHECKING:
 
     from helios.narrative.params import NarratorParams
 
-__all__ = ["Reason", "entry_services", "mentions", "verify"]
+__all__ = [
+    "Reason",
+    "direction_of",
+    "edge_holds",
+    "entry_services",
+    "mentions",
+    "names_in",
+    "verify",
+]
 
 
 class Reason(StrEnum):
@@ -93,7 +101,7 @@ def entry_services(entry: Mapping[str, Any]) -> set[str]:
             if item.get("service"):
                 names.add(item["service"])
             if item["id"].startswith("G:"):
-                names |= _names_in(item.get("value"))
+                names |= names_in(item.get("value"))
     return {n for n in names if isinstance(n, str) and n}
 
 
@@ -117,18 +125,18 @@ def mentions(text: str, names: Iterable[str]) -> set[str]:
     return {name for _, _, name in _spans(text, names)}
 
 
-def _names_in(value: Any) -> set[str]:
+def names_in(value: Any) -> set[str]:
     if isinstance(value, dict):
         return {k for k in value if isinstance(k, str)}
     if isinstance(value, list):
         out: set[str] = set()
         for v in value:
-            out |= _names_in(v) if isinstance(v, list) else {str(v)}
+            out |= names_in(v) if isinstance(v, list) else {str(v)}
         return out
     return set()
 
 
-def _edge_holds(claim: Claim, item: Mapping[str, Any]) -> bool:
+def edge_holds(claim: Claim, item: Mapping[str, Any]) -> bool:
     """The cited G-pipe item holds the claim's directed edge (caller → callee)."""
     value = item.get("value")
     if claim.feature == "wait" and item["id"] == f"G:{claim.callee}:wait_from":
@@ -140,7 +148,7 @@ def _edge_holds(claim: Claim, item: Mapping[str, Any]) -> bool:
     return False
 
 
-def _direction_of(item: Mapping[str, Any]) -> str | None:
+def direction_of(item: Mapping[str, Any]) -> str | None:
     before, after = item.get("before"), item.get("after")
     if isinstance(before, int | float) and isinstance(after, int | float):
         return None if after == before else ("up" if after > before else "down")
@@ -175,14 +183,14 @@ def _check_kind(
         own = [i for i in cited if i["id"] == f"D:{claim.service}:{claim.channel}"]
         if not own:
             return Reason.KIND_MISMATCH
-        if all(_direction_of(i) != claim.direction for i in own):
+        if all(direction_of(i) != claim.direction for i in own):
             return Reason.WRONG_DIRECTION
         return None
     if claim.kind == ClaimKind.CALL_STRUCTURE:
         graph = [i for i in cited if i["id"].startswith("G:")]
         if not graph:
             return Reason.KIND_MISMATCH
-        return None if any(_edge_holds(claim, i) for i in graph) else Reason.WRONG_EDGE
+        return None if any(edge_holds(claim, i) for i in graph) else Reason.WRONG_EDGE
     if claim.kind == ClaimKind.LOG_MESSAGE:
         lines = [
             i
@@ -228,7 +236,7 @@ def _check_step(
         n
         for i in cited
         if i["id"].startswith("G:") and i.get("service") in top3
-        for n in _names_in(i.get("value"))
+        for n in names_in(i.get("value"))
     }
     if target not in top3 and target not in neighbours:
         return Reason.FOREIGN_SERVICE

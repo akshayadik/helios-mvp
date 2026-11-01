@@ -245,9 +245,9 @@ def test_lpipe_prompts_carry_no_label_or_identity(
             super().__init__()
             self.prompts: list[str] = []
 
-        def generate(self, prompt: str, timeout_s: float) -> Any:
+        def generate(self, prompt: str, timeout_s: float, schema: Any = None) -> Any:
             self.prompts.append(prompt)
-            return super().generate(prompt, timeout_s)
+            return super().generate(prompt, timeout_s, schema)
 
     captures = tmp_path / "captures"
     incident_id = stage_capture(captures)

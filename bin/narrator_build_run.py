@@ -56,12 +56,14 @@ _DIGEST_TIMEOUT_S = 10
 class _NarratorClient(OllamaClient):
     """The local model for narrator prompts; any other prompt is a cache miss."""
 
-    def generate(self, prompt: str, timeout_s: float) -> OllamaGenerateResult:
+    def generate(
+        self, prompt: str, timeout_s: float, schema: dict[str, Any] | None = None
+    ) -> OllamaGenerateResult:
         if not prompt.startswith("HELIOS-NARRATOR"):
             raise CacheMissError(
                 "an L-pipe answer is not in the cache; rerun the L-pipe build runs"
             )
-        return super().generate(prompt, timeout_s)
+        return super().generate(prompt, timeout_s, schema)
 
 
 def make_client() -> OllamaClient:

@@ -69,7 +69,9 @@ class FakeClient:
     def model_digest(self, timeout_s: float) -> str:
         return lpipe_config.EXPECTED_MODEL_DIGEST or "fake-digest"
 
-    def generate(self, prompt: str, timeout_s: float) -> OllamaGenerateResult:
+    def generate(
+        self, prompt: str, timeout_s: float, schema: dict[str, Any] | None = None
+    ) -> OllamaGenerateResult:
         self.calls += 1
         self.in_flight += 1
         self.max_in_flight = max(self.max_in_flight, self.in_flight)
@@ -254,8 +256,10 @@ def test_confirmatory_refuses_unpinned_model(monkeypatch: pytest.MonkeyPatch) ->
 
 def test_h_struct_counts_outputs_and_failures() -> None:
     class LogCitesNothingReal(FakeClient):
-        def generate(self, prompt: str, timeout_s: float) -> OllamaGenerateResult:
-            out = super().generate(prompt, timeout_s)
+        def generate(
+            self, prompt: str, timeout_s: float, schema: dict[str, Any] | None = None
+        ) -> OllamaGenerateResult:
+            out = super().generate(prompt, timeout_s, schema)
             if "Evidence, log changes" in prompt:
                 return OllamaGenerateResult(out.text.replace('"L', '"T'), *_USAGE)
             return out

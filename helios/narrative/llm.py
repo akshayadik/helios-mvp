@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import contextlib
 import datetime as dt
+import json
 import sqlite3
 import time
 from dataclasses import dataclass
@@ -20,6 +21,7 @@ from helios.narrative.prompt import (
     PROMPT_TEMPLATE,
     SLOT_KINDS,
 )
+from helios.narrative.schema import MAX_CLAIMS, slot_schema
 from helios.narrative.template import template_slots
 from helios.narrative.verifier import Reason, verify
 from helios.pipelines.l_pipe.cache import CachedCall, cache_key
@@ -140,7 +142,11 @@ def render_prompt(
         task=_TASKS[slot],
         kinds=", ".join(SLOT_KINDS[slot]),
         verbs="|".join(params.verbs if params else ()),
-        max_steps=params.max_steps if params else 3,
+        most=(
+            min(params.max_steps, MAX_CLAIMS)
+            if params and slot == "verification"
+            else MAX_CLAIMS
+        ),
         window=f"{_clock(trigger.get('window_start'))} to "
         f"{_clock(trigger.get('window_end'))}",
         fused=f"{fused} (confidence {fusion.get('confidence')}, "
@@ -156,10 +162,12 @@ def _call(
     gateway: LLMGateway,
     cache: ResponseCache | None,
     model_digest: str,
+    schema: dict[str, Any] | None = None,
 ) -> tuple[str | None, float]:
     """The model's answer (cached or fresh) and its wall time; None on a model
-    error."""
-    key = cache_key(model_digest, NARRATOR_PROMPT_SHA, prompt)
+    error. The cache key covers the output schema as well as the prompt."""
+    fmt = json.dumps(schema, sort_keys=True) if schema is not None else "json"
+    key = cache_key(model_digest, NARRATOR_PROMPT_SHA, f"{prompt}\nFORMAT: {fmt}")
     hit = None
     if cache is not None:
         try:
@@ -175,7 +183,7 @@ def _call(
         return hit.text, hit.wall_ms
     t0 = time.monotonic()
     try:
-        result = gateway.generate(prompt, timeout_s=TIMEOUT_S)
+        result = gateway.generate(prompt, timeout_s=TIMEOUT_S, schema=schema)
     except (OllamaTimeoutError, OllamaConnectionError, OllamaResponseError):
         return None, (time.monotonic() - t0) * 1_000
     wall_ms = (time.monotonic() - t0) * 1_000
@@ -235,11 +243,12 @@ def llm_slots(
         seen: list[tuple[int, str]] = []
         wall = 0.0
         first = (0, 0)
+        schema = slot_schema(slot, entry, params)
         for attempt in range(1, _MAX_ATTEMPTS + 1):
             prompt = render_prompt(
                 slot, entry, params, previous=previous, rejections=last
             )
-            raw, ms = _call(prompt, gateway, cache, model_digest)
+            raw, ms = _call(prompt, gateway, cache, model_digest, schema)
             wall += ms
             claims, last = _judge(slot, raw, entry, params)
             if attempt == 1:
