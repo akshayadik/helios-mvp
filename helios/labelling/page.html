@@ -61,7 +61,9 @@
   <section id="blind" class="hidden">
     <div class="claim">
       <div class="label">One quick question about a claim you labelled</div>
+      <div class="note" id="bheader"></div>
       <div class="sentence" id="bsentence"></div>
+      <div id="bcards"></div>
       <p>Was this narrative written by a language model or by fixed rules?</p>
       <button onclick="guess('A')">Language model</button>
       <button onclick="guess('B')">Fixed rules</button>
@@ -88,13 +90,10 @@ async function api(path, body) {
 function show(id, on) { document.getElementById(id).classList.toggle("hidden", !on); }
 function text(id, t) { document.getElementById(id).textContent = t; }
 
-function render(item) {
-  current = item; verdict = null;
-  text("header", item.header);
-  text("sentence", item.sentence);
-  const cards = document.getElementById("cards");
+function drawCards(target, list) {
+  const cards = document.getElementById(target);
   cards.replaceChildren();
-  for (const c of item.cards) {
+  for (const c of list) {
     const div = document.createElement("div");
     div.className = "ev";
     const id = document.createElement("code");
@@ -106,6 +105,13 @@ function render(item) {
     if (values) { const v = document.createElement("div"); v.textContent = values; div.append(v); }
     cards.append(div);
   }
+}
+
+function render(item) {
+  current = item; verdict = null;
+  text("header", item.header);
+  text("sentence", item.sentence);
+  drawCards("cards", item.cards);
   const labels = document.getElementById("labels");
   labels.replaceChildren();
   (item.labels || []).forEach((l, i) => {
@@ -150,7 +156,12 @@ async function guess(g) {
 async function next() {
   try {
     const b = await api("/api/blind");
-    if (b) { blindItem = b.item; text("bsentence", b.sentence); show("item", false); show("blind", true); return; }
+    if (b) {
+      blindItem = b.item;
+      text("bheader", b.header); text("bsentence", b.sentence); drawCards("bcards", b.cards);
+      show("item", false); show("blind", true);
+      return;
+    }
     const item = await api("/api/next");
     if (!item) { show("item", false); text("msg", "Nothing left to label. Thank you."); return; }
     render(item);

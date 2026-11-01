@@ -73,6 +73,7 @@ def test_page_and_api_round_trip(server: tuple[str, Any]) -> None:
     base, session = server
     status, page = _call(base, "/", None)
     assert status == 200 and b"Supported" in page and b"Unsupported" in page
+    assert b'id="bcards"' in page and b'id="bheader"' in page  # review C2
     status, item = _call(base, "/api/next", PEOPLE_KEYS["R1"])
     assert status == 200 and set(item) >= {"item", "sentence", "cards"}
     status, _ = _call(

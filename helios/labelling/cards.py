@@ -46,11 +46,14 @@ def _top3(entry: Mapping[str, Any]) -> list[str]:
 
 
 def header_top3(entry: Mapping[str, Any]) -> str:
-    """The context line: fused top 3, no confidence or state (R-k)."""
+    """The context line: the fused top 3 as an unordered (alphabetical) list,
+    no confidence or state (R-k). The order is left out because the template
+    narrator only checks suspect 1, so a step's rank would reveal the arm
+    (review C2); claims that need the order cite the F card, which shows it."""
     top = _top3(entry)
     if not top:
         return "No suspect ranked."
-    return "Top suspects: " + ", ".join(f"{n}. {s}" for n, s in enumerate(top, 1))
+    return "Top-3 suspects: " + ", ".join(sorted(top))
 
 
 def displayed_claims(entry: Mapping[str, Any]) -> list[tuple[str, int, Claim]]:

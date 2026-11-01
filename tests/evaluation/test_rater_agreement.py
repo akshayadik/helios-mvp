@@ -30,6 +30,7 @@ def _key(n_real: int, n_planted: int = 0) -> dict[str, dict[str, Any]]:
             "incident_id": f"c{i // 2}",
             "planted": False,
             "category": "",
+            "kind": "log_message" if i == 0 else "shift",
         }
     cats = ["numeric_drift", "entity_mismatch", "directional_inversion"]
     for j in range(n_planted):
@@ -167,7 +168,16 @@ def test_blinding_hit_rate_and_report() -> None:
         ("r2", "R2"): {"verdict": "unsure"},
     }
     rep = agreement_report(labels, {("r1", "ADJ"): _lab(U)}, guesses, key)
-    assert rep["blinding"] == {"answered": 2, "hits": 1, "unsure": 1, "hit_rate": 1 / 2}
+    assert rep["blinding"]["all"] == {
+        "answered": 2,
+        "hits": 1,
+        "unsure": 1,
+        "hit_rate": 1 / 2,
+    }
+    # Review C2: leak kinds (Full only) apart from shared kinds.
+    assert rep["blinding"]["leak_kinds"]["hits"] == 1  # r0 is a log claim
+    assert rep["blinding"]["shared_kinds"]["answered"] == 1
+    assert rep["blinding"]["shared_kinds"]["hits"] == 0
     assert rep["kappa_all"] is not None and rep["kappa_real"] is not None
     # kappa 1/3 here: R-m sends every real claim to the adjudicator, who
     # decided one of four, so three stay pending.

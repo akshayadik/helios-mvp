@@ -23,6 +23,7 @@ if TYPE_CHECKING:
 __all__ = [
     "DETECTION_FLOOR",
     "KAPPA_THRESHOLD",
+    "LEAK_KINDS",
     "SITTING_GAP_S",
     "agreement_report",
     "cohen_kappa",
@@ -37,6 +38,8 @@ DETECTION_FLOOR = 4 / 5  # planted claims caught per sitting (design §5.2)
 SITTING_GAP_S = 30 * 60  # a pause longer than this starts a new sitting
 _UNSUPPORTED = "unsupported"
 _LLM_ARM = "HELIOS-Full"  # blinding check: A = language model, B = fixed rules
+# Claim kinds only HELIOS-Full shows (disclosed, R-k): reported apart.
+LEAK_KINDS: tuple[str, ...] = ("log_message", "contradiction")
 
 
 def cohen_kappa(a: Sequence[str], b: Sequence[str]) -> float | None:
@@ -211,6 +214,22 @@ def detection(
 
 
 def _blinding(
+    guesses: Mapping[tuple[str, str], Mapping[str, Any]],
+    key: Mapping[str, Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Hit rate overall, on the leak kinds and on the shared kinds (review C2)."""
+
+    def part(keep: Any) -> dict[str, Any]:
+        return _hits({g: v for g, v in guesses.items() if keep(key[g[0]])}, key)
+
+    return {
+        "all": part(lambda k: True),
+        "leak_kinds": part(lambda k: k.get("kind") in LEAK_KINDS),
+        "shared_kinds": part(lambda k: k.get("kind") not in LEAK_KINDS),
+    }
+
+
+def _hits(
     guesses: Mapping[tuple[str, str], Mapping[str, Any]],
     key: Mapping[str, Mapping[str, Any]],
 ) -> dict[str, Any]:

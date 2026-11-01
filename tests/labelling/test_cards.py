@@ -45,8 +45,10 @@ def with_step_n(entry: dict[str, Any]) -> dict[str, Any]:
 
 def test_header_has_no_confidence_or_state() -> None:
     h = header_top3(ENTRY)
-    assert h == "Top suspects: 1. cart, 2. ad, 3. payment"
-    assert "0.91" not in h and "confirmed" not in h
+    # Review C2: unordered (alphabetical), so the rank of a step's target
+    # cannot reveal the narrator; rank order is on the F card where needed.
+    assert h == "Top-3 suspects: ad, cart, payment"
+    assert "0.91" not in h and "confirmed" not in h and "1." not in h
 
 
 def test_displayed_claims_follow_display_order() -> None:
