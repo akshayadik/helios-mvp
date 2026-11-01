@@ -160,6 +160,19 @@ Row S2-M7-RES01 (IN_PROGRESS at start, DONE when κ ≥ 0.7 on training, rubric 
 
 **Build data ready for training:** signed ledgers for HELIOS-Full and HELIOS-noLLM on both build corpora (1,116 entries, all verify with the public key, none excluded); training round 1 = 528 items (396 real claims from 25 + 25 narratives, 132 planted, 26–27 per category, every claim kind); onboarding = 38 items (18 real, 20 planted). Smoke test of the real server on a scratch copy: page served, keyless request refused, an item served without any arm, run or planted field, one label recorded.
 
-**Gate:** full local gate green, coverage 95.83%.
+**Whole-branch review (fresh reviewer): 2 Critical, 6 Important, all fixed test-first; five Minors re-graded Important and fixed.**
+
+1. *Planted duplicates (C1):* one shared cursor made 132 planted items from 8 sources (26 identical missing-citation screens). Now each source is used once, a repeated sentence is refused, every category gets a floor from its own queue, and planted claims per kind are capped at that kind's share of the real claims plus one, so no kind is mostly planted. Training rounds plant from build cases outside the round (M3).
+2. *Arm leak through the ordered header (C2):* the template narrator checks only suspect 1, so a step on suspect 2 or 3 revealed HELIOS-Full (43 of 99 steps). The header now lists the top 3 alphabetically; the blinding question shows the full screen and its hit rate is reported for leak kinds (log claims, all contradictions) and shared kinds apart.
+3. *Server secrets (I1):* the annotations ledger has its own HMAC secret; the server refuses to start with any `DEVIATION_*` variable in its environment; `keygen` writes `.env.labelling`.
+4. *Robustness (I2–I4):* a deleted ledger beside its anchor refuses to start and ledger errors answer 500; one server per set (exclusive lock); onboarding mode only on onboarding sets.
+5. *R-m relabel (I5):* `label_server.py reopen --person --from --to` withdraws a sitting's labels for relabelling; detection reads every label given, so a failed sitting stays visible.
+6. *Disclosures (I6), rubric (M4, M12), impossible percentages (M2), onboarding–training overlap (M10):* fixed as listed in the plan ledger.
+
+Training data rebuilt after the fixes (earlier builds kept under `data/labelling/superseded/`, never shown to anyone): training round 1 = 520 items (390 real from 25 + 25 narratives, 130 planted from 130 sources in other cases, no repeated screen, planted kinds following the real mix, longest planted run 3); onboarding = 38 items (every kind and category; no case shared with training).
+
+Deferred minors (plan ledger): fake citation IDs look synthetic (`x1`) and missing-citation items are always caught, so report detection with and without that category; dwell time includes pauses; the page does not recover by itself after a server restart; `key.json` and ledger `set_hash` not checked at start; a malformed Content-Length prints a traceback; an adjudicator's "supported" on a category-only disagreement leaves an empty category; more than two raters is not refused.
+
+**Gate:** full local gate green after the fix pass, coverage 95.87%.
 
 **PR 2 (training, owner-led):** annotations key (`label_server.py keygen`), three people, tunnel; onboarding; rounds until κ ≥ 0.7; rubric frozen by hash; deviation entry of §6.
