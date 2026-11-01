@@ -13,7 +13,10 @@ from typing import TYPE_CHECKING, Any
 import pytest
 
 from bin import label_server as tool
-from helios.labelling.annotations import ANNOTATIONS_ENV_VAR
+from helios.labelling.annotations import (
+    ANNOTATIONS_ENV_VAR,
+    ANNOTATIONS_HMAC_ENV_VAR,
+)
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
 from helios.vcl.ed25519 import (
     generate_private_key,
@@ -97,18 +100,14 @@ def test_page_and_api_round_trip(server: tuple[str, Any]) -> None:
 def test_server_needs_the_annotations_key_not_the_deviation_key(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    # Review I1: the server holds its own secrets only; any DEVIATION_* secret
+    # in its environment stops it (they also sign other ledgers and seals).
     make(tmp_path)  # writes the set
     people_file = tmp_path / "people.json"
     people_file.write_text(json.dumps(people()), "utf-8")
     pub = tmp_path / "ann.pub.pem"
     private = generate_private_key()
     pub.write_bytes(public_key_pem(private))
-    monkeypatch.setenv("DEVIATION_HMAC_SECRET", "k" * 40)
-    monkeypatch.setenv(
-        "DEVIATION_ED25519_PRIVATE_KEY",
-        private_key_to_env_value(generate_private_key()),
-    )
-    monkeypatch.delenv(ANNOTATIONS_ENV_VAR, raising=False)
     started: list[Any] = []
     monkeypatch.setattr(tool, "run_forever", lambda httpd: started.append(httpd))
     args = [
@@ -119,14 +118,24 @@ def test_server_needs_the_annotations_key_not_the_deviation_key(
         str(people_file),
         "--public-key",
         str(pub),
+        "--port",
+        "0",
     ]
-    assert tool.main(args) == 2 and started == []
+    monkeypatch.setenv(ANNOTATIONS_HMAC_ENV_VAR, "h" * 40)
+    monkeypatch.setenv(ANNOTATIONS_ENV_VAR, private_key_to_env_value(private))
+    for name in ("DEVIATION_HMAC_SECRET", "DEVIATION_ED25519_PRIVATE_KEY"):
+        monkeypatch.setenv(name, "x" * 40)
+        assert tool.main(args) == 2 and started == []
+        monkeypatch.delenv(name)
+    monkeypatch.delenv(ANNOTATIONS_HMAC_ENV_VAR)
+    assert tool.main(args) == 2 and started == []  # no annotations HMAC secret
+    monkeypatch.setenv(ANNOTATIONS_HMAC_ENV_VAR, "h" * 40)
     monkeypatch.setenv(
         ANNOTATIONS_ENV_VAR, private_key_to_env_value(generate_private_key())
     )
     assert tool.main(args) == 2 and started == []  # does not match the public key
     monkeypatch.setenv(ANNOTATIONS_ENV_VAR, private_key_to_env_value(private))
-    assert tool.main([*args, "--port", "0"]) == 0 and len(started) == 1
+    assert tool.main(args) == 0 and len(started) == 1
     started[0].server_close()
 
 
@@ -151,5 +160,7 @@ def test_add_person_and_keygen(
     )
     pub = tmp_path / "keys" / "ann.pub.pem"
     assert tool.main(["keygen", "--public-key", str(pub)]) == 0
-    assert ANNOTATIONS_ENV_VAR + "=" in capsys.readouterr().out and pub.exists()
+    printed = capsys.readouterr().out
+    assert ANNOTATIONS_ENV_VAR + "=" in printed and pub.exists()
+    assert ANNOTATIONS_HMAC_ENV_VAR + "=" in printed
     assert tool.main(["keygen", "--public-key", str(pub)]) == 2  # never replaces a key

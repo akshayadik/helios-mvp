@@ -6,7 +6,7 @@ import json
 from typing import TYPE_CHECKING, Any
 
 from bin import verify_ledgers as cli
-from helios.labelling.annotations import AnnotationLedger
+from helios.labelling.annotations import ANNOTATIONS_HMAC_ENV_VAR, AnnotationLedger
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
 from helios.vcl.ed25519 import generate_private_key, public_key_pem
 
@@ -34,7 +34,7 @@ def _label(i: int) -> dict[str, Any]:
 def test_verify_ledgers_annotations_cli(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    monkeypatch.setenv("DEVIATION_HMAC_SECRET", SECRET)
+    monkeypatch.setenv(ANNOTATIONS_HMAC_ENV_VAR, SECRET)
     private = generate_private_key()
     pub = tmp_path / "pub.pem"
     pub.write_bytes(public_key_pem(private))
@@ -44,10 +44,11 @@ def test_verify_ledgers_annotations_cli(
     log = AnnotationLedger(SECRET.encode(), path, ed25519_private=private)
     for i in range(3):
         log.append(_label(i))
+    monkeypatch.delenv("DEVIATION_HMAC_SECRET", raising=False)  # review I1: not used
     args = ["--annotations", str(d), "--public-key", str(pub)]
     assert cli.main(args) == 0
     assert cli.main([*args, "--public-only"]) == 0
-    monkeypatch.delenv("DEVIATION_HMAC_SECRET")
+    monkeypatch.delenv(ANNOTATIONS_HMAC_ENV_VAR)
     assert cli.main([*args, "--public-only"]) == 0  # no secret needed
     lines = path.read_text().splitlines()
     entry = json.loads(lines[0])
@@ -55,6 +56,6 @@ def test_verify_ledgers_annotations_cli(
     lines[0] = json.dumps(entry)
     path.write_text("\n".join(lines) + "\n")
     assert cli.main([*args, "--public-only"]) == 1
-    monkeypatch.setenv("DEVIATION_HMAC_SECRET", SECRET)
+    monkeypatch.setenv(ANNOTATIONS_HMAC_ENV_VAR, SECRET)
     assert cli.main(args) == 1
     assert "t1.annotations.jsonl" in capsys.readouterr().out

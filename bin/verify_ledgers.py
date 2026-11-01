@@ -38,7 +38,12 @@ from bin.log_deviation import (
     load_public_key_file,
 )
 from bin.log_exclusion import ExclusionLedger
-from helios.labelling.annotations import ANNOTATIONS_PUBLIC_KEY_FILE, AnnotationLedger
+from helios.labelling.annotations import (
+    ANNOTATIONS_HMAC_ENV_VAR,
+    ANNOTATIONS_PUBLIC_KEY_FILE,
+    AnnotationLedger,
+    load_annotations_hmac,
+)
 from helios.orchestrator.coe import CoELedger
 from helios.orchestrator.ledger import ReconciliationLedger
 from helios.vcl.hmac_chain import verify_public
@@ -110,7 +115,10 @@ def main(argv: list[str] | None = None) -> int:
         key = None if args.public_only else load_key()
         return verify_coe_dir(args.coe, key, args.public_key or PUBLIC_KEY_FILE)
     if args.annotations is not None:
-        key = None if args.public_only else load_key()
+        key = None if args.public_only else load_annotations_hmac()
+        if key is None and not args.public_only:
+            print(f"❌ {ANNOTATIONS_HMAC_ENV_VAR} not set (or use --public-only).")
+            return 1
         public = args.public_key or ANNOTATIONS_PUBLIC_KEY_FILE
         return verify_annotations_dir(args.annotations, key, public)
     key = load_key()

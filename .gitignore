@@ -56,3 +56,4 @@ data/cache/
 *.coe/
 # S2.9 labelling sets, keys and annotations (never committed while they hold pool data)
 data/labelling/
+.env.labelling

@@ -11,6 +11,7 @@ one per (item, person).
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +20,7 @@ from helios.vcl.hmac_chain import HMACChainedLog
 
 __all__ = [
     "ANNOTATIONS_ENV_VAR",
+    "ANNOTATIONS_HMAC_ENV_VAR",
     "ANNOTATIONS_PUBLIC_KEY_FILE",
     "CATEGORIES",
     "GUESSES",
@@ -26,9 +28,15 @@ __all__ = [
     "VERDICTS",
     "AnnotationLedger",
     "latest",
+    "load_annotations_hmac",
 ]
 
 ANNOTATIONS_ENV_VAR = "ANNOTATIONS_ED25519_PRIVATE_KEY"
+# The ledger's own HMAC secret (review I1): the deviation secret also signs the
+# exclusion and reconciliation ledgers and the capture seals, so it never sits
+# in the long-running labelling server.
+ANNOTATIONS_HMAC_ENV_VAR = "ANNOTATIONS_HMAC_SECRET"
+_MIN_SECRET_BYTES = 32
 ANNOTATIONS_PUBLIC_KEY_FILE = Path("keys/annotations_ed25519.pub.pem")
 
 # Error categories in the order a rater checks them (owner decision R-e).
@@ -78,6 +86,13 @@ class AnnotationLedger(HMACChainedLog):
         record = {"category": "", "note": "", **fields}
         _check(record)
         return super().append(record)
+
+
+def load_annotations_hmac() -> bytes | None:
+    """The annotations ledger's HMAC secret from the environment, or None when
+    it is missing or shorter than 32 bytes."""
+    value = os.getenv(ANNOTATIONS_HMAC_ENV_VAR, "")
+    return value.encode("utf-8") if len(value) >= _MIN_SECRET_BYTES else None
 
 
 def latest(

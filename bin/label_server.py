@@ -1,11 +1,15 @@
 """Labelling server for H_fact raters (S2.9 design §5.4; R-h, R-l, R-n).
 
 Usage (from the repository root, on the owner's machine):
-    poetry run python bin/label_server.py keygen            # once; store the line in .env
+    poetry run python bin/label_server.py keygen > .env.labelling   # once; back it up
     poetry run python bin/label_server.py add-person R1 --role rater
     poetry run python bin/label_server.py add-person ADJ --role adjudicator
-    set -a; source .env; set +a
-    poetry run python bin/label_server.py serve --set data/labelling/training-1
+    env -i PATH="$PATH" HOME="$HOME" sh -c 'set -a; . ./.env.labelling; set +a; \
+        poetry run python bin/label_server.py serve --set data/labelling/training-1'
+
+The server reads only its own secrets (``.env.labelling``: the annotations
+HMAC secret and Ed25519 key) and refuses to start if any ``DEVIATION_*``
+variable is in its environment (review I1).
 
 Listens on the loopback interface only; raters reach it through the owner's
 tunnel and open ``/#key=<their key>`` (the key stays in the URL fragment, so
@@ -30,11 +34,13 @@ from typing import TYPE_CHECKING, Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from bin.log_deviation import load_key, load_public_key_file
+from bin.log_deviation import load_public_key_file
 from helios.labelling.annotations import (
     ANNOTATIONS_ENV_VAR,
+    ANNOTATIONS_HMAC_ENV_VAR,
     ANNOTATIONS_PUBLIC_KEY_FILE,
     AnnotationLedger,
+    load_annotations_hmac,
 )
 from helios.labelling.session import LabellingSession, SessionError
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
@@ -149,6 +155,17 @@ def run_forever(httpd: ThreadingHTTPServer) -> None:
 def _serve(args: argparse.Namespace) -> int:
     import os
 
+    leaked = sorted(k for k in os.environ if k.startswith("DEVIATION_"))
+    if leaked:
+        print(
+            f"[label] refused: deviation secrets in the environment: {leaked}",
+            file=sys.stderr,
+        )
+        return 2
+    hmac_key = load_annotations_hmac()
+    if hmac_key is None:
+        print(f"[label] refused: needs {ANNOTATIONS_HMAC_ENV_VAR}", file=sys.stderr)
+        return 2
     public = load_public_key_file(args.public_key)
     value = os.getenv(ANNOTATIONS_ENV_VAR)
     if public is None or not value:
@@ -166,7 +183,7 @@ def _serve(args: argparse.Namespace) -> int:
         return 2
     people = json.loads(args.people.read_text("utf-8"))
     ledger = AnnotationLedger(
-        load_key(),
+        hmac_key,
         args.set / f"{args.set.name}.annotations.jsonl",
         ed25519_private=private,
     )
@@ -213,6 +230,7 @@ def _keygen(args: argparse.Namespace) -> int:
     private = generate_private_key()
     args.public_key.parent.mkdir(parents=True, exist_ok=True)
     args.public_key.write_bytes(public_key_pem(private))
+    print(f"{ANNOTATIONS_HMAC_ENV_VAR}={secrets.token_urlsafe(32)}")
     print(f"{ANNOTATIONS_ENV_VAR}={private_key_to_env_value(private)}")
     return 0
 
