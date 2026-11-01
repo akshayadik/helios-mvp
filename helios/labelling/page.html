@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HELIOS claim labelling</title>
+<style>
+  :root { --fg: #1d1d1f; --bg: #fafafa; --card: #fff; --line: #c9c9cf; --muted: #6b6b73; --accent: #2f5fd0; }
+  @media (prefers-color-scheme: dark) { :root { --fg: #ececf0; --bg: #17171a; --card: #222226; --line: #3b3b42; --muted: #a1a1aa; --accent: #7aa2ff; } }
+  body { font: 16px/1.5 system-ui, sans-serif; color: var(--fg); background: var(--bg); margin: 0; }
+  main { max-width: 760px; margin: 0 auto; padding: 16px; }
+  .bar { display: flex; justify-content: space-between; color: var(--muted); font-size: 14px; }
+  .claim { background: var(--card); border: 2px solid var(--line); border-radius: 8px; padding: 16px; margin: 12px 0; }
+  .sentence { font-size: 19px; font-weight: 600; margin: 4px 0 12px; }
+  .label { text-transform: uppercase; font-size: 12px; letter-spacing: .05em; color: var(--muted); }
+  .ev { border-top: 1px solid var(--line); padding: 8px 0; font-size: 15px; }
+  .ev code { font-size: 13px; }
+  .fields { display: grid; gap: 4px; margin: 8px 0; }
+  button { font: inherit; padding: 8px 16px; margin: 4px 8px 4px 0; border-radius: 6px; border: 1px solid var(--line); background: var(--card); color: var(--fg); cursor: pointer; }
+  button.primary { border-color: var(--accent); color: var(--accent); }
+  select, input { font: inherit; padding: 6px; box-sizing: border-box; background: var(--card); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; }
+  .hidden { display: none; }
+  .note { color: var(--muted); font-size: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="bar"><span id="who">Claim labelling</span><span id="progress"></span></div>
+  <div id="msg" class="note"></div>
+
+  <section id="item" class="hidden">
+    <div class="note" id="header"></div>
+    <div class="claim">
+      <div class="label">Claim</div>
+      <div class="sentence" id="sentence"></div>
+      <div class="label">Cited evidence</div>
+      <div id="cards"></div>
+      <div id="labels" class="hidden"></div>
+    </div>
+    <button class="primary" onclick="choose('supported')">Supported</button>
+    <button onclick="choose('unsupported')">Unsupported</button>
+    <div class="fields">
+      <div id="why" class="fields hidden">
+        <label class="label" for="category">Error category (required)</label>
+        <select id="category">
+          <option value="">Choose the first that applies</option>
+          <option value="numeric_drift">Numeric drift or unit error</option>
+          <option value="entity_mismatch">Entity mismatch (wrong service, or caller and callee reversed)</option>
+          <option value="directional_inversion">Directional inversion</option>
+          <option value="log_quote_mismatch">Log quote mismatch</option>
+          <option value="missing_citation">Missing or unresolvable citation</option>
+        </select>
+      </div>
+      <input id="note" maxlength="200" placeholder="Note (optional, one line)">
+    </div>
+    <button class="primary" onclick="send()">Save and next</button>
+    <button onclick="pause()">Pause</button>
+    <div id="answer" class="note"></div>
+  </section>
+
+  <section id="blind" class="hidden">
+    <div class="claim">
+      <div class="label">One quick question about a claim you labelled</div>
+      <div class="sentence" id="bsentence"></div>
+      <p>Was this narrative written by a language model or by fixed rules?</p>
+      <button onclick="guess('A')">Language model</button>
+      <button onclick="guess('B')">Fixed rules</button>
+      <button onclick="guess('unsure')">Can't tell</button>
+    </div>
+  </section>
+</main>
+<script>
+const KEY = new URLSearchParams(location.hash.slice(1)).get("key") || "";
+let current = null, verdict = null, blindItem = null;
+
+async function api(path, body) {
+  const r = await fetch(path, {
+    method: body ? "POST" : "GET",
+    headers: {"X-Label-Key": KEY, "Content-Type": "application/json"},
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (r.status === 404) throw new Error("This link is not valid. Ask for a new one.");
+  const data = await r.json();
+  if (r.status !== 200) throw new Error(data.error || "Request refused");
+  return data;
+}
+
+function show(id, on) { document.getElementById(id).classList.toggle("hidden", !on); }
+function text(id, t) { document.getElementById(id).textContent = t; }
+
+function render(item) {
+  current = item; verdict = null;
+  text("header", item.header);
+  text("sentence", item.sentence);
+  const cards = document.getElementById("cards");
+  cards.replaceChildren();
+  for (const c of item.cards) {
+    const div = document.createElement("div");
+    div.className = "ev";
+    const id = document.createElement("code");
+    id.textContent = c.id;
+    div.append(id, document.createTextNode(` ${c.service ? "· " + c.service + " " : ""}· ${c.text}`));
+    const values = Object.entries(c.values || {})
+      .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : JSON.stringify(v)}`)
+      .join(" · ");
+    if (values) { const v = document.createElement("div"); v.textContent = values; div.append(v); }
+    cards.append(div);
+  }
+  const labels = document.getElementById("labels");
+  labels.replaceChildren();
+  (item.labels || []).forEach((l, i) => {
+    const d = document.createElement("div");
+    d.className = "ev";
+    d.textContent = `Rater ${"AB"[i]}: ${l.verdict}${l.category ? " (" + l.category + ")" : ""}`;
+    labels.append(d);
+  });
+  show("labels", !!item.labels);
+  if (item.progress) text("progress", `${item.progress.labelled} of ${item.progress.total}`);
+  document.getElementById("category").value = "";
+  document.getElementById("note").value = "";
+  text("answer", "");
+  show("why", false); show("item", true); show("blind", false);
+}
+
+function choose(v) { verdict = v; show("why", v === "unsupported"); }
+
+async function send() {
+  const category = document.getElementById("category").value;
+  if (!verdict) return text("msg", "Choose Supported or Unsupported.");
+  if (verdict === "unsupported" && !category) return text("msg", "Choose an error category.");
+  text("msg", "");
+  try {
+    const out = await api("/api/label", {
+      item: current.item,
+      verdict,
+      category: verdict === "unsupported" ? category : "",
+      note: document.getElementById("note").value,
+    });
+    if (out.answer) {
+      text("answer", out.answer.planted ? `Answer: a planted error (${out.answer.category}).` : "Answer: a real claim.");
+      setTimeout(next, 2500);
+    } else next();
+  } catch (e) { text("msg", e.message); }
+}
+
+async function guess(g) {
+  try { await api("/api/blind", {item: blindItem, guess: g}); next(); } catch (e) { text("msg", e.message); }
+}
+
+async function next() {
+  try {
+    const b = await api("/api/blind");
+    if (b) { blindItem = b.item; text("bsentence", b.sentence); show("item", false); show("blind", true); return; }
+    const item = await api("/api/next");
+    if (!item) { show("item", false); text("msg", "Nothing left to label. Thank you."); return; }
+    render(item);
+  } catch (e) { text("msg", e.message); }
+}
+
+function pause() { show("item", false); show("blind", false); text("msg", "Paused. Reload this page to continue."); }
+
+next();
+</script>
+</body>
+</html>
