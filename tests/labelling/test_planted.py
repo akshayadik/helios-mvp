@@ -120,6 +120,22 @@ def test_planted_and_real_items_have_the_same_shape() -> None:
                 assert set(real) == set(fake), (category, claim.kind)
 
 
+def test_rare_categories_still_get_planted() -> None:
+    # Rebuilt training-1 had no log_quote_mismatch: log claims are rare, so a
+    # plain shuffled walk filled the quota before reaching one.
+    shift = SUPPORTED["shift"]
+    sources: list[tuple[str, Any, Any]] = []
+    for i in range(400):
+        claim = shift.model_copy(
+            update={"sentence": f"cart latency rose from 120 ms to 900 ms. ({i})"}
+        )
+        sources.append((f"shift{i}", claim, ENTRY))
+    sources += [(f"log{i}", SUPPORTED["log_message"], ENTRY) for i in range(3)]
+    for seed in range(5):
+        out = plant(sources, 1 / 4, random.Random(seed), P, n_real=60)
+        assert "log_quote_mismatch" in {cat for _, _, cat in out}, seed
+
+
 def test_numeric_drift_never_makes_an_impossible_percentage() -> None:
     # Review M2: "150% of its time" gives a planted claim away.
     claim = SUPPORTED["call_structure"]  # "frontend spent 94% of its time ..."

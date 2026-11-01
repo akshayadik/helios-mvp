@@ -186,31 +186,49 @@ def plant(
 ) -> list[tuple[str, Claim, str]]:
     """(source key, planted claim, category) so that planted claims make up
     ``share`` of all claims shown beside ``n_real`` real ones (default: as
-    many as ``sources``). Each source is used at most once, so planted claims
-    follow the sources' kind mix; categories stay balanced; a planted claim
-    whose sentence and cites repeat an earlier one is not used (review C1)."""
+    many as ``sources``). Each source is used at most once and a planted claim
+    whose sentence and cites repeat an earlier one is not used (review C1).
+    Every category first gets a floor of about a tenth of the planted claims
+    from its own shuffled queue, so rare kinds (log claims) are still
+    covered; the rest follow the sources' kind mix, categories kept balanced."""
     real = len(sources) if n_real is None else n_real
     want = round(share * real / (1 - share))
     order = list(range(len(sources)))
     rng.shuffle(order)
     count = dict.fromkeys(CATEGORIES, 0)
     seen: set[tuple[str, tuple[str, ...]]] = set()
+    used: set[int] = set()
     out: list[tuple[str, Claim, str]] = []
+
+    def take(idx: int, category: str) -> bool:
+        key, claim, entry = sources[idx]
+        planted = corrupt(claim, entry, category, rng, params)
+        if planted is None or (planted.sentence, planted.cites) in seen:
+            return False
+        seen.add((planted.sentence, planted.cites))
+        used.add(idx)
+        count[category] += 1
+        out.append((key, planted, category))
+        return True
+
+    floor = max(1, want // (2 * len(CATEGORIES))) if want else 0
+    for category in CATEGORIES:
+        for idx in order:
+            if count[category] >= floor or len(out) >= want:
+                break
+            if idx not in used:
+                take(idx, category)
     for idx in order:
         if len(out) >= want:
             break
-        key, claim, entry = sources[idx]
+        if idx in used:
+            continue
         turn = len(out) % len(CATEGORIES)
         ranked = sorted(
             CATEGORIES,
             key=lambda c: (count[c], (CATEGORIES.index(c) - turn) % len(CATEGORIES)),
         )
         for category in ranked:
-            planted = corrupt(claim, entry, category, rng, params)
-            if planted is None or (planted.sentence, planted.cites) in seen:
-                continue
-            seen.add((planted.sentence, planted.cites))
-            count[category] += 1
-            out.append((key, planted, category))
-            break
+            if take(idx, category):
+                break
     return out
