@@ -41,8 +41,64 @@ Some claims are deliberately wrong checks mixed in to measure attention. They lo
 - **Levels that did not change.** If before and after are equal on the card, any rise or fall is unsupported (`directional_inversion`).
 - **Several cards.** A claim citing several items is supported if the items together back every part of it.
 - **Masked log tokens.** `connection pool exhausted after <DUR>` supports the quote "connection pool exhausted after"; it does not support "connection pool exhausted after 30s" (a value the template does not show).
+- **Context cards are not citations.** A contradiction also shows the pipeline's ranking (`P:…`) and the fused verdict (`F`); a verification step also shows the incident window (`T`). They are there so you can check those parts. If a card the claim *cites* says "evidence not found", the claim is `missing_citation` even when the context cards agree with it.
+- **Reading a metric card.** `before` and `after` are the levels the sentence may state; `value` is the size of the shift in robust units, which sentences do not quote; `unit` is the unit, or the metric's name when the unit is unknown. Values are shown at full precision: compare them at the sentence's precision.
 - **Unsure.** If you cannot tell, decide on the evidence in front of you and say why in the note; do not look anything up.
 
 ## Worked examples
 
-(Filled from build data: one supported and one planted example per kind, each with its evidence card and the reason.)
+From the build data (never the confirmatory pool). Each kind has a supported claim and an unsupported one with its category; the cards are exactly as the labelling page shows them.
+
+### `ranking`
+
+**Supported.** frontend-external is the top suspect.
+  - `F` · fused verdict · top: frontend-external, productcatalogservice, recommendationservice
+
+**Unsupported (`entity_mismatch`).** main is the top suspect.
+  - `F` · fused verdict · top: frontend-external, productcatalogservice, recommendationservice
+
+### `shift`
+
+**Supported.** frontend-external errors rose from 0.000 to 0.003.
+  - `D:frontend-external:error` · frontend-external · post-trigger error shift (robust units) · value: 0.0028557829604950024 · before: 0 · after: 0.0028557829604950024 · unit: "error"
+
+**Unsupported (`directional_inversion`).** frontend-external errors fell from 0.000 to 0.003.
+  - `D:frontend-external:error` · frontend-external · post-trigger error shift (robust units) · value: 0.0028557829604950024 · before: 0 · after: 0.0028557829604950024 · unit: "error"
+
+### `call_structure`
+
+**Supported.** checkout spent 6% of its time waiting on shipping.
+  - `G:shipping:wait_from` · shipping · wait share from callers after the trigger · value: {"checkout": 0.056041}
+
+**Unsupported (`missing_citation`).** checkout spent 6% of its time waiting on shipping.
+  - `G:shipping:x1` · evidence not found
+
+### `log_message`
+
+**Supported.** orders logged "at <*> ~[tomcat-embed-core-8.5.11.jar!/:8.5.11]".
+  - `L:log:L1` · orders · at <*> ~[tomcat-embed-core-8.5.11.jar!/:8.5.11]
+
+**Unsupported (`entity_mismatch`).** session-db logged "at <*> ~[tomcat-embed-core-8.5.11.jar!/:8.5.11]".
+  - `L:log:L1` · orders · at <*> ~[tomcat-embed-core-8.5.11.jar!/:8.5.11]
+
+### `contradiction`
+
+**Supported.** D-pipe ranks frontend-external first, while the fused verdict ranks adservice first.
+  - `D:frontend-external:error` · frontend-external · post-trigger error shift (robust units) · value: 0.0038077106139933364 · before: 0 · after: 0.0038077106139933364 · unit: "error"
+  - `P:dpipe` · D-pipe ranking · top: frontend-external, adservice, recommendationservice
+  - `F` · fused verdict · top: adservice, recommendationservice, shippingservice
+
+**Unsupported (`missing_citation`).** D-pipe ranks frontend-external first, while the fused verdict ranks adservice first.
+  - `D:frontend-external:x1` · evidence not found
+  - `P:dpipe` · D-pipe ranking · top: frontend-external, adservice, recommendationservice
+  - `F` · fused verdict · top: adservice, recommendationservice, shippingservice
+
+### `verification_step`
+
+**Supported.** Query frontend-external errors between 17:23 and 18:33.
+  - `D:frontend-external:error` · frontend-external · post-trigger error shift (robust units) · value: 0.0028557829604950024 · before: 0 · after: 0.0028557829604950024 · unit: "error"
+  - `T` · incident window (UTC) · start: "17:23" · end: "18:33"
+
+**Unsupported (`entity_mismatch`).** Query main errors between 17:23 and 18:33.
+  - `D:frontend-external:error` · frontend-external · post-trigger error shift (robust units) · value: 0.0028557829604950024 · before: 0 · after: 0.0028557829604950024 · unit: "error"
+  - `T` · incident window (UTC) · start: "17:23" · end: "18:33"
