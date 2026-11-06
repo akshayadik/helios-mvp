@@ -31,6 +31,8 @@ The cheap-first router (IN3) sends statistical and graph evidence first and call
 | S3.4 Knowledge Cortex (SOP retrieval, build data only) | T2 | S2-M8-ENG04 | 1½ | S2.3 | Retrieval tests; pool-exclusion test |
 | S3.5 LLM-unavailable fallback | T2 | S2-M8-ENG05 | ½ | S3.1 | Route to D+G on LLM failure; covariate recorded |
 
+S3.1 design: [s3_1_router_design.md](s3_1_router_design.md) (draft 2026-11-06, owner decisions R-a…R-e open).
+
 ### Carried-in items that shape the tasks
 
 **S3.1 router**
