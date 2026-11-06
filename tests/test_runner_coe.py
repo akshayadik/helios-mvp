@@ -145,7 +145,9 @@ def test_routing_record_of_a_uniform_run(tmp_path: Path) -> None:
     assert routing["gate_value"] < routing["threshold"]
     assert routing["ran"] is True
     assert routing["reason"] == "uniform"
-    assert "features" not in routing
+    # Uniform runs record the router's inputs, never a decision (shadow data).
+    assert len(routing["features"]) == len(routing["features_cheap"]) > 0
+    assert "stage1_arm" not in routing
     assert "router" not in entry["parameter_hashes"]
 
 

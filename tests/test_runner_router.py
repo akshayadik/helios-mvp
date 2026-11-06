@@ -199,6 +199,8 @@ def test_uniform_runs_every_pipeline_with_g_ungated(
     assert r["mode"] == "uniform"
     assert r["reason"] == "uniform"
     assert "stage1_arm" not in r
+    assert r["features"][FEATURE_NAMES.index("g_ran")] == 1
+    assert r["features_cheap"][FEATURE_NAMES.index("g_ran")] == 0
     assert "router" not in entry["parameter_hashes"]
 
 

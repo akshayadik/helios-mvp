@@ -371,7 +371,9 @@ class RunOrchestrator:
         elif not routed_run:
             routing["ran"] = True
             routing["reason"] = "uniform"  # every incident, ungated (R-b)
-        if routed_run and signal is not None:
+        if signal is not None:
+            # Recorded in both modes: uniform runs show what the router would
+            # have seen (the build data, and shadow mode in Stage B).
             x = cheap_features(
                 d_verdict,
                 dpipe_scores,
@@ -379,6 +381,8 @@ class RunOrchestrator:
                 signal=signal,
                 traces=window.p2_traces_path is not None,
             )
+            routing["features_cheap"] = list(x)
+        if routed_run and signal is not None:
             g_dec = decide_g(
                 x, self._router, graph=bool(g_allowed) and graph is not None
             )
@@ -411,8 +415,10 @@ class RunOrchestrator:
         else:
             g_verdict, g_out = self._skipped(PipelineName.GPIPE, base), {}
         run_l = True
-        if routed_run:
+        if signal is not None:
             x = with_gpipe(x, g_verdict, d_verdict)
+            routing["features"] = list(x)
+        if routed_run:
             g_ran = g_verdict.status == VerdictStatus.RANKED
             esc = decide_escalation(
                 x,
@@ -424,7 +430,6 @@ class RunOrchestrator:
             )
             run_l = esc.escalate
             routing.update(
-                features=list(x),
                 estimates=esc.estimates,
                 tau_acc=self._router.tau_acc,
                 stage1_arm=esc.stage1_arm.value,
