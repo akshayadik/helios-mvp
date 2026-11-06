@@ -48,7 +48,8 @@ echo "🔧 Applying HELIOS environment fixes..."
 
 # Fix 1: Pin DEMO_VERSION in .env to ensure stability (C1 compliance)
 if [ -f ".env" ]; then
-    sed -i 's/^DEMO_VERSION=latest/DEMO_VERSION=${IMAGE_VERSION}/' .env
+    # Portable in-place edit (BSD and GNU sed): -i.bak, then drop the backup.
+    sed -i.bak 's/^DEMO_VERSION=latest/DEMO_VERSION=${IMAGE_VERSION}/' .env && rm -f .env.bak
     echo "   - Pinned DEMO_VERSION to \${IMAGE_VERSION} in .env"
 fi
 
