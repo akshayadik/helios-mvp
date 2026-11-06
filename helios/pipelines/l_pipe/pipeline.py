@@ -51,7 +51,7 @@ if TYPE_CHECKING:
     from helios.schemas.telemetry import TelemetryWindow
     from helios.telemetry.trigger import TriggerRecord
 
-__all__ = ["ProvisionalPromptError", "run_lpipe"]
+__all__ = ["ModelMismatchError", "ProvisionalPromptError", "run_lpipe", "verify_model"]
 
 _log = logging.getLogger(__name__)
 
@@ -62,8 +62,37 @@ class ProvisionalPromptError(RuntimeError):
     """A confirmatory run met worker prompts that are not frozen."""
 
 
+class ModelMismatchError(RuntimeError):
+    """The served model is not the one frozen with the prompts (entry 58)."""
+
+
+def verify_model(client: OllamaClient | None = None) -> None:
+    """Raise ModelMismatchError unless the served model is the frozen one (entry 58).
+
+    Called once at the start of an orchestrator run, before any incident. An
+    unreachable endpoint is left to each incident (a FAILED L-pipe verdict).
+    """
+    expected = lpipe_config.EXPECTED_MODEL_DIGEST
+    if expected is None:
+        return
+    client = client or OllamaClient(OLLAMA_BASE_URL, MODEL_NAME)
+    try:
+        served = client.model_digest(timeout_s=TIMEOUT_S)
+    except (OllamaTimeoutError, OllamaConnectionError, OllamaResponseError):
+        return
+    if served != expected:
+        raise ModelMismatchError(
+            f"served model {served[:12]} is not the frozen {expected[:12]}"
+        )
+
+
 def _check_prompts(evaluation_phase: str) -> dict[str, str]:
     shas: dict[str, str] = {p.name: personas.prompt_sha(p) for p in personas.PERSONAS}
+    confirmatory = evaluation_phase == EvaluationPhase.CONFIRMATORY.value
+    if confirmatory and lpipe_config.EXPECTED_MODEL_DIGEST is None:
+        raise ProvisionalPromptError(
+            "the model digest is not pinned; a confirmatory run needs a frozen model"
+        )
     if personas.provisional():
         if evaluation_phase == EvaluationPhase.CONFIRMATORY.value:
             raise ProvisionalPromptError(
@@ -109,6 +138,8 @@ def _worker_record(result: WorkerResult) -> dict[str, Any]:
         "raw": result.raw,
         "cache_hit": result.cache_hit,
         "wall_ms": result.wall_ms,
+        "produced_output": result.produced_output,
+        "invalid_output": result.invalid_output,
     }
 
 
@@ -145,6 +176,17 @@ def run_lpipe(
     }
     try:
         model_digest = client.model_digest(timeout_s=TIMEOUT_S)
+    except (OllamaTimeoutError, OllamaConnectionError, OllamaResponseError) as exc:
+        _log.error("lpipe model endpoint error for %s: %s", incident_id, exc)
+        return _failed(
+            base, gateway, t0, f"l-pipe-connectivity-error: {type(exc).__name__}"
+        )
+    expected = lpipe_config.EXPECTED_MODEL_DIGEST
+    if expected is not None and model_digest != expected:
+        raise ModelMismatchError(
+            f"served model {model_digest[:12]} is not the frozen {expected[:12]}"
+        )
+    try:
         bucket_seconds = load_detector_params().bucket_seconds
         services = service_scores(window, bucket_seconds, root=root).services
         candidates = [s for s in services if in_scope(s)]
@@ -154,11 +196,6 @@ def run_lpipe(
             p.name: p.build(window, trigger, candidates, root=root)
             for p in personas.PERSONAS
         }
-    except (OllamaTimeoutError, OllamaConnectionError, OllamaResponseError) as exc:
-        _log.error("lpipe model endpoint error for %s: %s", incident_id, exc)
-        return _failed(
-            base, gateway, t0, f"l-pipe-connectivity-error: {type(exc).__name__}"
-        )
     except Exception as exc:
         _log.error("lpipe digest error for %s: %s", incident_id, exc)
         return _failed(base, gateway, t0, f"l-pipe-digest-error: {type(exc).__name__}")
@@ -187,6 +224,10 @@ def run_lpipe(
         "narrative": f"l-pipe k={merged.k}",
         "latency_ms": (time.monotonic() - t0) * 1_000 + replayed_ms,
         "cache_hit": bool(called) and all(r.cache_hit for r in called),
+        "h_struct": {
+            "outputs": sum(r.produced_output for r in results),
+            "failed": sum(r.invalid_output for r in results),
+        },
         "replayed_ms": replayed_ms,
         "evidence": {
             "k": merged.k,
@@ -213,4 +254,5 @@ def _failed(
         "latency_ms": (time.monotonic() - t0) * 1_000,
         "cache_hit": False,
         "replayed_ms": 0,
+        "h_struct": {"outputs": 0, "failed": 0},
     }

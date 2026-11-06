@@ -5,10 +5,11 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import pandas as pd
 import pyarrow.parquet as pq
+import pytest
 
 from helios.pipelines.l_pipe import lpipe_config
 from helios.pipelines.l_pipe.aliases import build_alias_map
@@ -22,9 +23,6 @@ from helios.schemas.telemetry import TelemetryWindow
 from helios.telemetry.scope import in_scope
 from helios.telemetry.trigger import TriggerRecord, TriggerSource, service_scores
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
-
-if TYPE_CHECKING:
-    import pytest
 
 REPO = Path(__file__).resolve().parents[3]
 
@@ -111,8 +109,48 @@ def test_prompt_files_contain_contract_placeholders() -> None:
         assert len(prompt_sha(persona)) == 64
 
 
-def test_provisional_until_frozen(monkeypatch: pytest.MonkeyPatch) -> None:
-    assert provisional()
-    frozen = {p.name: prompt_sha(p) for p in PERSONAS}
-    monkeypatch.setattr(lpipe_config, "WORKER_PROMPT_SHAS", frozen)
+def test_frozen_prompt_shas_match_files_and_report() -> None:
+    # Entry 58: the round 1 prompts and llama3.1:8b, as in the final build report.
+    report = json.loads(
+        (REPO / "docs/sprints/s2-reasoning/calibration/lpipe_round3.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    files = {p.name: prompt_sha(p) for p in PERSONAS}
+    assert lpipe_config.WORKER_PROMPT_SHAS == files == report["prompt_shas"]
+    assert report["model_digest"] == lpipe_config.EXPECTED_MODEL_DIGEST
+    assert report["split"] == "both"
     assert not provisional()
+
+
+def test_provisional_when_a_sha_is_unset(monkeypatch: pytest.MonkeyPatch) -> None:
+    unset = {**lpipe_config.WORKER_PROMPT_SHAS, "log": None}
+    monkeypatch.setattr(lpipe_config, "WORKER_PROMPT_SHAS", unset)
+    assert provisional()
+
+
+def test_template_words_are_not_checked_only_inserted_text(tmp_path: Path) -> None:
+    # The fixed template may use a word that is also a service name ("user" in
+    # Sock Shop); only the per-incident insertions can leak.
+    import dataclasses
+
+    from helios.pipelines.l_pipe.digests import Digest, DigestLine
+
+    template = tmp_path / "t.txt"
+    template.write_text(
+        "user traffic {candidates} {digest} {max_ranked}", encoding="utf-8"
+    )
+    persona = dataclasses.replace(PERSONAS[0], prompt_path=template)
+    alias = build_alias_map("x", ["user", "carts"], [])
+    ok = Digest("metric", (DigestLine("M1", "carts", "carts cpu up", 3),), 0)
+    assert "user traffic" in render_prompt(persona, ok, alias)
+
+
+def test_render_prompt_still_refuses_a_leaking_digest() -> None:
+    from helios.pipelines.l_pipe.aliases import AliasLeakError
+    from helios.pipelines.l_pipe.digests import Digest, DigestLine
+
+    alias = build_alias_map("x", ["ts-order-service"], [])
+    leaky = Digest("metric", (DigestLine("M1", "x", "ts-order-mongo cpu up", 3),), 0)
+    with pytest.raises(AliasLeakError):
+        render_prompt(PERSONAS[0], leaky, alias)

@@ -38,6 +38,7 @@ __all__ = [
     "log_series",
     "metric_intensity",
     "metric_series",
+    "named_metric_series",
     "robust_z",
     "service_of",
 ]
@@ -116,15 +117,17 @@ def _max_over(series: list[np.ndarray], n: int) -> np.ndarray:
     return np.where(np.isfinite(out), out, 0).astype("float64")
 
 
-def metric_series(
+def named_metric_series(
     metrics: pd.DataFrame,
     window_start_iso: str,
     n_buckets: int,
     bucket_seconds: int,
     *,
     fold_histograms: bool = False,
-) -> dict[str, list[Series]]:
-    """Raw bucket means per series (metric name + labels), counters differenced.
+) -> dict[str, list[tuple[str, Series]]]:
+    """As ``metric_series``, each series with its metric name (S2.5 signal type).
+
+    Raw bucket means per series (metric name + labels), counters differenced.
 
     Services and series are in sorted order; buckets with no sample are NaN.
     ``fold_histograms`` (detector view, S2-M7-ENG10) keeps only the ``+Inf``
@@ -161,7 +164,7 @@ def metric_series(
     means = frame.groupby(["service", "metric", "labels", "bucket"], sort=True)[
         "value"
     ].mean()
-    per_service: dict[str, list[Series]] = {}
+    per_service: dict[str, list[tuple[str, Series]]] = {}
     for (service, metric, _labels), series in means.groupby(level=[0, 1, 2], sort=True):
         dense = np.full(n_buckets, np.nan)
         dense[series.index.get_level_values("bucket").astype(int)] = series.to_numpy()
@@ -170,13 +173,42 @@ def metric_series(
             dense = np.concatenate(([np.nan], np.diff(dense)))
         name = str(metric)
         per_service.setdefault(str(service), []).append(
-            Series(
-                dense,
-                (counter and not name.endswith("_sum")) or name in COUNT_METRICS,
-                name in UPWARD_ONLY_METRICS,
+            (
+                name,
+                Series(
+                    dense,
+                    (counter and not name.endswith("_sum")) or name in COUNT_METRICS,
+                    name in UPWARD_ONLY_METRICS,
+                ),
             )
         )
     return dict(sorted(per_service.items()))
+
+
+def metric_series(
+    metrics: pd.DataFrame,
+    window_start_iso: str,
+    n_buckets: int,
+    bucket_seconds: int,
+    *,
+    fold_histograms: bool = False,
+) -> dict[str, list[Series]]:
+    """Raw bucket means per series (metric name + labels), counters differenced.
+
+    Services and series are in sorted order; buckets with no sample are NaN.
+    ``fold_histograms`` (detector view, S2-M7-ENG10) keeps only the ``+Inf``
+    bucket of a ``_bucket`` histogram, its request count: the other buckets are
+    near-copies that would each count as a series in the many-series
+    correction and shrink the service's score.
+    """
+    named = named_metric_series(
+        metrics,
+        window_start_iso,
+        n_buckets,
+        bucket_seconds,
+        fold_histograms=fold_histograms,
+    )
+    return {svc: [s for _, s in series] for svc, series in named.items()}
 
 
 def metric_intensity(

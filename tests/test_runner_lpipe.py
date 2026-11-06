@@ -112,3 +112,104 @@ def test_rerun_gives_equal_lpipe_decisions(tmp_path: Path) -> None:
     second = _lpipe_row(run_variant(tmp_path, "HELIOS-Full", FakeClient(), name="b"))
     for key in ("status", "ranked_candidates", "candidate_scores", "mu", "sigma"):
         assert first[key] == second[key], key
+
+
+def test_wrong_model_stops_before_any_incident(tmp_path: Path) -> None:
+    # Entry 58: the served model is checked at run start, before any pipeline writes.
+    from helios.pipelines.l_pipe.pipeline import ModelMismatchError
+
+    class OtherModel(FakeClient):
+        def model_digest(self, timeout_s: float) -> str:
+            return "another-model"
+
+    client = OtherModel()
+    try:
+        run_variant(tmp_path, "HELIOS-Full", client)
+    except ModelMismatchError:
+        pass
+    else:
+        raise AssertionError("a wrong model must stop the run")
+    store = ResultStore(tmp_path / "r.duckdb")
+    assert store.fetch_all() == []
+    for table in ("trigger_row", "timing_row", "evidence_row"):
+        assert store._con.execute(f"SELECT COUNT(*) FROM {table}").fetchone() == (0,)
+    assert client.calls == 0
+
+
+def test_lpipe_off_does_not_need_the_model(tmp_path: Path) -> None:
+    class Unreachable(FakeClient):
+        def model_digest(self, timeout_s: float) -> str:
+            raise AssertionError("noLLM must not contact the model")
+
+    store = run_variant(tmp_path, "HELIOS-noLLM", Unreachable())
+    assert [r["status"] for r in store.fetch_all() if r["pipeline"] == "lpipe"] == [
+        "skipped"
+    ]
+
+
+def _hstruct(store: ResultStore) -> dict[str, Any]:
+    run_id = str(
+        next(r["run_id"] for r in store.fetch_all() if r["pipeline"] == "lpipe")
+    )
+    rows = store.fetch_hstruct(run_id)
+    assert len(rows) == 1
+    return rows[0]
+
+
+def test_runner_records_h_struct(tmp_path: Path) -> None:
+    row = _hstruct(run_variant(tmp_path, "HELIOS-Full", FakeClient()))
+    assert row == {
+        "pipeline": "lpipe",
+        "outputs": 3,
+        "failed": 0,
+        "structural_zero": False,
+    }
+
+
+def test_no_llm_variant_records_a_structural_zero(tmp_path: Path) -> None:
+    row = _hstruct(run_variant(tmp_path, "HELIOS-noLLM", FakeClient()))
+    assert row == {
+        "pipeline": "lpipe",
+        "outputs": 0,
+        "failed": 0,
+        "structural_zero": True,
+    }
+
+
+def test_cached_run_gives_the_same_h_struct(tmp_path: Path) -> None:
+    cache = ResponseCache(tmp_path / "cache.sqlite")
+    first = _hstruct(run_variant(tmp_path, "HELIOS-Full", FakeClient(), cache, "a"))
+    second = _hstruct(run_variant(tmp_path, "HELIOS-Full", FakeClient(), cache, "b"))
+    assert first == second
+
+
+def test_excluded_run_has_no_h_struct_row(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Review I1: only runs whose verdicts are stored carry H_struct (A-H7 pairs).
+    from helios import integrity_gate
+
+    def fail(self: Any, rows: Any, *, incident_id: str) -> Any:
+        return integrity_gate.GateResult(status="FAIL", gate_check="forced")
+
+    monkeypatch.setattr(integrity_gate.MetricIntegrityGate, "check_consistency", fail)
+    store = run_variant(tmp_path, "HELIOS-Full", FakeClient())
+    assert store.fetch_all() == []
+    assert store._con.execute("SELECT COUNT(*) FROM hstruct_row").fetchone() == (0,)
+
+
+def test_lpipe_output_without_h_struct_is_an_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Review I2: a ran-but-uncounted L-pipe must not become a silent zero.
+    from helios.orchestrator import runner as runner_module
+    from helios.pipelines.l_pipe.pipeline import run_lpipe as real
+
+    def no_counts(**kw: Any) -> dict[str, Any]:
+        out = real(**kw)
+        out.pop("h_struct")
+        return out
+
+    monkeypatch.setattr(runner_module, "run_lpipe", no_counts)
+    with pytest.raises(ValueError, match="h_struct"):
+        run_variant(tmp_path, "HELIOS-Full", FakeClient())

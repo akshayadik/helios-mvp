@@ -15,6 +15,9 @@ import duckdb
 from helios.vcl.utils import canonical_json
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+    from helios.consensus.mahc import FusedVerdict
     from helios.consensus.verdict import ConsensusVerdict
     from helios.schemas.verdict import PipelineName, PipelineVerdict
     from helios.telemetry.trigger import TriggerRecord
@@ -280,6 +283,130 @@ class ResultStore:
             "VALUES (?, ?, ?, ?)",
             [run_id, incident_id, pipeline, canonical_json(evidence)],
         )
+
+    def insert_fusion(
+        self,
+        run_id: str,
+        incident_id: str,
+        variant_config_hash: str,
+        fused: FusedVerdict,
+    ) -> None:
+        """Store what HELIOS published for one run (S2.5)."""
+        sched = fused.schedule
+        self._con.execute(
+            "INSERT INTO fusion_row (run_id, incident_id, variant_config_hash, method, "
+            "ranked_json, scores_json, confidence, fused_sigma, state, first_ms, "
+            "first_ranked_json, terminal_ms, non_converged, evidence_json) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [
+                run_id,
+                incident_id,
+                variant_config_hash,
+                fused.method,
+                json.dumps(list(fused.ranked)),
+                canonical_json(fused.scores),
+                fused.confidence,
+                fused.fused_sigma,
+                fused.state.value,
+                sched.first_ms,
+                json.dumps(list(fused.first_ranked)),
+                sched.terminal_ms,
+                sched.non_converged,
+                canonical_json(fused.evidence),
+            ],
+        )
+
+    def _fusion_rows(self, where: str, args: list[Any]) -> list[dict[str, Any]]:
+        cur = self._con.execute(f"SELECT * FROM fusion_row {where}", args)
+        cols = [d[0] for d in cur.description or []]
+        out = []
+        for values in cur.fetchall():
+            row = dict(zip(cols, values, strict=True))
+            for key in ("ranked", "scores", "first_ranked", "evidence"):
+                row[key] = json.loads(row.pop(f"{key}_json"))
+            row["non_converged"] = bool(row["non_converged"])
+            out.append(row)
+        return out
+
+    def fetch_fusion(self, run_id: str) -> dict[str, Any] | None:
+        """The fused verdict of one run, or None."""
+        rows = self._fusion_rows("WHERE run_id = ?", [run_id])
+        return rows[0] if rows else None
+
+    def fetch_all_fusion_rows(self) -> list[dict[str, Any]]:
+        """Every fused verdict, ordered by run."""
+        return self._fusion_rows("ORDER BY run_id", [])
+
+    def insert_hstruct(
+        self,
+        run_id: str,
+        incident_id: str,
+        pipeline: str,
+        *,
+        outputs: int,
+        failed: int,
+        structural_zero: bool,
+    ) -> None:
+        """Agent outputs and schema failures of one run's pipeline (S2.4, H_struct)."""
+        self._con.execute(
+            "INSERT INTO hstruct_row (run_id, incident_id, pipeline, outputs, failed, "
+            "structural_zero) VALUES (?, ?, ?, ?, ?, ?)",
+            [run_id, incident_id, pipeline, outputs, failed, structural_zero],
+        )
+
+    def insert_narrative(
+        self, run_id: str, incident_id: str, step: Mapping[str, Any]
+    ) -> None:
+        """Store a run's narrative (S2.8): CoE step N plus counts for the report."""
+        slots = step["slots"]
+        self._con.execute(
+            "INSERT INTO narrative_row (run_id, incident_id, narrator, slots_json, "
+            "rendered, attempts, fallbacks, prompt_tokens, completion_tokens, "
+            "wall_ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [
+                run_id,
+                incident_id,
+                step["narrator"],
+                canonical_json(slots),
+                step["rendered"],
+                sum(int(s["attempts"]) for s in slots.values()),
+                sum(bool(s["fallback"]) for s in slots.values()),
+                int(step["cost"]["prompt_tokens"]),
+                int(step["cost"]["completion_tokens"]),
+                float(step["measured"]["wall_ms"]),
+            ],
+        )
+
+    def _narrative_rows(self, where: str, args: list[Any]) -> list[dict[str, Any]]:
+        cur = self._con.execute(f"SELECT * FROM narrative_row {where}", args)
+        cols = [d[0] for d in cur.description or []]
+        out = []
+        for values in cur.fetchall():
+            row = dict(zip(cols, values, strict=True))
+            row["slots"] = json.loads(row.pop("slots_json"))
+            out.append(row)
+        return out
+
+    def fetch_narrative(self, run_id: str) -> dict[str, Any] | None:
+        """The narrative of one run, or None."""
+        rows = self._narrative_rows("WHERE run_id = ?", [run_id])
+        return rows[0] if rows else None
+
+    def fetch_all_narrative_rows(self) -> list[dict[str, Any]]:
+        """Every stored narrative, ordered by run."""
+        return self._narrative_rows("ORDER BY run_id", [])
+
+    def fetch_hstruct(self, run_id: str) -> list[dict[str, Any]]:
+        """The H_struct counts of a run, one per pipeline."""
+        rows = self._con.execute(
+            "SELECT pipeline, outputs, failed, structural_zero FROM hstruct_row "
+            "WHERE run_id = ? ORDER BY pipeline",
+            [run_id],
+        ).fetchall()
+        return [
+            {"pipeline": p, "outputs": o, "failed": f, "structural_zero": bool(z)}
+            for p, o, f, z in rows
+        ]
 
     def fetch_evidence(self, run_id: str, pipeline: str) -> dict[str, Any] | None:
         """The stored evidence of a run's pipeline, or None."""

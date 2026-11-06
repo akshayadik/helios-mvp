@@ -63,6 +63,8 @@ def run_dpipe(
     # Stage B: anomaly scoring
     scorer = AnomalyScorer(w_error=w_error, w_resource=w_resource)
     evidence: dict[str, float] = {}
+    channels: dict[str, dict[str, float]] = {}
+    levels: dict[str, dict[str, dict[str, float | str]]] = {}
     steps = parsed.steps
     split_usable = trigger is not None and (
         any(t < trigger.trigger_time_s for t in steps)
@@ -71,6 +73,7 @@ def run_dpipe(
     if trigger is not None and split_usable:
         scored = scorer.score_split(parsed, split_s=trigger.trigger_time_s)
         scores, evidence = scored.scores, scored.evidence
+        channels, levels = scored.channels, scored.levels
     else:
         scores = scorer.score(
             parsed.error_deltas, parsed.latency_means, parsed.p1_services
@@ -134,4 +137,24 @@ def run_dpipe(
             if verdict["ranked_candidates"] and evidence and evidence_ref
             else None
         ),
+        # CoE evidence (S2.7) for the top 5: the post-trigger error, latency
+        # and resource shifts in robust units (None without a usable trigger
+        # split), the pre-propagation score and the final score. A record only;
+        # nothing above reads it.
+        "coe_evidence": {
+            "services": [
+                {
+                    "service": s,
+                    **{
+                        c: (None if c not in ch else float(ch[c]))
+                        for ch in [channels.get(s, {})]
+                        for c in ("error", "latency", "resource")
+                    },
+                    "score": scores.get(s),
+                    "final": score_final[s],
+                    "levels": levels.get(s, {}),
+                }
+                for s in list(verdict["ranked_candidates"])[:5]
+            ]
+        },
     }

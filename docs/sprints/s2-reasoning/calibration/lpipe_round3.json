@@ -1,0 +1,137 @@
+{
+  "detector_hash": "bc07f4952e6856eecdfd62591664b0aa541701e08098594d61ddb3fccb2bf312",
+  "model_digest": "46e0c10c039e019119339687c3c1757cc81b9da49709a3b3924863ba87ca666e",
+  "prompt_shas": {
+    "log": "da32233962d114908164eed606240b7fa582a4bd5b3d8fce201750464d536735",
+    "metric": "99c7c10e83ec4712b91feb9d53568d500a9383fb3f666d7ce689c55723e36b6b",
+    "trace": "c59b9a99769cc61b8154e89f981be5df939f677d83b96c0c48ca50c389915c9e"
+  },
+  "round": 3,
+  "split": "both",
+  "summary": {
+    "otel_build_v3": {
+      "dev": {
+        "cache_hits": 32,
+        "cases": 32,
+        "drops": {
+          "no_digest": 15
+        },
+        "faults": {
+          "adFailure": 4,
+          "adHighCpu": 4,
+          "adManualGc": 3,
+          "cartFailure": 4,
+          "emailMemoryLeak": 5,
+          "paymentFailure": 2,
+          "paymentUnreachable": 3,
+          "productCatalogFailure": 2,
+          "recommendationCacheFailure": 5
+        },
+        "k": {
+          "1": 2,
+          "2": 11,
+          "3": 19
+        },
+        "lpipe_hr3_hits": 22,
+        "mean_seconds": 15.4,
+        "worker_hr3_hits": {
+          "log": 17,
+          "metric": 15,
+          "trace": 17
+        },
+        "worker_valid": {
+          "log": 25,
+          "metric": 32,
+          "trace": 24
+        }
+      },
+      "heldout": {
+        "cache_hits": 0,
+        "cases": 31,
+        "drops": {
+          "no_digest": 16
+        },
+        "faults": {
+          "adFailure": 3,
+          "adHighCpu": 3,
+          "adManualGc": 4,
+          "cartFailure": 3,
+          "emailMemoryLeak": 2,
+          "paymentFailure": 5,
+          "paymentUnreachable": 4,
+          "productCatalogFailure": 5,
+          "recommendationCacheFailure": 2
+        },
+        "k": {
+          "1": 2,
+          "2": 12,
+          "3": 17
+        },
+        "lpipe_hr3_hits": 22,
+        "mean_seconds": 14.76,
+        "worker_hr3_hits": {
+          "log": 13,
+          "metric": 23,
+          "trace": 17
+        },
+        "worker_valid": {
+          "log": 21,
+          "metric": 31,
+          "trace": 25
+        }
+      }
+    },
+    "rcaeval_build": {
+      "dev": {
+        "cache_hits": 247,
+        "cases": 248,
+        "drops": {
+          "no_digest": 463
+        },
+        "faults": {},
+        "k": {
+          "0": 1,
+          "1": 213,
+          "2": 34
+        },
+        "lpipe_hr3_hits": 241,
+        "mean_seconds": 9.79,
+        "worker_hr3_hits": {
+          "log": 24,
+          "metric": 240,
+          "trace": 0
+        },
+        "worker_valid": {
+          "log": 34,
+          "metric": 247,
+          "trace": 0
+        }
+      },
+      "heldout": {
+        "cache_hits": 0,
+        "cases": 247,
+        "drops": {
+          "no_digest": 457
+        },
+        "faults": {},
+        "k": {
+          "1": 210,
+          "2": 37
+        },
+        "lpipe_hr3_hits": 239,
+        "mean_seconds": 9.74,
+        "worker_hr3_hits": {
+          "log": 21,
+          "metric": 236,
+          "trace": 0
+        },
+        "worker_valid": {
+          "log": 37,
+          "metric": 247,
+          "trace": 0
+        }
+      }
+    }
+  },
+  "variant": "HELIOS-Full"
+}

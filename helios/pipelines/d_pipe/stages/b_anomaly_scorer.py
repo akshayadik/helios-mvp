@@ -46,6 +46,39 @@ class ScoredServices:
 
     scores: dict[str, float]
     evidence: dict[str, float] = field(default_factory=dict)
+    # Per-channel shifts (error, latency, resource) behind ``evidence``; a CoE
+    # record only (S2.7), nothing scores on it.
+    channels: dict[str, dict[str, float]] = field(default_factory=dict)
+    # Raw levels behind each channel's shift (S2.8, N-i): the median before the
+    # split and the level D-pipe compared with it after, with a unit.
+    levels: dict[str, dict[str, dict[str, float | str]]] = field(default_factory=dict)
+
+
+# Units by source metric (S2.8 design §5.8); any other series is labelled by
+# its metric name, its unit unknown.
+UNITS: dict[str, str] = {
+    "http_server_duration_milliseconds_bucket": "ms",
+    "rpc_server_duration_milliseconds_bucket": "ms",
+    "span_mean_latency_milliseconds": "ms",
+    "http_grpc_error_status": "errors/step",
+    "span_error_calls_total": "errors/step",
+}
+
+
+def unit_for(metric: str) -> str:
+    """The unit of a source metric, or the metric's own name when unknown."""
+    return UNITS.get(metric, metric)
+
+
+def _level(series: list[float], before: np.ndarray) -> tuple[float, float] | None:
+    """Median before the split and the winsorised level after it, as ``_shift``
+    compares them; None without data on both sides."""
+    values = np.asarray(series, dtype="float64")
+    ref = values[before][np.isfinite(values[before])]
+    inc = values[~before][np.isfinite(values[~before])]
+    if ref.size < 2 or inc.size == 0:
+        return None
+    return float(np.median(ref)), float(wm90(inc))
 
 
 def _shift(
@@ -118,7 +151,50 @@ class AnomalyScorer:
             for s in parsed.p1_services
         }
         evidence = {s: max(err[s], lat[s], res[s]) for s in parsed.p1_services}
-        return ScoredServices(scores=scores, evidence=evidence)
+        channels = {
+            s: {"error": err[s], "latency": lat[s], "resource": res[s]}
+            for s in parsed.p1_services
+        }
+        levels = {s: self._levels(parsed, s, before) for s in parsed.p1_services}
+        return ScoredServices(
+            scores=scores, evidence=evidence, channels=channels, levels=levels
+        )
+
+    @staticmethod
+    def _levels(
+        parsed: ParsedMetrics, s: str, before: np.ndarray
+    ) -> dict[str, dict[str, float | str]]:
+        names = parsed.metric_names.get(s, {})
+        series: dict[str, tuple[str, list[float]]] = {}
+        if s in parsed.error_deltas:
+            series["error"] = (names.get("error", "error"), parsed.error_deltas[s])
+        if s in parsed.latency_means:
+            series["latency"] = (
+                names.get("latency", "latency"),
+                parsed.latency_means[s],
+            )
+        resources = sorted(parsed.resource_values.get(s, {}).items())
+        if resources:
+            # The resource metric with the largest shift, as score_split uses.
+            series["resource"] = max(
+                resources,
+                key=lambda mv: _shift(
+                    mv[1],
+                    before,
+                    count_series=False,
+                    two_sided=mv[0] in TWO_SIDED_RESOURCE_NAMES,
+                ),
+            )
+        out: dict[str, dict[str, float | str]] = {}
+        for channel, (metric, values) in series.items():
+            level = _level(values, before)
+            if level is not None:
+                out[channel] = {
+                    "before": level[0],
+                    "after": level[1],
+                    "unit": unit_for(metric),
+                }
+        return out
 
     def score(
         self,

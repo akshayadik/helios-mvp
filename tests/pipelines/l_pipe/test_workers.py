@@ -150,3 +150,93 @@ def test_no_digest_drops_without_calling() -> None:
 def test_empty_ranking_is_no_valid_claim() -> None:
     result, _ = _run('{"ranked": []}')
     assert result.dropped == DropReason.NO_VALID_CLAIM
+
+
+# --- S2.4 H_struct: did the model produce output, and did it fail validation (owner option b)
+
+
+def _claim(service: str, cites: list[str]) -> dict[str, Any]:
+    return {"service": service, "claims": [{"text": "t", "cites": cites}]}
+
+
+def test_valid_output_is_not_a_schema_failure() -> None:
+    result, _ = _run(_answer((_a("cart"), ["L1"]), (_a("checkout"), ["L2"])))
+    assert (result.produced_output, result.invalid_output) == (True, False)
+
+
+def test_partly_rejected_output_is_a_failure() -> None:
+    result, _ = _run(_answer((_a("cart"), ["L1"]), (_a("checkout"), ["L9"])))
+    assert result.valid and result.ranked == ("cart",)
+    assert result.invalid_output
+
+
+def test_invented_service_is_a_failure() -> None:
+    for name in ("cart", "svc-99"):
+        result, _ = _run(_answer((name, ["L1"]), (_a("checkout"), ["L2"])))
+        assert result.invalid_output, name
+
+
+def test_claim_without_citation_is_a_failure() -> None:
+    answer = json.dumps(
+        {"ranked": [_claim(_a("cart"), ["L1"]), _claim(_a("email"), [])]}
+    )
+    result, _ = _run(answer)
+    assert result.invalid_output
+
+
+def test_more_than_max_ranked_is_a_failure() -> None:
+    result, _ = _run(_answer(*[(_a(s), ["L1"]) for s in SERVICES]))
+    assert result.invalid_output
+
+
+def test_unparsable_output_is_a_failure() -> None:
+    result, _ = _run("not json")
+    assert (result.produced_output, result.invalid_output) == (True, True)
+
+
+def test_empty_ranking_is_not_a_failure() -> None:
+    result, _ = _run('{"ranked": []}')
+    assert result.dropped == DropReason.NO_VALID_CLAIM
+    assert (result.produced_output, result.invalid_output) == (True, False)
+
+
+def test_no_output_without_a_model_answer() -> None:
+    timeout, _ = _run(OllamaTimeoutError("slow"))
+    no_digest, _ = _run(digest=None)
+    for result in (timeout, no_digest):
+        assert (result.produced_output, result.invalid_output) == (False, False)
+
+
+def test_service_without_claims_is_a_failure() -> None:
+    entry = {"service": _a("email"), "claims": []}
+    answer = json.dumps({"ranked": [_claim(_a("cart"), ["L1"]), entry]})
+    result, _ = _run(answer)
+    assert result.valid and result.invalid_output
+
+
+def test_component_alias_is_a_failure() -> None:
+    alias = build_alias_map("x", SERVICES, ["redis"])
+    gw = FakeGateway([json.dumps({"ranked": [_claim(alias.forward["redis"], ["L1"])]})])
+    result = run_worker(LOG, DIGEST, alias, gw)  # type: ignore[arg-type]
+    assert result.invalid_output
+
+
+def test_mixed_valid_and_invalid_cites_is_a_failure() -> None:
+    result, _ = _run(json.dumps({"ranked": [_claim(_a("cart"), ["L1", "L9"])]}))
+    assert result.invalid_output
+
+
+def test_fenced_answer_is_valid_form() -> None:
+    result, _ = _run("```json\n" + _answer((_a("cart"), ["L1"])) + "\n```")
+    assert result.valid and not result.invalid_output
+
+
+def test_ranked_not_a_list_is_a_failure() -> None:
+    result, _ = _run('{"ranked": "svc-01"}')
+    assert result.dropped == DropReason.SCHEMA and result.invalid_output
+
+
+def test_duplicate_service_is_not_a_failure() -> None:
+    # Not an invented identifier; the duplicate is dropped by validation.
+    result, _ = _run(_answer((_a("cart"), ["L1"]), (_a("cart"), ["L2"])))
+    assert result.ranked == ("cart",) and not result.invalid_output

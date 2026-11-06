@@ -162,3 +162,66 @@ CREATE TABLE IF NOT EXISTS evidence_row (
 INSERT INTO schema_tag (tag)
 VALUES ('gpipe-evidence-v1')
 ON CONFLICT (tag) DO NOTHING;
+
+-- hstruct-v1 (S2.4): agent outputs and outputs failing schema validation per
+-- run and pipeline (metric contract H_struct; owner option b, entry 59: form,
+-- more than 5 services, services outside the candidate aliases, a service with
+-- no claim, a claim with no citation, cited IDs not in the digest). Written only
+-- for runs whose verdicts are stored (integrity gate passed). structural_zero
+-- marks a pipeline gated off (no agent calls), recorded as such.
+CREATE TABLE IF NOT EXISTS hstruct_row (
+    run_id              VARCHAR     NOT NULL,
+    incident_id         VARCHAR     NOT NULL,
+    pipeline            VARCHAR     NOT NULL,
+    outputs             INTEGER     NOT NULL,
+    failed              INTEGER     NOT NULL,
+    structural_zero     BOOLEAN     NOT NULL,
+    PRIMARY KEY (run_id, pipeline)
+);
+
+INSERT INTO schema_tag (tag)
+VALUES ('hstruct-v1')
+ON CONFLICT (tag) DO NOTHING;
+
+-- fusion-v1 (S2.5): what HELIOS publishes per run — MAHC or vote-only. The
+-- terminal list is the one scored (HR@k); first_* is the first publication
+-- (TTT). Written only for runs whose verdicts are stored.
+CREATE TABLE IF NOT EXISTS fusion_row (
+    run_id               VARCHAR     NOT NULL PRIMARY KEY,
+    incident_id          VARCHAR     NOT NULL,
+    variant_config_hash  VARCHAR     NOT NULL,
+    method               VARCHAR     NOT NULL,
+    ranked_json          VARCHAR     NOT NULL,
+    scores_json          VARCHAR     NOT NULL,
+    confidence           DOUBLE,
+    fused_sigma          DOUBLE,
+    state                VARCHAR     NOT NULL,
+    first_ms             DOUBLE      NOT NULL,
+    first_ranked_json    VARCHAR     NOT NULL,
+    terminal_ms          DOUBLE,
+    non_converged        BOOLEAN     NOT NULL,
+    evidence_json        VARCHAR     NOT NULL
+);
+
+INSERT INTO schema_tag (tag)
+VALUES ('fusion-v1')
+ON CONFLICT (tag) DO NOTHING;
+
+-- narrative-v1 (S2.8): the narrative of a stored run — template or LLM, its
+-- slots with their claims, retries and fallbacks, and the narrator's tokens.
+CREATE TABLE IF NOT EXISTS narrative_row (
+    run_id               VARCHAR     NOT NULL PRIMARY KEY,
+    incident_id          VARCHAR     NOT NULL,
+    narrator             VARCHAR     NOT NULL,
+    slots_json           VARCHAR     NOT NULL,
+    rendered             VARCHAR     NOT NULL,
+    attempts             INTEGER     NOT NULL,
+    fallbacks            INTEGER     NOT NULL,
+    prompt_tokens        INTEGER     NOT NULL,
+    completion_tokens    INTEGER     NOT NULL,
+    wall_ms              DOUBLE      NOT NULL
+);
+
+INSERT INTO schema_tag (tag)
+VALUES ('narrative-v1')
+ON CONFLICT (tag) DO NOTHING;

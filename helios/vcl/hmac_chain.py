@@ -60,6 +60,7 @@ _ANCHOR_VERSION = 1
 _ANCHOR_SIGNATURE_KEY = "anchor_signature"
 _ANCHOR_ED25519_FIELD = "anchor_ed25519_signature"
 _ANCHOR_DIGEST_KEY = "log_sha256"
+_ANCHOR_UNSIGNED_KEY = "anchor_unsigned"
 
 
 def _file_sha256(path: Path) -> str:
@@ -98,6 +99,10 @@ class HMACChainedLog:
     LOG_KIND: str = "generic"
     # First entry number (1-based) that must carry an Ed25519 signature; None = HMAC only.
     ED25519_FROM_ENTRY: int | None = None
+    # Anchor-only Ed25519 (S2.7, CoE): no per-entry signature; the anchor (with the
+    # digest of the whole file) is Ed25519-signed when a private key is loaded,
+    # else marked unsigned. Off by default: the deviation log is unchanged.
+    ANCHOR_ED25519: bool = False
 
     def __init__(
         self,
@@ -174,12 +179,16 @@ class HMACChainedLog:
     def _write_anchor(self, entries: int, head_signature: str) -> None:
         fields = self._anchor_fields(entries, head_signature)
         anchor: dict[str, Any] = {**fields, _ANCHOR_SIGNATURE_KEY: self._sign(fields)}
-        if self._ed25519_due(entries):
+        if self._ed25519_due(entries) or (
+            self.ANCHOR_ED25519 and self._ed_private is not None
+        ):
             if self._ed_private is None:
                 raise ValueError("Ed25519 private key required to anchor this log.")
             signed = {**fields, _ANCHOR_DIGEST_KEY: _file_sha256(self._path)}
             anchor[_ANCHOR_DIGEST_KEY] = signed[_ANCHOR_DIGEST_KEY]
             anchor[_ANCHOR_ED25519_FIELD] = sign_fields(self._ed_private, signed)
+        elif self.ANCHOR_ED25519:
+            anchor[_ANCHOR_UNSIGNED_KEY] = True
         tmp = self.anchor_path.with_name(self.anchor_path.name + ".tmp")
         tmp.write_text(json.dumps(anchor, sort_keys=True, indent=2) + "\n", "utf-8")
         os.replace(tmp, self.anchor_path)
@@ -201,6 +210,7 @@ class HMACChainedLog:
             return f"Anchor {self.anchor_path.name} is unreadable or unsigned."
         claimed_ed = anchor.pop(_ANCHOR_ED25519_FIELD, None)
         claimed_digest = anchor.pop(_ANCHOR_DIGEST_KEY, None)
+        anchor.pop(_ANCHOR_UNSIGNED_KEY, None)
         if not hmac.compare_digest(self._sign(anchor), str(claimed_sig)):
             return f"Anchor {self.anchor_path.name} signature does not verify."
         if anchor.get("log_kind") != self.LOG_KIND:
@@ -220,6 +230,16 @@ class HMACChainedLog:
                 f"ending {head_signature[:12]}... (entries removed, rolled back, "
                 "or appended without the anchor)."
             )
+        if self.ANCHOR_ED25519 and claimed_ed is not None:
+            if claimed_digest != _file_sha256(self._path):
+                return "Anchor log_sha256 does not match the log file bytes."
+            signed = {**anchor, _ANCHOR_DIGEST_KEY: claimed_digest}
+            if self._ed_public is not None and not verify_fields(
+                self._ed_public, signed, str(claimed_ed)
+            ):
+                return (
+                    f"Anchor {self.anchor_path.name} Ed25519 signature does not verify."
+                )
         if self._ed25519_due(entries):
             if claimed_ed is None or claimed_digest is None:
                 return f"Anchor {self.anchor_path.name} lacks its Ed25519 signature."
@@ -256,18 +276,44 @@ class HMACChainedLog:
         """Override to verify post-sign fields; return an error message or None."""
         return None
 
+    def _signing_refusal(self, entries: int) -> str | None:
+        """Anchor-only mode signs monotonically per file (S2.7 review I-1): a
+        keyless append must not unsign a signed file, and a keyed append must not
+        sign bytes that were written without a signature."""
+        if not self.ANCHOR_ED25519 or not self.anchor_path.exists():
+            return None
+        anchor = json.loads(self.anchor_path.read_text(encoding="utf-8"))
+        signed = _ANCHOR_ED25519_FIELD in anchor
+        if signed and self._ed_private is None:
+            return "the anchor is Ed25519-signed and no private key is loaded."
+        if not signed and entries > 0 and self._ed_private is not None:
+            return (
+                "the log is unsigned; signing it now would cover entries written "
+                "without a signature (use a new file)."
+            )
+        return None
+
+    def check_append(self) -> tuple[int, str]:
+        """Raise TamperDetectedError unless the next append is allowed; return
+        the entry count and head signature."""
+        entries, prev_sig = self._tail()
+        if err := self._check_anchor(entries, prev_sig) or self._signing_refusal(
+            entries
+        ):
+            raise TamperDetectedError(f"Refusing to append: {err}")
+        return entries, prev_sig
+
     def append(self, fields: dict[str, Any]) -> dict[str, Any]:
         """Validate required fields, build signed envelope, append JSONL line."""
         if missing := [f for f in self.REQUIRED_FIELDS if not fields.get(f)]:
             raise ValueError(f"Missing required fields: {missing}")
-        entries, prev_sig = self._tail()
+        entries, _ = self._tail()
         if self._ed25519_due(entries + 1) and self._ed_private is None:
             raise ValueError(
                 f"Entry {entries + 1} must be Ed25519-signed "
                 f"(from entry {self.ED25519_FROM_ENTRY}); private key not loaded."
             )
-        if err := self._check_anchor(entries, prev_sig):
-            raise TamperDetectedError(f"Refusing to append: {err}")
+        entries, prev_sig = self.check_append()
         entry: dict[str, Any] = {
             "timestamp_utc": dt.datetime.now(dt.UTC).isoformat().replace("+00:00", "Z"),
             "commit_sha": _resolve_commit_sha(),
@@ -369,7 +415,7 @@ def verify_public(
     anchor_path: Path,
     public_key: Ed25519PublicKey,
     *,
-    from_entry: int,
+    from_entry: int | None,
     log_kind: str,
 ) -> tuple[bool, str]:
     """Verify a log with the Ed25519 public key only (no HMAC secret).
@@ -377,12 +423,20 @@ def verify_public(
     Checks that the signed anchor's log_sha256 matches every byte of the log
     (so entries before ``from_entry``, which carry only HMAC signatures, are
     covered too), the anchor's entry count and head, the prev_signature links,
-    and each entry's own Ed25519 signature from ``from_entry`` on.
+    and each entry's own Ed25519 signature from ``from_entry`` on. With
+    ``from_entry=None`` (anchor-only logs such as the CoE) no entry carries its
+    own signature: the signed digest covers every byte. An anchor written
+    without the key is reported unsigned, never verified.
     """
     if not anchor_path.exists():
         return False, f"Anchor {anchor_path.name} missing."
     try:
         anchor = json.loads(anchor_path.read_text(encoding="utf-8"))
+        if anchor.get(_ANCHOR_UNSIGNED_KEY):
+            return False, (
+                f"Anchor {anchor_path.name} is unsigned: written without the "
+                "Ed25519 private key."
+            )
         claimed_ed = anchor.pop(_ANCHOR_ED25519_FIELD)
         anchor.pop(_ANCHOR_SIGNATURE_KEY, None)
     except (json.JSONDecodeError, KeyError, AttributeError):
@@ -402,7 +456,7 @@ def verify_public(
         count += 1
         if entry.get("prev_signature") != expected_prev:
             return False, f"Line {lineno}: prev_signature link broken."
-        if count >= from_entry:
+        if from_entry is not None and count >= from_entry:
             claimed = entry.get(_ED25519_FIELD)
             body = {k: v for k, v in entry.items() if k != _ED25519_FIELD}
             if claimed is None or not verify_fields(public_key, body, str(claimed)):
@@ -410,6 +464,11 @@ def verify_public(
         expected_prev = str(entry.get("signature"))
     if (anchor.get("entries"), anchor.get("head_signature")) != (count, expected_prev):
         return False, "Anchor entry count or head does not match the log."
+    if from_entry is None:
+        return True, (
+            f"Verified with the public key: {count} entries "
+            "(all bytes covered by the signed anchor)."
+        )
     if count < from_entry:
         return (
             False,

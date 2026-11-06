@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -80,11 +81,13 @@ def test_lpipe_episode_reports_every_call() -> None:
     from tests.pipelines.l_pipe.test_pipeline import OTEL, FakeClient, _run, _window
 
     class LogFails(FakeClient):
-        def generate(self, prompt: str, timeout_s: float) -> OllamaGenerateResult:
+        def generate(
+            self, prompt: str, timeout_s: float, schema: dict[str, Any] | None = None
+        ) -> OllamaGenerateResult:
             if "Evidence, log changes" in prompt:
                 self.calls += 1
                 return _result("{}", 90, 20, 300)
-            return super().generate(prompt, timeout_s)
+            return super().generate(prompt, timeout_s, schema)
 
     out = _run(_window(OTEL), LogFails())
     assert out["status"] == "ranked"
@@ -92,3 +95,30 @@ def test_lpipe_episode_reports_every_call() -> None:
     assert (out["llm_calls"], out["llm_failed_calls"]) == (3, 0)
     assert out["prompt_tokens"] == 90 + 2 * 50
     assert out["gpu_ms"] == pytest.approx(300 + 2 * 90)
+
+
+def test_client_sends_a_schema_as_the_output_format() -> None:
+    # S2.8 round 2: the narrator constrains its answer with a JSON schema;
+    # every other call keeps plain JSON mode.
+    body = {"response": "{}", "prompt_eval_count": 1, "eval_count": 1}
+    schema = {"type": "object", "properties": {"claims": {"type": "array"}}}
+    with patch("requests.post") as post:
+        post.return_value = MagicMock(status_code=200, json=lambda: body)
+        OllamaClient("http://x", "m").generate("p", timeout_s=1, schema=schema)
+        OllamaClient("http://x", "m").generate("p", timeout_s=1)
+    sent = [c.kwargs["json"]["format"] for c in post.call_args_list]
+    assert sent == [schema, "json"]
+
+
+def test_gateway_passes_a_schema_only_when_given() -> None:
+    seen: list[dict[str, object]] = []
+
+    class Client:
+        def generate(self, prompt: str, timeout_s: float, **kw: object) -> Any:
+            seen.append(kw)
+            return _result("{}", 1, 1, 1)
+
+    gateway = LLMGateway(Client())  # type: ignore[arg-type]
+    gateway.generate("p", timeout_s=1)
+    gateway.generate("p", timeout_s=1, schema={"type": "object"})
+    assert seen == [{}, {"schema": {"type": "object"}}]

@@ -1,0 +1,189 @@
+# S2.8 — Narrative Engine with grounding verifier · design
+
+**Task:** S2.8 (tracking S2-M7-ENG08) · **Date:** 2026-10-31 · **Status:** approved 2026-10-31 (builder check done; N-j added after the whole-branch review); PR 1 and PR 2 built, deviation entries 65–68; narrator frozen · **Depends on:** S2.7 (CoE entry and evidence namespace, entry 64), S2.5 (fused verdict), S2.3 (L-pipe model, cache, aliases, entries 57–58) · **Owner decisions:** marked *owner* (2026-10-31)
+
+**Flag:** `VCLFlag.COE_NARRATIVE` gates the Narrative Engine (OFF = the ranked list only, HELIOS-noExpl). Which narrator writes is decided by `l2c_llm`: on → the LLM narrator; off → the template narrator. The verifier runs on every narrative.
+
+## 1. Intent
+
+The CoE entry (S2.7) records every decision and the evidence behind it; nobody reads JSON at 3 a.m. S2.8 turns one entry into a short incident narrative an on-call engineer can trust: what happened (story), where the pipelines disagree and why (contradictions), and what to check next (verification steps). It is IN1, evidence-grounded narratives.
+
+The owner's rule *(owner)*: **every displayed claim cites evidence that exists and supports it.** A deterministic verifier enforces this by code; nothing unsupported reaches the engineer.
+
+## 2. Decisions already made
+
+| # | Decision | Who |
+|---|---|---|
+| N-a | **HELIOS-noLLM, HELIOS-D and HELIOS-G use a deterministic, rule-based template narrator; an LLM never writes a narrative for them.** An LLM narrator there would contaminate the baseline (S2-BL-15) | owner, 2026-10-31 |
+| N-b | **Typed claims, free wording under containment.** The narrator emits typed claims and writes each sentence itself; the verifier checks the typed fields against the cited items and enforces containment on the sentence: only the claim's services may be named (caller and callee for call-structure claims); every number must be in a cited item; direction words must agree with the claim's direction | owner, 2026-10-31 |
+| N-c | **Log claims carry a verbatim snippet** that must occur in the cited `L:<worker>:<line>` text. **Call-structure claims carry caller and callee**, checked against the directed edge in the cited G-pipe item | owner, 2026-10-31 |
+| N-d | **Failure handling per slot, never by cutting sentences:** a slot with a rejected claim gets one retry at temperature 0 with the rejection reasons in the prompt; if it fails again the slot is replaced by the template narrator's text for that slot and a fallback event is logged | owner, 2026-10-31 |
+| N-e | **Raters label the displayed (post-verifier) narrative; H_fact is judged against the cited evidence only.** The ground-truth clause is removed from H_fact (metric contract §5, task S2.9 step 1): a wrong culprit is a ranking error (HR@k), not a hallucination. Raters never see the fault label. Deviation entry and OSF addendum before any confirmatory narrative (§6) | owner, 2026-10-31 |
+| N-f | **Numbers are normalised before comparison:** percent ↔ fraction, ms ↔ s, "~" / "about" allowed; equal within ±1% relative or at the precision the sentence states | owner, 2026-10-31 |
+| N-g | **Verification steps** are accepted only if: the target is a fused top-3 suspect, or its caller or callee through a cited G-pipe edge; any time lies inside the incident window around the trigger; the verb is from a frozen read-only list (query, inspect, verify, check, filter); the modality matches the cited item (D → metric, L → log or trace, G → edge or connection); at least one citation. Fallback: the template's step for the top suspect | owner, 2026-10-31 |
+| N-i | **Raw before/after levels in the evidence.** D-pipe's `coe_evidence` gains, per top-5 service and channel, the median level before and after the trigger with its unit, from the series D-pipe already reads; additive (ranking, μ, σ, decision hash unchanged and re-pinned); the CoE items `D:<svc>:<channel>` carry them, so sentences can state concrete levels and N-f's normalisation applies | owner, 2026-10-31 |
+| N-j | **Closed vocabulary** (after the whole-branch review showed containment alone lets negations, invented causes and reversed edges through): the LLM still writes each sentence, but every word must come from a frozen per-kind word list (connectives, synonyms, the claim's own service names, numbers from the claim's own item, its units); the sentence must agree with the claim's fields (rank word, channel, direction, caller before callee, pipeline name); a log claim quotes its snippet in double quotes; no line breaks, brackets or citation IDs inside a sentence. A shift claim needs its own `D:<svc>:<channel>` item (the log-line path of §5.2 is dropped). The lists are frozen with the prompt (entry C) | owner, 2026-10-31 |
+| N-h | **Machine verification report** beside the rater labels, with no human labour: first-pass acceptance rate, rejections by failure mode, retry success, slot fallback rate, per variant | owner, 2026-10-31 |
+| N-k | **Pick and order (option (b))**, after prompt rounds 1-2 (slot fallback 99-100%, then 28-66%): the LLM narrator chooses and orders claims from a code-written candidate list (every claim the CoE entry supports, in the template's wording, each accepted by the verifier); code writes every sentence; the model answers with candidate IDs under a JSON schema listing only those IDs (at most 5 story, 3 contradictions, max_steps verification). Supersedes N-b's "the LLM emits the sentence" and makes N-j's word rules hold by construction; N-d retry and fallback unchanged (entry 67) | owner, 2026-11-01 |
+
+Carried from S2.3 §5.5: the contradiction list is computed by code (the narrator explains it, never finds it); `primary_culprit`, μ, σ and confidence are filled by code; the narrator never changes a ranking or states a number the code did not supply.
+
+## 3. Goals, non-goals, anti-goals
+
+**Goals.** A template narrator; an LLM narrator on the frozen L-pipe model; one typed-claim schema for both; a deterministic claim parser and verifier; slot retry and fallback; the narrative stored with the run and in its CoE entry; the verification report; a dev-split prompt round and a frozen narrator prompt.
+
+**Non-goals.** The rating rubric and labelling tool (S2.9); remediation that changes a system (Stage B, L4); a UI beyond rendered text; changing any ranking, fusion or confidence.
+
+**Anti-goals** — it fails even if it runs:
+
+- An LLM call in a run with `l2c_llm` off (N-a). A test asserts that noLLM, D and G make no model call.
+- A displayed claim the verifier did not accept, or a displayed sentence without a citation.
+- A number, service, direction or log text in a displayed sentence that the cited items do not hold.
+- A narrative that reads a ground-truth field, fault label or injection time.
+- A narrator output that changes the ranking, μ, σ, confidence or state.
+- Template text that is recognisable by style at a glance — it uses the same sentence shapes the LLM prompt asks for (S2.9 blinding).
+
+## 4. Constraints
+
+- The narrator reads **only the CoE entry** of the run (S2.7 C-b: the single citation source), plus the window's start time for wall-clock rendering. It never reads raw telemetry or the store.
+- Citations use the S2.7 IDs (`D:cart:latency`, `G:payment:wait_from`, `L:log:L12`). L-pipe worker claims (`L:<worker>:claim<n>`) are **not citable**: they are model output, not evidence *(my call: citing them would let one model's claim ground another's)*.
+- Same model, digest and cache as L-pipe (llama3.1:8b, `46e0c10c039e…`, `ResponseCache`); one call per slot attempt, one at a time; the narrator prompt is frozen by SHA. The retry prompt includes the rejection reasons, so it is a deterministic function of the first answer and is cached like any call.
+- Real service names in the narrator prompt and output *(my call: the CoE entry and the engineer use real names; the leak-sensitive inputs — fault names, case names, injection time — are already absent from the entry, and the alias layer protected L-pipe's ranking, which the narrator cannot change)*.
+- Narrator tokens count in CpR (token component); narrator time is recorded but does not count in TTT, which is first publication of the ranking (entries 46, 60).
+- Never read pool data before `build-freeze`; prompt development uses the build dev split only.
+
+## 5. Design
+
+### 5.1 Output
+
+A narrative has three slots, each a list of typed claims, plus the code-filled header:
+
+- **header** (code only): fused top-3 with confidence and state; never written by a narrator.
+- **story**: what happened, in order.
+- **contradictions**: one item per entry in the CoE `F.disagree` list.
+- **verification**: up to 3 read-only checks.
+
+Stored as JSON (claims with kinds, fields, cites, sentence, verdict) and rendered text (sentences with their citation IDs in brackets).
+
+### 5.2 Claim kinds
+
+| Kind | Fields | Accepted when |
+|---|---|---|
+| `shift` | service, channel (error / latency / resource), direction (up / down), cites | a cited `D:<service>:<channel>` item exists whose levels (or shift) go that way (N-j: no log-line path) |
+| `call_structure` | caller, callee, feature (wait / lead / ghost edge), cites | a cited `G:<callee>:wait_from` (or `leads`, `ghost_edges`) item holds that directed edge |
+| `log_message` | service, snippet, cites | the snippet occurs verbatim in a cited `L:<worker>:<line>` text of that service |
+| `ranking` | service, rank, cites | the service holds that rank in the fused ranking; cites the `F` step |
+| `contradiction` | pipeline, service, cites | the pipeline is in `F.disagree` with that top-1 service; cites at least one item of that pipeline for that service |
+| `verification_step` | target_service, action_verb, modality, time window, cites | N-g |
+
+For every kind, the sentence passes containment (N-b, N-f). Direction words come from a small frozen list per direction; the time window and every wall-clock time in a sentence must lie inside the incident window around the trigger.
+
+### 5.3 Template narrator
+
+Deterministic code over the CoE entry, emitting the same typed claims:
+
+- story: the top suspect's rank claim; its largest D-pipe channel shift; its G-pipe wait or lead edge if present; its first cited log line (verbatim snippet) if present; then the same for suspects 2–3 where they have evidence;
+- contradictions: one claim per `F.disagree` pipeline, citing that pipeline's strongest item for its top-1;
+- verification: one step per modality present for the top suspect, window = the incident window.
+
+Sentence shapes match what the LLM prompt asks for. The template output passes the verifier by construction (a test asserts it on every build case).
+
+### 5.4 LLM narrator
+
+One call per slot, the prompt holding the CoE entry's items, the code-filled header, the disagree list and the claim schema; JSON out. Parse → verify → on any rejection, one retry with the reasons → on a second rejection, the template slot (N-d). A parse failure is a rejection of the whole slot. No ranking, empty CoE items or a gated-off narrator → template only.
+
+### 5.5 Verifier and report
+
+A pure function `verify(claim, entry, window) → (accepted, reason)`; failure reasons are a closed set (`missing_cite`, `unknown_id`, `kind_mismatch`, `wrong_direction`, `wrong_edge`, `snippet_not_found`, `foreign_service`, `number_not_in_evidence`, `time_out_of_window`, `verb_not_allowed`, `modality_mismatch`, `rank_mismatch`, `not_in_disagree`, `schema`). The verification report (N-h) is computed from stored narrative rows.
+
+### 5.6 Storage and the CoE entry
+
+A `narrative_row` table (run, narrator kind, slots JSON, rendered text, attempts, fallbacks, tokens); the narrative is added to the run's CoE entry as a step `N` before the entry is appended, so the displayed narrative is part of the signed record and the verifier can be re-run from the ledger alone.
+
+### 5.7 Prompt development and freeze
+
+Like S2.3: at most 3 prompt rounds on the build **dev** split (`split_cases`), measured by the verification report only (no ground truth); the owner chooses; a final run on the held-out split; the prompt SHA is frozen in a deviation entry. A provisional prompt is refused in confirmatory runs.
+
+### 5.8 Builder-check answers (2026-10-31)
+
+- **G-pipe edges.** Call direction is caller → callee throughout. `G:<s>:wait_from` maps caller → wait share for edges into `s` (caller = the key, callee = `s`; the share is citable as a number). `G:<s>:leads` lists callers whose shift `s` preceded (edge caller → `s`; the claim says `s` moved first). `G:<s>:ghost_edges` holds `[caller, callee]` pairs as stored.
+- **Raw levels (N-i).** Units come from a fixed map per metric source, recorded with the value: OTel span-metric latency in ms; error channel as errors per step (a count, not a rate); RCAEval and resource series in the dataset's own unit, labelled by metric name (e.g. `latency-90`, `cpu`) when no unit is known — the narrator then states the value with the metric name and no converted unit. N-f's ms ↔ s and percent ↔ fraction apply only where the unit says so.
+- **Shift direction** is the sign of the cited channel's value; for `resource`, up = more use (CPU, memory, connections). Only the three channel items (error, latency, resource) ground a `shift` claim; score, propagation and final are citable for `ranking` claims only.
+- **Incident window.** The S2.7 `T` step gains `window_start` and `window_end` (ISO, from the TelemetryWindow) so the verifier can be re-run from the ledger alone; times in sentences are wall-clock UTC inside that window. These are capture bounds, not fault data (the leakage test still checks for injection times) — an additive CoE field recorded in entry B.
+- **Order in the runner.** Build entry → narrate (N added to the entry) → store rows → append. A model error inside the narrator never fails the run: the slot falls back to the template. Step `N` carries `cost` (narrator prompt and completion tokens, replayed from the cache, so deterministic) and `measured` (narrator wall time).
+- **Slots and calls.** A slot with nothing to say (empty disagree list; no evidence beyond the header) makes no model call: 1–3 calls per narrative plus retries. Retry and fallback apply to the whole slot (N-d), so a slot is all-LLM or all-template.
+- **Variants.** Every variant with `coe_narrative` on gets a narrative (all except noExpl); the LLM narrator runs iff `l2c_llm` is on, even when L-pipe failed or abstained (it then has no `L:` items to cite). Tests cover noLLM, D, G (no model call), Full, LLM-only and noExpl.
+- **Unchanged ranking** is structural: the header is filled by code from `F`, and nothing reads narrator output back into the verdict, fusion or scoring path (test: fused row and verdict hashes equal with the narrator on and off).
+- **Style blinding** is checked, not assumed: both narrators render through one renderer (same sentence slots and citation format); the report includes sentence-length and claims-per-slot distributions per narrator so a style gap is visible before S2.9.
+- **Frozen lists.** Direction words, the verb list and the numeric tolerance live in `data/frozen/narrator_params.json`, hashed and frozen with the prompt SHA in entry C; a provisional file is refused in confirmatory runs like the other parameter files.
+
+## 6. Protocol records
+
+- **Entry A (before merge of PR 1): H_fact definition (N-e).** Clause: metric contract §5; task S2.9 step 1; Ch3 A-H7. Change: remove "and — for root-cause claims — agrees with the ground truth"; a claim is supported iff it cites an existing CoE item that substantiates its entity, direction, magnitude (within tolerance) and, for log claims, its verbatim snippet; diagnostic accuracy is measured by HR@k only; raters label the displayed narrative and never see the fault label. Analytic consequence: A-H7's measure changes; Full and noLLM are both verifier-checked, so their H_fact are expected to be close and the predicted direction may not hold; the sign test runs as registered; OSF addendum line required before any confirmatory narrative (S2-BL-05).
+- **Entry B (before merge of PR 1): the narrator rules** — N-a…N-i, claim kinds, citable items, real names, CpR/TTT treatment, storage in the CoE entry (step `N`), the additive CoE fields (D-pipe raw levels; `T.window_start`, `T.window_end`), frozen narrator parameter file.
+- **Entry C (PR 2): narrator prompt frozen** (SHA, round chosen, report figures).
+
+## 6a. Size and tracking
+
+The plan gives 2½ days; with typed claims, containment, retry/fallback, raw levels and a prompt round my estimate is **4½**. Row S2-M7-ENG08. Two PRs: (1) schema, template narrator, verifier, LLM narrator with a provisional prompt, storage, report; (2) prompt rounds and freeze.
+
+## 7. Done when
+
+- Every displayed claim cites an existing item and was accepted by the verifier (test over all build cases).
+- noLLM, D and G make no model call (test); noExpl shows the ranked list only.
+- The template narrative passes the verifier on every build case.
+- Each failure reason has a test that produces it; containment catches a foreign service, an unsupported number and a wrong direction word.
+- Retry and fallback paths tested with a fake model; the narrative is in the CoE entry and the ledger verifies.
+- Verification report produced on the dev and held-out splits; prompt frozen with an entry.
+
+## 8. Calls I made (owner to check)
+
+1. Worker claims (`L:<worker>:claim<n>`) are not citable; only evidence lines and numbers.
+2. Real service names in the narrator prompt (no aliases).
+3. Narrator tokens count in CpR; narrator time does not count in TTT.
+4. The narrative is stored in the CoE entry as step `N` (part of the signed record) and in a `narrative_row` table.
+5. One LLM call per slot (three per narrative, plus retries).
+6. No fused ranking → template only, no model call.
+7. Up to 3 verification steps; story covers suspects 1–3 only.
+8. Prompt rounds measured by the verification report, never by ground truth.
+
+## 9. Left to the builder
+
+Exact template sentences (within the shapes the prompt asks for); the direction word lists; the prompt text of round 1; table column names; how rendered citations look.
+
+## 10. Results
+
+**PR 1 (engine), built 2026-10-31** on branch `s2/narrator` (commits `ca8f4f3`..`2f6ef51`); deviation entries 65 (H_fact against cited evidence, N-e, `405f0b659017`) and 66 (narrator rules, closed vocabulary, additive CoE fields, `907b88c2a71c`).
+
+- Whole-branch review (fresh reviewer): 5 Critical and 8 Important. The Criticals showed that containment alone let negations, invented causes and reversed edges through; the owner chose a closed vocabulary (N-j), and every finding was fixed test-first (33 adversarial cases in `tests/narrative/test_verifier_adversarial.py`, plus field-agreement tests). A ninth fix found during the pass: `bin/mahc_build_run.py`'s cache-only client now lets the narrator fall back to the template.
+- Template narrator on every build case (63 OTel + 495 RCAEval, HELIOS-Full and HELIOS-noLLM): 1,116 CoE entries, 10,355 claims, 0 rejected.
+- Ranking, μ, σ and decision hash unchanged (D-pipe golden test); full local gate green, coverage 95.84%.
+- Deferred minors: digest call before checking whether any slot needs the model; the extra-steps index counts in `accepted_first`; the no-split levels test covers `trigger=None` only; relative offsets ("5 minutes after") are rejected.
+
+**PR 2 (prompt rounds and freeze), 2026-11-01** on branch `s2/narrator-freeze` (commits `edb1394`..`adb2497`); deviation entry 67 (`529bde17dad0`). Build tool `bin/narrator_build_run.py` (dev split per round, held-out once for the chosen round with matching prompt and parameters, no ground truth read, L-pipe answers from the cache only); reports in `docs/sprints/s2-reasoning/calibration/narrator_round{1,2,3}.json` and `narrator_final.json`.
+
+| Round (dev: 32 OTel + 248 RCAEval) | First-draft claims accepted (OTel / RCAEval) | Slots replaced by the template | Notes |
+|---|---|---|---|
+| 1: LLM writes, closed vocabulary | 12% / 3% | 99% / 100% | 23 model errors (timeouts on long answers); retries fixed about 1% |
+| 2: + field-level output schema, at most 3 claims, example shapes | 83% / 58% | 28% / 66% | numbers, words, contradiction wording the main rejections; retries fixed at most 4% |
+| 3: pick and order (N-k) | 100% / 100% | 0% / 0% | no rejections, no model errors; about 35 minutes |
+| Held-out, round 3 (31 + 247) | 100% / 100% | 0% / 0% | run once, same prompt and parameters |
+
+- Frozen: prompt SHA `e2d2242f…9aab` (`PROVISIONAL = False`), `narrator_params.json` `provisional: false`, hash `b64405d8…f1d4` (identical to the rounds' `a8d984af…90ad` except the flag; `test_narrator_frozen_from_round_3`).
+- Bug found in the round 3 smoke test and fixed test-first, both narrators: log claims and log checks could quote an L-pipe metric or trace digest line as "logged"; they now cite only L-pipe log lines (`L:log:…`).
+- Build-wide after the fix: 1,116 CoE entries, 22,091 template and candidate claims, 0 rejected.
+- Style (held-out): Full 7.1-8.2 words per sentence and 3.4-3.6 claims per slot; noLLM 6.3-7.6 words and 3.5-4.3 claims. Full and noLLM now share the wording; they differ in which supported claims are shown and their order.
+- **Caveat to N-h:** in pick mode the model's answer is constrained to candidate IDs, so 100% first-pass acceptance and 0% fallback hold by construction. They measure schema compliance, are not comparable with rounds 1-2, and are not evidence of grounding; grounding rests on the verifier, which accepts every candidate before it is offered.
+
+**Whole-branch review of PR 2 (fresh reviewer), entry 68 (`da4f44b5cf0b`): 1 Critical, 4 Important, all fixed test-first**
+
+1. *Log quotes were digest wording:* L-pipe log lines are digests (`<svc> log template "<text>": b lines before trigger, a after`, or `<svc> N error-level lines after trigger, M before`). Template lines were skipped (they contain quotes), so every quote came from a severity-count line. A log quote must now be a whole-word run of the template text inside the quotes (`log_template_text`); severity lines are never quoted. Build-wide, HELIOS-Full log quotes went from 12 (OTel) and 0 (RCAEval), all digest wording, to 97 and 310 quotes of logged templates.
+2. *Prompt inputs outside the SHA:* task texts, pick limits, candidate and retry lines and the schema shape are pinned by `test_frozen_prompt_inputs_outside_the_template_are_pinned`; the SHA definition is unchanged.
+3. *Duplicate candidate sentences* (a ghost edge between two top-3 services): deduplicated; wait shares that round to 0% are no longer stated.
+4. *Candidates cover the template* is now tested on staged runs; an empty candidate list beside a template slot is a counted fallback.
+5. The leak test now fails if the narrator makes no call, and checks narrator prompts for dates.
+
+Also fixed: the build tool refused `--final` after the freeze (the parameters hash covers the provisional flag); it now ignores only that flag. Entry 68 corrects entry 67: noLLM, D and G have no L-pipe evidence, so the log fixes change HELIOS-Full only. Held-out re-run on the fixed, frozen narrator: 100% / 0% fallback. Build-wide: 1,116 entries, 22,484 template and candidate claims, 0 rejected.
+
+- Deferred minors: trivially small shifts offered as candidates; zero printed as "0.000"; the build tool overwrites existing reports and does not check the report's split, round or model digest; the freeze test does not compare model digests; `_call` catches only Ollama errors; no `uniqueItems` in the pick schema; an empty PREVIOUS ANSWER after a model error; verifier helpers public but unused outside it; the PR 1 minors above.
+- Owner's call (raised, not changed): Full's story is capped at 5 picks while the template's runs to 12 claims; verification candidates include suspects 2-3 though the task says "confirm the top suspect".

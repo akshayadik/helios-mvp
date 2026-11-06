@@ -1,6 +1,6 @@
 # Sprint S3 — Routing and learning · plan
 
-**Window:** 4–15 Jan 2027 (10 working days) · **Milestone:** S2-M8 · **Exit tag:** `rb-s3-exit` · **Status:** planned
+**Window:** 4–15 Jan 2027 (10 working days); may start early once the owner confirms, as S1 and S2 did (S2 closed 2026-11-01, about eight weeks ahead) · **Milestone:** S2-M8 · **Exit tag:** `rb-s3-exit` · **Status:** planned — refreshed 2026-11-06 with the S0–S2 carry-overs
 
 Task details: `docs/tracking/helios_task_breakdown.md` § Sprint S3 (authoritative).
 
@@ -10,11 +10,16 @@ The cheap-first router (IN3) sends statistical and graph evidence first and call
 
 ## Entry conditions
 
-`rb-s2-exit`: MAHC (S2.5) and cost accounting (S1.10) for the router; L-pipe (S2.3) for the Knowledge Cortex.
+| Condition | State (2026-11-06) |
+|---|---|
+| `rb-s2-exit`: MAHC (S2.5) and cost accounting (S1.10) for the router; L-pipe (S2.3) for the Knowledge Cortex | **Met** (tag on `d3c492b`, local) |
+| Local `main` pushed, `rb-s2-exit` pushed, one PR with a green CI run (S2-BL-16) | **Open** — `main` is 146 commits ahead of `origin/main`; nothing since S2.3 PR 2 has run in CI. Do this before S3 code lands, so S3 is not stacked on an unverified base |
+| Working tree clean of unregistered data | **Open** — untracked `data/otel/pilot_v3/` (3 captures) and `data/otel/ground_truth_pilot_v3.json`, 269 uncommitted lines in `experiments/experiment_log.csv`, local edits in `external/otel-demo-pinned` (`.env`, `src/flagd/demo.flagd.json`). Decide: seal and register as build data (deviation entry), or discard. Router initialisation (S3.1) must not read unsealed data |
+| S2-M8 tracking rows (ENG01–ENG05, GATE01) added | Open — added at sprint start |
 
 ## Capacity
 
-9 days of tasks in 10 working days. Only S3.1 is Tier 1.
+9 days of the breakdown's tasks in 10 working days, plus about 2 days of carried-in work (below). Only S3.1 is Tier 1. With the early-start precedent, time is not the constraint; the order of work is: entry conditions → S3.1 → carried-in engineering items → Tier 2. Any slack left over moves forward to S4, which is over by 3½ days.
 
 ## Tasks
 
@@ -26,21 +31,69 @@ The cheap-first router (IN3) sends statistical and graph evidence first and call
 | S3.4 Knowledge Cortex (SOP retrieval, build data only) | T2 | S2-M8-ENG04 | 1½ | S2.3 | Retrieval tests; pool-exclusion test |
 | S3.5 LLM-unavailable fallback | T2 | S2-M8-ENG05 | ½ | S3.1 | Route to D+G on LLM failure; covariate recorded |
 
+### Carried-in items that shape the tasks
+
+**S3.1 router**
+- **S2-BL-06, G-pipe gate loss.** The frozen disagreement gate (`DISAGREEMENT_THRESHOLD` = 0.20 in `helios/pipelines/g_pipe/gpipe_config.py`, set in May) runs G-pipe on 44 of 63 OTel cases. Ungated, G-pipe alone scored 50/63, above the fused 49. The router is where this is settled: either the router replaces the gate (G is a cheap arm, as in IN3's "statistical + graph first"), or the gate is kept with a recalibrated threshold. Both change a frozen parameter, so either needs a deviation entry. Report HR@3 for gated, ungated and routed on build data (exploratory).
+- **S2-BL-08, modest MAHC confidence.** The router's "low confidence" trigger reads MAHC's calibrated confidence, which separates confirmed from provisional cases only modestly (OTel 0.85 vs 0.72; RCAEval 0.99 vs 0.95; six distinct levels). Pick the low-confidence threshold on that distribution, not on a nominal value, and report the share of cases that reach the LLM per corpus.
+- **S2-BL-07, weak L-pipe on OTel.** With L-pipe the weakest pipeline on OTel (44/63), cheap-first routing may also be the more accurate path, not only the cheaper one. Record this as an exploratory build-data observation; do not tune the router to it.
+- **S2-BL-01 and S2-BL-03, build → pool shift.** The router is initialised on build data only (63 OTel + 495 RCAEval build cases), frozen and hashed. G-pipe has never seen RCAEval with traces, so the routed-arm split by G participation is pre-registered in the OSF addendum (below), not discovered on the pool.
+- **S2-BL-13, timing.** The routed arm changes when the LLM starts. Record each run's arm and the time each pipeline starts, so TTT can be recomputed when S4's scoring path adds graph-build time.
+- **Price book (S1 carry-over).** The router's cost term reads price-book-v2's AWS primary profile (verified 2026-10-27). Hash the profile into the router parameters; the unverified GCP and Azure profiles are sensitivity analyses only and must not feed routing.
+
+**S3.4 Knowledge Cortex**
+- **S2-BL-07.** The log digest is often empty after the trigger. Check whether SOP retrieval helps the log worker on build data; any gain is exploratory and does not change the frozen L-pipe prompts without an entry.
+
+**S3.5 LLM-unavailable fallback**
+- **S2-BL-17.** Cache-only reruns need `data/cache/lpipe_cache.sqlite`, the pinned llama3.1:8b digest and a local Ollama. A cache miss with Ollama down is exactly the fallback case: test that it routes to D+G and records the covariate, without writing to the cache.
+
+### Engineering items carried in (about 2 days, after S3.1)
+
+| Item | Source | Done when |
+|---|---|---|
+| Fallback trigger time uses the window peak (non-causal, so TTCD/TTT look ahead); D-pipe propagation inert on build data; scipy `ConstantInputWarning` silenced only in tests | S2-BL-12 | Causal fallback (deviation entry, since the detector is frozen) or documented as a limitation; dead propagation decided (keep behind `dpipe_propagation`, or record); warning handled in code |
+| Deferred review minors: vote-only score scale, first-publication state not stored, either-state runner test, unseen-pipeline prior, empty `BuildCase` votes, masking edge cases | S2-BL-18 | Tests first; each fixed or noted in the backlog |
+| CoE ledger minors: verdict ref is the decision hash, model-hash fallback to the expected digest, G/L evidence refs | S2-BL-20 | Tests first; each fixed or noted |
+| `bin/pin-otel-demo.sh` uses GNU `sed -i` (line 51), which fails on macOS | S1 carry-over | Portable form; script runs on the M5 Pro |
+| Four May-plan rows S1-M4-RES01, RES02, EVAL01, GATE01 still PLANNED | Tracker housekeeping | Each DEFERRED with a deviation reference to the re-baselined plan (D11 / e2e plan) |
+
+Signal-type classification (S2-BL-09: 54% of OTel cases unclassified) is a refit of MAHC's priors. It stays in the backlog unless the router needs it, and is done only with a new entry before any refit.
+
 ## Owner items
 
-Finish S2.9 rater training if it ran over (target: κ ≥ 0.7 by end of January).
+| Item | Source | Needed by |
+|---|---|---|
+| Rater 2 and adjudicator recruited; IRB submitted (S0.11 L1–L3, row S2-M5-RES05) | Carried since S0 | 30 Nov 2026 |
+| S2.9 rater training to κ ≥ 0.7, rubric freeze (hash), S2.9 deviation entry; row S2-M7-RES01 DONE. Owner steps first: `label_server.py keygen > .env.labelling` (back it up), add R1, R2 and the adjudicator, open the tunnel | S2 exit §5 | End of January 2027, before S5 |
+| Back up `.env`, `.env.labelling`, `data/cache/lpipe_cache.sqlite` and `data/labelling/build` | S2-BL-17, S2-BL-19 | Now |
+| Chair call, with a call-reference doc and outcomes table prepared first. Agenda: opportunity cost (5,600 per minute, sensitivity 14,056), retention and review minutes, May capture defects (T13, T17); TTT read as first publication (entry 46); A-H4 power and the ceiling (S2-BL-02); H_struct option (b) (S2-BL-14); the pool's two-worker L-pipe; **the router decision on the G-pipe gate (S2-BL-06) and the risk that cheap-first hides LLM value from A-H1/A-H2** | S1 and S2 carry-overs | Before S3.1's parameters are frozen |
+| GCP and Azure price-book profiles checked against official price lists; any changed value is a deviation entry | S1 carry-over | Before `build-freeze` |
+| Hook commands use `$CLAUDE_PROJECT_DIR` (the `cd` lock-up) — approve the change to `.claude/settings.json` | Open since S0 | Any time |
+
+## OSF addendum (drafted in S3, deposited before `build-freeze`)
+
+S3 adds the router's entries to what the addendum must cover, so the draft starts here rather than in S5:
+
+- entries 46–68 and the S3 entries (router initialisation and thresholds, the G-pipe gate decision);
+- the H_fact definition and the narrator's pick-and-order;
+- the `metric_contract.md` §9 correction;
+- S2-BL-01: an analysis split by G-pipe participation (and by routed arm);
+- S2-BL-05: every change since deposit 1 that alters what a confirmatory test measures.
 
 ## Expected deviation entries
 
-Router initialisation and thresholds (S3.1); ACP and reward parameters if built (S3.2, S3.3); Tier-2 items moved to Stage B.
+Router initialisation and thresholds (S3.1); G-pipe gate decision (S3.1, S2-BL-06); ACP and reward parameters if built (S3.2, S3.3); a causal fallback trigger time if adopted (S2-BL-12); pilot_v3 captures if registered as build data; the four May-plan rows marked DEFERRED; Tier-2 items moved to Stage B.
 
 ## Exit criteria
 
-S3.1 DONE; each Tier-2 task DONE behind its flag or recorded as moved to Stage B; full gate green; tag `rb-s3-exit`; exit report written.
+S3.1 DONE; each Tier-2 task DONE behind its flag or recorded as moved to Stage B; CI green on the pushed base and on the S3 merge; full gate green; tag `rb-s3-exit` (pushed); exit report written, with the status of every carried-in item above.
 
 ## Risks
 
 | Risk | Mitigation |
 |---|---|
-| Router tuned on data that overlaps the pool | Initialised on build data only; parameters frozen and hashed |
-| Cheap-first gate hides LLM value from A-H1/A-H2 | Routed arm recorded per run; noRouter (uniform) is a confirmatory variant |
+| Router tuned on data that overlaps the pool | Initialised on build data only; parameters frozen and hashed; pool locked until `build-freeze` |
+| Cheap-first gate hides LLM value from A-H1/A-H2 | Routed arm recorded per run; noRouter (uniform) is a confirmatory variant; raised at the chair call |
+| Router parameters tuned after inspecting build results (forking paths, S2-BL-04) | One selection run fixed in advance; any rerun is a signed entry and the withdrawn report is kept |
+| Large first CI run surfaces environment differences across 146 commits | Push before S3 code; fix CI failures in their own commits, not in S3 work |
+| Rater 2 slips past 30 Nov | S2.9 training runs alongside S3; S5 is the hard limit |

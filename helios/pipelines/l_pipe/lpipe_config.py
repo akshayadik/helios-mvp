@@ -42,7 +42,16 @@ TRACE_MIN_SPANS: int = (
 TRACE_RISE_FACTOR: int = 2
 # P2 written by the OTel capture: the only trace format build data validated (L-f).
 TRACE_VALIDATED_ROOTS: tuple[str, ...] = ("data/otel",)
-# SHA-256 of prompts/<worker>_v1.txt; None = provisional (not frozen). Frozen in
-# S2.3 PR 2 with a deviation entry; a confirmatory run refuses provisional prompts.
-WORKER_PROMPT_SHAS: dict[str, str | None] = {"metric": None, "log": None, "trace": None}
+# SHA-256 of prompts/<worker>_v1.txt, frozen with deviation entry 58 (round 1
+# prompts; build report calibration/lpipe_round3.json). A change needs a new
+# entry; a confirmatory run refuses provisional (None) or changed prompts.
+WORKER_PROMPT_SHAS: dict[str, str | None] = {
+    "metric": "99c7c10e83ec4712b91feb9d53568d500a9383fb3f666d7ce689c55723e36b6b",
+    "log": "da32233962d114908164eed606240b7fa582a4bd5b3d8fce201750464d536735",
+    "trace": "c59b9a99769cc61b8154e89f981be5df939f677d83b96c0c48ca50c389915c9e",
+}
+# Ollama digest of the served llama3.1:8b (entry 58); checked at run start.
+EXPECTED_MODEL_DIGEST: str | None = (
+    "46e0c10c039e019119339687c3c1757cc81b9da49709a3b3924863ba87ca666e"
+)
 LOG_MIN_LINES: int = 3  # lines after the trigger before a template is listed

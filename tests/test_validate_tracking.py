@@ -528,3 +528,45 @@ class TestE2E:
         )
         result = run_validator(git_repo)
         assert result.returncode == 0, result.stderr
+
+
+# --------------------------------------------------------------------------- #
+# No silent skips (S2-M7-ENG11): a malformed task row is reported, never dropped
+# --------------------------------------------------------------------------- #
+
+
+class TestNoSilentSkips:
+    def _shifted(self) -> str:
+        # The S2.3 defect: "IN_PROGRESS | DONE" (19 cells) and no trailing pipe.
+        good = make_row(
+            task_id="S2-M7-ENG03", status="IN_PROGRESS", started="2026-10-30"
+        )
+        cells = good.strip("| ").split(" | ")
+        cells.insert(10, "DONE")
+        return "| " + " | ".join(cells)
+
+    def test_row_with_wrong_cell_count_and_no_trailing_pipe_is_r0(self):
+        violations = vt.validate(make_tracker(self._shifted()), None)
+        assert [(v.task_id, v.rule) for v in violations] == [("S2-M7-ENG03", "R0")]
+
+    def test_short_row_is_r0(self):
+        short = "| S0-D1-ENG01 | 1 | ENG | Init project |"
+        violations = vt.validate(make_tracker(short), None)
+        assert [v.rule for v in violations] == ["R0"]
+
+    def test_row_present_before_and_missing_now_is_r9(self):
+        before = make_tracker(make_row(), make_row(task_id="S0-D1-ENG02"))
+        after = make_tracker(make_row())
+        violations = vt.validate(after, before)
+        assert [(v.task_id, v.rule) for v in violations] == [("S0-D1-ENG02", "R9")]
+
+    def test_row_valid_before_and_malformed_now_is_reported(self):
+        before = make_tracker(
+            make_row(task_id="S2-M7-ENG03", status="IN_PROGRESS", started="2026-10-30")
+        )
+        violations = vt.validate(make_tracker(self._shifted()), before)
+        assert ("S2-M7-ENG03", "R0") in [(v.task_id, v.rule) for v in violations]
+
+    def test_summary_rows_still_ignored(self):
+        text = make_tracker(make_row()) + "\n| 1 | 9 | 0 | 0 |\n| Total | 9 |\n"
+        assert vt.validate(text, None) == []

@@ -47,12 +47,16 @@ class OllamaClient:
         self._base_url = base_url.rstrip("/")
         self._model_name = model_name
 
-    def generate(self, prompt: str, timeout_s: float) -> OllamaGenerateResult:
+    def generate(
+        self, prompt: str, timeout_s: float, schema: dict[str, Any] | None = None
+    ) -> OllamaGenerateResult:
+        """``schema`` (S2.8 narrator) constrains the answer to a JSON schema;
+        without it the answer is free JSON (L-pipe workers)."""
         payload: dict[str, Any] = {
             "model": self._model_name,
             "prompt": prompt,
             "stream": False,
-            "format": "json",
+            "format": schema if schema is not None else "json",
             "options": {
                 "temperature": PROTOCOL_A_TEMPERATURE,
                 "top_p": PROTOCOL_A_TOP_P,

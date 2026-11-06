@@ -22,6 +22,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from helios.consensus.mahc import fuse, run_mahc, run_vote_only
 from helios.graph.khop_pruner import khop_prune
 from helios.graph.structural_bundle import apply_structural_bundle
 from helios.graph.ueg_c_builder import build_ueg_c
@@ -33,6 +34,7 @@ from helios.pipelines.g_pipe.pipeline import run_gpipe, should_run_gpipe
 from helios.pipelines.l_pipe.pipeline import run_lpipe
 from helios.schemas.telemetry import EvaluationPhase, TelemetryWindow
 from helios.telemetry.seal import write_seal
+from helios.telemetry.signal_type import signal_type
 from helios.telemetry.trigger import detect
 from helios.vcl import VCLFlag, get_variant, set_current_manifest  # noqa: F401
 
@@ -60,6 +62,10 @@ ENTRY_POINTS: tuple[Callable[..., Any], ...] = (
     apply_structural_bundle,
     khop_prune,
     detect,
+    signal_type,
+    run_mahc,
+    run_vote_only,
+    fuse,
     RunOrchestrator.__init__,
     RunOrchestrator.run,
 )
@@ -202,6 +208,7 @@ def test_orchestrator_run_never_opens_ground_truth(
         lambda **kw: {
             **kw,
             "pipeline": "lpipe",
+            "h_struct": {"outputs": 0, "failed": 0},
             "variant_config_hash": manifest_hash,
             "status": "abstained",
             "snapshot": None,
@@ -238,9 +245,9 @@ def test_lpipe_prompts_carry_no_label_or_identity(
             super().__init__()
             self.prompts: list[str] = []
 
-        def generate(self, prompt: str, timeout_s: float) -> Any:
+        def generate(self, prompt: str, timeout_s: float, schema: Any = None) -> Any:
             self.prompts.append(prompt)
-            return super().generate(prompt, timeout_s)
+            return super().generate(prompt, timeout_s, schema)
 
     captures = tmp_path / "captures"
     incident_id = stage_capture(captures)
@@ -269,7 +276,19 @@ def test_lpipe_prompts_carry_no_label_or_identity(
     ).run(captures)
 
     assert opened == []
+    # S2.8: the narrator's prompts use real names by design (s2_8 design §4);
+    # the worker prompts are the masked ones checked here.
+    narrator = [p for p in client.prompts if p.startswith("HELIOS-NARRATOR")]
+    client.prompts = [p for p in client.prompts if not p.startswith("HELIOS-NARRATOR")]
     assert len(client.prompts) == 3
+    assert narrator  # review M2: never pass because the narrator made no call
+    for prompt in narrator:
+        assert incident_id not in prompt
+        # Dates would date the incident; HH:MM inside the window is by design.
+        assert not re.search(r"\d{4}-\d{2}-\d{2}", prompt)
+        assert "data/" not in prompt and ".parquet" not in prompt
+        for flag in sorted({f.flag for f in FAULTS}):
+            assert not re.search(rf"\b{re.escape(flag)}\b", prompt, re.IGNORECASE)
     store = ResultStore(tmp_path / "results.duckdb")
     run_id = next(
         str(r["run_id"]) for r in store.fetch_all() if r["pipeline"] == "lpipe"
@@ -283,3 +302,54 @@ def test_lpipe_prompts_carry_no_label_or_identity(
         assert not re.search(r"\d{4}-\d{2}-\d{2}|\d{9,}", prompt)
         for name in names:
             assert not re.search(rf"\b{re.escape(name)}\b", prompt, re.IGNORECASE), name
+
+
+@pytest.mark.filterwarnings("ignore::scipy.stats.ConstantInputWarning")
+def test_coe_entry_carries_no_label_or_injection_time(tmp_path: Path) -> None:
+    """S2.7: the CoE ledger holds no fault name, case name, label key or injection
+    time (the ground truth is read here, by the test, only to compare)."""
+    from helios.adapters.otel_campaign import FAULTS
+    from helios.vcl.ed25519 import generate_private_key
+    from tests.pipelines.l_pipe.test_pipeline import FakeClient
+    from tests.test_runner_lpipe import KEY, stage_capture
+
+    captures = tmp_path / "captures"
+    incident_id = stage_capture(captures)
+    variant = get_variant("HELIOS-Full")
+    set_current_manifest(variant)
+    orch = RunOrchestrator(
+        manifest=variant,
+        captures_dir=captures,
+        db_path=tmp_path / "results.duckdb",
+        registry_path=tmp_path / "registry.jsonl",
+        reconciliation_path=tmp_path / "reconciliation.jsonl",
+        exclusion_ledger=MagicMock(spec=AppendOnlyLedger),
+        hmac_key=KEY,
+        lpipe_client=FakeClient(),  # type: ignore[arg-type]
+        coe_signer=generate_private_key(),
+    )
+    orch.run(captures)
+
+    text = orch.coe_path.read_text(encoding="utf-8")
+    assert text.strip()
+    # S2.8: the narrative (step N, rendered text) is scanned with the rest.
+    (entry,) = [json.loads(x) for x in text.splitlines()]
+    assert any(s["id"] == "N" and s["rendered"] for s in entry["steps"])
+    truth = json.loads(
+        (REPO / "data/otel/ground_truth_build_v3.json").read_text(encoding="utf-8")
+    )["cases"][incident_id]
+    for flag in sorted({f.flag for f in FAULTS}):
+        assert not re.search(rf"\b{re.escape(flag)}\b", text, re.IGNORECASE), flag
+    assert truth["case"] not in text
+    inject = dt.datetime.fromisoformat(truth["inject_time"])
+    start = dt.datetime.fromisoformat(truth["window_start"])
+    assert truth["inject_time"] not in text
+    assert str(inject.timestamp()) not in text
+    offset = (inject - start).total_seconds()
+    for line in text.splitlines():
+        trigger = next(s for s in json.loads(line)["steps"] if s["id"] == "T")
+        # The detector's trigger is computed from telemetry; it must not simply
+        # be the injection offset copied in.
+        assert trigger["trigger_time_s"] != offset
+    keys = set(re.findall(r'"([a-z_]+)":', text))
+    assert not {k for k in keys if any(w in k for w in (*LEAK_WORDS, "fault"))}
