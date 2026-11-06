@@ -37,6 +37,7 @@ __all__ = [
     "RouterParams",
     "load_router_params",
     "provisional_router_params",
+    "router_params_from_dict",
     "router_params_hash",
     "write_router_params",
 ]
@@ -198,6 +199,11 @@ def provisional_router_params(
         price_book_digest=price_book_digest,
         provisional=True,
     )
+
+
+def router_params_from_dict(raw: dict[str, Any]) -> RouterParams:
+    """Parameters from their ``as_dict`` form (the build report's refit block)."""
+    return _from_dict(raw)
 
 
 def load_router_params(path: Path = ROUTER_PARAMS_PATH) -> RouterParams:
