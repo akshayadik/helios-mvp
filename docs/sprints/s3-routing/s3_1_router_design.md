@@ -108,7 +108,7 @@ Escalation adds the cheap stage (at most about 1 s on build data) to the L-pipe'
 
 ## 6. Protocol records
 
-- **Pre-run entry** (owner signs before any fit): R-a…R-e; the feature list; λ and α; the reward (HR@3 hit of the arm's fused list); the fold scheme; the τ_acc rule and tolerance; τ_lat; the arm cost order and price-book digest; staged timing; the meaning of uniform routing; the G gate's change of role (from a decision to a feature in Full, ungated in noRouter); the PROVISIONAL rule for single-pipeline stops.
+- **Pre-run entry** (deviation entry 69, owner-approved 2026-11-06; signed before any fit): R-a…R-e; the feature list; λ and α; the reward (HR@3 hit of the arm's fused list); the fold scheme; the τ_acc rule and tolerance; τ_lat; the arm cost order and price-book digest; staged timing; the meaning of uniform routing; the G gate's change of role (from a decision to a feature in Full, ungated in noRouter); the PROVISIONAL rule for single-pipeline stops.
 - **Freeze entry** (after the build run; owner reviews first): the frozen parameters and hash; τ_acc; held-out HR@3 of routed vs uniform vs S2 Full per corpus; escalation shares; the replayed first-publication times; the GPU time and LLM calls saved.
 - **OSF addendum** (before `build-freeze`): both entries, and the pre-registered split of A-H5 by routed arm and by G-pipe participation (S2-BL-01).
 

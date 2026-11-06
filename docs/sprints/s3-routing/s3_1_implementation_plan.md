@@ -144,7 +144,7 @@
 ### Task 9: Documents and the pre-run entry
 
 - [ ] **Step 1:** `docs/tracking/ablation_architecture.md` §5: routing paragraph (staged cheap-first, uniform semantics, which variants route).
-- [ ] **Step 2:** Draft the pre-run entry text (design §6) and give it to the owner. After review, append it with `bin/log_deviation.py`; run `pytest tests/test_deviation_log.py`; commit the log and anchor.
+- [x] **Step 2:** Draft the pre-run entry text (design §6) and give it to the owner (appended as deviation entry 69, sig a8fd0261). After review, append it with `bin/log_deviation.py`; run `pytest tests/test_deviation_log.py`; commit the log and anchor.
 - [ ] **Step 3:** Full pre-push gate; open PR 1.
 
 ---
