@@ -53,7 +53,7 @@ S3.1 design: [s3_1_router_design.md](s3_1_router_design.md) (approved 2026-11-06
 
 | Item | Source | Done when |
 |---|---|---|
-| Fallback trigger time uses the window peak (non-causal, so TTCD/TTT look ahead); D-pipe propagation inert on build data; scipy `ConstantInputWarning` silenced only in tests | S2-BL-12 | Causal fallback (deviation entry, since the detector is frozen) or documented as a limitation; dead propagation decided (keep behind `dpipe_propagation`, or record); warning handled in code |
+| Fallback trigger time uses the window peak (non-causal, so TTCD/TTT look ahead); D-pipe propagation inert on build data; scipy `ConstantInputWarning` silenced only in tests | S2-BL-12 | Causal fallback (deviation entry, since the detector is frozen) or documented as a limitation; dead propagation decided (keep behind `dpipe_propagation`, or record); warning handled in code — **Done 2026-11-06 (owner: record and report; entry 71):** anchor unchanged; `known_at_s` and detection delay recorded per trigger (threshold 180 s; fallback median 150 s OTel, 300 s RCAEval build); operational TTCD exploratory, defined in the OSF addendum (contract frozen; entry 72); propagation kept behind `dpipe_propagation` and recorded as inert on build data; constant-series guard removes the warning (scores unchanged) |
 | Deferred review minors: vote-only score scale, first-publication state not stored, either-state runner test, unseen-pipeline prior, empty `BuildCase` votes, masking edge cases | S2-BL-18 | Tests first; each fixed or noted in the backlog |
 | CoE ledger minors: verdict ref is the decision hash, model-hash fallback to the expected digest, G/L evidence refs | S2-BL-20 | Tests first; each fixed or noted |
 | `bin/pin-otel-demo.sh` uses GNU `sed -i` (line 51), which fails on macOS | S1 carry-over | Portable form; script runs on the M5 Pro |
@@ -84,12 +84,17 @@ S3 adds the router's entries to what the addendum must cover, so the draft start
 - **A-H5 split by stage** (S3.1 design §2, owner 2026-11-06): log-CpR reported separately for runs that stopped on the cheap arm and runs escalated to the L-pipe, so the early-publication effect and the LLM-savings effect are not read as one;
 - **A-H1 split by escalation** (S3.1 design §10): noLLM also routes, so Full and noLLM differ only on escalated runs;
 - the meaning of uniform routing (R-b) and the reachable arm set (R-c).
+- **Detection delay and operational TTCD** (S2-BL-12, entries 71 and 72). `metric_contract.md` is signed into deposit 1 (`manifest_sig.txt`), so these definitions live in the addendum, not in the contract:
+  - *Detection delay*: recorded seconds from the trigger's anchor (`trigger_time_s`) to the earliest instant a live detector could have issued it (`known_at_s`): end of the last persistence bucket (threshold), end of the scored window (fallback); none for external triggers. Identical for every system on an incident. Descriptive.
+  - *Operational TTCD*: detection delay + TTCD, censored at 1,800 s. Exploratory; reported beside TTCD, never replacing it in B-H6, CpR or A-H5.
+  - TTCD and TTT split by trigger source (threshold / fallback), with the fallback share reported beside every timing result.
+  - TTCD and TTT are measured from the trigger handover (entry 46); the contract's "invocation" wording is superseded by entry 46.
 
 After the S3.1 build run, recheck the D11 compute estimate (about 1,500 L-pipe runs, 30–50 h) against the measured escalation share: noRouter and LLM-only call the L-pipe on every case.
 
 ## Expected deviation entries
 
-Router initialisation and thresholds (S3.1); G-pipe gate decision (S3.1, S2-BL-06); ACP and reward parameters if built (S3.2, S3.3); a causal fallback trigger time if adopted (S2-BL-12); pilot_v3 captures if registered as build data; the four May-plan rows marked DEFERRED; Tier-2 items moved to Stage B.
+Router initialisation and thresholds (S3.1); G-pipe gate decision (S3.1, S2-BL-06); ACP and reward parameters if built (S3.2, S3.3); detection delay and operational TTCD, TTCD/TTT split by trigger source (S2-BL-12, entry 71); pilot_v3 captures if registered as build data; the four May-plan rows marked DEFERRED; Tier-2 items moved to Stage B.
 
 ## Exit criteria
 

@@ -22,6 +22,12 @@ How it decides (``trigger-v2``):
   anything; when they cross at the trigger they are recorded as ``context``.
 - If nothing fires, the trigger falls back to the most anomalous bucket
   (``FALLBACK``); every case is still analysed.
+- ``known_at_s`` is the earliest recorded-time instant a live detector could
+  have issued the trigger (S2-BL-12): a threshold trigger is known when its
+  last persistence bucket ends; a fallback only when the scored window ends,
+  since "most anomalous" needs the whole window. It never reaches a pipeline:
+  every system is still anchored at ``trigger_time_s``. It feeds the
+  detection delay and operational TTCD (metric contract §4, exploratory).
 
 The trigger has no VCL flag: it is shared evaluation input, like the window,
 given identically to every variant and baseline (design §4).
@@ -142,6 +148,14 @@ class TriggerRecord(BaseModel):
     context: tuple[str, ...]
     source: TriggerSource
     detector_hash: str
+    known_at_s: float | None = None  # None: external, no live-detection time
+
+    @property
+    def detection_delay_s(self) -> float | None:
+        """Recorded seconds from the anchor to when a live detector knew it."""
+        if self.known_at_s is None:
+            return None
+        return round(self.known_at_s - self.trigger_time_s, _TIME_DIGITS)
 
 
 @dataclass(frozen=True)
@@ -360,6 +374,9 @@ def decide(
     context = sorted(_above(scores, outside, bucket, params.threshold))
     if source == TriggerSource.FALLBACK and not finite.any():
         context = []
+    # A threshold trigger is known when its persistence run ends; a fallback
+    # only when the window ends (S2-BL-12).
+    known = bucket + params.persistence if source == TriggerSource.THRESHOLD else n
     return TriggerRecord(
         incident_id=incident_id,
         trigger_time_s=round(
@@ -369,6 +386,7 @@ def decide(
         context=tuple(context),
         source=source,
         detector_hash=detector_hash(params),
+        known_at_s=round(scores.start_s + known * params.bucket_seconds, _TIME_DIGITS),
     )
 
 

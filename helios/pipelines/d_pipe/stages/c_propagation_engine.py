@@ -38,7 +38,10 @@ class PropagationEngine:
                 a = [x for x in error_deltas.get(caller, []) if not math.isnan(x)]
                 b = [x for x in error_deltas.get(callee, []) if not math.isnan(x)]
                 n = min(len(a), len(b))
-                if n >= 2:
+                # A constant series has no rank correlation: scipy would warn
+                # and return NaN, which counted as zero (S2-BL-12; no change
+                # in any score, only the warning is gone).
+                if n >= 2 and len(set(a[:n])) > 1 and len(set(b[:n])) > 1:
                     rho_val, _ = scipy.stats.spearmanr(a[:n], b[:n])
                     rho = float(rho_val) if not math.isnan(float(rho_val)) else 0.00
                     if rho >= self.rho_threshold:

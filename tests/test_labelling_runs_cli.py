@@ -6,8 +6,6 @@ from __future__ import annotations
 import builtins
 from typing import TYPE_CHECKING, Any
 
-import pytest
-
 from bin import labelling_runs as tool
 from helios.orchestrator.coe import CoELedger
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
@@ -18,7 +16,7 @@ from tests.test_runner_lpipe import KEY, stage_capture
 if TYPE_CHECKING:
     from pathlib import Path
 
-pytestmark = pytest.mark.filterwarnings("ignore::scipy.stats.ConstantInputWarning")
+    import pytest
 
 
 def test_runs_refuse_pool_and_existing_dir(tmp_path: Path) -> None:

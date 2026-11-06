@@ -239,7 +239,6 @@ def test_orchestrator_run_never_opens_ground_truth(
     assert json.loads(rows[0])["outcome"] == "passed"
 
 
-@pytest.mark.filterwarnings("ignore::scipy.stats.ConstantInputWarning")
 def test_lpipe_prompts_carry_no_label_or_identity(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -313,7 +312,6 @@ def test_lpipe_prompts_carry_no_label_or_identity(
             assert not re.search(rf"\b{re.escape(name)}\b", prompt, re.IGNORECASE), name
 
 
-@pytest.mark.filterwarnings("ignore::scipy.stats.ConstantInputWarning")
 def test_coe_entry_carries_no_label_or_injection_time(tmp_path: Path) -> None:
     """S2.7: the CoE ledger holds no fault name, case name, label key or injection
     time (the ground truth is read here, by the test, only to compare)."""

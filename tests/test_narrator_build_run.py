@@ -18,8 +18,6 @@ from tests.test_runner_lpipe import KEY, stage_capture
 if TYPE_CHECKING:
     from pathlib import Path
 
-pytestmark = pytest.mark.filterwarnings("ignore::scipy.stats.ConstantInputWarning")
-
 
 def _stage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
     """Two staged build cases; the split of each; the tool pointed at them."""

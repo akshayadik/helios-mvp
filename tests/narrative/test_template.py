@@ -19,7 +19,6 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 P = load_narrator_params()
-pytestmark = pytest.mark.filterwarnings("ignore::scipy.stats.ConstantInputWarning")
 
 
 def _all_verified(entry: dict[str, Any]) -> list[Any]:

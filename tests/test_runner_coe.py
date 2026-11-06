@@ -21,7 +21,6 @@ from tests.test_runner_lpipe import KEY, stage_capture
 if TYPE_CHECKING:
     from pathlib import Path
 
-pytestmark = pytest.mark.filterwarnings("ignore::scipy.stats.ConstantInputWarning")
 
 SIGNER = generate_private_key()
 
@@ -88,6 +87,16 @@ def test_full_run_appends_one_coe_entry_per_stored_run(tmp_path: Path) -> None:
         assert ref == (None if stored is None else row_ref(stored))
     assert set(entry["parameter_hashes"]) >= {"detector", "dpipe", "gpipe", "mahc"}
     assert _step(entry, "G")["outcome"] == "PASS"
+    # S2-BL-12: the T step records when a live detector could have known.
+    t = _step(entry, "T")
+    trigger = store.fetch_trigger(entry["incident_id"], entry["variant_config_hash"])
+    assert trigger is not None
+    delay = trigger.detection_delay_s
+    assert trigger.known_at_s is not None
+    assert delay is not None
+    assert delay >= 0
+    assert t["known_at_s"] == trigger.known_at_s
+    assert t["detection_delay_s"] == delay
     # fusion_record mirrors the stored row exactly (the ref is recomputable)
     assert set(fusion) == set(fusion_record("r", "i", "h", _fused_like()))
 

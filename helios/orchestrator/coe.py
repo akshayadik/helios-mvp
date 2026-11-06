@@ -239,6 +239,8 @@ def build_coe_entry(
             "id": "T",
             "source": trigger.source.value,
             "trigger_time_s": trigger.trigger_time_s,
+            "known_at_s": trigger.known_at_s,
+            "detection_delay_s": trigger.detection_delay_s,
             "suspects": list(trigger.suspects),
             "context": list(trigger.context),
             "signal": signal,

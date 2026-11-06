@@ -17,6 +17,7 @@ from helios.schemas.telemetry import EvaluationPhase, TelemetryWindow
 from helios.telemetry.trigger import (
     Z_CAP,
     DetectorParams,
+    TriggerRecord,
     TriggerSource,
     causal_z,
     detect,
@@ -458,3 +459,38 @@ def test_frozen_detector_is_the_calibration_selection() -> None:
         selected["persistence"],
     )
     assert detector_hash(params) == selected["detector_hash"]
+
+
+# ── live-detection time (S2-BL-12) ───────────────────────────────────────────
+
+
+def test_threshold_trigger_is_known_when_its_persistence_run_ends(
+    tmp_path: Path,
+) -> None:
+    window = _window(tmp_path, {("cart", "latency"): _step(10, 4)})
+    rec = detect(window, PARAMS, root=tmp_path)
+    assert rec.source == TriggerSource.THRESHOLD
+    assert rec.known_at_s == T0 + (10 + PARAMS.persistence) * BUCKET
+    assert rec.detection_delay_s == PARAMS.persistence * BUCKET
+
+
+def test_fallback_is_known_only_when_the_window_ends(tmp_path: Path) -> None:
+    window = _window(tmp_path, {("cart", "latency"): _step(10, 1)})
+    rec = detect(window, PARAMS, root=tmp_path)
+    assert rec.source == TriggerSource.FALLBACK
+    assert rec.trigger_time_s == T0 + 10 * BUCKET  # the anchor is unchanged
+    assert rec.known_at_s == T0 + N_BUCKETS * BUCKET
+    assert rec.detection_delay_s == (N_BUCKETS - 10) * BUCKET
+
+
+def test_external_trigger_has_no_live_detection_time() -> None:
+    rec = TriggerRecord(
+        incident_id="x",
+        trigger_time_s=T0,
+        suspects=(),
+        context=(),
+        source=TriggerSource.EXTERNAL,
+        detector_hash="d" * 64,
+    )
+    assert rec.known_at_s is None
+    assert rec.detection_delay_s is None
