@@ -566,6 +566,19 @@ AIOpsLab is a Tier 2 recording spike (S1.3), not the confirmatory corpus.
 
 ---
 
+### 5.1 Routing (S3.1, cbr_routing)   [BUILT — provisional parameters until the S3.1 freeze]
+
+Design: `docs/sprints/s3-routing/s3_1_router_design.md` (owner decisions R-a to R-e, 2026-11-06).
+
+- **Routed (`cbr_routing` ON; Full, noLLM, noConsensus, noStructural, exploratory variants).** Two stages. The D-pipe runs; G-pipe runs when a graph exists and the D arm is infeasible; the cheap arm (D or D+G) is fused and published at once; the L-pipe runs only when D and G disagree on the top-1 or the cheap arm's lower-bound accuracy is below τ_acc. Selectable arms D, D+G, D+L, Full (Ch3's G, L, G+L recorded, never selected). Per-arm ridge models (LinUCB A, b) frozen, static policy; the bound is subtracted (pessimism), not added. No feasible arm → Full with `constraint_empty`. With the L-pipe off (noLLM) the would-be escalation is recorded as `llm_off`.
+- **Uniform (`cbr_routing` OFF; noRouter, LLM-only, D, G).** Every enabled pipeline on every incident; G-pipe runs wherever a graph exists (no 0.2 gate); concurrent publication timing as in S2.5.
+- **The router never reads a fusion output**, so Full and noConsensus route a case identically (A-H4 pairing).
+- **Records.** The CoE `R` step holds the mode, the router's inputs (`features_cheap`, `features`, recorded in uniform runs too), and for routed runs the estimates, τ_acc, stage-1 and terminal arms, escalation reason and stage times. The router's parameter hash is in `parameter_hashes`; a confirmatory routed run refuses provisional router parameters and a router frozen under another price book.
+- **R-e.** A publication with one contributing pipeline is PROVISIONAL under MAHC and vote-only alike (affects HELIOS-D and single-list runs of HELIOS-G).
+- The G-pipe disagreement threshold (`DISAGREEMENT_THRESHOLD`, OSF `thresholds.json`) is unchanged and recorded for reference; it no longer decides whether G-pipe runs (`run_gpipe(apply_gate=False)` from the runner).
+
+---
+
 ## 6. Snapshot Gating, Metric Integrity Gate & Evaluation Plane   [STUB — Stage 1 & 6]
 
 > **Not yet implemented.** Snapshot gating scaffolding is targeted for Stage 1; full evaluation plane at Stage 6.
@@ -594,3 +607,4 @@ AIOpsLab is a Tier 2 recording spike (S1.3), not the confirmatory corpus.
 - v0.9 (2026-10-25, S2-M6-ENG03): §2.1–§2.3 and §2.6 rewritten for UEG-C schema-draft-v0.2 (S1.5): four edge classes from traces, metrics and logs, KPI and reasoning-step nodes, tenant, composition rules, deterministic snapshot; pruner note for v0.2 graphs (deviation entry 39).
 - v0.10 (2026-10-25, S2-M6-ENG04): §2.6 structural bundle (S1.6): ueg_structural OFF = one untyped edge kind, full-graph training scope, reasoning steps as flat text; gated typed_view; applied by the orchestrator before pruning.
 - v0.12 (2026-10-26, S2-M6-ENG06): §2.4 PipelineVerdict schema-draft-v0.5 (S1.8 verdict contract): status, candidate scores, mu, sigma, cost, decision hash; scores leave the verdict for the S1.9 scoring path; S1.8 notes in §3.1–§3.3.
+- v0.13 (2026-11-06, S2-M8-ENG01): §5.1 routing (S3.1): routed two-stage cheap-first policy vs uniform routing, which variants route, CoE routing record, R-e, the G-pipe threshold kept for reference only.
