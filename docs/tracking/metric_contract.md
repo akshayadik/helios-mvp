@@ -52,11 +52,9 @@ CpR = sum of the five; analysed as **log(CpR)** (A-H5, B-H7). Per-component valu
 
 | Metric | Definition | Used by |
 |---|---|---|
-| **Time to correct diagnosis (TTCD)** | Wall-clock seconds from **handover of the shared detection trigger to the system** (deviation entry 46; before it: invocation on the recorded window) to the first published verdict (PROVISIONAL or CONFIRMED) whose top-1 is the ground-truth service. If no published verdict is correct, the value is **censored at 1,800 s** (Ch3's incident window). Baselines are timed the same way, on the same hardware. Analysed as log(TTCD) | B-H6 (D10) |
+| **Time to correct diagnosis (TTCD)** | Wall-clock seconds from **invocation of the system on the recorded incident window** to the first published verdict (PROVISIONAL or CONFIRMED) whose top-1 is the ground-truth service. If no published verdict is correct, the value is **censored at 1,800 s** (Ch3's incident window). Baselines are timed the same way, on the same hardware. Analysed as log(TTCD) | B-H6 (D10) |
 | **True MTTR** | Detection to restored service with live remediation, within [t_inj, t_inj + 1,800 s] (Ch3 p.203) | Exploratory, Stage B (OTel Demo testbed) |
-| **Time to triage (TTT)** | Trigger handover (entry 46) to publication of the first PROVISIONAL verdict | E-H2 |
-| Detection delay | Recorded seconds from the trigger's anchor (`trigger_time_s`) to the earliest instant a live detector could have issued it (`known_at_s`): the end of the last persistence bucket for a threshold trigger, the end of the scored window for a fallback (whose anchor, the most anomalous bucket, needs the whole window). None for external triggers. Identical for every system on an incident, so it never enters a between-system comparison (S2-BL-12, deviation entry 71) | Descriptive |
-| Operational TTCD | Detection delay + TTCD, censored at 1,800 s like TTCD: how long a live deployment would take from the anchor to a correct diagnosis. Reported beside TTCD, split by trigger source (threshold / fallback); never replaces TTCD in B-H6, CpR or A-H5 (entry 71) | Exploratory |
+| **Time to triage (TTT)** | Invocation to publication of the first PROVISIONAL verdict | E-H2 |
 | **Time to decision (TTD)** | In the RQ4 user study: from showing a scenario to the participant's accept / escalate / reject choice | E-H7 (renamed from "TTT", D6 item 10) |
 | Latency | Per-plane span durations (p50 / p95 / p99), descriptive | — |
 
