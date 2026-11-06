@@ -18,6 +18,7 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from helios.evaluation.cost import load_price_book
 from helios.orchestrator.runner import RunOrchestrator
 from helios.vcl.config import VCLManifest  # noqa: F401  # flag-guard compliance
 from helios.vcl.ed25519 import load_private_key, load_public_key, public_key_pem
@@ -141,6 +142,9 @@ def main() -> int:
         exclusion_ledger=exclusion_ledger,
         hmac_key=key,
         coe_signer=_load_coe_signer(),
+        # S3.1: a confirmatory routed run checks the router was frozen under
+        # this price book; the run path itself never imports helios.evaluation.
+        price_book_digest=load_price_book().digest,
     )
 
     print(f"[helios run] variant={args.variant} corpus={args.corpus}")

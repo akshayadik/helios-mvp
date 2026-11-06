@@ -21,7 +21,14 @@ from typing import TYPE_CHECKING, Any
 
 from helios.consensus.mahc import run_mahc, run_vote_only
 from helios.consensus.params import load_mahc_params, mahc_params_hash
-from helios.consensus.timing import finish_times
+from helios.consensus.router import decide_escalation, decide_g
+from helios.consensus.router_features import cheap_features, with_gpipe
+from helios.consensus.router_params import load_router_params, router_params_hash
+from helios.consensus.timing import (
+    finish_times,
+    staged_finish_times,
+    staged_schedule,
+)
 from helios.graph.khop_pruner import khop_prune
 from helios.graph.structural_bundle import apply_structural_bundle
 from helios.graph.ueg_c_builder import build_ueg_c
@@ -47,7 +54,6 @@ from helios.pipelines.g_pipe.params import (
 from helios.pipelines.g_pipe.pipeline import (
     compute_ppr_disagreement,
     run_gpipe,
-    should_run_gpipe,
 )
 from helios.pipelines.l_pipe.lpipe_config import (
     EXPECTED_MODEL_DIGEST,
@@ -84,6 +90,7 @@ if TYPE_CHECKING:
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
     from helios.consensus.params import MAHCParams
+    from helios.consensus.router_params import RouterParams
     from helios.narrative.params import NarratorParams
     from helios.pipelines.l_pipe.cache import ResponseCache
     from helios.pipelines.l_pipe.ollama_client import OllamaClient
@@ -110,6 +117,10 @@ class MissingSigningKeyError(RuntimeError):
     """A confirmatory run needs the Ed25519 key to sign its CoE ledger (S2.7)."""
 
 
+class RouterParamsMismatchError(RuntimeError):
+    """The router was frozen under a different price book (S3.1 design §5.4)."""
+
+
 class RunOrchestrator:
     """Coordinate a corpus run through the full C1 gating path."""
 
@@ -133,6 +144,8 @@ class RunOrchestrator:
         coe_path: Path | None = None,
         coe_signer: Ed25519PrivateKey | None = None,
         narrator_params: NarratorParams | None = None,
+        router_params: RouterParams | None = None,
+        price_book_digest: str | None = None,
     ) -> None:
         """``detector_params``, ``dpipe_params`` and ``gpipe_params`` default to
         the frozen files; ``lpipe_client`` defaults to the local Ollama model and
@@ -141,12 +154,19 @@ class RunOrchestrator:
         supplied records. The CoE ledger (S2.7) goes to ``coe_path``, by default
         a new file in ``<db stem>.coe/`` beside the database; ``coe_signer`` (the
         Ed25519 private key) signs its anchor and is required for confirmatory
-        runs."""
+        runs. ``router_params`` (S3.1) default to the frozen file;
+        ``price_book_digest`` is the current price book's digest, supplied by
+        the caller (the run path never imports ``helios.evaluation``) and
+        required for confirmatory routed runs."""
         set_current_manifest(manifest)
         self._manifest = manifest
         self._lpipe_client = lpipe_client
         self._lpipe_cache = lpipe_cache
         self._mahc = mahc_params if mahc_params is not None else load_mahc_params()
+        self._router = (
+            router_params if router_params is not None else load_router_params()
+        )
+        self._price_book_digest = price_book_digest
         self._narrator = (
             narrator_params if narrator_params is not None else load_narrator_params()
         )
@@ -211,6 +231,16 @@ class RunOrchestrator:
                     "confirmatory runs need the Ed25519 private key to sign the "
                     "CoE ledger (S2.7)"
                 )
+            if self._manifest.cbr_routing:
+                if self._router.provisional:
+                    raise ProvisionalParametersError(
+                        "router parameters are provisional; freeze them first (S3.1)"
+                    )
+                if self._router.price_book_digest != self._price_book_digest:
+                    raise RouterParamsMismatchError(
+                        "the router was frozen under a different price book, or "
+                        "no price book digest was supplied (S3.1)"
+                    )
         if self._external is not None:
             if window.incident_id not in self._external:
                 raise ValueError("no supplied trigger for this incident")
@@ -310,23 +340,53 @@ class RunOrchestrator:
                 run_id, incident_id, PipelineName.DPIPE.value, d_out["coe_evidence"]
             )
         graph = ueg_c
-        # The gate is evaluated only where routing evaluates it (it raises on
-        # negative scores); the record says why G-pipe did or did not run.
+        g_allowed = self._manifest.gpipe and self._manifest.l2b_graph
+        # The PPR disagreement is computed only where G-pipe could run (it
+        # raises on negative scores); it is a router feature and is recorded.
+        gate_value = (
+            compute_ppr_disagreement(dpipe_scores)
+            if g_allowed and graph is not None
+            else None
+        )
         routing: dict[str, Any] = {
+            "mode": "routed" if self._manifest.cbr_routing else "uniform",
             "ran": False,
-            "gate_value": None,
-            "threshold": DISAGREEMENT_THRESHOLD,
+            "gate_value": gate_value,
+            "threshold": DISAGREEMENT_THRESHOLD,  # reference only (S3.1 R-b)
         }
-        if not (self._manifest.gpipe and self._manifest.l2b_graph):
+        routed_run = self._manifest.cbr_routing
+        signal = None
+        if self._manifest.mahc_hierarchical or routed_run:
+            signal = signal_type(
+                window,
+                trigger,
+                root=_REPO_ROOT,
+                bucket_seconds=self._detector.bucket_seconds,
+            )
+        x: tuple[float, ...] = ()
+        if not g_allowed:
             routing["reason"] = "gpipe_off"
         elif graph is None:
             routing["reason"] = "no_graph"
-        else:
-            routing["gate_value"] = compute_ppr_disagreement(dpipe_scores)
-            routing["ran"] = should_run_gpipe(d_routed, self._manifest)
-            routing["reason"] = "routed" if routing["ran"] else "below_gate"
-        routed = bool(routing["ran"])
-        if graph is not None and routed:
+        elif not routed_run:
+            routing["ran"] = True
+            routing["reason"] = "uniform"  # every incident, ungated (R-b)
+        if routed_run and signal is not None:
+            x = cheap_features(
+                d_verdict,
+                dpipe_scores,
+                gate_value=gate_value,
+                signal=signal,
+                traces=window.p2_traces_path is not None,
+            )
+            g_dec = decide_g(
+                x, self._router, graph=bool(g_allowed) and graph is not None
+            )
+            routing["ran"] = g_dec.run_g
+            routing["g_decision"] = g_dec.reason
+            if g_allowed and graph is not None:
+                routing["reason"] = "routed" if g_dec.run_g else "d_feasible"
+        if graph is not None and routing["ran"]:
             g_verdict, g_out = self._dispatch(
                 PipelineName.GPIPE,
                 base,
@@ -341,6 +401,7 @@ class RunOrchestrator:
                     trigger=trigger,
                     params=self._gpipe,
                     detector=self._detector,
+                    apply_gate=False,  # decided above (S3.1: router or uniform)
                 ),
             )
             if g_out.get("evidence"):
@@ -349,58 +410,86 @@ class RunOrchestrator:
                 )
         else:
             g_verdict, g_out = self._skipped(PipelineName.GPIPE, base), {}
+        run_l = True
+        if routed_run:
+            x = with_gpipe(x, g_verdict, d_verdict)
+            g_ran = g_verdict.status == VerdictStatus.RANKED
+            esc = decide_escalation(
+                x,
+                self._router,
+                g_ran=g_ran,
+                d_top=_top(d_verdict),
+                g_top=_top(g_verdict),
+                llm_on=self._manifest.l2c_llm,
+            )
+            run_l = esc.escalate
+            routing.update(
+                features=list(x),
+                estimates=esc.estimates,
+                tau_acc=self._router.tau_acc,
+                stage1_arm=esc.stage1_arm.value,
+                terminal_arm=esc.terminal_arm.value,
+                escalate=esc.escalate,
+                escalation_reason=esc.reason,
+                wanted=esc.wanted,
+            )
         # L-pipe reads raw telemetry only, never the graph or D/G output (S2.3 L-a).
-        l_verdict, l_out = self._dispatch(
-            PipelineName.LPIPE,
-            base,
-            lambda: run_lpipe(
-                incident_id=incident_id,
-                snapshot_hash=snapshot_hash,
-                evaluation_phase=evaluation_phase_str,
-                run_id=run_id,
-                window=window,
-                trigger=trigger,
-                root=_REPO_ROOT,
-                client=self._lpipe_client,
-                cache=self._lpipe_cache,
-            ),
-        )
+        if run_l:
+            l_verdict, l_out = self._dispatch(
+                PipelineName.LPIPE,
+                base,
+                lambda: run_lpipe(
+                    incident_id=incident_id,
+                    snapshot_hash=snapshot_hash,
+                    evaluation_phase=evaluation_phase_str,
+                    run_id=run_id,
+                    window=window,
+                    trigger=trigger,
+                    root=_REPO_ROOT,
+                    client=self._lpipe_client,
+                    cache=self._lpipe_cache,
+                ),
+            )
+        else:
+            l_verdict, l_out = self._skipped(PipelineName.LPIPE, base), {}
         if l_out.get("evidence"):
             self._store.insert_evidence(
                 run_id, incident_id, PipelineName.LPIPE.value, l_out["evidence"]
             )
-        # H_struct (S2.4): L-pipe is the only agent pipeline; gated off = structural zero.
+        # H_struct (S2.4): L-pipe is the only agent pipeline; not run = structural zero.
         structural_zero = l_verdict.status == VerdictStatus.SKIPPED
         if not structural_zero and "h_struct" not in l_out:
             raise ValueError("L-pipe ran but returned no h_struct counts (S2.4)")
         h_struct = {"outputs": 0, "failed": 0} if structural_zero else l_out["h_struct"]
         verdicts = [d_verdict, g_verdict, l_verdict]
-        # S2.5/S2.6: one fused verdict per run, from the replayed latencies of the
-        # pipelines that ran (a skipped pipeline was never dispatched).
-        latency_ms = finish_times(
-            {
-                v.pipeline.value: v.latency_ms
-                for v in verdicts
-                if v.status != VerdictStatus.SKIPPED
-            }
-        )
-        signal = None
-        if self._manifest.mahc_hierarchical:
-            signal = signal_type(
-                window,
-                trigger,
-                root=_REPO_ROOT,
-                bucket_seconds=self._detector.bucket_seconds,
-            )
+        ran_ms = {
+            v.pipeline.value: v.latency_ms
+            for v in verdicts
+            if v.status != VerdictStatus.SKIPPED
+        }
+        # S2.5/S2.6: one fused verdict per run. Uniform runs replay the pipelines
+        # as concurrent; routed runs as staged (S3.1 design §5.5).
+        sched = None
+        if routed_run:
+            stage1 = {k: v for k, v in ran_ms.items() if k != PipelineName.LPIPE.value}
+            l_ms = ran_ms.get(PipelineName.LPIPE.value)
+            latency_ms = staged_finish_times(stage1, l_ms)
+            sched = staged_schedule(stage1, l_ms)
+            routing["stage1_ms"] = sched.first_ms
+            routing["terminal_ms"] = sched.terminal_ms
+        else:
+            latency_ms = finish_times(ran_ms)
+        if self._manifest.mahc_hierarchical and signal is not None:
             fused = run_mahc(
                 verdicts,
                 signal,
                 self._mahc,
                 latency_ms=latency_ms,
                 confirmatory=confirmatory,
+                sched=sched,
             )
         else:
-            fused = run_vote_only(verdicts, latency_ms=latency_ms)
+            fused = run_vote_only(verdicts, latency_ms=latency_ms, sched=sched)
 
         gate = MetricIntegrityGate.from_manifest(
             self._manifest,
@@ -482,6 +571,8 @@ class RunOrchestrator:
             "gpipe": gpipe_params_hash(self._gpipe),
             "mahc": mahc_params_hash(self._mahc),
         }
+        if self._manifest.cbr_routing:
+            hashes["router"] = router_params_hash(self._router)
         if self._manifest.coe_narrative:
             hashes["narrator_params"] = narrator_params_hash(self._narrator)
             if self._manifest.l2c_llm:
@@ -576,6 +667,14 @@ def incident_graph(
         ueg_c, seeds=seeds or None, exclude=OUT_OF_SCOPE_SERVICES
     )
     return ueg_c, seeds
+
+
+def _top(verdict: PipelineVerdict) -> str | None:
+    """The verdict's in-scope top-1, or None without a list."""
+    if verdict.status != VerdictStatus.RANKED:
+        return None
+    ranked = filter_in_scope(verdict.ranked_candidates)
+    return ranked[0] if ranked else None
 
 
 def _in_scope_output(out: dict[str, Any]) -> dict[str, Any]:

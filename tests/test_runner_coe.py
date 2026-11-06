@@ -101,12 +101,8 @@ def _fused_like() -> Any:
 def test_coe_items_cover_all_three_pipelines(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    # The staged case is below the routing gate; force G-pipe so its items show.
-    from helios.orchestrator import runner as runner_module
-    from helios.pipelines.g_pipe import pipeline as gpipe_module
-
-    monkeypatch.setattr(runner_module, "should_run_gpipe", lambda *_a: True)
-    monkeypatch.setattr(gpipe_module, "DISAGREEMENT_THRESHOLD", 0)
+    # The staged case is below the old 0.2 gate; under the provisional router
+    # Full runs G-pipe whenever a graph exists (S3.1), so its items show.
     store, path = _run(tmp_path)
     (entry,) = _entries(path)
     prefixes = {
@@ -120,15 +116,37 @@ def test_coe_items_cover_all_three_pipelines(
     assert _step(entry, "P:gpipe")["refs"]["evidence"] == row_ref(stored)
 
 
-def test_routing_record_below_the_gate(tmp_path: Path) -> None:
+def test_routing_record_of_a_routed_run(tmp_path: Path) -> None:
+    # Below the old 0.2 gate, but the router decides now (S3.1): with
+    # provisional parameters D alone is infeasible, so G-pipe runs and the run
+    # escalates to Full.
     _, path = _run(tmp_path)
     (entry,) = _entries(path)
     routing = _step(entry, "R")
-    assert routing["ran"] is False
+    assert routing["mode"] == "routed"
     assert routing["gate_value"] < routing["threshold"]
-    assert routing["reason"] == "below_gate"
-    assert _step(entry, "P:gpipe")["status"] == "skipped"
-    assert _step(entry, "P:gpipe")["items"] == []
+    assert routing["ran"] is True
+    assert routing["g_decision"] == "d_infeasible"
+    assert routing["stage1_arm"] == "D+G"
+    assert routing["terminal_arm"] == "Full"
+    assert routing["escalate"] is True
+    assert len(routing["features"]) == len(routing["features"]) > 0
+    assert routing["stage1_ms"] <= routing["terminal_ms"]
+    assert _step(entry, "P:gpipe")["status"] != "skipped"
+    assert "router" in entry["parameter_hashes"]
+
+
+def test_routing_record_of_a_uniform_run(tmp_path: Path) -> None:
+    # noRouter runs G-pipe on every incident with a graph, ungated (R-b).
+    _, path = _run(tmp_path, "HELIOS-noRouter")
+    (entry,) = _entries(path)
+    routing = _step(entry, "R")
+    assert routing["mode"] == "uniform"
+    assert routing["gate_value"] < routing["threshold"]
+    assert routing["ran"] is True
+    assert routing["reason"] == "uniform"
+    assert "features" not in routing
+    assert "router" not in entry["parameter_hashes"]
 
 
 def test_excluded_run_has_no_coe_entry(
