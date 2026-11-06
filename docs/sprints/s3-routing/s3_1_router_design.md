@@ -1,6 +1,6 @@
 # S3.1 — Router with cheap-first gate (IN3) · design
 
-**Task:** S3.1 (tracking S2-M8-ENG01) · **Date:** 2026-11-06 · **Status:** draft for owner review · **Depends on:** frozen detector (entry 52), D-pipe (53), G-pipe (54–56), L-pipe (57–58), MAHC and vote-only (60–63), CoE ledger (64), price book v2 (43) · **Carried in:** S2-BL-01, 03, 04, 06, 07, 08, 13 (S3 plan)
+**Task:** S3.1 (tracking S2-M8-ENG01) · **Date:** 2026-11-06 · **Status:** approved by the owner 2026-11-06 (R-a…R-e as recommended) · **Depends on:** frozen detector (entry 52), D-pipe (53), G-pipe (54–56), L-pipe (57–58), MAHC and vote-only (60–63), CoE ledger (64), price book v2 (43) · **Carried in:** S2-BL-01, 03, 04, 06, 07, 08, 13 (S3 plan)
 
 **Flag:** the router is gated by `VCLFlag.CBR_ROUTING` (`cbr_routing`); OFF = uniform routing (HELIOS-noRouter, A-H5 and E-H2).
 
@@ -27,9 +27,11 @@ Two facts follow and shape the whole design.
 
 So the CpR gain A-H5 can measure comes from **publishing the cheap evidence early** when it is right, not from the GPU cents saved by skipping the LLM. Skipping the LLM matters to the product (model load, throughput, the LLM as a rate-limited resource, and API cost under any paid model) and is reported as IN3's "cheap-first savings" (analysis A5), but it barely moves CpR. Section 5 is built around this. Raise it with the chair: it is the honest reading of A-H5 under this price book.
 
-## 3. Decisions for the owner
+## 3. Decisions
 
-| # | Decision | Recommendation | Alternative |
+All five accepted by the owner on 2026-11-06 as recommended.
+
+| # | Decision | Accepted | Alternative not taken |
 |---|---|---|---|
 | R-a | **Staged routing.** Ch3 picks one arm before anything runs; IN3 consults cheap evidence first | **Two stages:** stage 1 runs the cheap arm and publishes; the router then decides whether to escalate to the L-pipe. The arm a run ends on is still one of Ch3's arms and is recorded | Single-shot arm choice as in Algorithm 1, before any pipeline runs (no early publication, so most of the A-H5 effect disappears) |
 | R-b | **Meaning of `cbr_routing` OFF (noRouter, "uniform")** — Ch3 never defines it beyond Table 17 | **Every incident gets the same treatment: all pipelines run, G-pipe ungated, publication by today's concurrent replay (S2.5 §5.5).** The G gate is a routing decision, so "no routing" has none | noRouter = the S2 system as frozen (G gate kept). Closer to what was measured in S2, but keeps the BL-06 loss in the comparison arm |
@@ -50,6 +52,7 @@ So the CpR gain A-H5 can measure comes from **publishing the cheap evidence earl
 - Full's HR@3 falls by more than the R-d tolerance against uniform routing on held-out build data. Full's HR@3 is what A-H1–A-H4, A-H6 and B-H1–B-H5 test; the router must not buy cost with it.
 - The routing decision depends on run order or wall-clock noise (static policy: a deterministic function of the incident's features and frozen parameters).
 - noRouter and Full see different inputs at stage 1.
+- **The router reads any fusion output** (MAHC confidence, fused list or state). noConsensus has routing ON with vote-only fusion; if routing read the fusion, Full and noConsensus could route a case differently and A-H4's pairing would break. Router inputs are the D-pipe and G-pipe verdicts only.
 
 ## 5. Design
 
@@ -61,6 +64,8 @@ So the CpR gain A-H5 can measure comes from **publishing the cheap evidence earl
 4. **Escalation decision.** Escalate to the L-pipe if (a) D and G both ran and their top-1s disagree, or (b) the lower confidence bound of p̂_acc for the cheap arm is below τ_acc. Otherwise stop: the stage-1 publication is terminal.
 5. **Stage 2** (if escalated). L-pipe runs; MAHC fuses all lists that ran; terminal publication.
 6. If no arm is feasible (every LCB below τ_acc, or the latency bound excludes all), run Full and record `constraint_empty`.
+
+**Which variants route.** Routing is ON in Full, noLLM, noConsensus, noStructural and the exploratory variants; OFF (uniform) in noRouter, LLM-only, D and G. Uniform therefore also means **HELIOS-G runs G-pipe ungated** (under the May gate it ran G-pipe only on gated cases). With the L-pipe off (noLLM), an escalation decision is still computed and recorded, with reason `llm_off`, and the run stays on its cheap arm.
 
 Rule (a) is in the rule itself, not just a feature, because IN3 promises it in words ("the LLM only on disagreement") and it keeps every stop explainable.
 
@@ -138,4 +143,4 @@ The plan gives 3 days. With the ungated G pass, the full-information arm evaluat
 
 - A-H5 under this price book measures early publication (§2). Is that the claim the dissertation wants, with the LLM savings reported as IN3 evidence beside it?
 - The reading of uniform routing (R-b) and the G gate's change of role.
-- Cheap-first lowers how often the LLM contributes to Full's verdict, which affects A-H1 (Full vs noLLM) and A-H2 (Full vs LLM-only). Report the escalated share beside both.
+- **A-H1 narrows.** noLLM also routes, so Full and noLLM differ only on the cases the router escalates; A-H1 measures the LLM's value on escalated cases. A-H2 (Full vs LLM-only) is affected less, since LLM-only does not route. Report the escalated share beside both, and pre-register A-H1 split by escalation in the addendum.
