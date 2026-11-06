@@ -145,7 +145,10 @@ def _lpipe_items(evidence: Mapping[str, Any] | None) -> list[dict[str, Any]]:
                 cited.update(ids)
                 n = len(claims[worker]) + 1
                 claim = _item(f"L:{worker}:claim{n}", svc, text, None)
-                claims[worker].append({**claim, "cites": ids})
+                item = {**claim, "cites": ids}
+                if len(ids) < len(cites):  # cites of lines outside the digest
+                    item["unknown_cites"] = len(cites) - len(ids)
+                claims[worker].append(item)
     required = sum(len(c) for c in claims.values()) + len(cited)
     budget = max(ITEM_CAP - required, 0)
     items = []
@@ -182,11 +185,18 @@ def _pipeline_step(
             "prompt_tokens": cost.prompt_tokens,
             "completion_tokens": cost.completion_tokens,
         },
-        "measured": {"latency_ms": verdict.latency_ms, "cpu_ms": cost.cpu_ms},
+        # The whole stored row's hash covers measured time, so it sits with
+        # the measurements; refs.verdict (decision hash) is rerun-equal.
+        "measured": {
+            "latency_ms": verdict.latency_ms,
+            "cpu_ms": cost.cpu_ms,
+            "verdict_row": verdict.compute_verdict_hash(),
+        },
         "items": _ITEMS[name](evidence),
         "refs": {
             "verdict": decision,
-            "evidence": None if evidence is None else row_ref(evidence),
+            # The runner stores only non-empty evidence (S2-BL-20).
+            "evidence": row_ref(evidence) if evidence else None,
         },
     }
     if name == "lpipe":

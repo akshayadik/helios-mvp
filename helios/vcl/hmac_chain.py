@@ -210,7 +210,8 @@ class HMACChainedLog:
             return f"Anchor {self.anchor_path.name} is unreadable or unsigned."
         claimed_ed = anchor.pop(_ANCHOR_ED25519_FIELD, None)
         claimed_digest = anchor.pop(_ANCHOR_DIGEST_KEY, None)
-        anchor.pop(_ANCHOR_UNSIGNED_KEY, None)
+        if self.ANCHOR_ED25519:  # an HMAC-only anchor never carries it (S2-BL-20)
+            anchor.pop(_ANCHOR_UNSIGNED_KEY, None)
         if not hmac.compare_digest(self._sign(anchor), str(claimed_sig)):
             return f"Anchor {self.anchor_path.name} signature does not verify."
         if anchor.get("log_kind") != self.LOG_KIND:

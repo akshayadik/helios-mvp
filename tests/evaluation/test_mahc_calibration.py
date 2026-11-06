@@ -147,3 +147,17 @@ def test_frozen_check_reports_refit_confirmed_and_gpipe_effect() -> None:
         g["confirmed_with"] < g["confirmed_without"]
     )  # G at sigma 1 raises fused sigma
     assert g["mean_confidence_with"] < g["mean_confidence_without"]
+
+
+def test_a_case_without_any_list_is_a_provisional_miss() -> None:
+    # S2-BL-18, decided: a build case whose every pipeline abstained is real
+    # data (a miss in every denominator), so BuildCase does not refuse it.
+    from helios.consensus.params import MAHCParams
+    from helios.consensus.priors import fit_priors
+
+    params = MAHCParams(fit_priors([]), None, 0.9, provisional=False)
+    empty = BuildCase("id0", "otel_build_v3", "ad", RES, (), "svc-0")
+    got = mc.frozen_check([empty], params)
+    entry = next(iter(got.values()))["otel_build_v3"]
+    assert entry["cases"] == entry["provisional"] == 1
+    assert entry["hr3_provisional"] == 0

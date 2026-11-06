@@ -89,7 +89,10 @@ def test_full_stores_a_mahc_fusion_row(
 ) -> None:
     row = _fusion(_run(tmp_path, monkeypatch, "HELIOS-Full", "full"))
     assert row["method"] == "mahc"
-    assert row["state"] in {"confirmed", "provisional"}
+    # D-pipe and L-pipe disagree on top-1 (svc-a vs svc-b), so MAHC's
+    # agreement feature is off and the frozen calibrator stays below the floor
+    # (S2-BL-18: exactly one state, not either).
+    assert row["state"] == "provisional"
     from helios.consensus.params import load_mahc_params
 
     # A calibrated confidence exactly when the parameters are frozen.

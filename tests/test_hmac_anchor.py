@@ -251,3 +251,16 @@ def test_verify_ledgers_fails_then_bootstraps(
     out = capsys.readouterr().out
     assert "deviation_log.anchor.json missing" in out
     assert "Anchored 1 entries" in out
+
+
+def test_unsigned_marker_on_an_hmac_only_anchor_is_detected(tmp_path: Path) -> None:
+    # S2-BL-20: "anchor_unsigned" belongs to Ed25519-anchored logs only; on an
+    # HMAC-only anchor it is an added field and breaks the HMAC.
+    path = tmp_path / "a.jsonl"
+    log = _filled(path, 2)
+    anchor = json.loads(log.anchor_path.read_text(encoding="utf-8"))
+    anchor["anchor_unsigned"] = True
+    log.anchor_path.write_text(json.dumps(anchor), encoding="utf-8")
+    ok, msg = log.verify()
+    assert not ok
+    assert "signature does not verify" in msg

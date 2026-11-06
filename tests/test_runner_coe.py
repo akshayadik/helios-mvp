@@ -86,6 +86,10 @@ def test_full_run_appends_one_coe_entry_per_stored_run(tmp_path: Path) -> None:
         ref = _step(entry, f"P:{name}")["refs"]["evidence"]
         assert ref == (None if stored is None else row_ref(stored))
     assert set(entry["parameter_hashes"]) >= {"detector", "dpipe", "gpipe", "mahc"}
+    # S2-BL-20: the model digest the L-pipe actually ran with, from its evidence.
+    lpipe = store.fetch_evidence(run_id, "lpipe")
+    assert lpipe is not None
+    assert entry["parameter_hashes"]["lpipe_model"] == lpipe["model_digest"] != ""
     assert _step(entry, "G")["outcome"] == "PASS"
     # S2-BL-12: the T step records when a live detector could have known.
     t = _step(entry, "T")
