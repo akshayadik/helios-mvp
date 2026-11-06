@@ -144,3 +144,27 @@ The plan gives 3 days. With the ungated G pass, the full-information arm evaluat
 - A-H5 under this price book measures early publication (§2). Is that the claim the dissertation wants, with the LLM savings reported as IN3 evidence beside it?
 - The reading of uniform routing (R-b) and the G gate's change of role.
 - **A-H1 narrows.** noLLM also routes, so Full and noLLM differ only on the cases the router escalates; A-H1 measures the LLM's value on escalated cases. A-H2 (Full vs LLM-only) is affected less, since LLM-only does not route. Report the escalated share beside both, and pre-register A-H1 split by escalation in the addendum.
+
+## 11. Results (build run 2, frozen 2026-11-06)
+
+Source: `docs/sprints/s3-routing/calibration/router_run2.json`. HELIOS-noRouter over `otel_build_v3` (63) and `rcaeval_build` (495): 558 cases, none excluded, L-pipe from the response cache only. λ = 1, α = 1. Frozen `data/frozen/router_params.json`, hash `94707eca9b82…`, τ_acc = 0.812574 (held-out choice 0.81199, raised by the refit confirmation). Build figures are exploratory.
+
+| | OTel held-out | OTel refit (in sample) | RCAEval held-out | RCAEval refit (in sample) |
+|---|---|---|---|---|
+| Uniform HR@3 | 79.37% | 79.37% | 97.37% | 97.37% |
+| Routed HR@3 | 79.37% | 79.37% | 96.57% (−0.80 pt) | 96.57% (−0.80 pt) |
+| Stopped before the L-pipe | 0 | 6 | 298 (60%) | 376 (76%) |
+| L-pipe time saved | none | 84 s | 2,799 s | 3,671 s |
+| Escalated: latency / resource | all / all | 67% / 73% | 38% / 32% | 22% / 15% |
+| Median first publication | 0.93 s | 0.90 s | 0.22 s | 0.22 s |
+
+Arm HR@3 (fused under the frozen MAHC): OTel D 76.2%, D+G 74.6%, D+L 76.2%, Full 79.4%; RCAEval D 94.6%, D+L 97.6% (no G arms: no traces).
+
+Findings:
+
+- **RCAEval:** IN3 holds. D-pipe alone is right on 94.6% of cases; the router stops on 60% (held out) for 0.8 points of HR@3.
+- **OTel:** cheap evidence rarely suffices. No cheap arm reaches τ_acc held out (46 constraint_empty, 17 D/G disagreement), and D+G is no better than D. On the trace-rich corpus, A-H5's Full vs noRouter difference comes from earlier first publication, not from saved LLM calls: the case for reporting A-H5 split by stage.
+- **Error and unclassified signals always escalate,** in every evaluation.
+- **The refit stops more than the held-out models** (376 vs 298 on RCAEval) at no further cost in sample. The pool's stop share is expected above the held-out figure, and its HR@3 cost is untested until the pool.
+- **Refit confirmation** (added at the owner's review of run 1): τ_acc is raised until the refit, too, meets R-d on the build cases; it moved τ_acc by 0.0006.
+- **Reproducibility:** stage medians are measured wall-clock latencies, so a rebuild gives a different hash. The frozen file is run 2's refit verbatim (hash checked at freeze).
