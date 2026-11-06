@@ -81,6 +81,8 @@ def test_fit_writes_an_aggregate_report_with_a_refit(
     assert report["variant"] == "HELIOS-noRouter"
     assert report["tau_acc"] is not None
     assert report["refit"]["provisional"] is False
+    assert report["refit"]["tau_acc"] == report["tau_acc"] >= report["tau_held_out"]
+    assert set(report["refit_in_sample"]) == {"otel_build_v3", "rcaeval_build"}
 
 
 def test_unstoppable_build_data_stops_for_the_owner(
