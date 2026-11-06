@@ -18,7 +18,15 @@ from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-__all__ = ["CONVERGE_MS", "PROVISIONAL_MS", "Schedule", "finish_times", "schedule"]
+__all__ = [
+    "CONVERGE_MS",
+    "PROVISIONAL_MS",
+    "Schedule",
+    "finish_times",
+    "schedule",
+    "staged_finish_times",
+    "staged_schedule",
+]
 
 HELIOS_ENABLE_MAHC_TIMING: bool = True
 
@@ -58,3 +66,30 @@ def finish_times(latency_ms: Mapping[str, float]) -> dict[str, float]:
     if "gpipe" in out and "dpipe" in out:
         out["gpipe"] = out["dpipe"] + out["gpipe"]
     return out
+
+
+def staged_finish_times(
+    stage1_ms: Mapping[str, float], lpipe_ms: float | None
+) -> dict[str, float]:
+    """Finish times of a routed run (S3.1 design §5.5).
+
+    The cheap stage runs as today (G-pipe after the D-pipe); the L-pipe is
+    dispatched only after the escalation decision, so it finishes at the end
+    of the cheap stage plus its own latency.
+    """
+    out = finish_times(stage1_ms)
+    if lpipe_ms is not None:
+        out["lpipe"] = max(out.values(), default=0) + lpipe_ms
+    return out
+
+
+def staged_schedule(stage1_ms: Mapping[str, float], lpipe_ms: float | None) -> Schedule:
+    """First publication when the cheap stage finishes; terminal after the
+    L-pipe if escalated; non-convergence past ``CONVERGE_MS``."""
+    cheap = finish_times(stage1_ms)
+    first = max(cheap.values(), default=0)
+    early = tuple(sorted(cheap))
+    terminal = first if lpipe_ms is None else first + lpipe_ms
+    if terminal > CONVERGE_MS:
+        return Schedule(first, early, None, True)
+    return Schedule(first, early, terminal, False)
