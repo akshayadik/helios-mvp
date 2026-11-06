@@ -275,11 +275,15 @@ def run_gpipe(
     params: GPipeParams | None = None,
     detector: DetectorParams | None = None,
     root: Path | None = None,
+    apply_gate: bool = True,
 ) -> dict[str, Any]:
+    """Rank on the graph. ``apply_gate=False`` when the caller has already
+    decided that G-pipe runs: the runner does so in both routing modes since
+    S3.1 (router decision, or uniform = ungated, R-b)."""
     manifest = get_current_manifest()
     assert manifest is not None
     disagreement = compute_ppr_disagreement(dpipe_scores)
-    if disagreement < DISAGREEMENT_THRESHOLD:
+    if apply_gate and disagreement < DISAGREEMENT_THRESHOLD:
         return _sentinel_verdict(
             incident_id, snapshot_hash, manifest, evaluation_phase, run_id
         )

@@ -152,16 +152,19 @@ def _publish(
     score: Callable[[Fusion], float | None],
     floor: float | None,
     extra: dict[str, Any],
+    sched: Schedule | None = None,
 ) -> FusedVerdict:
     votes = votes_from(verdicts)
-    sched = schedule(latency_ms)
+    sched = schedule(latency_ms) if sched is None else sched
     in_time = [v for v in votes if latency_ms.get(v.pipeline, 0) <= CONVERGE_MS]
     terminal = combine(in_time)
     first = combine([v for v in votes if v.pipeline in sched.first_pipelines])
     confidence = score(terminal) if terminal.ranked else None
     if sched.non_converged:
         published = State.NON_CONVERGED
-    elif not terminal.ranked:
+    elif not terminal.ranked or len(terminal.contributing) == 1:
+        # R-e (S3.1): one contributing pipeline is never CONFIRMED; MAHC's
+        # agreement feature is trivially true for it.
         published = State.PROVISIONAL
     elif method == "vote_only":
         published = State.CONFIRMED
@@ -195,8 +198,13 @@ def run_mahc(
     *,
     latency_ms: Mapping[str, float],
     confirmatory: bool,
+    sched: Schedule | None = None,
 ) -> FusedVerdict:
-    """MAHC under the frozen priors, calibrator and floor."""
+    """MAHC under the frozen priors, calibrator and floor.
+
+    ``latency_ms`` are finish times; a routed run passes its staged finish
+    times and ``sched`` from ``staged_schedule`` (S3.1), others neither.
+    """
     if confirmatory and params.provisional:
         raise ProvisionalParamsError(
             "MAHC parameters are provisional; freeze them first"
@@ -219,15 +227,20 @@ def run_mahc(
         score,
         params.floor,
         {"signal": signal.value, "priors": {p: list(v) for p, v in looked.items()}},
+        sched,
     )
 
 
 def run_vote_only(
-    verdicts: Sequence[PipelineVerdict], *, latency_ms: Mapping[str, float]
+    verdicts: Sequence[PipelineVerdict],
+    *,
+    latency_ms: Mapping[str, float],
+    sched: Schedule | None = None,
 ) -> FusedVerdict:
-    """HELIOS-noConsensus: equal-weight Borda, no gate (S2.6)."""
+    """HELIOS-noConsensus: equal-weight Borda, no gate (S2.6); one contributing
+    pipeline is PROVISIONAL (R-e, S3.1)."""
     from helios.consensus.vote_only import vote_only
 
     return _publish(
-        "vote_only", verdicts, latency_ms, vote_only, lambda _f: None, None, {}
+        "vote_only", verdicts, latency_ms, vote_only, lambda _f: None, None, {}, sched
     )

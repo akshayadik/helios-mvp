@@ -144,7 +144,30 @@ def test_all_abstained_run_template_header_only(
 
     from helios.pipelines.d_pipe.pipeline import run_dpipe as real
 
+    def g_abstain(**kw: Any) -> dict[str, Any]:
+        # Since S3.1 G-pipe can run when D-pipe abstains (the runner decides,
+        # not the old gate); this case needs every pipeline to rank nothing.
+        from helios.vcl import get_variant
+
+        return {
+            "pipeline": "gpipe",
+            "incident_id": kw["incident_id"],
+            "run_id": kw["run_id"],
+            "variant_config_hash": get_variant(
+                "HELIOS-noLLM"
+            ).compute_variant_config_hash(),
+            "snapshot_hash": kw["snapshot_hash"],
+            "evaluation_phase": kw["evaluation_phase"],
+            "status": "abstained",
+            "ranked_candidates": [],
+            "candidate_scores": {},
+            "mu": None,
+            "sigma": None,
+            "narrative": "",
+        }
+
     monkeypatch.setattr(runner_module, "run_dpipe", abstain)
+    monkeypatch.setattr(runner_module, "run_gpipe", g_abstain)
     _, path = _run(tmp_path, "HELIOS-noLLM")
     step = _narrative(path)
     assert step["rendered"].startswith("No suspect ranked")

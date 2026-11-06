@@ -23,6 +23,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from helios.consensus.mahc import fuse, run_mahc, run_vote_only
+from helios.consensus.router import decide_escalation, decide_g, feasible
+from helios.consensus.router_features import cheap_features, with_gpipe
 from helios.graph.khop_pruner import khop_prune
 from helios.graph.structural_bundle import apply_structural_bundle
 from helios.graph.ueg_c_builder import build_ueg_c
@@ -66,6 +68,11 @@ ENTRY_POINTS: tuple[Callable[..., Any], ...] = (
     run_mahc,
     run_vote_only,
     fuse,
+    cheap_features,
+    with_gpipe,
+    decide_g,
+    decide_escalation,
+    feasible,
     RunOrchestrator.__init__,
     RunOrchestrator.run,
 )
@@ -157,9 +164,11 @@ def test_the_scan_would_catch_a_leak() -> None:
     assert not any("ground_truth" in s for s in _code_tokens(clean))
 
 
+@pytest.mark.parametrize("variant_name", ["HELIOS-Full", "HELIOS-noRouter"])
 def test_orchestrator_run_never_opens_ground_truth(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, variant_name: str
 ) -> None:
+    # Full routes (S3.1), noRouter runs uniformly: both paths are trapped.
     captures = tmp_path / "captures"
     inc_dir = captures / "inc-001"
     inc_dir.mkdir(parents=True)
@@ -198,7 +207,7 @@ def test_orchestrator_run_never_opens_ground_truth(
         _trap(self)
         return real_read_bytes(self)
 
-    variant = get_variant("HELIOS-Full")
+    variant = get_variant(variant_name)
     manifest_hash = variant.compute_variant_config_hash()
     monkeypatch.setattr(builtins, "open", _open)
     monkeypatch.setattr(Path, "read_text", _read_text)

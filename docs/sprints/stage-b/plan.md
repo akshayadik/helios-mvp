@@ -33,6 +33,7 @@ Plus every Tier-2 item recorded as moved to Stage B during S1–S5.
 |---|---|---|
 | AIOpsLab exploratory corpus: conversion into the sealed format works (one HotelReservation window, S1.3); pin its images and charts, record a set of problems, and evaluate exploratorily | S1.3 (no-go for the pool) | B5, recorded during B1 |
 | Longer fault period for `emailMemoryLeak` (near-silent within 5 minutes in the S1.2 corpus) | S1.2 | B5 (OTel exploratory runs) |
+| **Router go-live in shadow mode** (owner 2026-11-06): on a new system or tenant, run uniform routing (`cbr_routing` OFF) in production while recording what the frozen router would have chosen (the CoE R step already holds every decision). Turn routing on for that system once its stop decisions match uniform's answers within the S3.1 tolerance (one percentage point of HR@3) on that system's own incidents; monitor escalation share and per-arm HR@3 after. Answers the build-to-production transfer question (S2-BL-01) with the system's own data, and pairs with the B4 learning loops for drift | S3.1 design (R-b, R-c) | B1 (deployment), B4 (learning loops) |
 
 ## Risks
 

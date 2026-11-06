@@ -169,6 +169,26 @@ class TestRunOrchestrator:
 # ---------------------------------------------------------------------------
 
 
+def _abstaining_gpipe(**kwargs: Any) -> dict[str, Any]:
+    """G-pipe that ranks nothing. Since S3.1 the runner, not run_gpipe's internal
+    gate, decides whether G-pipe runs, so tests whose fake trace files carry no
+    real spans replace it."""
+    return {
+        "pipeline": "gpipe",
+        "incident_id": kwargs["incident_id"],
+        "run_id": kwargs["run_id"],
+        "variant_config_hash": get_variant(_VARIANT).compute_variant_config_hash(),
+        "snapshot_hash": kwargs["snapshot_hash"],
+        "evaluation_phase": kwargs["evaluation_phase"],
+        "status": "abstained",
+        "ranked_candidates": [],
+        "candidate_scores": {},
+        "mu": None,
+        "sigma": None,
+        "narrative": "",
+    }
+
+
 def _fake_lpipe(**kwargs: Any) -> dict[str, Any]:
     return {
         "pipeline": "lpipe",
@@ -371,6 +391,7 @@ class _Spy:
         )
         monkeypatch.setattr(runner_module, "khop_prune", prune)
         monkeypatch.setattr(runner_module, "run_dpipe", dpipe)
+        monkeypatch.setattr(runner_module, "run_gpipe", _abstaining_gpipe)
         monkeypatch.setattr(runner_module, "run_lpipe", _fake_lpipe)
 
 
@@ -590,12 +611,15 @@ class TestSharedTriggerReviewFixes:
                 "narrative": "",
             }
 
-        def should_run(d_out: dict[str, Any], _manifest: Any) -> bool:
-            seen["routing"] = dict(d_out["candidate_scores"])
-            return False
+        # Routing reads the D-pipe scores through the PPR disagreement (a router
+        # feature since S3.1, the gate before it).
+        def disagreement(scores: dict[str, float]) -> float:
+            seen["routing"] = dict(scores)
+            return 0
 
         monkeypatch.setattr(runner_module, "run_dpipe", dpipe)
-        monkeypatch.setattr(runner_module, "should_run_gpipe", should_run)
+        monkeypatch.setattr(runner_module, "compute_ppr_disagreement", disagreement)
+        monkeypatch.setattr(runner_module, "run_gpipe", _abstaining_gpipe)
         captures = tmp_path / "captures"
         _capture_with_traces(captures, "inc-001")
         _make_orchestrator(tmp_path, captures).run(captures)
@@ -708,7 +732,6 @@ class TestGPipeS22:
                 "evidence": evidence,
             }
 
-        monkeypatch.setattr(runner_module, "should_run_gpipe", lambda *_: True)
         monkeypatch.setattr(runner_module, "run_gpipe", gpipe)
         captures = tmp_path / "captures"
         _capture_with_traces(captures, "inc-001")

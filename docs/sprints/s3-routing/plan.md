@@ -31,6 +31,8 @@ The cheap-first router (IN3) sends statistical and graph evidence first and call
 | S3.4 Knowledge Cortex (SOP retrieval, build data only) | T2 | S2-M8-ENG04 | 1½ | S2.3 | Retrieval tests; pool-exclusion test |
 | S3.5 LLM-unavailable fallback | T2 | S2-M8-ENG05 | ½ | S3.1 | Route to D+G on LLM failure; covariate recorded |
 
+S3.1 design: [s3_1_router_design.md](s3_1_router_design.md) (approved 2026-11-06, R-a…R-e as recommended) · [implementation plan](s3_1_implementation_plan.md).
+
 ### Carried-in items that shape the tasks
 
 **S3.1 router**
@@ -79,6 +81,11 @@ S3 adds the router's entries to what the addendum must cover, so the draft start
 - the `metric_contract.md` §9 correction;
 - S2-BL-01: an analysis split by G-pipe participation (and by routed arm);
 - S2-BL-05: every change since deposit 1 that alters what a confirmatory test measures.
+- **A-H5 split by stage** (S3.1 design §2, owner 2026-11-06): log-CpR reported separately for runs that stopped on the cheap arm and runs escalated to the L-pipe, so the early-publication effect and the LLM-savings effect are not read as one;
+- **A-H1 split by escalation** (S3.1 design §10): noLLM also routes, so Full and noLLM differ only on escalated runs;
+- the meaning of uniform routing (R-b) and the reachable arm set (R-c).
+
+After the S3.1 build run, recheck the D11 compute estimate (about 1,500 L-pipe runs, 30–50 h) against the measured escalation share: noRouter and LLM-only call the L-pipe on every case.
 
 ## Expected deviation entries
 
