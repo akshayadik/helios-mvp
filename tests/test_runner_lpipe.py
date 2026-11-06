@@ -23,10 +23,6 @@ REPO = Path(__file__).resolve().parents[1]
 KEY = b"test-secret-at-least-32-chars-long!!"
 _STREAMS = ("p1_metrics_path", "p2_traces_path", "p3_logs_path")
 
-# The frozen D-pipe warns (scipy ConstantInputWarning) on some real windows; the
-# build tools run without the error filter, so only these tests silence it.
-pytestmark = pytest.mark.filterwarnings("ignore::scipy.stats.ConstantInputWarning")
-
 
 def stage_capture(captures: Path, manifest: Path = OTEL) -> str:
     """A sealed copy of a build case whose stream paths point at the repo files."""

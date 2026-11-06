@@ -53,7 +53,7 @@ S3.1 design: [s3_1_router_design.md](s3_1_router_design.md) (approved 2026-11-06
 
 | Item | Source | Done when |
 |---|---|---|
-| Fallback trigger time uses the window peak (non-causal, so TTCD/TTT look ahead); D-pipe propagation inert on build data; scipy `ConstantInputWarning` silenced only in tests | S2-BL-12 | Causal fallback (deviation entry, since the detector is frozen) or documented as a limitation; dead propagation decided (keep behind `dpipe_propagation`, or record); warning handled in code |
+| Fallback trigger time uses the window peak (non-causal, so TTCD/TTT look ahead); D-pipe propagation inert on build data; scipy `ConstantInputWarning` silenced only in tests | S2-BL-12 | Causal fallback (deviation entry, since the detector is frozen) or documented as a limitation; dead propagation decided (keep behind `dpipe_propagation`, or record); warning handled in code — **Done 2026-11-06 (owner: record and report; entry 71):** anchor unchanged; `known_at_s` and detection delay recorded per trigger (threshold 180 s; fallback median 150 s OTel, 300 s RCAEval build); operational TTCD exploratory in metric contract §4; propagation kept behind `dpipe_propagation` and recorded as inert on build data; constant-series guard removes the warning (scores unchanged) |
 | Deferred review minors: vote-only score scale, first-publication state not stored, either-state runner test, unseen-pipeline prior, empty `BuildCase` votes, masking edge cases | S2-BL-18 | Tests first; each fixed or noted in the backlog |
 | CoE ledger minors: verdict ref is the decision hash, model-hash fallback to the expected digest, G/L evidence refs | S2-BL-20 | Tests first; each fixed or noted |
 | `bin/pin-otel-demo.sh` uses GNU `sed -i` (line 51), which fails on macOS | S1 carry-over | Portable form; script runs on the M5 Pro |
@@ -89,7 +89,7 @@ After the S3.1 build run, recheck the D11 compute estimate (about 1,500 L-pipe r
 
 ## Expected deviation entries
 
-Router initialisation and thresholds (S3.1); G-pipe gate decision (S3.1, S2-BL-06); ACP and reward parameters if built (S3.2, S3.3); a causal fallback trigger time if adopted (S2-BL-12); pilot_v3 captures if registered as build data; the four May-plan rows marked DEFERRED; Tier-2 items moved to Stage B.
+Router initialisation and thresholds (S3.1); G-pipe gate decision (S3.1, S2-BL-06); ACP and reward parameters if built (S3.2, S3.3); detection delay and operational TTCD, TTCD/TTT split by trigger source (S2-BL-12, entry 71); pilot_v3 captures if registered as build data; the four May-plan rows marked DEFERRED; Tier-2 items moved to Stage B.
 
 ## Exit criteria
 

@@ -133,7 +133,11 @@ CREATE TABLE IF NOT EXISTS trigger_row (
     detector_hash       VARCHAR     NOT NULL,
     seeds_from_trigger  BOOLEAN     NOT NULL,
     handover_unix       DOUBLE      NOT NULL,
-    stored_at           TIMESTAMP               DEFAULT CURRENT_TIMESTAMP
+    stored_at           TIMESTAMP               DEFAULT CURRENT_TIMESTAMP,
+    -- trigger-known-at-v1 (S2-BL-12): when a live detector could have issued
+    -- the trigger (recorded time); NULL for external triggers and rows
+    -- written before the column existed
+    known_at_s          DOUBLE
 );
 
 CREATE TABLE IF NOT EXISTS timing_row (
@@ -146,6 +150,10 @@ CREATE TABLE IF NOT EXISTS timing_row (
 
 INSERT INTO schema_tag (tag)
 VALUES ('trigger-v1')
+ON CONFLICT (tag) DO NOTHING;
+
+INSERT INTO schema_tag (tag)
+VALUES ('trigger-known-at-v1')
 ON CONFLICT (tag) DO NOTHING;
 
 -- gpipe-evidence-v1 (S2.2): the graph facts behind a pipeline's top suspects

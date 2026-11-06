@@ -47,6 +47,15 @@ class ResultStore:
         self._migrate_cpr_to_mrr()
         self._archive_pre_v05()
         self._con.execute(_SCHEMA_SQL.read_text(encoding="utf-8"))
+        self._add_trigger_known_at()
+
+    def _add_trigger_known_at(self) -> None:
+        """Add trigger_row.known_at_s to a database created before S2-BL-12.
+
+        Existing rows keep NULL: their live-detection time was never recorded.
+        """
+        if "known_at_s" not in self._result_row_columns("trigger_row"):
+            self._con.execute("ALTER TABLE trigger_row ADD COLUMN known_at_s DOUBLE")
 
     def _result_row_columns(self, table: str = "result_row") -> set[str]:
         return {
@@ -257,8 +266,8 @@ class ResultStore:
             INSERT INTO trigger_row (
                 run_id, incident_id, variant_config_hash, trigger_time_s,
                 suspects, context, source, detector_hash, seeds_from_trigger,
-                handover_unix
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                handover_unix, known_at_s
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             [
                 run_id,
@@ -271,6 +280,7 @@ class ResultStore:
                 record.detector_hash,
                 seeds_from_trigger,
                 handover_unix,
+                record.known_at_s,
             ],
         )
 
@@ -425,7 +435,7 @@ class ResultStore:
         row = self._con.execute(
             """
             SELECT incident_id, trigger_time_s, suspects, context, source,
-                   detector_hash
+                   detector_hash, known_at_s
             FROM trigger_row
             WHERE incident_id = ? AND variant_config_hash = ?
             ORDER BY stored_at DESC, run_id DESC
@@ -442,6 +452,7 @@ class ResultStore:
             context=tuple(json.loads(row[3])),
             source=TriggerSource(row[4]),
             detector_hash=row[5],
+            known_at_s=row[6],
         )
 
     def insert_timing(

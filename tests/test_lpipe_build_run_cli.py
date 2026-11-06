@@ -17,8 +17,6 @@ if TYPE_CHECKING:
     from pathlib import Path
     from typing import Any
 
-pytestmark = pytest.mark.filterwarnings("ignore::scipy.stats.ConstantInputWarning")
-
 
 def test_tool_refuses_the_pool() -> None:
     assert tool.main(["--round", "1", "--corpus", "pool"]) == 2

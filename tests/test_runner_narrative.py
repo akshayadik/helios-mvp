@@ -26,7 +26,6 @@ if TYPE_CHECKING:
 
     from helios.store.result_store import ResultStore
 
-pytestmark = pytest.mark.filterwarnings("ignore::scipy.stats.ConstantInputWarning")
 P = load_narrator_params()
 
 

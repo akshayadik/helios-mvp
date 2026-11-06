@@ -296,6 +296,7 @@ def _trigger() -> TriggerRecord:
         context=("otel-collector",),
         source=TriggerSource.THRESHOLD,
         detector_hash="d" * 64,
+        known_at_s=1_790_000_480,
     )
 
 
@@ -314,6 +315,29 @@ def test_trigger_round_trips_exactly(store: ResultStore) -> None:
 def test_trigger_and_timing_tables_are_tagged(store: ResultStore) -> None:
     assert {"trigger_row", "timing_row"} <= set(store.table_names())
     assert "trigger-v1" in store.schema_tags()
+    assert "trigger-known-at-v1" in store.schema_tags()
+
+
+def test_old_trigger_table_gains_known_at_with_null_rows(tmp_path: Path) -> None:
+    path = tmp_path / "old.db"
+    store = ResultStore(path)
+    store.insert_trigger(
+        _trigger(),
+        run_id="r1",
+        variant_config_hash="v" * 64,
+        seeds_from_trigger=True,
+        handover_unix=1_800_000_000,
+    )
+    store.close()
+    con = duckdb.connect(str(path))
+    con.execute("ALTER TABLE trigger_row DROP COLUMN known_at_s")
+    con.close()
+    reopened = ResultStore(path)
+    got = reopened.fetch_trigger("otel-001", "v" * 64)
+    assert got is not None
+    assert got.known_at_s is None
+    assert got.trigger_time_s == _trigger().trigger_time_s
+    reopened.close()
 
 
 def test_timing_rows_one_per_pipeline(store: ResultStore) -> None:
