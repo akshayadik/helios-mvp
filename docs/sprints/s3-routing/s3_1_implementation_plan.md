@@ -161,7 +161,7 @@
 
 - [ ] **Step 1:** `router_build_run.py freeze`; `check` reproduces the report from the frozen file.
 - [ ] **Step 2:** Freeze entry (design §6) after owner review; append with the CLI; commit the log, anchor, frozen file and report.
-- [ ] **Step 3:** Design §10 Results written from the report.
+- [x] **Step 3:** Design results written from the report (§11; §10 holds the chair-call questions).
 
 ### Task 12: Close the row
 

@@ -21,6 +21,7 @@ refit to ``data/frozen/router_params.json``; nothing else writes there.
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import json
 import sys
 import tempfile
@@ -46,6 +47,7 @@ from helios.evaluation.router_calibration import (
     RouterCase,
     arm_outcomes,
     choose_tau,
+    confirm_refit,
     cross_fit,
     evaluate,
     fit_all,
@@ -171,6 +173,12 @@ def _print(report: dict[str, Any]) -> None:
                 f"L-pipe calls saved {g['lpipe_calls_saved']}"
             )
         print(line)
+    for name, g in report.get("refit_in_sample", {}).items():
+        print(
+            f"[router] {name} refit in sample: routed {g['routed_hr3']}, "
+            f"escalated {g['escalated_share']}, L-pipe calls saved "
+            f"{g['lpipe_calls_saved']}"
+        )
 
 
 def _fit(run: int) -> int:
@@ -180,7 +188,20 @@ def _fit(run: int) -> int:
     outcomes = [arm_outcomes(c, mahc) for c in cases]
     medians = stage_medians(cases)
     held = cross_fit(cases, outcomes, lam=LAMBDA, alpha=ALPHA, medians=medians)
-    tau = choose_tau(cases, held, outcomes, mahc)
+    tau_held = choose_tau(cases, held, outcomes, mahc)
+    tau = tau_held
+    refit = None
+    if tau_held is not None:
+        refit = fit_all(
+            cases,
+            outcomes,
+            lam=LAMBDA,
+            alpha=ALPHA,
+            tau=tau_held,
+            medians=medians,
+            digest=load_price_book().digest,
+        )
+        tau = confirm_refit(cases, held, refit, outcomes, mahc, tau_held)
     report = evaluate(cases, held, outcomes, mahc, tau)
     report.update(
         {
@@ -190,18 +211,15 @@ def _fit(run: int) -> int:
             "lam": LAMBDA,
             "alpha": ALPHA,
             "stage_median_ms": medians,
+            "tau_held_out": tau_held,
         }
     )
-    if tau is not None:
-        refit = fit_all(
-            cases,
-            outcomes,
-            lam=LAMBDA,
-            alpha=ALPHA,
-            tau=tau,
-            medians=medians,
-            digest=load_price_book().digest,
-        )
+    if refit is not None and tau is not None:
+        refit = dataclasses.replace(refit, tau_acc=tau)
+        whole = dict.fromkeys(range(len(cases)), refit)
+        report["refit_in_sample"] = evaluate(cases, whole, outcomes, mahc, tau)[
+            "by_corpus"
+        ]
         report["refit"] = refit.as_dict()
         report["refit_hash"] = router_params_hash(refit)
     path = _write(f"router_run{run}.json", report)
@@ -209,11 +227,12 @@ def _fit(run: int) -> int:
     print(f"[router] report {path.name}")
     if tau is None:
         print(
-            "[router] no tau_acc stops any case within one point of uniform: stop (R-d)",
+            "[router] no tau_acc stops any case within one point of uniform"
+            " (held out, and for the refit): stop (R-d)",
             file=sys.stderr,
         )
         return 3
-    print(f"[router] tau_acc {tau}")
+    print(f"[router] tau_acc {tau} (held-out choice {tau_held})")
     return 0
 
 

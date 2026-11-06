@@ -13,7 +13,9 @@ held-out HR@3 is within the tolerance of uniform routing in every corpus and
 at least one case stops before the L-pipe. A τ under which every case
 escalates meets the tolerance trivially and does not qualify: no qualifying
 value means the router cannot stop any case safely, and the build tool stops
-for the owner.
+for the owner. The frozen refit is trained on every build case, so its bounds
+are tighter than the held-out ones; ``confirm_refit`` raises τ until the refit
+too meets the rule on the build cases (owner, 2026-11-06, router_run1 review).
 """
 
 from __future__ import annotations
@@ -49,6 +51,7 @@ __all__ = [
     "Simulated",
     "arm_outcomes",
     "choose_tau",
+    "confirm_refit",
     "cross_fit",
     "evaluate",
     "fit_all",
@@ -258,6 +261,45 @@ def _hr(values: Sequence[int]) -> float:
     return sum(values) / len(values) if values else 0
 
 
+def _lcbs(
+    cases: Sequence[RouterCase], params_of: Mapping[int, RouterParams]
+) -> set[float]:
+    """Every lower bound the policy can compare with τ on these cases."""
+    out: set[float] = set()
+    for i, case in enumerate(cases):
+        for arm in SELECTABLE:
+            x = _x(case, arm)
+            if x is not None:
+                out.add(params_of[i].arms[arm].estimate(x, alpha=params_of[i].alpha)[1])
+    return out
+
+
+def _meets(
+    cases: Sequence[RouterCase],
+    params_of: Mapping[int, RouterParams],
+    outcomes: Sequence[dict[Arm, int]],
+    mahc: MAHCParams,
+    tau: float,
+    tolerance: float,
+) -> bool:
+    """R-d at τ: within the tolerance of uniform in every corpus, one stop at least."""
+    sims = [
+        simulate(c, _with_tau(params_of[i], tau), outcomes[i], mahc)
+        for i, c in enumerate(cases)
+    ]
+    # A τ under which nothing stops before the L-pipe is uniform routing
+    # under another name: it meets the tolerance trivially and is skipped.
+    if not any("lpipe" not in ARM_PIPELINES[s.terminal_arm] for s in sims):
+        return False
+    uniform = [uniform_hit(c, mahc) for c in cases]
+    for k in sorted({c.corpus for c in cases}):
+        idx = [i for i, c in enumerate(cases) if c.corpus == k]
+        routed = _hr([sims[i].hit for i in idx])
+        if routed < _hr([uniform[i] for i in idx]) - tolerance:
+            return False
+    return True
+
+
 def choose_tau(
     cases: Sequence[RouterCase],
     held_out: Mapping[int, RouterParams],
@@ -267,32 +309,38 @@ def choose_tau(
     tolerance: float = TOLERANCE,
 ) -> float | None:
     """The lowest held-out lower bound meeting the R-d rule in every corpus."""
-    uniform = [uniform_hit(c, mahc) for c in cases]
-    candidates: set[float] = set()
-    for i, case in enumerate(cases):
-        for arm in SELECTABLE:
-            x = _x(case, arm)
-            if x is not None:
-                candidates.add(
-                    held_out[i].arms[arm].estimate(x, alpha=held_out[i].alpha)[1]
-                )
-    corpora = sorted({c.corpus for c in cases})
-    for tau in sorted(candidates):
-        sims = [
-            simulate(c, _with_tau(held_out[i], tau), outcomes[i], mahc)
-            for i, c in enumerate(cases)
-        ]
-        routed = [s.hit for s in sims]
-        # A τ under which nothing stops before the L-pipe is uniform routing
-        # under another name: it meets the tolerance trivially and is skipped.
-        stops = sum(1 for s in sims if "lpipe" not in ARM_PIPELINES[s.terminal_arm])
-        if stops and all(
-            _hr([routed[i] for i, c in enumerate(cases) if c.corpus == k])
-            >= _hr([uniform[i] for i, c in enumerate(cases) if c.corpus == k])
-            - tolerance
-            for k in corpora
-        ):
+    for tau in sorted(_lcbs(cases, held_out)):
+        if _meets(cases, held_out, outcomes, mahc, tau, tolerance):
             return tau
+    return None
+
+
+def confirm_refit(
+    cases: Sequence[RouterCase],
+    held_out: Mapping[int, RouterParams],
+    refit: RouterParams,
+    outcomes: Sequence[dict[Arm, int]],
+    mahc: MAHCParams,
+    tau: float,
+    *,
+    tolerance: float = TOLERANCE,
+) -> float | None:
+    """The lowest τ' >= τ at which the refit, too, meets R-d on the build cases.
+
+    The refit is trained on every build case, so its bounds are tighter than
+    the held-out ones and at the held-out τ it stops more cases than were
+    evaluated. τ is raised until the refit (in sample) and the held-out
+    models both meet the rule; None when no such value exists (the owner
+    decides). The in-sample check is optimistic: it guards against the
+    refit's extra stops, not against overfitting.
+    """
+    whole = dict.fromkeys(range(len(cases)), refit)
+    candidates = {t for t in _lcbs(cases, whole) | _lcbs(cases, held_out) if t > tau}
+    for t in [tau, *sorted(candidates)]:
+        if _meets(cases, whole, outcomes, mahc, t, tolerance) and _meets(
+            cases, held_out, outcomes, mahc, t, tolerance
+        ):
+            return t
     return None
 
 
@@ -361,9 +409,11 @@ def evaluate(
         entry: dict[str, Any] = {
             "cases": len(idx),
             "uniform_hr3": round(_hr(uniform), _DIGITS),
+            # None: the arm never had all its lists (no traces, no G arm).
             "arm_hr3": {
-                a.value: round(
-                    _hr([outcomes[i][a] for i in idx if a in outcomes[i]]), _DIGITS
+                a.value: _rate(
+                    sum(outcomes[i][a] for i in idx if a in outcomes[i]),
+                    sum(1 for i in idx if a in outcomes[i]),
                 )
                 for a in SELECTABLE
             },

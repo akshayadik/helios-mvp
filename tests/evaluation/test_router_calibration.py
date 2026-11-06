@@ -16,6 +16,7 @@ from helios.evaluation.router_calibration import (
     RouterCase,
     arm_outcomes,
     choose_tau,
+    confirm_refit,
     cross_fit,
     evaluate,
     fit_all,
@@ -161,3 +162,50 @@ def test_stage_medians_take_the_larger_corpus_median() -> None:
         for c in _corpus("b", 3, 3, reliable=True)
     ]
     assert stage_medians(a + b) == {"dpipe": 600, "lpipe": 12_000}
+
+
+def test_arm_hr3_is_none_for_an_arm_that_never_ran() -> None:
+    cases = _corpus("a", 0, 12, reliable=True)
+    outcomes = [arm_outcomes(c, MAHC) for c in cases]
+    held = cross_fit(cases, outcomes, lam=1, alpha=0.2, medians=MEDIANS)
+    arm_hr3 = evaluate(cases, held, outcomes, MAHC, 0.3)["by_corpus"]["a"]["arm_hr3"]
+    assert arm_hr3["Full"] is None
+    assert arm_hr3["D"] == 1
+
+
+def test_confirm_refit_keeps_a_tau_the_refit_also_meets() -> None:
+    cases = _corpus("a", 0, 30, reliable=False) + _corpus("b", 30, 30, reliable=False)
+    outcomes = [arm_outcomes(c, MAHC) for c in cases]
+    held = cross_fit(cases, outcomes, lam=1, alpha=0.05, medians=MEDIANS)
+    tau = choose_tau(cases, held, outcomes, MAHC)
+    assert tau is not None
+    refit = fit_all(
+        cases, outcomes, lam=1, alpha=0.05, tau=tau, medians=MEDIANS, digest="d" * 64
+    )
+    got = confirm_refit(cases, held, refit, outcomes, MAHC, tau)
+    assert got is not None
+    assert got >= tau
+    whole = dict.fromkeys(range(len(cases)), refit)
+    for entry in evaluate(cases, whole, outcomes, MAHC, got)["by_corpus"].values():
+        assert entry["routed_hr3"] >= entry["uniform_hr3"] - 0.01
+
+
+def test_confirm_refit_raises_tau_when_the_refit_stops_too_much() -> None:
+    # Held out the router stops only where D-pipe is right; a refit that is
+    # more optimistic (bias-only model, every case looks reliable) must not
+    # be frozen at the held-out τ.
+    cases = _corpus("a", 0, 30, reliable=False)
+    outcomes = [arm_outcomes(c, MAHC) for c in cases]
+    held = cross_fit(cases, outcomes, lam=1, alpha=0.05, medians=MEDIANS)
+    tau = choose_tau(cases, held, outcomes, MAHC)
+    assert tau is not None
+    good = fit_all(
+        cases, outcomes, lam=1, alpha=0.05, tau=tau, medians=MEDIANS, digest="d" * 64
+    )
+    optimistic = [{**o, Arm.D: 1} for o in outcomes]
+    loose = fit_all(
+        cases, optimistic, lam=1, alpha=0.05, tau=tau, medians=MEDIANS, digest="d" * 64
+    )
+    assert confirm_refit(cases, held, good, outcomes, MAHC, tau) == tau
+    raised = confirm_refit(cases, held, loose, outcomes, MAHC, tau)
+    assert raised is None or raised > tau
