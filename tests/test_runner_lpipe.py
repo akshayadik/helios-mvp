@@ -209,3 +209,23 @@ def test_lpipe_output_without_h_struct_is_an_error(
     monkeypatch.setattr(runner_module, "run_lpipe", no_counts)
     with pytest.raises(ValueError, match="h_struct"):
         run_variant(tmp_path, "HELIOS-Full", FakeClient())
+
+
+def test_model_down_with_a_cache_miss_runs_on_d_and_g(tmp_path: Path) -> None:
+    """S3.5 / S2-BL-17: Ollama down and nothing cached: the run completes on D
+    and G, records the covariate, and writes nothing to the cache."""
+    from tests.pipelines.l_pipe.test_unavailable import Down
+    from tests.test_runner_coe import _entries, _step
+
+    cache = ResponseCache(tmp_path / "cache.sqlite")
+    client = Down()
+    store = run_variant(tmp_path, "HELIOS-noRouter", client, cache)
+    assert client.calls == 0
+    assert cache.size() == 0
+    by_pipeline = {r["pipeline"]: r["status"] for r in store.fetch_all()}
+    assert by_pipeline["lpipe"] == "abstained"
+    assert by_pipeline["dpipe"] == "ranked"
+    (path,) = (tmp_path / "r.coe").glob("*.coe.jsonl")
+    (entry,) = _entries(path)
+    assert _step(entry, "R")["llm_unavailable"] == "cache_miss"
+    assert _step(entry, "F")["ranked"]

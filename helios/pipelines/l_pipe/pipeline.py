@@ -35,7 +35,12 @@ from helios.pipelines.l_pipe.ollama_client import (
     OllamaTimeoutError,
 )
 from helios.pipelines.l_pipe.prompt_registry import PromptTamperError
-from helios.pipelines.l_pipe.workers import DropReason, WorkerResult, run_worker
+from helios.pipelines.l_pipe.workers import (
+    OUTAGE_DROPS,
+    DropReason,
+    WorkerResult,
+    run_worker,
+)
 from helios.schemas.telemetry import EvaluationPhase
 from helios.schemas.verdict import VERDICT_SCHEMA_VERSION, VerdictStatus
 from helios.telemetry.scope import in_scope
@@ -174,14 +179,20 @@ def run_lpipe(
         "mu": None,
         "sigma": None,
     }
+    expected = lpipe_config.EXPECTED_MODEL_DIGEST
+    cache_only = False
     try:
         model_digest = client.model_digest(timeout_s=TIMEOUT_S)
     except (OllamaTimeoutError, OllamaConnectionError, OllamaResponseError) as exc:
         _log.error("lpipe model endpoint error for %s: %s", incident_id, exc)
-        return _failed(
-            base, gateway, t0, f"l-pipe-connectivity-error: {type(exc).__name__}"
-        )
-    expected = lpipe_config.EXPECTED_MODEL_DIGEST
+        if expected is None or cache is None:
+            out = _failed(
+                base, gateway, t0, f"l-pipe-connectivity-error: {type(exc).__name__}"
+            )
+            return {**out, "llm_unavailable": "endpoint"}
+        # S3.5: the cache holds only answers of the pinned model (entry 58 checks
+        # the served digest before any write), so it can still be read.
+        model_digest, cache_only = expected, True
     if expected is not None and model_digest != expected:
         raise ModelMismatchError(
             f"served model {model_digest[:12]} is not the frozen {expected[:12]}"
@@ -201,7 +212,13 @@ def run_lpipe(
         return _failed(base, gateway, t0, f"l-pipe-digest-error: {type(exc).__name__}")
     results = [
         run_worker(
-            p, digests[p.name], alias, gateway, cache=cache, model_digest=model_digest
+            p,
+            digests[p.name],
+            alias,
+            gateway,
+            cache=cache,
+            model_digest=model_digest,
+            cache_only=cache_only,
         )
         for p in personas.PERSONAS
     ]
@@ -209,6 +226,17 @@ def run_lpipe(
     called = [r for r in results if r.dropped != DropReason.NO_DIGEST]
     replayed_ms = sum(r.wall_ms for r in results if r.cache_hit)
     status = VerdictStatus.RANKED if merged.k else VerdictStatus.ABSTAINED
+    evidence: dict[str, Any] = {
+        "k": merged.k,
+        "model_digest": model_digest,
+        "prompt_shas": shas,
+        "candidates": candidates,
+        "scores": merged.scores,
+        "digests": {n: _digest_record(d) for n, d in digests.items()},
+        "workers": {r.persona: _worker_record(r) for r in results},
+    }
+    if cache_only:  # only then, so served runs keep their evidence bytes
+        evidence["model_source"] = "cache_only"
     return {
         **base,
         "status": status,
@@ -229,16 +257,21 @@ def run_lpipe(
             "failed": sum(r.invalid_output for r in results),
         },
         "replayed_ms": replayed_ms,
-        "evidence": {
-            "k": merged.k,
-            "model_digest": model_digest,
-            "prompt_shas": shas,
-            "candidates": candidates,
-            "scores": merged.scores,
-            "digests": {n: _digest_record(d) for n, d in digests.items()},
-            "workers": {r.persona: _worker_record(r) for r in results},
-        },
+        "llm_unavailable": _unavailable(called, cache_only=cache_only),
+        "evidence": evidence,
     }
+
+
+def _unavailable(called: list[WorkerResult], *, cache_only: bool) -> str | None:
+    """Why the model could not be asked at all (S3.5), or None.
+
+    Only when every worker that had a digest was dropped before an answer
+    (timeout, connection, HTTP error, cache miss with the endpoint down); a
+    worker that answered, even invalidly, means the model was available.
+    """
+    if not called or any(r.dropped not in OUTAGE_DROPS for r in called):
+        return None
+    return "cache_miss" if cache_only else "calls"
 
 
 def _failed(
