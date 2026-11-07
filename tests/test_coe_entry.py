@@ -318,3 +318,42 @@ def test_t_step_has_window_bounds() -> None:
     t = _build()["steps"][0]
     assert t["window_start"] == "2026-10-28T14:42:23+00:00"
     assert t["window_end"] == "2026-10-28T14:56:23+00:00"
+
+
+# ── S2-BL-20 minors ──────────────────────────────────────────────────────────
+
+
+def test_empty_evidence_has_no_ref_since_the_runner_stores_none() -> None:
+    entry = _build(evidence={"dpipe": _dpipe_evidence(), "gpipe": {}, "lpipe": None})
+    steps = {s["id"]: s for s in entry["steps"]}
+    assert steps["P:gpipe"]["refs"]["evidence"] is None
+    assert steps["P:lpipe"]["refs"]["evidence"] is None
+    assert steps["P:dpipe"]["refs"]["evidence"] is not None
+
+
+def test_verdict_row_ref_is_the_whole_row_hash() -> None:
+    verdicts = [
+        _verdict(PipelineName.DPIPE, ["cart", "ad"]),
+        _verdict(PipelineName.GPIPE, ["cart"]),
+        _verdict(PipelineName.LPIPE, ["ad", "cart"]),
+    ]
+    entry = _build(verdicts=verdicts)
+    for step, verdict in zip(entry["steps"][2:5], verdicts, strict=True):
+        assert step["measured"]["verdict_row"] == verdict.compute_verdict_hash()
+        assert step["refs"]["verdict"] == verdict.compute_decision_hash()
+
+
+def test_cites_outside_the_digest_are_counted() -> None:
+    entry = _build(
+        evidence={
+            "dpipe": _dpipe_evidence(),
+            "gpipe": _gpipe_evidence(),
+            "lpipe": _lpipe_evidence(cite="L9"),
+        }
+    )
+    (claim,) = [i for i in _items(entry) if i["id"].startswith("L:log:claim")]
+    assert claim["cites"] == []
+    assert claim["unknown_cites"] == 1
+    ok = _build()
+    (kept,) = [i for i in _items(ok) if i["id"].startswith("L:log:claim")]
+    assert "unknown_cites" not in kept

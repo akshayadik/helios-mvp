@@ -56,7 +56,6 @@ from helios.pipelines.g_pipe.pipeline import (
     run_gpipe,
 )
 from helios.pipelines.l_pipe.lpipe_config import (
-    EXPECTED_MODEL_DIGEST,
     WORKER_PROMPT_SHAS,
 )
 from helios.pipelines.l_pipe.pipeline import run_lpipe, verify_model
@@ -85,7 +84,7 @@ from helios.vcl.decorators import GatedComponentInactiveError, set_current_manif
 from helios.vcl.snapshot_registry import DuplicateSnapshotError, SnapshotRegistry
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Collection
+    from collections.abc import Callable, Collection, Mapping
 
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
@@ -510,7 +509,7 @@ class RunOrchestrator:
             # without their CoE entry (review I-3).
             coe_entry = build_coe_entry(
                 **{k: str(v) for k, v in base.items()},
-                parameter_hashes=self._parameter_hashes(trigger),
+                parameter_hashes=self._parameter_hashes(trigger, l_out.get("evidence")),
                 trigger=trigger,
                 signal=None if signal is None else signal.value,
                 window_start=window.window_start_iso,
@@ -568,8 +567,15 @@ class RunOrchestrator:
                 gate_check=gate_result.gate_check or "",
             )
 
-    def _parameter_hashes(self, trigger: TriggerRecord) -> dict[str, str]:
-        """What the run's decisions were made with (CoE entry, design §5.1)."""
+    def _parameter_hashes(
+        self, trigger: TriggerRecord, lpipe_evidence: Mapping[str, Any] | None = None
+    ) -> dict[str, str]:
+        """What the run's decisions were made with (CoE entry, design §5.1).
+
+        ``lpipe_model`` is the digest the L-pipe actually ran with (its
+        evidence), not the expected one; empty when the L-pipe did not run
+        (routed stop, skipped, failed before the model was asked) (S2-BL-20).
+        """
         hashes = {
             "detector": trigger.detector_hash or detector_hash(self._detector),
             "dpipe": dpipe_params_hash(self._dpipe),
@@ -583,7 +589,9 @@ class RunOrchestrator:
             if self._manifest.l2c_llm:
                 hashes["narrator_prompt"] = narrator_prompt.NARRATOR_PROMPT_SHA
         if self._manifest.l2c_llm:
-            hashes["lpipe_model"] = EXPECTED_MODEL_DIGEST or ""
+            hashes["lpipe_model"] = str(
+                (lpipe_evidence or {}).get("model_digest") or ""
+            )
             for name, sha in sorted(WORKER_PROMPT_SHAS.items()):
                 hashes[f"lpipe_prompt_{name}"] = sha or ""
         return hashes
