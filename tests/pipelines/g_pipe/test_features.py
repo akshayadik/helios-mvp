@@ -221,3 +221,25 @@ def test_no_degree_features_and_window_normalised_scores(tmp_path: Path) -> None
     assert small is not None and large is not None
     assert np.array_equal(small.table, large.table)
     assert small.table[1, FEATURE_COLUMNS.index("dpipe_score")] == 1
+
+
+def test_error_origin_shift_credits_the_callee_where_the_error_starts(
+    tmp_path: Path,
+) -> None:
+    # OTel fix A (entry 76): after t, b fails and a's span fails with it.
+    # error_share_shift rises for both; error_origin_shift only for b.
+    rows = [
+        *_calls("t1", T0 + 10, T0 + 12),
+        *_calls("t2", T_TRIGGER + 5, T_TRIGGER + 9),
+    ]
+    w = _window(tmp_path, rows)
+    assert w.p2_traces_path is not None
+    spans = pd.read_parquet(w.p2_traces_path)
+    spans["status_code"] = ["UNSET", "UNSET", "ERROR", "ERROR"]
+    spans.to_parquet(w.p2_traces_path)
+    f = compute_features(w, _trigger(), {}, {}, ["a", "b"], DETECTOR)
+    assert f is not None
+    share = FEATURE_COLUMNS.index("error_share_shift")
+    origin = FEATURE_COLUMNS.index("error_origin_shift")
+    assert f.table[:, share].tolist() == [1, 1]
+    assert f.table[:, origin].tolist() == [0, 1]

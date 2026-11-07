@@ -27,6 +27,10 @@ On OTel build v3, HELIOS-noRouter's fused HR@3 is 50/63. None of the 13 misses c
   - A client span that errors while its server child does not (a timeout) counts for the caller.
   - It is added beside `error_share_shift`, not in place of it.
 - **The ranker:** reselected under the frozen S2.2 rule (entries 54–55): leave one root service out, with learned vs feature-weighted PPR vs plain PPR.
+- **As built (2026-11-07):**
+  - The unit is a service's entry span (one request's work), as for `error_share_shift`. An entry is an error origin when a span of its own work (the entry or a same-service span below it) is `ERROR` and none of that span's children is (`helios/graph/span_features.py`, column `error_origin`). The feature is its share after the trigger minus before.
+  - The S2.2 model stays loadable and unchanged. A parameter file that names no `features` is read over the ten S2.2 columns (`S22_COLUMNS`), so today's frozen file keeps its hash and scores; a refit model names its columns in `features`. This keeps *old* runnable beside *new* for O-f.
+  - `bin/gpipe_select.py --columns all --report <new path>` runs the reselection; the defaults reproduce the S2.2 run, and an existing report other than S2.2's is never overwritten.
 - **D-pipe stays metrics-only.** Its span-metric error series carry only `service_name`, so they cannot tell where an error starts. Reading traces in D-pipe would also blur what HELIOS-D (A-H3) ablates.
 
 **O-c. Fix B: a memory-trend channel in D-pipe, built only if it passes a build-data gate.**

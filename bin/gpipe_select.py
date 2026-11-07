@@ -2,7 +2,8 @@
 
 Usage:
     set -a; source .env; set +a
-    poetry run python bin/gpipe_select.py [--workers 8]
+    poetry run python bin/gpipe_select.py [--workers 8] [--columns s22|all]
+        [--report PATH]
 
 Per case: the frozen trigger, the graph the runner builds (HELIOS-Full), the
 frozen D-pipe verdict, then the three candidates — plain PPR, feature-weighted
@@ -11,6 +12,12 @@ the other faults). The routing gate is ignored; the gated view is reported
 beside the selection. Writes ``docs/sprints/s2-reasoning/s2_2_gpipe_selection.json``
 (aggregates only, never an incident ID) and prints counts. It never writes the
 frozen parameter file; the owner reviews the result first.
+
+``--columns`` picks the learned ranker's features: ``s22`` (default) the ten
+columns of the S2.2 selection, which reproduces that run; ``all`` adds
+``error_origin_shift`` (OTel fix A, entry 76). ``--report`` writes elsewhere
+and refuses to overwrite an existing file (only the S2.2 default may be
+rewritten, by a rerun of that selection).
 """
 
 from __future__ import annotations
@@ -39,7 +46,12 @@ from helios.evaluation.scoring import score_ranking
 from helios.orchestrator.runner import incident_graph
 from helios.pipelines.d_pipe.params import dpipe_params_hash, load_dpipe_params
 from helios.pipelines.d_pipe.pipeline import run_dpipe
-from helios.pipelines.g_pipe.features import GraphFeatures, compute_features
+from helios.pipelines.g_pipe.features import (
+    FEATURE_COLUMNS,
+    S22_COLUMNS,
+    GraphFeatures,
+    compute_features,
+)
 from helios.pipelines.g_pipe.gpipe_config import DISAGREEMENT_THRESHOLD
 from helios.pipelines.g_pipe.params import GPipeParams, gpipe_params_hash
 from helios.pipelines.g_pipe.pipeline import compute_ppr_disagreement
@@ -52,6 +64,7 @@ from helios.vcl.utils import canonical_json
 REPO_ROOT = Path(__file__).resolve().parent.parent
 REPORT = Path("docs/sprints/s2-reasoning/s2_2_gpipe_selection.json")
 VARIANT = "HELIOS-Full"
+COLUMN_SETS = {"s22": S22_COLUMNS, "all": FEATURE_COLUMNS}
 _DIGITS = 6
 
 
@@ -143,7 +156,7 @@ def _hit(ranked: list[str], s: _Scored) -> int:
     return score_ranking(ranked, s.root, stem=s.stem).hr_at_3 if ranked else 0
 
 
-def _learned_lofo(scored: list[_Scored]) -> list[list[str]]:
+def _learned_lofo(scored: list[_Scored], columns: tuple[str, ...]) -> list[list[str]]:
     """Each case ranked by a model trained on the other root services."""
     rankings: list[list[str]] = [s.ppr for s in scored]  # fallback: plain PPR
     for train_idx, test_idx in root_folds([s.root for s in scored]):
@@ -152,7 +165,7 @@ def _learned_lofo(scored: list[_Scored]) -> list[list[str]]:
             for i in train_idx
             if (f := scored[i].features) is not None
         ]
-        model = LinearRanker.fit(train)
+        model = LinearRanker.fit(train, columns)
         for i in test_idx:
             f = scored[i].features
             if f is not None:
@@ -171,7 +184,14 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--corpus", choices=("build", "pool"), default="build")
+    parser.add_argument("--columns", choices=sorted(COLUMN_SETS), default="s22")
+    parser.add_argument("--report", type=Path, default=REPORT)
     args = parser.parse_args(argv)
+    report_path = REPO_ROOT / args.report
+    if args.report != REPORT and report_path.exists():
+        print(f"[gpipe] {args.report} exists; refusing to overwrite", file=sys.stderr)
+        return 2
+    columns = COLUMN_SETS[args.columns]
     if args.corpus == "pool":
         print("[gpipe] the pool is locked until tag build-freeze", file=sys.stderr)
         return 2
@@ -187,7 +207,7 @@ def main(argv: list[str] | None = None) -> int:
     cases = load_gpipe_cases(root=REPO_ROOT, key=load_key())
     with ProcessPoolExecutor(max_workers=args.workers) as pool:
         scored = list(pool.map(_score_case, cases, chunksize=2))
-    learned = _learned_lofo(scored)
+    learned = _learned_lofo(scored, columns)
     rankings = {
         "learned": learned,
         "weighted_ppr": [s.weighted for s in scored],
@@ -202,12 +222,14 @@ def main(argv: list[str] | None = None) -> int:
     dpipe_hits = _by_fault([_hit(s.dpipe, s) for s in scored], scored)
     selected = select_gpipe(hits)
     refit = LinearRanker.fit(
-        [(s.features, s.root, s.stem) for s in scored if s.features is not None]
+        [(s.features, s.root, s.stem) for s in scored if s.features is not None],
+        columns,
     )
     learned_params = GPipeParams(ranker="learned", model=refit, provisional=False)
     gated = [i for i, s in enumerate(scored) if s.gated]
     report: dict[str, Any] = {
         "variant": VARIANT,
+        **({"columns": list(columns)} if columns != S22_COLUMNS else {}),
         "detector_hash": detector_hash(detector),
         "dpipe_params_hash": dpipe_params_hash(dp),
         "cases": len(scored),
@@ -250,7 +272,7 @@ def main(argv: list[str] | None = None) -> int:
         },
     }
     text = json.dumps(json.loads(canonical_json(report)), indent=2, sort_keys=True)
-    (REPO_ROOT / REPORT).write_text(text + "\n", encoding="utf-8")
+    report_path.write_text(text + "\n", encoding="utf-8")
     print(
         f"[gpipe] {len(scored)} cases; feature fallbacks {report['feature_fallbacks']}; gated {len(gated)}"
     )

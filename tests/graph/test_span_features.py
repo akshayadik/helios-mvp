@@ -188,3 +188,51 @@ def test_numeric_error_status_counts_as_error() -> None:
     frame = _spans([("t", "p", None, "A", 0, 120), ("u", "q", None, "A", 0, 120)])
     frame["status_code"] = ["2", "STATUS_CODE_ERROR"]
     assert analyse_spans(frame).entries["error"].tolist() == [True, True]
+
+
+def _origins(
+    rows: Sequence[tuple[str, str, str | None, str, int, int]], errors: Sequence[str]
+) -> dict[str, bool]:
+    """error_origin per entry span id; ``errors`` names the spans with ERROR."""
+    frame = _spans(rows)
+    frame["status_code"] = ["ERROR" if s in errors else "OK" for s in frame["span_id"]]
+    e = analyse_spans(frame).entries
+    return dict(zip(e["span_id"], e["error_origin"], strict=True))
+
+
+# OTel chain: frontend server -> frontend client -> checkout server ->
+# checkout client -> payment server.
+_CHAIN = [
+    ("t", "fs", None, "frontend", 0, 100),
+    ("t", "fc", "fs", "frontend", 5, 95),
+    ("t", "cs", "fc", "checkout", 10, 90),
+    ("t", "cc", "cs", "checkout", 15, 85),
+    ("t", "ps", "cc", "payment", 20, 80),
+]
+
+
+def test_error_origin_is_where_the_error_starts_not_the_callers() -> None:
+    # Fix A: payment fails and every caller's span on the path fails with it.
+    got = _origins(_CHAIN, ["fs", "fc", "cs", "cc", "ps"])
+    assert got == {"fs": False, "cs": False, "ps": True}
+
+
+def test_error_flag_still_marks_every_failing_entry() -> None:
+    # error_share_shift is unchanged: callers that inherit the error still count.
+    frame = _spans(_CHAIN)
+    frame["status_code"] = "ERROR"
+    assert analyse_spans(frame).entries["error"].tolist() == [True, True, True]
+
+
+def test_a_client_span_failing_over_a_healthy_callee_makes_the_caller_origin() -> None:
+    # A timeout: checkout's client span fails, payment's server span does not.
+    got = _origins(_CHAIN, ["fs", "fc", "cs", "cc"])
+    assert got == {"fs": False, "cs": True, "ps": False}
+
+
+def test_an_entry_that_fails_on_its_own_is_the_origin() -> None:
+    assert _origins(_CHAIN, ["fs"]) == {"fs": True, "cs": False, "ps": False}
+
+
+def test_no_errors_no_origin() -> None:
+    assert not any(_origins(_CHAIN, []).values())

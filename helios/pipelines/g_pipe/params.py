@@ -1,7 +1,10 @@
 """Frozen G-pipe parameters (S2.2): which candidate ranks, and its model.
 
 The runner loads ``data/frozen/gpipe_params.json``; a missing file or key is
-an error, never a code default. ``provisional`` parameters are refused in
+an error, never a code default. The one optional key, ``features``, names the
+learned model's columns; without it the model is read over ``S22_COLUMNS``,
+the columns of the S2.2 freeze (so that file's hash is unchanged by the OTel
+fix, entry 76). ``provisional`` parameters are refused in
 confirmatory runs until the S2.2 selection run freezes them.
 """
 
@@ -13,7 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal, cast
 
-from helios.pipelines.g_pipe.features import FEATURE_COLUMNS
+from helios.pipelines.g_pipe.features import S22_COLUMNS
 from helios.pipelines.g_pipe.rankers import LinearRanker
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
 from helios.vcl.utils import canonical_json
@@ -32,6 +35,7 @@ GPIPE_PARAMS_PATH = (
 RANKERS = ("learned", "weighted_ppr", "ppr")
 Ranker = Literal["learned", "weighted_ppr", "ppr"]
 _KEYS = frozenset({"ranker", "weights", "mean", "scale", "provisional"})
+_OPTIONAL_KEYS = frozenset({"features"})
 _MODEL_KEYS = ("weights", "mean", "scale")
 
 
@@ -45,13 +49,16 @@ class GPipeParams:
 
     def as_dict(self) -> dict[str, Any]:
         model = self.model
-        return {
+        out: dict[str, Any] = {
             "ranker": self.ranker,
             "weights": list(model.weights) if model else None,
             "mean": list(model.mean) if model else None,
             "scale": list(model.scale) if model else None,
             "provisional": self.provisional,
         }
+        if model and model.columns != S22_COLUMNS:
+            out["features"] = list(model.columns)
+        return out
 
 
 def load_gpipe_params(path: Path = GPIPE_PARAMS_PATH) -> GPipeParams:
@@ -59,21 +66,26 @@ def load_gpipe_params(path: Path = GPIPE_PARAMS_PATH) -> GPipeParams:
     if not path.is_file():
         raise FileNotFoundError(f"G-pipe parameters not found: {path}")
     raw = json.loads(path.read_text(encoding="utf-8"))
-    if set(raw) != _KEYS:
-        raise ValueError(f"G-pipe parameter keys must be {sorted(_KEYS)}")
+    if not _KEYS <= set(raw) <= _KEYS | _OPTIONAL_KEYS:
+        raise ValueError(
+            f"G-pipe parameter keys must be {sorted(_KEYS)}, optionally "
+            f"{sorted(_OPTIONAL_KEYS)}"
+        )
     if raw["ranker"] not in RANKERS:
         raise ValueError(f"ranker must be one of {RANKERS}")
     model = None
     if raw["ranker"] == "learned":
+        columns = tuple(raw.get("features", S22_COLUMNS))
+        if "features" in raw and columns == S22_COLUMNS:
+            raise ValueError("omit 'features' for the S2.2 columns (hash stability)")
         values = [raw[k] for k in _MODEL_KEYS]
-        if any(
-            not isinstance(v, list) or len(v) != len(FEATURE_COLUMNS) for v in values
-        ):
+        if any(not isinstance(v, list) or len(v) != len(columns) for v in values):
             raise ValueError(
                 "the learned ranker needs weights, mean and scale per feature"
             )
-        model = LinearRanker(*(tuple(float(x) for x in v) for v in values))
-    elif any(raw[k] is not None for k in _MODEL_KEYS):
+        weights, mean, scale = (tuple(float(x) for x in v) for v in values)
+        model = LinearRanker(weights, mean, scale, columns)
+    elif any(raw[k] is not None for k in _MODEL_KEYS) or "features" in raw:
         raise ValueError(f"ranker {raw['ranker']!r} takes no model values")
     return GPipeParams(
         ranker=cast("Ranker", raw["ranker"]),

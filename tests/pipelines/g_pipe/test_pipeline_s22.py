@@ -9,7 +9,11 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pytest
 
-from helios.pipelines.g_pipe.features import FEATURE_COLUMNS, GraphFeatures
+from helios.pipelines.g_pipe.features import (
+    FEATURE_COLUMNS,
+    S22_COLUMNS,
+    GraphFeatures,
+)
 from helios.pipelines.g_pipe.params import (
     GPipeParams,
     gpipe_params_hash,
@@ -179,10 +183,17 @@ def test_frozen_gpipe_params_are_the_selection() -> None:
 
 def test_params_hash_covers_every_field() -> None:
     n = len(FEATURE_COLUMNS)
-    model = LinearRanker(tuple([0.25] * n), tuple([2.5] * n), tuple([3.5] * n))
+    model = LinearRanker(
+        tuple([0.25] * n), tuple([2.5] * n), tuple([3.5] * n), FEATURE_COLUMNS
+    )
     base = GPipeParams(ranker="learned", model=model, provisional=False)
     h = gpipe_params_hash(base)
+    m = len(S22_COLUMNS)
+    s22 = LinearRanker(
+        tuple([0.25] * m), tuple([2.5] * m), tuple([3.5] * m), S22_COLUMNS
+    )
     for changed in (
+        replace(base, model=s22),
         replace(base, ranker="weighted_ppr", model=None),
         replace(base, provisional=True),
         replace(base, model=replace(model, weights=tuple([0.75] * n))),
@@ -240,3 +251,79 @@ def test_ranker_and_fallback_are_always_recorded(tmp_path: Path) -> None:
     )
     assert rich.evidence["ranker"] == "weighted_ppr"
     assert rich.evidence["features"] is True
+
+
+def test_the_s22_freeze_reads_its_own_columns_and_ignores_error_origin() -> None:
+    # OTel fix A (entry 76): the frozen S2.2 model names no columns, so it is
+    # read over S22_COLUMNS; the new column cannot move its scores or hash.
+    params = load_gpipe_params()
+    assert params.model is not None
+    assert params.model.columns == S22_COLUMNS
+    assert "features" not in params.as_dict()
+    plain = _features(lead=True, ghost=True, rise=0.3)
+    table = plain.table.copy()
+    table[:, FEATURE_COLUMNS.index("error_origin_shift")] = [7, -7]
+    moved = replace(plain, table=table)
+    assert params.model.score(moved) == params.model.score(plain)
+
+
+def test_a_model_over_new_columns_round_trips_with_its_features(
+    tmp_path: Path,
+) -> None:
+    n = len(FEATURE_COLUMNS)
+    model = LinearRanker(
+        tuple(float(i) for i in range(n)), (0,) * n, (1,) * n, FEATURE_COLUMNS
+    )
+    params = GPipeParams(ranker="learned", model=model, provisional=False)
+    body = params.as_dict()
+    assert body["features"] == list(FEATURE_COLUMNS)
+    path = tmp_path / "g.json"
+    path.write_text(json.dumps(body))
+    assert load_gpipe_params(path) == params
+
+
+@pytest.mark.parametrize(
+    ("body", "match"),
+    [
+        (
+            {
+                "ranker": "learned",
+                "weights": [1] * 10,
+                "mean": [0] * 10,
+                "scale": [1] * 10,
+                "features": list(FEATURE_COLUMNS[:10]),
+                "provisional": False,
+            },
+            "omit 'features'",
+        ),
+        (
+            {
+                "ranker": "ppr",
+                "weights": None,
+                "mean": None,
+                "scale": None,
+                "features": ["dpipe_score"],
+                "provisional": False,
+            },
+            "no model values",
+        ),
+        (
+            {
+                "ranker": "learned",
+                "weights": [1],
+                "mean": [0],
+                "scale": [1],
+                "features": ["home_service_flag"],
+                "provisional": False,
+            },
+            "unknown feature column",
+        ),
+    ],
+)
+def test_bad_features_keys_are_refused(
+    tmp_path: Path, body: dict[str, object], match: str
+) -> None:
+    path = tmp_path / "g.json"
+    path.write_text(json.dumps(body))
+    with pytest.raises(ValueError, match=match):
+        load_gpipe_params(path)
