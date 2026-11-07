@@ -1,6 +1,6 @@
-# OTel fix: error origin and memory trend (design, for owner approval)
+# OTel fix: error origin and memory trend (design)
 
-Rows S2-M8-ENG06 (fixes, held-out corpus, validation) and S2-M8-ENG07 (refit chain) · 2026-11-07 · Diagnosis: `otel_diagnosis/README.md` · Owner scope decision 2026-11-07: A and B now, C in Stage B; S3.2 and S3.4 exploratory
+Rows S2-M8-ENG06 (fixes, held-out corpus, validation) and S2-M8-ENG07 (refit chain) · 2026-11-07 · Diagnosis: `otel_diagnosis/README.md` · Owner scope decision 2026-11-07: A and B now, C in Stage B; S3.2 and S3.4 exploratory · Approved 2026-11-07, pre-run entry 76
 
 ## 1. Problem
 
