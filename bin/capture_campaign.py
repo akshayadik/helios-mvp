@@ -14,7 +14,8 @@ recapture: normal period varied per case, 8 to 15 minutes; each case then
 takes about 20 minutes), ``otel_build_v3`` (S2-M7-ENG10: as v2, plus span
 metrics, attributed logs and the load generator set to 25 users through its
 API and checked before every case) or ``otel_pilot_v3`` (the v3 protocol under
-its own IDs; with ``--reps 1 --faults ...`` for a short pilot).
+its own IDs; with ``--reps 1 --faults ...`` for a short pilot) or
+``otel_heldout_v4`` (entry 76: the v3 protocol, held out; ``--reps 4``).
 
 ``run`` resumes where it stopped: cases already in the signed ground truth are
 skipped, an interrupted capture is recorded again. Each case takes about
@@ -43,6 +44,7 @@ from bin.log_deviation import load_key
 from bin.run_capture import _write_snapshot_hash
 from helios.adapters.otel_campaign import (
     CORPUS,
+    CORPUS_HELDOUT_V4,
     CORPUS_PILOT_V3,
     CORPUS_V2,
     CORPUS_V3,
@@ -85,8 +87,9 @@ CORPUS_MANIFEST_V2 = Path("data/otel/build_v2_manifest.json")
 _V3_FILES = {
     CORPUS_V3: "build_v3",
     CORPUS_PILOT_V3: "pilot_v3",
+    CORPUS_HELDOUT_V4: "heldout_v4",
 }
-CORPORA = (CORPUS, CORPUS_V2, CORPUS_V3, CORPUS_PILOT_V3)
+CORPORA = (CORPUS, CORPUS_V2, CORPUS_V3, CORPUS_PILOT_V3, CORPUS_HELDOUT_V4)
 LOCUST_PORT = 8089
 _SPAWN_RATE = 5  # users started per second
 _SPAWN_SETTLE_S = 30

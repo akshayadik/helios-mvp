@@ -33,6 +33,10 @@ span metrics in place of the latency histograms, and the load generator held
 at ``LOAD_USERS_V3`` users, checked before every case (the demo's default 5
 users gave payment about half a request a minute: too few for any detector).
 ``otel_pilot_v3`` is the same protocol under its own IDs, for the pilot.
+
+Corpus ``otel_heldout_v4`` (S2-M8-ENG06, deviation entry 76): the v3 protocol
+unchanged, under its own IDs, captured before the OTel fixes are built; sealed
+at capture and read by no build tool.
 """
 
 from __future__ import annotations
@@ -57,6 +61,7 @@ __all__ = [
     "CAPTURE_RETRIES",
     "CAPTURE_RETRY_WAIT_S",
     "CORPUS",
+    "CORPUS_HELDOUT_V4",
     "CORPUS_PILOT_V3",
     "CORPUS_V2",
     "CORPUS_V3",
@@ -88,7 +93,9 @@ CORPUS = "otel_build"
 CORPUS_V2 = "otel_build_v2"
 CORPUS_V3 = "otel_build_v3"
 CORPUS_PILOT_V3 = "otel_pilot_v3"
-_VARIED_PRE = (CORPUS_V2, CORPUS_V3, CORPUS_PILOT_V3)
+CORPUS_HELDOUT_V4 = "otel_heldout_v4"  # entry 76: v3 protocol, held out
+_V3_PROTOCOL = (CORPUS_V3, CORPUS_PILOT_V3, CORPUS_HELDOUT_V4)
+_VARIED_PRE = (CORPUS_V2, *_V3_PROTOCOL)
 LOAD_USERS_V3 = 25  # owner decision 2026-10-28
 # The OTel Demo's registered opaque-ID slot. Adding a slot would change the
 # seed register deposited at OSF (deposit 1); case names carry the corpus.
@@ -156,7 +163,7 @@ def pre_s_for(incident_id: str) -> int:
 
 def load_users_for(corpus: str) -> int | None:
     """Load-generator users a corpus is captured at; None = not enforced (v1, v2)."""
-    return LOAD_USERS_V3 if corpus in (CORPUS_V3, CORPUS_PILOT_V3) else None
+    return LOAD_USERS_V3 if corpus in _V3_PROTOCOL else None
 
 
 def opaque_id(case: str) -> str:

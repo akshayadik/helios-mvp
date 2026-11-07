@@ -614,3 +614,36 @@ def test_a_retried_capture_is_marked_in_its_label(tmp_path: Path) -> None:
     labels = campaign.ground_truth.cases()
     assert labels[cases[0].incident_id]["capture_attempts"] == 2
     assert "capture_attempts" not in labels[cases[1].incident_id]
+
+
+# ── v4: held-out corpus, v3 protocol (S2-M8-ENG06, entry 76) ─────────────────
+
+
+def test_heldout_v4_uses_the_v3_protocol_under_its_own_ids() -> None:
+    from helios.adapters.otel_campaign import (
+        CORPUS_HELDOUT_V4,
+        CORPUS_V3,
+        load_users_for,
+    )
+
+    v4 = plan(4, corpus=CORPUS_HELDOUT_V4)
+    assert len(v4) == 36
+    assert all(c.pre_s == pre_s_for(c.incident_id) for c in v4)
+    assert {c.incident_id for c in v4}.isdisjoint(
+        {c.incident_id for c in plan(7, corpus=CORPUS_V3)}
+    )
+    assert load_users_for(CORPUS_HELDOUT_V4) == 25
+    captures, truth, manifest = cli._paths(CORPUS_HELDOUT_V4)
+    assert (captures.name, truth.name, manifest.name) == (
+        "heldout_v4",
+        "ground_truth_heldout_v4.json",
+        "heldout_v4_manifest.json",
+    )
+
+
+def test_no_build_tool_lists_the_heldout_corpus() -> None:
+    from bin.mahc_build_run import BUILD_CORPORA
+    from helios.evaluation.trigger_calibration import CORPORA
+
+    assert not any("heldout" in c for c in BUILD_CORPORA)
+    assert not any("heldout" in c for c in CORPORA)

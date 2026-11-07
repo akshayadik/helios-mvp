@@ -33,6 +33,29 @@ The cheap-first router (IN3) sends statistical and graph evidence first and call
 
 S3.1 design: [s3_1_router_design.md](s3_1_router_design.md) (approved 2026-11-06, R-a…R-e as recommended) · [implementation plan](s3_1_implementation_plan.md).
 
+### OTel fix and the order of work (owner, 2026-11-07)
+
+The OTel build diagnosis (`otel_diagnosis/README.md`) found all 13 misses visible in the data, and three causes in the implementation.
+
+**Owner decisions:**
+- **OTel fix scope.** Fixes A and B are built now (row S2-M8-ENG06; design `s3_otel_fix_design.md`):
+  - A: error origin as a G-pipe feature;
+  - B: D-pipe memory.
+  - Fix C (caller-confined errors, recommendationCacheFailure) moves to Stage B.
+- **S3.2 ACP and S3.4 Knowledge Cortex stay exploratory.** They are kept out of HELIOS-Full's confirmatory path, so the only change to the frozen chain before the S3 exit is the OTel fix.
+
+**Order of work.** The frozen chain (D-pipe → G-pipe → MAHC → router) is refit once:
+
+| Step | Work |
+|---|---|
+| 1 | Merge PR 83 (S3.3) and the diagnosis |
+| 2 | OTel-fix design and pre-run entry. Capture the held-out OTel v4 corpus, then seal it and leave it unread. Write the S3.2 and S3.4 design notes |
+| 3 | Build fixes A and B on build data |
+| 4 | One refit chain: D-pipe → G-pipe → MAHC → router (row S2-M8-ENG07) |
+| 5 | Score once on v4 and RCAEval build; adopt or revert by the pre-registered rule |
+| 6 | Rerun the S3.3 replay (run 3); build S3.2 and S3.4 as exploratory |
+| 7 | S3 exit gate |
+
 ### Carried-in items that shape the tasks
 
 **S3.1 router**
