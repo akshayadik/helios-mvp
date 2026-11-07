@@ -124,3 +124,43 @@ The pool-subset rule and the RRE reporting go into the OSF addendum draft.
 - **Invariant:** the batch-equals-online test passes.
 - **Tool and report:** the replay tool reproduces its report byte for byte from the same seeds.
 - **Frozen artefacts:** the frozen router file and its hash are unchanged.
+
+## 6. Results: build replay, run 2 (exploratory)
+
+Report: `calibration/reward_run2.json` (aggregates only). Entries 74 and 75.
+
+**The run:**
+- 558 cases (63 OTel, 495 RCAEval), none excluded; halves of 280 and 278 cases.
+- 8 streams × 2 halves × 3 gaps × 2 variants = 96 signed ledgers. All verify (`verify_ledgers.py --reward`, with the secret and public-only).
+- Records: 10,095 provisional and 15,840 terminal; 15 provisional rewards superseded by an earlier label (entry 75).
+- Run 1 stopped on its first stream at the pair check (§3 W-e) and wrote no report.
+
+**Primary gap (60 min), mean across streams with the range:**
+
+| Corpus | Variant | HR@3 | Escalated | RRE | No r¹ |
+|---|---|---|---|---|---|
+| OTel | Full | 79.37% (all streams) | 95.2% | 41.7% | 4.8% |
+| OTel | noReconcile | 79.37% | 95.2% | 41.7% | 4.8% |
+| RCAEval | Full | 96.21% (95.96–96.36) | 32.3% (30.1–35.2) | 15.0% (14.4–15.9) | 67.8% |
+| RCAEval | noReconcile | 96.57% (every stream) | 52.7% | 8.4% | 47.3% |
+
+For reference (S3.1 §11), on build: uniform HR@3 is 79.37% (OTel) and 97.37% (RCAEval); the frozen routed policy, held out, is 79.37% and 96.57%.
+
+**What the replay shows:**
+
+1. **RCAEval: terminal labels are what lets the router learn to stop.** RCAEval has no traces, so stage 1 is D alone, and a D stop has no provisional reward (R-e).
+   - Without reconciliation, the D arm is never updated. noReconcile's decisions stay those of its pre-warm state, with the same figures on every stream and gap.
+   - With reconciliation, Full's escalation share falls from 49% in the first decile of a stream to 26% in the last.
+   - The price is HR@3: 96.21% for Full against 96.57% for noReconcile (−0.36 pt), and −1.16 pt against uniform routing. That is beyond the one-point tolerance the frozen τ_acc was chosen under (R-d).
+   - So online learning under the frozen threshold drifts below the accuracy the static policy was frozen to keep. This supports the static-policy commitment for confirmatory runs; it is a finding for Chapter 4, not a reason to change anything.
+2. **OTel: learning changes nothing.**
+   - 95% of runs escalate, almost all on the D/G disagreement rule, which no reward can move.
+   - Full and noReconcile make identical decisions.
+   - RRE is high (41.7%): MAHC's calibrated confidence is a weak provisional signal on OTel (S2-BL-08: confirmed 0.85 vs provisional 0.72).
+3. **RRE, Full vs noReconcile, is not a like-for-like contrast.**
+   - RRE exists only where r¹ exists, that is, on escalated runs. Full escalates fewer and harder cases, so its RRE (15.0%) and noReconcile's (8.4%) are measured on different case sets.
+   - The +6.5-point difference is mostly this selection, not an effect of reconciliation.
+   - This matters for E-H5 as registered (decision below).
+4. **The gap barely matters.** At 15 min and at 4 h the Full figures move by at most 0.1 pt of HR@3 and 0.2 pt of escalation. Labels arrive within a few incidents at every gap tested.
+
+**Reproducibility:** collecting the 558 cases again and replaying into a scratch directory gave a report identical to `reward_run2.json` (2026-11-07).
