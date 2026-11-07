@@ -45,7 +45,7 @@ if TYPE_CHECKING:
     from helios.pipelines.l_pipe.gateway import LLMGateway
     from helios.pipelines.l_pipe.personas import PersonaProfile
 
-__all__ = ["Claim", "DropReason", "WorkerResult", "run_worker"]
+__all__ = ["OUTAGE_DROPS", "Claim", "DropReason", "WorkerResult", "run_worker"]
 
 HELIOS_ENABLE_LPIPE_WORKERS: bool = True
 
@@ -64,6 +64,13 @@ class DropReason(StrEnum):
     SCHEMA = "schema"
     NO_VALID_CLAIM = "no_valid_claim"
     ALIAS_LEAK = "alias_leak"
+    CACHE_MISS = "cache_miss"  # model unreachable, no cached answer (S3.5)
+
+
+# Drops that mean the model could not be asked, not that it answered badly.
+OUTAGE_DROPS = frozenset(
+    {DropReason.TIMEOUT, DropReason.CONNECTION, DropReason.HTTP, DropReason.CACHE_MISS}
+)
 
 
 @dataclass(frozen=True)
@@ -198,11 +205,14 @@ def run_worker(
     *,
     cache: ResponseCache | None = None,
     model_digest: str = "",
+    cache_only: bool = False,
 ) -> WorkerResult:
     """One model call over the worker's digest, then validation.
 
     No retry: Protocol A decoding is deterministic, so the same prompt gives
-    the same answer; a schema failure drops the worker.
+    the same answer; a schema failure drops the worker. ``cache_only`` (the
+    model endpoint is unreachable, S3.5): a cached answer replays as usual, a
+    miss drops the worker without calling the model or writing the cache.
     """
     if digest is None or not digest.lines:
         return WorkerResult(persona.name, dropped=DropReason.NO_DIGEST)
@@ -220,6 +230,8 @@ def run_worker(
             )
         )
         wall_ms, cache_hit = hit.wall_ms, True
+    elif cache_only:
+        return WorkerResult(persona.name, dropped=DropReason.CACHE_MISS)
     else:
         t0 = time.monotonic()
         try:

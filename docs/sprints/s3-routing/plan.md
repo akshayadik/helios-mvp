@@ -47,7 +47,7 @@ S3.1 design: [s3_1_router_design.md](s3_1_router_design.md) (approved 2026-11-06
 - **S2-BL-07.** The log digest is often empty after the trigger. Check whether SOP retrieval helps the log worker on build data; any gain is exploratory and does not change the frozen L-pipe prompts without an entry.
 
 **S3.5 LLM-unavailable fallback**
-- **S2-BL-17.** Cache-only reruns need `data/cache/lpipe_cache.sqlite`, the pinned llama3.1:8b digest and a local Ollama. A cache miss with Ollama down is exactly the fallback case: test that it routes to D+G and records the covariate, without writing to the cache.
+- **S2-BL-17.** Cache-only reruns need `data/cache/lpipe_cache.sqlite`, the pinned llama3.1:8b digest and a local Ollama. A cache miss with Ollama down is exactly the fallback case: test that it routes to D+G and records the covariate, without writing to the cache. — **Done 2026-11-07 (entry 73):** cache-only reruns no longer need Ollama (cache read under the pinned digest); a miss records `llm_unavailable=cache_miss`, writes nothing, and the run completes on D and G.
 
 ### Engineering items carried in (about 2 days, after S3.1)
 
@@ -89,6 +89,7 @@ S3 adds the router's entries to what the addendum must cover, so the draft start
   - *Operational TTCD*: detection delay + TTCD, censored at 1,800 s. Exploratory; reported beside TTCD, never replacing it in B-H6, CpR or A-H5.
   - TTCD and TTT split by trigger source (threshold / fallback), with the fallback share reported beside every timing result.
   - TTCD and TTT are measured from the trigger handover (entry 46); the contract's "invocation" wording is superseded by entry 46.
+- **LLM availability covariate** (S3.5, design note `s3_5_llm_fallback.md`). Every run that asked the L-pipe records `llm_unavailable` in its CoE routing step: `endpoint` (model endpoint unreachable, no usable cache), `cache_miss` (endpoint unreachable, prompt not in the cache), `calls` (every model call failed), or none. A routed run whose escalation met an unavailable LLM publishes its cheap arm (`fallback`). Reported per variant and corpus beside every confirmatory result. A confirmatory comparison is reported with and without its affected incidents if any pair is affected; neither variant is rerun selectively.
 
 After the S3.1 build run, recheck the D11 compute estimate (about 1,500 L-pipe runs, 30–50 h) against the measured escalation share: noRouter and LLM-only call the L-pipe on every case.
 

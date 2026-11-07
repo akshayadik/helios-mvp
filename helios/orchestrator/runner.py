@@ -454,8 +454,17 @@ class RunOrchestrator:
                     cache=self._lpipe_cache,
                 ),
             )
+            # Covariate (S3.5), recorded in every mode where the LLM was asked.
+            routing["llm_unavailable"] = l_out.get("llm_unavailable")
         else:
             l_verdict, l_out = self._skipped(PipelineName.LPIPE, base), {}
+        if routed_run and l_out.get("llm_unavailable"):
+            # S3.5: the LLM could not be asked, so the run stays on its cheap
+            # arm. With a graph, an escalated run has already run G-pipe in
+            # stage 1 (decide_g runs it whenever D alone is infeasible), so
+            # this is D+G; without a graph or with G gated off it is D.
+            routing["terminal_arm"] = routing["stage1_arm"]
+            routing["fallback"] = True
         if l_out.get("evidence"):
             self._store.insert_evidence(
                 run_id, incident_id, PipelineName.LPIPE.value, l_out["evidence"]

@@ -49,7 +49,9 @@ def _params(p: dict[Arm, float], *, digest: str | None = None) -> RouterParams:
     )
 
 
-def _fake(pipeline: str, ranked: list[str], calls: list[str]) -> Any:
+def _fake(
+    pipeline: str, ranked: list[str], calls: list[str], *, down: bool = False
+) -> Any:
     def run(**kw: Any) -> dict[str, Any]:
         calls.append(pipeline)
         out = {
@@ -70,6 +72,16 @@ def _fake(pipeline: str, ranked: list[str], calls: list[str]) -> Any:
         }
         if pipeline == "lpipe":
             out["h_struct"] = {"outputs": 1, "failed": 0}
+            out["llm_unavailable"] = None
+        if down:  # what run_lpipe returns with the model endpoint unreachable
+            out.update(
+                status="failed",
+                ranked_candidates=[],
+                mu=None,
+                sigma=None,
+                h_struct={"outputs": 0, "failed": 0},
+                llm_unavailable="endpoint",
+            )
         return out
 
     return run
@@ -83,6 +95,8 @@ def _run(
     g_top: str = "cart",
     params: RouterParams | None = None,
     name: str = "r",
+    llm_down: bool = False,
+    graph: bool = True,
 ) -> tuple[dict[str, Any], list[str]]:
     manifest = get_variant(variant)
     hash_ = manifest.compute_variant_config_hash()
@@ -101,10 +115,16 @@ def _run(
         runner_module, "run_gpipe", stamped(_fake("gpipe", g_ranked, calls))
     )
     monkeypatch.setattr(
-        runner_module, "run_lpipe", stamped(_fake("lpipe", ["ad", "cart"], calls))
+        runner_module,
+        "run_lpipe",
+        stamped(_fake("lpipe", ["ad", "cart"], calls, down=llm_down)),
     )
     # A graph exists (its content is irrelevant: G-pipe is faked).
-    monkeypatch.setattr(runner_module, "incident_graph", lambda *_a: (object(), []))
+    monkeypatch.setattr(
+        runner_module,
+        "incident_graph",
+        lambda *_a: (object() if graph else None, []),
+    )
     captures = tmp_path / "captures"
     if not captures.exists():
         _make_capture(captures, "inc-001")
@@ -268,3 +288,61 @@ def test_confirmatory_routed_run_needs_the_price_book_digest(tmp_path: Path) -> 
     orch._price_book_digest = None
     with pytest.raises(RouterParamsMismatchError, match="no price book digest"):
         orch._trigger_for(MagicMock(evaluation_phase="confirmatory"))
+
+
+# S3.5: LLM unavailable.
+
+
+def test_llm_down_on_escalation_stays_on_the_cheap_arm(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    entry, calls = _run(tmp_path, monkeypatch, "HELIOS-Full", g_top="ad", llm_down=True)
+    r = _step(entry, "R")
+    assert calls == ["dpipe", "gpipe", "lpipe"]
+    assert r["escalate"] is True and r["escalation_reason"] == "disagreement"
+    assert r["llm_unavailable"] == "endpoint"
+    assert r["fallback"] is True
+    assert r["stage1_arm"] == r["terminal_arm"] == "D+G"
+    assert _step(entry, "P:lpipe")["status"] == "failed"
+    # The fusion is the cheap arm's: D and G only.
+    assert set(_step(entry, "F")["ranked"]) <= {"cart", "ad", "email"}
+
+
+def test_llm_down_without_a_graph_stays_on_d(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    entry, calls = _run(
+        tmp_path, monkeypatch, "HELIOS-Full", llm_down=True, graph=False
+    )
+    r = _step(entry, "R")
+    assert calls == ["dpipe", "lpipe"]  # G-pipe never runs without a graph
+    assert r["escalate"] is True
+    assert r["stage1_arm"] == r["terminal_arm"] == "D"
+    assert r["fallback"] is True
+
+
+def test_llm_available_records_the_covariate_without_fallback(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    entry, _ = _run(tmp_path, monkeypatch, "HELIOS-Full", g_top="ad")
+    r = _step(entry, "R")
+    assert r["llm_unavailable"] is None
+    assert "fallback" not in r
+    assert r["terminal_arm"] == "Full"
+
+
+def test_stopped_run_never_asks_the_llm_so_records_no_covariate(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    entry, _ = _run(tmp_path, monkeypatch, "HELIOS-Full", llm_down=True)
+    assert "llm_unavailable" not in _step(entry, "R")
+
+
+def test_uniform_run_records_the_covariate_only(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    entry, calls = _run(tmp_path, monkeypatch, "HELIOS-noRouter", llm_down=True)
+    r = _step(entry, "R")
+    assert sorted(calls) == ["dpipe", "gpipe", "lpipe"]
+    assert r["llm_unavailable"] == "endpoint"
+    assert "fallback" not in r and "terminal_arm" not in r
