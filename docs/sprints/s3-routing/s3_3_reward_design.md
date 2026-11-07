@@ -83,6 +83,12 @@ New code:
 | on r¹ | A ← A + xxᵀ, b ← b + r¹x |
 | on r² (Full) | b ← b + (r² − r¹)x, the compensating update; or A ← A + xxᵀ, b ← b + r²x when there was no r¹ |
 
+- **A label before its provisional reward** (entry 75, owner 2026-11-07). Entry 74's clock lets this happen in about 1.6% of draws, because the log-normal delay falls under 5 min.
+  - The terminal reward applies whole, as if there were no r¹, and its record carries `superseded: true`.
+  - The late provisional reward is neither recorded nor applied; there is nothing left for it to estimate.
+  - RRE still uses r¹ as computed at the decision.
+  - The count is reported, and the delay distributions stay as registered.
+  - This was found by the pair check on the first stream of build run 1, before any result was computed. Run 1 wrote no report, and its partial ledgers stay local.
 - **Idempotent:** the ledger refuses a second record for the same (stream, case, arm, stage), and the state is updated only through a ledger append.
 - **Invariant (tested):** once every terminal reward has arrived, Full's state equals the batch ridge fit on terminal rewards.
 - **noReconcile (`reconcile_terminal` OFF):** no terminal update and no terminal record. The learner keeps provisional rewards only, and the D-only terminal-only cases are never learned. RRE is still measured for both variants by the evaluator from ground truth, outside the ledger.

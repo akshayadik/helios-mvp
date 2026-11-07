@@ -290,15 +290,23 @@ def replay(
     variant: str,
     label: str,
     mean_gap_s: float,
+    counts: dict[str, int] | None = None,
 ) -> list[Decision]:
     """Play one sub-stream; every reward event is drained at the end.
 
     Callers set the variant's manifest (routed; ``reconcile_terminal`` decides
-    whether terminal rewards are recorded and applied).
+    whether terminal rewards are recorded and applied). A terminal reward that
+    arrives before its provisional one applies whole, and the late provisional
+    is superseded: neither recorded nor applied (entry 75); ``counts`` gets
+    ``superseded`` added.
     """
     queue: list[_Event] = []
     seq = 0
     decisions: list[Decision] = []
+    applied_r1: dict[tuple[int, Arm], float] = {}
+    closed: set[tuple[int, Arm]] = set()
+    tally = counts if counts is not None else {}
+    tally.setdefault("superseded", 0)
 
     def apply(event: _Event) -> None:
         case = cases[event.case]
@@ -314,14 +322,23 @@ def replay(
             "event_s": round(event.time_s, 3),
             "x_sha": _x_sha(x),
         }
+        key = (event.case, event.arm)
         if event.stage == PROVISIONAL:
+            if key in closed:  # the label came first: nothing left to estimate
+                tally["superseded"] += 1
+                return
             ledger.record(fields)
             router.add(event.arm, x, event.reward, count=True)
+            applied_r1[key] = event.reward
             return
-        terminal = {**fields, "provisional_reward": event.r1}
+        r1 = applied_r1.get(key)
+        terminal = {**fields, "provisional_reward": r1}
+        if r1 is None and event.r1 is not None:
+            terminal["superseded"] = True
         # HELIOS-noReconcile: no terminal record, no update.
         with contextlib.suppress(GatedComponentInactiveError):
-            reconcile(router, ledger, terminal, event.arm, x, event.reward, event.r1)
+            reconcile(router, ledger, terminal, event.arm, x, event.reward, r1)
+            closed.add(key)
 
     t: float = 0
     for pos, i in enumerate(stream.order):

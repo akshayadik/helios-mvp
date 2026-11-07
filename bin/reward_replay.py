@@ -40,7 +40,12 @@ from helios.evaluation.reward_replay import (
     rre,
 )
 from helios.evaluation.router_calibration import arm_outcomes
-from helios.orchestrator.reward_ledger import RewardLedger, check_pairs
+from helios.orchestrator.reward_ledger import (
+    PROVISIONAL,
+    TERMINAL,
+    RewardLedger,
+    check_pairs,
+)
 from helios.vcl import get_variant, set_current_manifest
 from helios.vcl.config import VCLManifest  # noqa: F401  # flag-guard compliance
 
@@ -133,7 +138,7 @@ def run_replays(
         "halves": [len(parts[0]), len(parts[1])],
         "gaps": {},
     }
-    records = {"provisional": 0, "terminal": 0}
+    records = {"provisional": 0, "terminal": 0, "superseded": 0}
     for gap in MEAN_GAPS_S:
         by_variant: dict[str, Any] = {}
         for variant in VARIANTS:
@@ -154,10 +159,11 @@ def run_replays(
                         variant=variant,
                         label=label,
                         mean_gap_s=gap,
+                        counts=records,
                     )
                     if err := check_pairs(path):
                         raise RuntimeError(f"{path.name}: {err}")
-                    for stage in records:
+                    for stage in (PROVISIONAL, TERMINAL):
                         records[stage] += path.read_text(encoding="utf-8").count(
                             f'"stage": "{stage}"'
                         )

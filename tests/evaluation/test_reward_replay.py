@@ -268,3 +268,50 @@ def test_frozen_router_file_is_untouched(tmp_path: Path) -> None:
     before = hashlib.sha256(ROUTER_PARAMS_PATH.read_bytes()).hexdigest()
     _run(tmp_path, "HELIOS-Full")
     assert hashlib.sha256(ROUTER_PARAMS_PATH.read_bytes()).hexdigest() == before
+
+
+def test_a_label_before_its_provisional_supersedes_it(tmp_path: Path) -> None:
+    """Entry 75: the terminal reward applies whole; the late r1 is dropped."""
+    import dataclasses
+
+    set_current_manifest(get_variant("HELIOS-Full"))
+    parts = halves(CASES)
+    router = ThawedRouter(FROZEN, full_information_rows(CASES, parts[0], MAHC))
+    stream = draws(0, parts)[0]
+    early = dataclasses.replace(
+        stream, r2_delay_s=tuple(d / 10 for d in stream.r1_delay_s)
+    )
+    ledger = RewardLedger(
+        KEY, tmp_path / "e.reward.jsonl", ed25519_private=generate_private_key()
+    )
+    counts: dict[str, int] = {}
+    replay(
+        CASES,
+        OUTCOMES,
+        early,
+        router,
+        MAHC,
+        ledger,
+        variant="HELIOS-Full",
+        label="r0h0",
+        mean_gap_s=3_600,
+        counts=counts,
+    )
+    assert counts["superseded"] > 0
+    assert _records(ledger, PROVISIONAL) == []
+    terminals = _records(ledger, TERMINAL)
+    assert any(t.get("superseded") for t in terminals)
+    assert all(t["provisional_reward"] is None for t in terminals)
+    assert check_pairs(ledger._path) is None
+    # Every terminal applied whole: the state is the batch fit on r2.
+    rows = full_information_rows(CASES, parts[0], MAHC)
+    by_id = {c.incident_id: c for c in CASES}
+    for t in terminals:
+        arm = Arm(str(t["arm"]))
+        x = features_for(by_id[str(t["case_id"])], arm)
+        assert x is not None
+        rows[arm].append((x, float(str(t["reward"]))))
+    batch = ThawedRouter(FROZEN, rows)
+    for arm in SELECTABLE:
+        assert np.allclose(router.a[arm], batch.a[arm])
+        assert np.allclose(router.b[arm], batch.b[arm])
