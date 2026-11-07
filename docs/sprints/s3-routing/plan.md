@@ -47,7 +47,7 @@ S3.1 design: [s3_1_router_design.md](s3_1_router_design.md) (approved 2026-11-06
 - **S2-BL-07.** The log digest is often empty after the trigger. Check whether SOP retrieval helps the log worker on build data; any gain is exploratory and does not change the frozen L-pipe prompts without an entry.
 
 **S3.5 LLM-unavailable fallback**
-- **S2-BL-17.** Cache-only reruns need `data/cache/lpipe_cache.sqlite`, the pinned llama3.1:8b digest and a local Ollama. A cache miss with Ollama down is exactly the fallback case: test that it routes to D+G and records the covariate, without writing to the cache.
+- **S2-BL-17.** Cache-only reruns need `data/cache/lpipe_cache.sqlite`, the pinned llama3.1:8b digest and a local Ollama. A cache miss with Ollama down is exactly the fallback case: test that it routes to D+G and records the covariate, without writing to the cache. — **Done 2026-11-07 (entry 73):** cache-only reruns no longer need Ollama (cache read under the pinned digest); a miss records `llm_unavailable=cache_miss`, writes nothing, and the run completes on D and G.
 
 ### Engineering items carried in (about 2 days, after S3.1)
 
