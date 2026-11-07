@@ -7,6 +7,8 @@
     verify_ledgers.py --coe DIR --public-only   the same with the public key alone
     verify_ledgers.py --annotations DIR [--public-only]   every *.annotations.jsonl
                                       in DIR (S2.9), against the annotations key
+    verify_ledgers.py --reward DIR [--public-only]   every *.reward.jsonl in DIR
+                                      (S3.3): chain, signed anchor, reward pairs
 
 A ledger passes only if its chain verifies, every entry has the fields of its
 kind, and its signed head anchor matches the entry count and head signature.
@@ -46,6 +48,7 @@ from helios.labelling.annotations import (
 )
 from helios.orchestrator.coe import CoELedger
 from helios.orchestrator.ledger import ReconciliationLedger
+from helios.orchestrator.reward_ledger import RewardLedger, check_pairs
 from helios.vcl.hmac_chain import verify_public
 
 if TYPE_CHECKING:
@@ -64,7 +67,7 @@ def _verify_anchored_dir(
     directory: Path,
     key: bytes | None,
     public_path: Path,
-    cls: type[CoELedger] | type[AnnotationLedger],
+    cls: type[CoELedger] | type[AnnotationLedger] | type[RewardLedger],
 ) -> int:
     """Verify every ``*.<kind>.jsonl`` in ``directory``; 1 if any fails or none
     is found. Without ``key`` only the Ed25519 anchor and file digest are checked."""
@@ -85,6 +88,8 @@ def _verify_anchored_dir(
             ok, msg = verify_public(
                 path, anchor, public, from_entry=None, log_kind=cls.LOG_KIND
             )
+        if ok and cls is RewardLedger and (err := check_pairs(path)):
+            ok, msg = False, f"reward pairs: {err}"
         print(f"{'✅' if ok else '❌'} {path}: {msg}")
         failed |= not ok
     return 1 if failed else 0
@@ -93,6 +98,11 @@ def _verify_anchored_dir(
 def verify_coe_dir(directory: Path, key: bytes | None, public_path: Path) -> int:
     """Verify every CoE file in ``directory`` (S2.7)."""
     return _verify_anchored_dir(directory, key, public_path, CoELedger)
+
+
+def verify_reward_dir(directory: Path, key: bytes | None, public_path: Path) -> int:
+    """Verify every reward ledger in ``directory``, pairs included (S3.3)."""
+    return _verify_anchored_dir(directory, key, public_path, RewardLedger)
 
 
 def verify_annotations_dir(
@@ -107,6 +117,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--init-anchors", action="store_true")
     parser.add_argument("--coe", type=Path, metavar="DIR")
     parser.add_argument("--annotations", type=Path, metavar="DIR")
+    parser.add_argument("--reward", type=Path, metavar="DIR")
     parser.add_argument("--public-key", type=Path, default=None)
     parser.add_argument("--public-only", action="store_true")
     args = parser.parse_args(argv)
@@ -114,6 +125,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.coe is not None:
         key = None if args.public_only else load_key()
         return verify_coe_dir(args.coe, key, args.public_key or PUBLIC_KEY_FILE)
+    if args.reward is not None:
+        key = None if args.public_only else load_key()
+        return verify_reward_dir(args.reward, key, args.public_key or PUBLIC_KEY_FILE)
     if args.annotations is not None:
         key = None if args.public_only else load_annotations_hmac()
         if key is None and not args.public_only:

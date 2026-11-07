@@ -54,6 +54,8 @@ data/cache/
 # S2.7 Chain-of-Evidence ledgers: one folder per results database, never committed
 # (confirmatory ones go into the OSF deposit).
 *.coe/
+# S3.3 reward-replay ledgers (data/replay/reward_run<N>/), local only
+data/replay/
 # S2.9 labelling sets, keys and annotations (never committed while they hold pool data)
 data/labelling/
 .env.labelling
