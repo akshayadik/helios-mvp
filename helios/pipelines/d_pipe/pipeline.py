@@ -41,6 +41,7 @@ def run_dpipe(
     evidence_ref: float | None = None,
     w_error: float = W_ERROR_DEFAULT,
     w_resource: float = 0,
+    w_memory: float | None = None,
     rho_threshold: float = RHO_THRESHOLD_DEFAULT,
     topology_boost_factor: float = TOPOLOGY_BOOST_DEFAULT,
 ) -> dict[str, Any]:
@@ -61,7 +62,7 @@ def run_dpipe(
         )
 
     # Stage B: anomaly scoring
-    scorer = AnomalyScorer(w_error=w_error, w_resource=w_resource)
+    scorer = AnomalyScorer(w_error=w_error, w_resource=w_resource, w_memory=w_memory)
     evidence: dict[str, float] = {}
     channels: dict[str, dict[str, float]] = {}
     levels: dict[str, dict[str, dict[str, float | str]]] = {}
@@ -148,7 +149,8 @@ def run_dpipe(
                     **{
                         c: (None if c not in ch else float(ch[c]))
                         for ch in [channels.get(s, {})]
-                        for c in ("error", "latency", "resource")
+                        for c in ("error", "latency", "resource", "memory")
+                        if c != "memory" or w_memory is not None
                     },
                     "score": scores.get(s),
                     "final": score_final[s],

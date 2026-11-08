@@ -19,7 +19,6 @@ import json
 import statistics
 import sys
 from concurrent.futures import ProcessPoolExecutor
-from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
@@ -72,7 +71,9 @@ def _case_hits(case: CalibrationCase) -> tuple[bool, list[int]]:
     cache: dict[tuple[float, ...], int] = {}
     hits: list[int] = []
     for p in dpipe_grid():
-        key: tuple[float, ...] = (p.w_error, p.w_resource)
+        # w_memory None (memory in the resource channel) is keyed as -1.
+        mem = -1 if p.w_memory is None else p.w_memory
+        key: tuple[float, ...] = (p.w_error, p.w_resource, mem)
         if graph is not None:
             key += (p.rho_threshold, p.topology_boost_factor)
         if key not in cache:
@@ -88,6 +89,7 @@ def _case_hits(case: CalibrationCase) -> tuple[bool, list[int]]:
                 evidence_ref=detector.threshold,
                 w_error=p.w_error,
                 w_resource=p.w_resource,
+                w_memory=p.w_memory,
                 rho_threshold=p.rho_threshold,
                 topology_boost_factor=p.topology_boost_factor,
             )
@@ -137,10 +139,10 @@ def main(argv: list[str] | None = None) -> int:
         "cases": {c: len(v) for c, v in cases.items()},
         "cases_with_graph": graphs,
         "grid_size": len(grid),
-        "results": [{**asdict(p), "hr_at_3": hr3[p]} for p in grid],
+        "results": [{**p.as_dict(), "hr_at_3": hr3[p]} for p in grid],
         "may_hr_at_3": may,
         "selected": {
-            **asdict(selected),
+            **selected.as_dict(),
             "dpipe_params_hash": dpipe_params_hash(selected),
             "hr_at_3": hr3[selected],
             "mean_hr_at_3": round(best, _DIGITS),

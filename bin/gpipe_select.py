@@ -117,6 +117,7 @@ def _score_case(case: GPipeCase) -> _Scored:
         evidence_ref=detector.threshold,
         w_error=dp.w_error,
         w_resource=dp.w_resource,
+        w_memory=dp.w_memory,
         rho_threshold=dp.rho_threshold,
         topology_boost_factor=dp.topology_boost_factor,
     )

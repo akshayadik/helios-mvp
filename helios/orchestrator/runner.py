@@ -327,6 +327,7 @@ class RunOrchestrator:
                 evidence_ref=self._detector.threshold,
                 w_error=self._dpipe.w_error,
                 w_resource=self._dpipe.w_resource,
+                w_memory=self._dpipe.w_memory,
                 rho_threshold=self._dpipe.rho_threshold,
                 topology_boost_factor=self._dpipe.topology_boost_factor,
             ),

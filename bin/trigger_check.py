@@ -93,6 +93,7 @@ def _dpipe_out(
         evidence_ref=ref,
         w_error=dp.w_error,
         w_resource=dp.w_resource,
+        w_memory=dp.w_memory,
         rho_threshold=dp.rho_threshold,
         topology_boost_factor=dp.topology_boost_factor,
     )
