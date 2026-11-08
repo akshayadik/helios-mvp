@@ -48,3 +48,11 @@ def test_the_otel_fix_gpipe_candidate_is_the_entry_78_refit() -> None:
 def test_a_missing_candidate_directory_is_an_error(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError, match="candidate"):
         load_chain(tmp_path / "typo")
+
+
+def test_the_otel_fix_mahc_candidate_is_the_entry_79_refit() -> None:
+    chain = load_chain(CANDIDATE_ROOT / "otel_fix")
+    assert chain.sources["mahc"] == "candidate"
+    assert chain.hashes()["mahc"] == (
+        "eb5b6adcf817b5705f72ecd635ed04da73702e4b395d66a7a5dd35e62f6318ba"
+    )

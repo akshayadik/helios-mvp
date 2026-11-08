@@ -1,0 +1,305 @@
+{
+  "by_corpus": {
+    "otel_build_v3": {
+      "ambiguous": 39,
+      "cases": 63,
+      "confirmed": 27,
+      "hr3_confirmed": 0.8148,
+      "mahc_hr3": 0.7937,
+      "mahc_hr3_ambiguous": 0.7436,
+      "pipelines_hr3": {
+        "dpipe": 0.7619,
+        "gpipe": 0.8095,
+        "lpipe": 0.6984
+      },
+      "pipelines_with_list": {
+        "dpipe": 63,
+        "gpipe": 63,
+        "lpipe": 63
+      },
+      "signal_types": {
+        "error": 9,
+        "latency": 9,
+        "resource": 11,
+        "unclassified": 34
+      },
+      "vote_only_hr3": 0.7937,
+      "vote_only_hr3_ambiguous": 0.7436
+    },
+    "rcaeval_build": {
+      "ambiguous": 141,
+      "cases": 495,
+      "confirmed": 311,
+      "hr3_confirmed": 0.9904,
+      "mahc_hr3": 0.9737,
+      "mahc_hr3_ambiguous": 0.9362,
+      "pipelines_hr3": {
+        "dpipe": 0.9455,
+        "lpipe": 0.9717
+      },
+      "pipelines_with_list": {
+        "dpipe": 495,
+        "lpipe": 494
+      },
+      "signal_types": {
+        "error": 2,
+        "latency": 250,
+        "resource": 212,
+        "unclassified": 31
+      },
+      "vote_only_hr3": 0.9737,
+      "vote_only_hr3_ambiguous": 0.9433
+    }
+  },
+  "calibration_curve": [
+    {
+      "bin": [
+        0.0,
+        0.1
+      ],
+      "cases": 0,
+      "hr3": null,
+      "mean_confidence": null
+    },
+    {
+      "bin": [
+        0.1,
+        0.2
+      ],
+      "cases": 0,
+      "hr3": null,
+      "mean_confidence": null
+    },
+    {
+      "bin": [
+        0.2,
+        0.3
+      ],
+      "cases": 0,
+      "hr3": null,
+      "mean_confidence": null
+    },
+    {
+      "bin": [
+        0.3,
+        0.4
+      ],
+      "cases": 0,
+      "hr3": null,
+      "mean_confidence": null
+    },
+    {
+      "bin": [
+        0.4,
+        0.5
+      ],
+      "cases": 0,
+      "hr3": null,
+      "mean_confidence": null
+    },
+    {
+      "bin": [
+        0.5,
+        0.6
+      ],
+      "cases": 104,
+      "hr3": 0.9519,
+      "mean_confidence": 0.55
+    },
+    {
+      "bin": [
+        0.6,
+        0.7
+      ],
+      "cases": 0,
+      "hr3": null,
+      "mean_confidence": null
+    },
+    {
+      "bin": [
+        0.7,
+        0.8
+      ],
+      "cases": 19,
+      "hr3": 0.9474,
+      "mean_confidence": 0.7026
+    },
+    {
+      "bin": [
+        0.8,
+        0.9
+      ],
+      "cases": 88,
+      "hr3": 0.8977,
+      "mean_confidence": 0.8581
+    },
+    {
+      "bin": [
+        0.9,
+        1.0
+      ],
+      "cases": 347,
+      "hr3": 0.9683,
+      "mean_confidence": 0.9896
+    }
+  ],
+  "candidate": "data/candidate/otel_fix",
+  "cases": 558,
+  "chain_hashes": {
+    "dpipe": "4dc7f3ebc534d6d8e934ef8d3feec516787880ad616effcb3337570ea0170d56",
+    "gpipe": "6987f666f53f9b420946e7cab79f01487d038afa382a7ba890d9cd70195999a5",
+    "mahc": "85adf6c5b45b6a5f22b09b4752a82c931c29b67863003ad903f02a15dae36a5f"
+  },
+  "chain_sources": {
+    "dpipe": "frozen",
+    "gpipe": "candidate",
+    "mahc": "frozen"
+  },
+  "excluded": 0,
+  "floor": 0.90625,
+  "refit": {
+    "calibrator": {
+      "coef": [
+        -0.25566,
+        -0.598379,
+        -1.290489,
+        0.402083
+      ],
+      "intercept": 3.81041,
+      "knots": [
+        [
+          0.879039,
+          0.8
+        ],
+        [
+          1.559839,
+          0.8
+        ],
+        [
+          1.748599,
+          0.9
+        ],
+        [
+          2.454718,
+          0.9
+        ],
+        [
+          3.044837,
+          0.9
+        ],
+        [
+          3.141007,
+          0.95
+        ],
+        [
+          3.244545,
+          0.99
+        ],
+        [
+          4.022995,
+          1.0
+        ],
+        [
+          4.151819,
+          1.0
+        ],
+        [
+          4.297313,
+          1.0
+        ],
+        [
+          4.587758,
+          1.0
+        ],
+        [
+          5.004549,
+          1.0
+        ],
+        [
+          5.209249,
+          1.0
+        ],
+        [
+          5.395176,
+          1.0
+        ],
+        [
+          5.540362,
+          1.0
+        ],
+        [
+          5.656605,
+          1.0
+        ],
+        [
+          5.837092,
+          1.0
+        ],
+        [
+          5.962698,
+          1.0
+        ]
+      ],
+      "mean": [
+        0.120062,
+        0.931956,
+        0.565578,
+        0.677419
+      ],
+      "scale": [
+        0.047932,
+        0.021983,
+        0.325942,
+        0.467464
+      ]
+    },
+    "floor": 0.90625,
+    "priors": {
+      "by_signal": {
+        "latency": {
+          "dpipe": 0.945157,
+          "lpipe": 0.97921
+        },
+        "resource": {
+          "dpipe": 0.979602,
+          "lpipe": 0.984582
+        },
+        "unclassified": {
+          "dpipe": 0.669964,
+          "gpipe": 0.683983,
+          "lpipe": 0.681183
+        }
+      },
+      "counts": {
+        "error": {
+          "dpipe": 11,
+          "gpipe": 9,
+          "lpipe": 11
+        },
+        "latency": {
+          "dpipe": 259,
+          "gpipe": 9,
+          "lpipe": 259
+        },
+        "resource": {
+          "dpipe": 223,
+          "gpipe": 11,
+          "lpipe": 223
+        },
+        "unclassified": {
+          "dpipe": 65,
+          "gpipe": 34,
+          "lpipe": 64
+        }
+      },
+      "global": {
+        "dpipe": 0.924731,
+        "gpipe": 0.809524,
+        "lpipe": 0.940754
+      }
+    },
+    "provisional": false
+  },
+  "refit_hash": "eb5b6adcf817b5705f72ecd635ed04da73702e4b395d66a7a5dd35e62f6318ba",
+  "variant": "HELIOS-noRouter"
+}
