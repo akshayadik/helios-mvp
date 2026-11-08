@@ -39,6 +39,12 @@ On OTel build v3, HELIOS-noRouter's fused HR@3 is 50/63. None of the 13 misses c
 - **Gate, fixed now:** the channel enters the refit only if, on build data with the frozen trigger, it beats the current resource channel at ranking email among in-scope services in at least 5 of the 7 leak cases. It must also not lower D-pipe's build HR@3 on RCAEval or on the other 8 OTel fault types.
 - **If B fails the gate,** it is dropped and recorded; A goes ahead alone.
 - **RCAEval has memory faults,** so B is the change that can touch the confirmatory corpus. That is why it is gated.
+- **Statistic and gate procedure, fixed 2026-11-08 before any code read the leak cases:**
+  - *Series:* per service, each memory metric (`mem` in RCAEval, `container_memory_usage_total_bytes` in OTel), split at the frozen trigger as D-pipe's other channels are. Memory leaves the resource channel; the resource channel keeps the other resource metrics.
+  - *Trend:* the Theil–Sen slope (median of pairwise slopes, per step) of all finite values after the trigger, *s*. Reference: with *L* = min(points after, ⌊points before / 2⌋), the Theil–Sen slopes of every run of *L* consecutive finite values before the trigger. If *L* < 3 the channel is zero.
+  - *Score:* (*s* − median of the reference slopes) / scale, upward only (as D-h). The scale is the reference slopes' robust spread (`robust_scale`, gauge rule), floored at `REL_FLOOR` × |median level before| / *L*, a 5% level change over a run. A service with several memory metrics takes the largest.
+  - *Old chain:* a parameter file without `w_memory` keeps memory inside the resource channel and scores exactly as before, with the same hash.
+  - *Gate (run once, `bin/dpipe_memory_gate.py`):* the 7 `emailMemoryLeak` cases of OTel build v3, the frozen trigger. For each case, email's rank among the in-scope services by (a) the current resource channel and (b) the memory trend: 1 + the number of services with a strictly larger value, and last when email's value is zero. The channel passes if (b) is strictly better than (a) in at least 5 of the 7. The no-loss half of the gate (RCAEval build and the other 8 OTel fault types) is checked on the refit grid's selected setting in ENG07.
 
 **O-d. Held-out corpus: OTel v4.**
 - **Protocol:** the v3 protocol unchanged:
