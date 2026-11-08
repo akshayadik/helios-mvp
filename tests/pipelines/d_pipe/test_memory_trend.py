@@ -161,3 +161,17 @@ def test_unknown_keys_are_refused(tmp_path: Path) -> None:
 
 def test_dataclass_default_is_the_legacy_channel() -> None:
     assert DPipeParams(0.7, 0.1, 0.2, 1, provisional=False).w_memory is None
+
+
+def test_the_legacy_channel_never_computes_the_trend(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The trend is the costliest statistic; frozen chains without w_memory
+    # must not pay for it (it would also move D-pipe's measured latency).
+    from helios.pipelines.d_pipe.stages import b_anomaly_scorer
+
+    def boom(*_: object) -> float:
+        raise AssertionError("memory_trend called without w_memory")
+
+    monkeypatch.setattr(b_anomaly_scorer, "memory_trend", boom)
+    AnomalyScorer(w_error=0, w_resource=1).score_split(_parsed(), split_s=12)

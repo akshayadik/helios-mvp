@@ -168,7 +168,11 @@ class AnomalyScorer:
     def score_split(self, parsed: ParsedMetrics, *, split_s: float) -> ScoredServices:
         """Scores from the shift after ``split_s`` (the trigger) per channel."""
         before = np.asarray(parsed.steps, dtype="float64") < split_s
+        on = self.w_memory is not None
         err, lat, res, mem = {}, {}, {}, {}
+        # Trend per memory series, computed once and only with the channel on:
+        # the legacy channel never reads it (it is the costliest statistic).
+        trends: dict[str, list[tuple[float, str]]] = {}
         for s in parsed.p1_services:
             err[s] = (
                 _shift(parsed.error_deltas[s], before, count_series=True)
@@ -192,14 +196,13 @@ class AnomalyScorer:
                 ),
                 default=0,
             )
-            mem[s] = max(
-                (
-                    memory_trend(v, before)
+            if on:
+                trends[s] = [
+                    (memory_trend(v, before), m)
                     for m, v in sorted(parsed.resource_values.get(s, {}).items())
                     if m in MEMORY_NAMES
-                ),
-                default=0,
-            )
+                ]
+                mem[s] = max((z for z, _ in trends[s]), default=0)
         n_err, n_lat, n_res = _normalised(err), _normalised(lat), _normalised(res)
         w_mem = self.w_memory or 0
         n_mem = _normalised(mem) if self.w_memory is not None else {}
@@ -211,7 +214,6 @@ class AnomalyScorer:
             + (w_mem * n_mem[s] if self.w_memory is not None else 0)
             for s in parsed.p1_services
         }
-        on = self.w_memory is not None
         evidence = {
             s: max(err[s], lat[s], res[s], *((mem[s],) if on else ()))
             for s in parsed.p1_services
@@ -228,7 +230,7 @@ class AnomalyScorer:
         levels = {s: self._levels(parsed, s, before) for s in parsed.p1_services}
         if on:
             for s in parsed.p1_services:
-                memory = self._memory_level(parsed, s, before)
+                memory = self._memory_level(parsed, s, before, trends[s])
                 if memory is not None:
                     levels[s]["memory"] = memory
         return ScoredServices(
@@ -237,18 +239,18 @@ class AnomalyScorer:
 
     @staticmethod
     def _memory_level(
-        parsed: ParsedMetrics, s: str, before: np.ndarray
+        parsed: ParsedMetrics,
+        s: str,
+        before: np.ndarray,
+        trends: list[tuple[float, str]],
     ) -> dict[str, float | str] | None:
-        """Raw levels of the memory series with the largest trend."""
-        series = [
-            (m, v)
-            for m, v in sorted(parsed.resource_values.get(s, {}).items())
-            if m in MEMORY_NAMES
-        ]
-        if not series:
+        """Raw levels of the memory series with the largest trend (the first
+        in name order on a tie, as ``max`` over the sorted series)."""
+        if not trends:
             return None
-        metric, values = max(series, key=lambda mv: memory_trend(mv[1], before))
-        level = _level(values, before)
+        best = max(z for z, _ in trends)
+        metric = next(m for z, m in trends if z == best)
+        level = _level(parsed.resource_values[s][metric], before)
         if level is None:
             return None
         return {"before": level[0], "after": level[1], "unit": unit_for(metric)}
