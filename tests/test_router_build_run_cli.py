@@ -188,3 +188,22 @@ def test_an_existing_run_is_never_overwritten(
 
     assert router_build_run.main(["--run", "1"]) == 2
     assert "never overwritten" in capsys.readouterr().err
+
+
+def test_freezing_into_a_candidate_needs_a_report_run_on_it(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    import json
+
+    from bin import router_build_run
+
+    run1 = json.loads((router_build_run.REPORT_DIR / "router_run1.json").read_text())
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    (reports / "router_run9.json").write_text(json.dumps(run1))
+    monkeypatch.setattr(router_build_run, "REPORT_DIR", reports)
+    assert router_build_run._freeze(9, tmp_path) == 3
+    assert "not run on this candidate" in capsys.readouterr().err
+    assert not (tmp_path / "router_params.json").exists()

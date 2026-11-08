@@ -3,6 +3,13 @@
 Usage (from the repository root; the runner reads repo-relative stream paths):
     set -a; source .env; set +a
     poetry run python bin/mahc_build_run.py --run N
+    poetry run python bin/mahc_build_run.py --run N --candidate DIR --variant V
+
+``--candidate DIR`` (OTel fix refit, entries 76, 78) runs the chain with the
+parameters ``DIR`` holds in place of the frozen ones (helios.evaluation.
+candidate_set); ``--variant`` picks the variant that produces the votes:
+HELIOS-Full (default, the S2.5 runs) or HELIOS-noRouter (every pipeline on
+every case: since S3.1 Full routes, so its votes depend on the router).
 
 Runs the real orchestrator (HELIOS-Full, frozen detector, D-, G- and L-pipe,
 provisional MAHC parameters) over the sealed build corpora into a scratch
@@ -33,6 +40,7 @@ from helios.consensus.params import (
     load_mahc_params,
     mahc_params_hash,
 )
+from helios.evaluation.candidate_set import ChainParams, load_chain
 from helios.evaluation.mahc_calibration import (
     BuildCase,
     evaluate,
@@ -67,6 +75,7 @@ REPORT_DIR = REPO_ROOT / "docs/sprints/s2-reasoning/calibration"
 CACHE_PATH = REPO_ROOT / "data/cache/lpipe_cache.sqlite"
 BUILD_CORPORA = ("otel_build_v3", "rcaeval_build")
 VARIANT = "HELIOS-Full"
+VARIANTS = ("HELIOS-Full", "HELIOS-noRouter")
 
 
 class CacheMissError(RuntimeError):
@@ -156,9 +165,12 @@ def _cases_from_store(
     return cases
 
 
-def collect_cases(*, key: bytes) -> tuple[list[BuildCase], dict[str, int]]:
-    """Run HELIOS-Full over both build corpora; the cases and the exclusion count."""
-    manifest = get_variant(VARIANT)
+def collect_cases(
+    *, key: bytes, chain: ChainParams | None = None, variant: str = VARIANT
+) -> tuple[list[BuildCase], dict[str, int]]:
+    """Run ``variant`` over both build corpora; the cases and the exclusion count."""
+    chain = chain or load_chain()
+    manifest = get_variant(variant)
     cases: list[BuildCase] = []
     excluded = 0
     with tempfile.TemporaryDirectory() as tmp:
@@ -178,7 +190,9 @@ def collect_cases(*, key: bytes) -> tuple[list[BuildCase], dict[str, int]]:
                 hmac_key=key,
                 lpipe_client=_CacheOnlyClient(OLLAMA_BASE_URL, MODEL_NAME),
                 lpipe_cache=ResponseCache(CACHE_PATH),
-                mahc_params=load_mahc_params(),
+                dpipe_params=chain.dpipe,
+                gpipe_params=chain.gpipe,
+                mahc_params=chain.mahc,
             ).run(captures)
             store = ResultStore(work / f"{corpus}.duckdb")
             cases.extend(_cases_from_store(store, corpus, labels))
@@ -222,6 +236,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--run", type=int, default=1, help="names the report mahc_run<N>.json"
     )
+    parser.add_argument("--candidate", type=Path, default=None)
+    parser.add_argument("--variant", choices=VARIANTS, default=VARIANT)
     parser.add_argument(
         "--check-frozen",
         action="store_true",
@@ -245,7 +261,8 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 2
-    cases, counts = collect_cases(key=load_key())
+    chain = load_chain(args.candidate)
+    cases, counts = collect_cases(key=load_key(), chain=chain, variant=args.variant)
     report = evaluate(cases)
     idx = list(range(len(cases)))
     refit = MAHCParams(
@@ -256,7 +273,16 @@ def main(argv: list[str] | None = None) -> int:
     )
     report.update(
         {
-            "variant": VARIANT,
+            "variant": args.variant,
+            **(
+                {
+                    "candidate": str(args.candidate),
+                    "chain_sources": chain.sources,
+                    "chain_hashes": chain.hashes(),
+                }
+                if args.candidate
+                else {}
+            ),
             "cases": len(cases),
             **counts,
             "refit": refit.as_dict(),
