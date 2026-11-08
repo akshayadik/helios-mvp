@@ -178,3 +178,13 @@ def test_case_from_entry_reads_the_runner_record() -> None:
 def test_case_from_entry_skips_runs_without_features() -> None:
     entry = {"incident_id": "inc", "steps": [{"id": "R", "ran": False}]}
     assert tool.case_from_entry(entry, "c", {"root_cause_service": "x"}) is None
+
+
+def test_an_existing_run_is_never_overwritten(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # OTel fix refit (entry 76): new runs take new numbers; run 1 stays.
+    from bin import router_build_run
+
+    assert router_build_run.main(["--run", "1"]) == 2
+    assert "never overwritten" in capsys.readouterr().err

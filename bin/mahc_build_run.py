@@ -239,6 +239,12 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     if args.check_frozen:
         return _check_frozen()
+    if (REPORT_DIR / f"mahc_run{args.run}.json").exists():
+        print(
+            f"[mahc] mahc_run{args.run}.json exists; a run is never overwritten",
+            file=sys.stderr,
+        )
+        return 2
     cases, counts = collect_cases(key=load_key())
     report = evaluate(cases)
     idx = list(range(len(cases)))

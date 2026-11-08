@@ -294,6 +294,12 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     if args.check_frozen:
         return _check_frozen()
+    if (REPORT_DIR / f"router_run{args.run}.json").exists():
+        print(
+            f"[router] router_run{args.run}.json exists; a run is never overwritten",
+            file=sys.stderr,
+        )
+        return 2
     return _fit(args.run)
 
 
