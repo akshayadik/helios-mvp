@@ -42,6 +42,7 @@ from helios.consensus.router_params import (
     router_params_hash,
     write_router_params,
 )
+from helios.evaluation.candidate_set import ChainParams, load_chain
 from helios.evaluation.cost import load_price_book
 from helios.evaluation.router_calibration import (
     RouterCase,
@@ -117,8 +118,11 @@ def case_from_entry(
     )
 
 
-def collect_cases(*, key: bytes) -> tuple[list[RouterCase], dict[str, int]]:
+def collect_cases(
+    *, key: bytes, chain: ChainParams | None = None
+) -> tuple[list[RouterCase], dict[str, int]]:
     """Run HELIOS-noRouter over both build corpora; the cases and counts."""
+    chain = chain or load_chain()
     manifest = get_variant(VARIANT)
     cases: list[RouterCase] = []
     excluded = 0
@@ -140,7 +144,9 @@ def collect_cases(*, key: bytes) -> tuple[list[RouterCase], dict[str, int]]:
                 hmac_key=key,
                 lpipe_client=_CacheOnlyClient(OLLAMA_BASE_URL, MODEL_NAME),
                 lpipe_cache=ResponseCache(CACHE_PATH),
-                mahc_params=load_mahc_params(),
+                dpipe_params=chain.dpipe,
+                gpipe_params=chain.gpipe,
+                mahc_params=chain.mahc,
                 coe_path=work / f"{corpus}.coe.jsonl",
             )
             orch.run(captures)
@@ -181,10 +187,11 @@ def _print(report: dict[str, Any]) -> None:
         )
 
 
-def _fit(run: int) -> int:
-    cases, counts = collect_cases(key=load_key())
+def _fit(run: int, candidate: Path | None = None) -> int:
+    chain = load_chain(candidate)
+    cases, counts = collect_cases(key=load_key(), chain=chain)
     set_current_manifest(get_variant(ROUTED))  # the policy is gated by cbr_routing
-    mahc = load_mahc_params()
+    mahc = chain.mahc
     outcomes = [arm_outcomes(c, mahc) for c in cases]
     medians = stage_medians(cases)
     held = cross_fit(cases, outcomes, lam=LAMBDA, alpha=ALPHA, medians=medians)
@@ -212,6 +219,15 @@ def _fit(run: int) -> int:
             "alpha": ALPHA,
             "stage_median_ms": medians,
             "tau_held_out": tau_held,
+            **(
+                {
+                    "candidate": str(candidate),
+                    "chain_sources": chain.sources,
+                    "chain_hashes": chain.hashes(),
+                }
+                if candidate
+                else {}
+            ),
         }
     )
     if refit is not None and tau is not None:
@@ -236,7 +252,7 @@ def _fit(run: int) -> int:
     return 0
 
 
-def _freeze(run: int) -> int:
+def _freeze(run: int, candidate: Path | None = None) -> int:
     path = REPORT_DIR / f"router_run{run}.json"
     if not path.is_file():
         print(f"[router] no report {path.name}: run and review first", file=sys.stderr)
@@ -249,7 +265,11 @@ def _freeze(run: int) -> int:
     if router_params_hash(params) != report["refit_hash"]:
         print("[router] refit does not match its hash", file=sys.stderr)
         return 3
-    write_router_params(params, ROUTER_PARAMS_PATH)
+    target = candidate / "router_params.json" if candidate else ROUTER_PARAMS_PATH
+    if candidate is not None and report.get("candidate") != str(candidate):
+        print("[router] the report was not run on this candidate", file=sys.stderr)
+        return 3
+    write_router_params(params, target)
     print(f"[router] frozen {router_params_hash(params)}")
     return 0
 
@@ -280,12 +300,13 @@ def main(argv: list[str] | None = None) -> int:
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--freeze", action="store_true", help="freeze a reviewed run")
     mode.add_argument("--check-frozen", action="store_true")
+    parser.add_argument("--candidate", type=Path, default=None)
     args = parser.parse_args(argv)
     if args.corpus == "pool":
         print("[router] the pool is locked until tag build-freeze", file=sys.stderr)
         return 2
     if args.freeze:
-        return _freeze(args.run)
+        return _freeze(args.run, args.candidate)
     if Path.cwd().resolve() != REPO_ROOT:
         print(
             "[router] run from the repository root (stream paths are relative)",
@@ -294,7 +315,13 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     if args.check_frozen:
         return _check_frozen()
-    return _fit(args.run)
+    if (REPORT_DIR / f"router_run{args.run}.json").exists():
+        print(
+            f"[router] router_run{args.run}.json exists; a run is never overwritten",
+            file=sys.stderr,
+        )
+        return 2
+    return _fit(args.run, args.candidate)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,262 @@
+{
+  "chains": {
+    "new": {
+      "dpipe": "4dc7f3ebc534d6d8e934ef8d3feec516787880ad616effcb3337570ea0170d56",
+      "gpipe": "6987f666f53f9b420946e7cab79f01487d038afa382a7ba890d9cd70195999a5",
+      "mahc": "eb5b6adcf817b5705f72ecd635ed04da73702e4b395d66a7a5dd35e62f6318ba",
+      "router": "ff0438903b9372b7c8905c2ce2d34b1054beb7f52d12680060d03d3e56d3c737",
+      "sources": {
+        "dpipe": "frozen",
+        "gpipe": "candidate",
+        "mahc": "candidate"
+      }
+    },
+    "old": {
+      "dpipe": "4dc7f3ebc534d6d8e934ef8d3feec516787880ad616effcb3337570ea0170d56",
+      "gpipe": "3ab65983cba8f37a26005bc3ceb0440fffa65460f7b9fe06c2181a1055dbd855",
+      "mahc": "85adf6c5b45b6a5f22b09b4752a82c931c29b67863003ad903f02a15dae36a5f",
+      "router": "94707eca9b8226eef390789fcf7c98c948642892c259d635aa205f11277a14ec",
+      "sources": {
+        "dpipe": "frozen",
+        "gpipe": "frozen",
+        "mahc": "frozen"
+      }
+    }
+  },
+  "decision": {
+    "adopted": false,
+    "rcaeval_holds": true,
+    "rule": "new HELIOS-Full v4 hits >= old + 2 AND new HELIOS-Full rcaeval_build HR@3 >= old",
+    "v4_holds": false
+  },
+  "deviation_entries": [
+    76,
+    77,
+    78,
+    79,
+    80
+  ],
+  "model_digest": "46e0c10c039e019119339687c3c1757cc81b9da49709a3b3924863ba87ca666e",
+  "results": {
+    "new": {
+      "HELIOS-Full": {
+        "otel_heldout_v4": {
+          "by_fault": {
+            "adFailure": {
+              "cases": 4,
+              "hits": 4
+            },
+            "adHighCpu": {
+              "cases": 4,
+              "hits": 4
+            },
+            "adManualGc": {
+              "cases": 4,
+              "hits": 4
+            },
+            "cartFailure": {
+              "cases": 4,
+              "hits": 4
+            },
+            "emailMemoryLeak": {
+              "cases": 4,
+              "hits": 2
+            },
+            "paymentFailure": {
+              "cases": 4,
+              "hits": 4
+            },
+            "paymentUnreachable": {
+              "cases": 4,
+              "hits": 4
+            },
+            "productCatalogFailure": {
+              "cases": 4,
+              "hits": 3
+            },
+            "recommendationCacheFailure": {
+              "cases": 4,
+              "hits": 1
+            }
+          },
+          "cases": 36,
+          "excluded": 0,
+          "hits": 30,
+          "hr_at_3": 0.833333,
+          "labelled": 36
+        },
+        "rcaeval_build": {
+          "cases": 495,
+          "excluded": 0,
+          "hits": 478,
+          "hr_at_3": 0.965657,
+          "labelled": 495
+        }
+      },
+      "HELIOS-noRouter": {
+        "otel_heldout_v4": {
+          "by_fault": {
+            "adFailure": {
+              "cases": 4,
+              "hits": 4
+            },
+            "adHighCpu": {
+              "cases": 4,
+              "hits": 4
+            },
+            "adManualGc": {
+              "cases": 4,
+              "hits": 4
+            },
+            "cartFailure": {
+              "cases": 4,
+              "hits": 4
+            },
+            "emailMemoryLeak": {
+              "cases": 4,
+              "hits": 2
+            },
+            "paymentFailure": {
+              "cases": 4,
+              "hits": 4
+            },
+            "paymentUnreachable": {
+              "cases": 4,
+              "hits": 4
+            },
+            "productCatalogFailure": {
+              "cases": 4,
+              "hits": 3
+            },
+            "recommendationCacheFailure": {
+              "cases": 4,
+              "hits": 1
+            }
+          },
+          "cases": 36,
+          "excluded": 0,
+          "hits": 30,
+          "hr_at_3": 0.833333,
+          "labelled": 36
+        },
+        "rcaeval_build": {
+          "cases": 495,
+          "excluded": 0,
+          "hits": 482,
+          "hr_at_3": 0.973737,
+          "labelled": 495
+        }
+      }
+    },
+    "old": {
+      "HELIOS-Full": {
+        "otel_heldout_v4": {
+          "by_fault": {
+            "adFailure": {
+              "cases": 4,
+              "hits": 4
+            },
+            "adHighCpu": {
+              "cases": 4,
+              "hits": 4
+            },
+            "adManualGc": {
+              "cases": 4,
+              "hits": 4
+            },
+            "cartFailure": {
+              "cases": 4,
+              "hits": 4
+            },
+            "emailMemoryLeak": {
+              "cases": 4,
+              "hits": 2
+            },
+            "paymentFailure": {
+              "cases": 4,
+              "hits": 4
+            },
+            "paymentUnreachable": {
+              "cases": 4,
+              "hits": 4
+            },
+            "productCatalogFailure": {
+              "cases": 4,
+              "hits": 3
+            },
+            "recommendationCacheFailure": {
+              "cases": 4,
+              "hits": 1
+            }
+          },
+          "cases": 36,
+          "excluded": 0,
+          "hits": 30,
+          "hr_at_3": 0.833333,
+          "labelled": 36
+        },
+        "rcaeval_build": {
+          "cases": 495,
+          "excluded": 0,
+          "hits": 478,
+          "hr_at_3": 0.965657,
+          "labelled": 495
+        }
+      },
+      "HELIOS-noRouter": {
+        "otel_heldout_v4": {
+          "by_fault": {
+            "adFailure": {
+              "cases": 4,
+              "hits": 4
+            },
+            "adHighCpu": {
+              "cases": 4,
+              "hits": 4
+            },
+            "adManualGc": {
+              "cases": 4,
+              "hits": 4
+            },
+            "cartFailure": {
+              "cases": 4,
+              "hits": 4
+            },
+            "emailMemoryLeak": {
+              "cases": 4,
+              "hits": 2
+            },
+            "paymentFailure": {
+              "cases": 4,
+              "hits": 4
+            },
+            "paymentUnreachable": {
+              "cases": 4,
+              "hits": 4
+            },
+            "productCatalogFailure": {
+              "cases": 4,
+              "hits": 3
+            },
+            "recommendationCacheFailure": {
+              "cases": 4,
+              "hits": 1
+            }
+          },
+          "cases": 36,
+          "excluded": 0,
+          "hits": 30,
+          "hr_at_3": 0.833333,
+          "labelled": 36
+        },
+        "rcaeval_build": {
+          "cases": 495,
+          "excluded": 0,
+          "hits": 482,
+          "hr_at_3": 0.973737,
+          "labelled": 495
+        }
+      }
+    }
+  }
+}

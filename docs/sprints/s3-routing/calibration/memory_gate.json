@@ -1,0 +1,59 @@
+{
+  "cases": [
+    {
+      "memory_better": false,
+      "memory_rank": 2,
+      "resource_rank": 1,
+      "services": 20,
+      "trigger_source": "fallback"
+    },
+    {
+      "memory_better": true,
+      "memory_rank": 1,
+      "resource_rank": 3,
+      "services": 20,
+      "trigger_source": "fallback"
+    },
+    {
+      "memory_better": true,
+      "memory_rank": 1,
+      "resource_rank": 8,
+      "services": 20,
+      "trigger_source": "fallback"
+    },
+    {
+      "memory_better": true,
+      "memory_rank": 2,
+      "resource_rank": 4,
+      "services": 20,
+      "trigger_source": "fallback"
+    },
+    {
+      "memory_better": true,
+      "memory_rank": 1,
+      "resource_rank": 7,
+      "services": 20,
+      "trigger_source": "fallback"
+    },
+    {
+      "memory_better": false,
+      "memory_rank": 20,
+      "resource_rank": 1,
+      "services": 20,
+      "trigger_source": "fallback"
+    },
+    {
+      "memory_better": true,
+      "memory_rank": 2,
+      "resource_rank": 9,
+      "services": 20,
+      "trigger_source": "fallback"
+    }
+  ],
+  "corpus": "otel_build_v3",
+  "detector_hash": "bc07f4952e6856eecdfd62591664b0aa541701e08098594d61ddb3fccb2bf312",
+  "fault": "emailMemoryLeak",
+  "memory_better": 5,
+  "passes": true,
+  "rule": "memory rank strictly better in >= 5 of 7"
+}

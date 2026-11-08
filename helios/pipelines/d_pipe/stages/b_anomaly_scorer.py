@@ -3,8 +3,9 @@
 With the shared trigger (S2.1), ``score_split`` scores each channel's shift
 after the trigger against the part before it (robust scale shared with the
 trigger), keeps each service's largest raw shift as evidence for sigma, and
-adds a resource channel. ``score`` is the whole-window form, used without a
-trigger.
+adds a resource channel. With ``w_memory`` set (OTel fix B, entry 76), memory
+leaves the resource channel for its own: a sustained rise, ``memory_trend``.
+``score`` is the whole-window form, used without a trigger.
 """
 
 from __future__ import annotations
@@ -16,11 +17,12 @@ import numpy as np
 import scipy.stats.mstats
 
 from helios.pipelines.d_pipe.dpipe_config import (
+    MEMORY_NAMES,
     TWO_SIDED_RESOURCE_NAMES,
     W_ERROR_DEFAULT,
 )
 from helios.telemetry.scope import in_scope
-from helios.telemetry.trigger import robust_scale
+from helios.telemetry.trigger import REL_FLOOR, robust_scale
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
 
 if TYPE_CHECKING:
@@ -105,6 +107,41 @@ def _shift(
     return abs(delta) if two_sided else max(0, delta)
 
 
+_MIN_RUN = 3
+
+
+def theil_sen(values: np.ndarray) -> float:
+    """Median of the pairwise slopes, per step (values at consecutive steps)."""
+    n = values.size
+    i, j = np.triu_indices(n, k=1)
+    return float(np.median((values[j] - values[i]) / (j - i)))
+
+
+def memory_trend(series: list[float], before: np.ndarray) -> float:
+    """Sustained rise after the split, in units of the slopes before it (>= 0).
+
+    The Theil-Sen slope of the part after the split, against the Theil-Sen
+    slopes of every run of ``L`` consecutive points before it, ``L`` =
+    min(points after, points before // 2). Scale: the reference slopes'
+    robust spread, floored at REL_FLOOR of the level before over a run. A
+    spike moves a median slope little; a leak moves it every step (design
+    O-c, fixed before the gate run).
+    """
+    values = np.asarray(series, dtype="float64")
+    ref = values[before][np.isfinite(values[before])]
+    inc = values[~before][np.isfinite(values[~before])]
+    run = min(inc.size, ref.size // 2)
+    if run < _MIN_RUN:
+        return 0
+    slopes = np.array([theil_sen(ref[k : k + run]) for k in range(ref.size - run + 1)])
+    floor = REL_FLOOR * abs(float(np.median(ref))) / run
+    scale = max(robust_scale(slopes, count_series=False), floor)
+    if scale <= 0:
+        return 0
+    z = float((theil_sen(inc) - float(np.median(slopes))) / scale)
+    return max(z, 0)
+
+
 def _normalised(raw: dict[str, float]) -> dict[str, float]:
     """Divide by the largest in-scope value: out-of-scope services (D-f) keep
     their raw shift as evidence but never set the scale for the others."""
@@ -116,11 +153,26 @@ def _normalised(raw: dict[str, float]) -> dict[str, float]:
 class AnomalyScorer:
     w_error: float = W_ERROR_DEFAULT
     w_resource: float = 0
+    # None: memory stays in the resource channel (every freeze before fix B).
+    w_memory: float | None = None
+
+    def _resources(
+        self, parsed: ParsedMetrics, s: str
+    ) -> list[tuple[str, list[float]]]:
+        """The service's resource series the resource channel scores."""
+        items = sorted(parsed.resource_values.get(s, {}).items())
+        if self.w_memory is None:
+            return items
+        return [(m, v) for m, v in items if m not in MEMORY_NAMES]
 
     def score_split(self, parsed: ParsedMetrics, *, split_s: float) -> ScoredServices:
         """Scores from the shift after ``split_s`` (the trigger) per channel."""
         before = np.asarray(parsed.steps, dtype="float64") < split_s
-        err, lat, res = {}, {}, {}
+        on = self.w_memory is not None
+        err, lat, res, mem = {}, {}, {}, {}
+        # Trend per memory series, computed once and only with the channel on:
+        # the legacy channel never reads it (it is the costliest statistic).
+        trends: dict[str, list[tuple[float, str]]] = {}
         for s in parsed.p1_services:
             err[s] = (
                 _shift(parsed.error_deltas[s], before, count_series=True)
@@ -140,29 +192,71 @@ class AnomalyScorer:
                         count_series=False,
                         two_sided=m in TWO_SIDED_RESOURCE_NAMES,
                     )
-                    for m, v in sorted(parsed.resource_values.get(s, {}).items())
+                    for m, v in self._resources(parsed, s)
                 ),
                 default=0,
             )
+            if on:
+                trends[s] = [
+                    (memory_trend(v, before), m)
+                    for m, v in sorted(parsed.resource_values.get(s, {}).items())
+                    if m in MEMORY_NAMES
+                ]
+                mem[s] = max((z for z, _ in trends[s]), default=0)
         n_err, n_lat, n_res = _normalised(err), _normalised(lat), _normalised(res)
-        w_lat = 1 - self.w_error - self.w_resource
+        w_mem = self.w_memory or 0
+        n_mem = _normalised(mem) if self.w_memory is not None else {}
+        w_lat = 1 - self.w_error - self.w_resource - w_mem
         scores = {
-            s: self.w_error * n_err[s] + self.w_resource * n_res[s] + w_lat * n_lat[s]
+            s: self.w_error * n_err[s]
+            + self.w_resource * n_res[s]
+            + w_lat * n_lat[s]
+            + (w_mem * n_mem[s] if self.w_memory is not None else 0)
             for s in parsed.p1_services
         }
-        evidence = {s: max(err[s], lat[s], res[s]) for s in parsed.p1_services}
+        evidence = {
+            s: max(err[s], lat[s], res[s], *((mem[s],) if on else ()))
+            for s in parsed.p1_services
+        }
         channels = {
-            s: {"error": err[s], "latency": lat[s], "resource": res[s]}
+            s: {
+                "error": err[s],
+                "latency": lat[s],
+                "resource": res[s],
+                **({"memory": mem[s]} if on else {}),
+            }
             for s in parsed.p1_services
         }
         levels = {s: self._levels(parsed, s, before) for s in parsed.p1_services}
+        if on:
+            for s in parsed.p1_services:
+                memory = self._memory_level(parsed, s, before, trends[s])
+                if memory is not None:
+                    levels[s]["memory"] = memory
         return ScoredServices(
             scores=scores, evidence=evidence, channels=channels, levels=levels
         )
 
     @staticmethod
+    def _memory_level(
+        parsed: ParsedMetrics,
+        s: str,
+        before: np.ndarray,
+        trends: list[tuple[float, str]],
+    ) -> dict[str, float | str] | None:
+        """Raw levels of the memory series with the largest trend (the first
+        in name order on a tie, as ``max`` over the sorted series)."""
+        if not trends:
+            return None
+        best = max(z for z, _ in trends)
+        metric = next(m for z, m in trends if z == best)
+        level = _level(parsed.resource_values[s][metric], before)
+        if level is None:
+            return None
+        return {"before": level[0], "after": level[1], "unit": unit_for(metric)}
+
     def _levels(
-        parsed: ParsedMetrics, s: str, before: np.ndarray
+        self, parsed: ParsedMetrics, s: str, before: np.ndarray
     ) -> dict[str, dict[str, float | str]]:
         names = parsed.metric_names.get(s, {})
         series: dict[str, tuple[str, list[float]]] = {}
@@ -173,7 +267,7 @@ class AnomalyScorer:
                 names.get("latency", "latency"),
                 parsed.latency_means[s],
             )
-        resources = sorted(parsed.resource_values.get(s, {}).items())
+        resources = self._resources(parsed, s)
         if resources:
             # The resource metric with the largest shift, as score_split uses.
             series["resource"] = max(

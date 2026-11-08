@@ -1,0 +1,15 @@
+{
+  "incident_id": "c61fd0e45e38aac87ca009336838290a",
+  "variant_config_hash": "5382fafae6db0a7c6cdbdfb53bfc544ebfcfe707785a78294fea689d28160497",
+  "window_start_iso": "2026-11-07T12:48:45.873312+00:00",
+  "window_end_iso": "2026-11-07T13:03:45.873312+00:00",
+  "evaluation_phase": "exploratory",
+  "p1_metrics_path": "data/otel/heldout_v4/c61fd0e45e38aac87ca009336838290a/p1_metrics.parquet",
+  "p2_traces_path": "data/otel/heldout_v4/c61fd0e45e38aac87ca009336838290a/p2_traces.parquet",
+  "p3_logs_path": "data/otel/heldout_v4/c61fd0e45e38aac87ca009336838290a/p3_logs.parquet",
+  "p4_events_path": null,
+  "p5_profiles_path": null,
+  "schema_version": "schema-draft-v0.2",
+  "window_hash": "d264466269ea46104fc826b4c19893d40b836411701cd259afca4d5d3f6b4c7e",
+  "snapshot_hash": "5f895b24a33a0940d5bd96022f1b7a60dab8088648b6e2d5f3d1a0b1b75f2484"
+}

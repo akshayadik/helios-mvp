@@ -8,7 +8,8 @@
   ``LEADER_RESTART_FACTOR`` for a service that leads one of its callers.
   Mass flows from victims to the callees they wait on and pools where a
   service does its own work. Constants fixed before the selection run.
-- ``LinearRanker``: a linear score over ``FEATURE_COLUMNS``, fitted with a
+- ``LinearRanker``: a linear score over named feature columns (all of
+  ``FEATURE_COLUMNS`` when fitted now; ``S22_COLUMNS`` for the S2.2 model), fitted with a
   pairwise logistic loss (the root against every other service of its
   window) and L2 strength ``RIDGE_LAMBDA``, by a deterministic solver.
 """
@@ -95,19 +96,36 @@ def _root_row(features: GraphFeatures, root: str, stem: bool) -> int | None:
 
 @dataclass(frozen=True)
 class LinearRanker:
-    """Standardised linear score over FEATURE_COLUMNS."""
+    """Standardised linear score over ``columns`` of the feature table."""
 
     weights: tuple[float, ...]
     mean: tuple[float, ...]
     scale: tuple[float, ...]
+    columns: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        assert_no_identity(self.columns, ())
+        n = len(self.columns)
+        if not (len(self.weights) == len(self.mean) == len(self.scale) == n):
+            raise ValueError("weights, mean and scale need one value per column")
+
+    def _x(self, features: GraphFeatures) -> np.ndarray:
+        idx = [FEATURE_COLUMNS.index(c) for c in self.columns]
+        x: np.ndarray = features.table[:, idx]
+        return x
 
     @classmethod
-    def fit(cls, examples: Sequence[tuple[GraphFeatures, str, bool]]) -> LinearRanker:
+    def fit(
+        cls,
+        examples: Sequence[tuple[GraphFeatures, str, bool]],
+        columns: tuple[str, ...] = FEATURE_COLUMNS,
+    ) -> LinearRanker:
         """Fit on (features, root label, stem matching) windows; windows whose
         root is not a ranked service carry no pair and are skipped."""
         for features, _, _ in examples:
-            assert_no_identity(FEATURE_COLUMNS, features.services)
-        rows = np.vstack([f.table for f, _, _ in examples])
+            assert_no_identity(columns, features.services)
+        idx = [FEATURE_COLUMNS.index(c) for c in columns]
+        rows = np.vstack([f.table[:, idx] for f, _, _ in examples])
         mean = rows.mean(axis=0)
         scale = rows.std(axis=0)
         scale[scale == 0] = 1
@@ -116,7 +134,7 @@ class LinearRanker:
             r = _root_row(features, root, stem)
             if r is None:
                 continue
-            x = (features.table - mean) / scale
+            x = (features.table[:, idx] - mean) / scale
             diffs.append(x[r] - np.delete(x, r, axis=0))
         d = np.vstack(diffs)
 
@@ -131,10 +149,11 @@ class LinearRanker:
             weights=tuple(float(v) for v in result.x),
             mean=tuple(float(v) for v in mean),
             scale=tuple(float(v) for v in scale),
+            columns=tuple(columns),
         )
 
     def score(self, features: GraphFeatures) -> dict[str, float]:
         """Linear score of every service of the window."""
-        x = (features.table - np.array(self.mean)) / np.array(self.scale)
+        x = (self._x(features) - np.array(self.mean)) / np.array(self.scale)
         values = x @ np.array(self.weights)
         return {s: float(v) for s, v in zip(features.services, values, strict=True)}

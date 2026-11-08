@@ -38,6 +38,7 @@ if TYPE_CHECKING:
 
 __all__ = [
     "FEATURE_COLUMNS",
+    "S22_COLUMNS",
     "GraphFeatures",
     "assert_no_identity",
     "compute_features",
@@ -56,7 +57,12 @@ FEATURE_COLUMNS: tuple[str, ...] = (
     "ghost_in",
     "ghost_out",
     "error_share_shift",
+    "error_origin_shift",
 )
+# The columns the S2.2 ranker was selected and frozen on (entries 54-55). A
+# parameter file that names no columns is read over these, so a model frozen
+# before the OTel fix (A, entry 76) keeps its hash and its scores.
+S22_COLUMNS: tuple[str, ...] = FEATURE_COLUMNS[:10]
 _DIGITS = 6
 Edge = tuple[str, str]
 
@@ -157,9 +163,11 @@ def _self_shift(before: SpanAnalysis, after: SpanAnalysis, service: str) -> floa
     return float((np.median(new) - np.median(old)) / scale) if scale > 0 else 0
 
 
-def _error_share(a: SpanAnalysis, service: str) -> float:
+def _error_share(a: SpanAnalysis, service: str, column: str = "error") -> float:
+    """Share of the service's entries flagged in ``column`` (``error``, or
+    ``error_origin``: the error starts in that entry's own work)."""
     e = a.entries[a.entries["service"] == service]
-    return float(e["error"].mean()) if len(e) else 0
+    return float(e[column].mean()) if len(e) else 0
 
 
 def compute_features(
@@ -217,6 +225,8 @@ def compute_features(
                 sum(callee == s for _, callee in ghosts),
                 sum(caller == s for caller, _ in ghosts),
                 _error_share(after, s) - _error_share(before, s),
+                _error_share(after, s, "error_origin")
+                - _error_share(before, s, "error_origin"),
             ]
         )
     table = np.nan_to_num(np.array(rows, dtype="float64").reshape(len(names), -1))

@@ -647,3 +647,16 @@ def test_no_build_tool_lists_the_heldout_corpus() -> None:
 
     assert not any("heldout" in c for c in BUILD_CORPORA)
     assert not any("heldout" in c for c in CORPORA)
+
+
+def test_only_the_capture_and_validation_tools_name_the_heldout_corpus() -> None:
+    # Entry 76: v4 is read by the validation tool once, and by nothing else.
+    from pathlib import Path as _Path
+
+    bin_dir = _Path(__file__).resolve().parents[1] / "bin"
+    naming = sorted(
+        p.name
+        for p in bin_dir.glob("*.py")
+        if "heldout_v4" in p.read_text(encoding="utf-8")
+    )
+    assert naming == ["capture_campaign.py", "otel_fix_validate.py"]

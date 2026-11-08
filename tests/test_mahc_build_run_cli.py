@@ -275,3 +275,13 @@ def test_cache_only_client_lets_the_narrator_fall_back() -> None:
         client.generate("HELIOS-NARRATOR\nSLOT: story", 1)
     with pytest.raises(tool.CacheMissError):
         client.generate("worker prompt", 1)
+
+
+def test_an_existing_run_is_never_overwritten(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # OTel fix refit (entry 76): new runs take new numbers; run 1 stays.
+    from bin import mahc_build_run
+
+    assert mahc_build_run.main(["--run", "1"]) == 2
+    assert "never overwritten" in capsys.readouterr().err

@@ -11,6 +11,13 @@ it waits on. Per entry span:
 - self = entry duration - length of the union of all frontier intervals;
 - a call edge (service, B) for every frontier span of B.
 
+An entry is an **error origin** when a span of its own work (the entry or a
+same-service span below it) has an error status and none of that span's
+children, of any service, has one: the error starts there (S3 OTel fix A).
+A client span that fails while its callee's server span does not (a timeout)
+makes the caller the origin. A caller whose spans only inherit a callee's
+error is not one.
+
 Missing or empty parents make a span an entry with no caller. Splitting at the
 trigger is by entry start, so a request that straddles the trigger stays whole
 (design G-e: the ghost-edge baseline is everything before the trigger).
@@ -50,6 +57,7 @@ _ENTRY_COLUMNS = [
     "duration_us",
     "self_us",
     "error",
+    "error_origin",
 ]
 _WAIT_COLUMNS = ["trace_id", "span_id", "caller", "callee", "start_us", "wait_us"]
 _US_PER_S = 1_000_000
@@ -92,6 +100,10 @@ def _interval(row: dict[str, Any]) -> tuple[int, int]:
     return lo, lo + int(row["duration_us"])
 
 
+def _is_error(row: dict[str, Any]) -> bool:
+    return str(row.get("status_code", "")).strip().upper() in ERROR_CODES
+
+
 def analyse_spans(spans: pd.DataFrame) -> SpanAnalysis:
     """Entry spans, their self time and their waits on each callee."""
     owners = spans.groupby(["trace_id", "span_id"])["service_name"].nunique()
@@ -112,6 +124,11 @@ def analyse_spans(spans: pd.DataFrame) -> SpanAnalysis:
             parent = r["parent_span_id"]
             if not _no_parent(parent) and str(parent) in by_id:
                 children[str(parent)].append(r)
+        origin = {
+            str(r["span_id"]): _is_error(r)
+            and not any(_is_error(c) for c in children[str(r["span_id"])])
+            for r in rows
+        }
         for r in rows:
             parent = r["parent_span_id"]
             service = str(r["service_name"])
@@ -120,20 +137,30 @@ def analyse_spans(spans: pd.DataFrame) -> SpanAnalysis:
                 continue  # inside another entry of the same service
             lo, hi = _interval(r)
             frontier: dict[str, list[tuple[int, int]]] = defaultdict(list)
+            starts_error = origin[str(r["span_id"])]
             stack = list(children[str(r["span_id"])])
             while stack:
                 child = stack.pop()
                 child_service = str(child["service_name"])
                 if child_service == service:
+                    starts_error = starts_error or origin[str(child["span_id"])]
                     stack.extend(children[str(child["span_id"])])
                     continue
                 c_lo, c_hi = _interval(child)
                 frontier[child_service].append((max(c_lo, lo), min(c_hi, hi)))
             all_wait = _union_length(i for ivs in frontier.values() for i in ivs)
-            error = str(r.get("status_code", "")).strip().upper() in ERROR_CODES
             span_id = str(r["span_id"])
             entries.append(
-                (trace_id, span_id, service, lo, hi - lo, (hi - lo) - all_wait, error)
+                (
+                    trace_id,
+                    span_id,
+                    service,
+                    lo,
+                    hi - lo,
+                    (hi - lo) - all_wait,
+                    _is_error(r),
+                    starts_error,
+                )
             )
             for callee in sorted(frontier):
                 wait = _union_length(frontier[callee])

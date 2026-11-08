@@ -1,0 +1,12 @@
+{
+  "incident_id": "e0d57dcfbb843aa82c5eac58b53db687",
+  "manifest_sha256": "2ceaba409f660b5097f6df4d59acaf8545e1363854816ce69e0b349e82a0c908",
+  "pillars": {
+    "p1_metrics": "0d5142f0050bf413d388e8e2fb289608476ee51a9b897d40117450efcf6a1084",
+    "p2_traces": "72f6c6b420c583d81f42d972f3399b05777680609ec03dd8c7117a258fd47615",
+    "p3_logs": "dee33a49ffbaeedd85be64ff276041ada676d3fdc75f72c9dca2df5853a7ede5"
+  },
+  "seal_kind": "capture-content",
+  "seal_signature": "8c82f4edb1eaaf8a1714bddbd517ea52dc4d982b697c3598a9ff80998b0ad4c2",
+  "seal_version": 1
+}

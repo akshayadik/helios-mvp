@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import numpy as np
 import pytest
 
@@ -104,3 +106,20 @@ def test_linear_ranker_refuses_identity_columns() -> None:
     examples = [(_features(("error", "b")), "b", False)]
     with pytest.raises(ValueError, match="identity"):
         LinearRanker.fit(examples)
+
+
+def test_a_model_fitted_on_s22_columns_ignores_the_new_column() -> None:
+    from helios.pipelines.g_pipe.features import S22_COLUMNS
+
+    examples = _planted(12)
+    model = LinearRanker.fit(examples, S22_COLUMNS)
+    assert model.columns == S22_COLUMNS and len(model.weights) == len(S22_COLUMNS)
+    features = examples[0][0]
+    table = features.table.copy()
+    table[:, FEATURE_COLUMNS.index("error_origin_shift")] += 5
+    assert model.score(replace(features, table=table)) == model.score(features)
+
+
+def test_a_model_with_mismatched_lengths_is_refused() -> None:
+    with pytest.raises(ValueError, match="one value per column"):
+        LinearRanker((1,), (0,), (1,), ("dpipe_score", "ppr_score"))

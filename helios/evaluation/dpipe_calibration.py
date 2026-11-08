@@ -11,6 +11,12 @@ Build labels only; the confirmatory pool is refused. Fixed before the run:
   Ties go to the smallest summed absolute change from the May values
   (``MAY_PARAMS``), then to the lexicographically smallest parameters, so the
   result never depends on the order the grid was evaluated in.
+
+OTel fix refit (entry 77): ``dpipe_grid(memory=True)`` adds the same grid
+crossed with ``W_MEMORY_GRID`` (memory scored by the trend, out of the
+resource channel), keeping all weights below 1. Ties then also prefer a
+setting without ``w_memory``; ``change_from_may`` counts ``w_memory`` as its
+value (absent: 0). The S2.1 grid and its order are unchanged.
 """
 
 from __future__ import annotations
@@ -32,6 +38,7 @@ if TYPE_CHECKING:
 
 __all__ = [
     "MAY_PARAMS",
+    "W_MEMORY_GRID",
     "W_RESOURCE_GRID",
     "change_from_may",
     "dpipe_grid",
@@ -39,6 +46,7 @@ __all__ = [
 ]
 
 W_RESOURCE_GRID: tuple[float, ...] = (0, 0.1, 0.2, 0.3)
+W_MEMORY_GRID: tuple[float, ...] = (0, 0.1, 0.2, 0.3)
 # The May values (w_error, rho, boost) and the provisional resource weight.
 MAY_PARAMS = DPipeParams(
     w_error=0.3,
@@ -50,9 +58,9 @@ MAY_PARAMS = DPipeParams(
 _DIGITS = 6
 
 
-def dpipe_grid() -> list[DPipeParams]:
-    """Every candidate setting, in a fixed order."""
-    return [
+def dpipe_grid(*, memory: bool = False) -> list[DPipeParams]:
+    """Every candidate setting, in a fixed order (the S2.1 grid first)."""
+    s21 = [
         DPipeParams(
             w_error=w_error,
             w_resource=w_resource,
@@ -65,6 +73,26 @@ def dpipe_grid() -> list[DPipeParams]:
         )
         if round(w_error + w_resource, _DIGITS) < 1
     ]
+    if not memory:
+        return s21
+    return s21 + [
+        DPipeParams(
+            w_error=w_error,
+            w_resource=w_resource,
+            rho_threshold=rho,
+            topology_boost_factor=boost,
+            provisional=False,
+            w_memory=w_memory,
+        )
+        for w_error, w_resource, w_memory, rho, boost in product(
+            W_ERROR_GRID,
+            W_RESOURCE_GRID,
+            W_MEMORY_GRID,
+            RHO_THRESHOLD_GRID,
+            TOPOLOGY_BOOST_GRID,
+        )
+        if round(w_error + w_resource + w_memory, _DIGITS) < 1
+    ]
 
 
 def change_from_may(params: DPipeParams) -> float:
@@ -73,7 +101,8 @@ def change_from_may(params: DPipeParams) -> float:
         abs(params.w_error - MAY_PARAMS.w_error)
         + abs(params.w_resource - MAY_PARAMS.w_resource)
         + abs(params.rho_threshold - MAY_PARAMS.rho_threshold)
-        + abs(params.topology_boost_factor - MAY_PARAMS.topology_boost_factor),
+        + abs(params.topology_boost_factor - MAY_PARAMS.topology_boost_factor)
+        + abs(params.w_memory or 0),
         _DIGITS,
     )
 
@@ -83,16 +112,18 @@ def select_dpipe(hr3: Mapping[DPipeParams, Mapping[str, float]]) -> DPipeParams:
     if not hr3:
         raise ValueError("no calibration results")
 
-    def key(params: DPipeParams) -> tuple[float, float, tuple[float, ...]]:
+    def key(params: DPipeParams) -> tuple[float, float, bool, tuple[float, ...]]:
         mean = round(statistics.mean(hr3[params].values()), _DIGITS)
         return (
             -mean,
             change_from_may(params),
+            params.w_memory is not None,
             (
                 params.w_error,
                 params.w_resource,
                 params.rho_threshold,
                 params.topology_boost_factor,
+                params.w_memory or 0,
             ),
         )
 

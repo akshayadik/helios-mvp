@@ -27,6 +27,10 @@ On OTel build v3, HELIOS-noRouter's fused HR@3 is 50/63. None of the 13 misses c
   - A client span that errors while its server child does not (a timeout) counts for the caller.
   - It is added beside `error_share_shift`, not in place of it.
 - **The ranker:** reselected under the frozen S2.2 rule (entries 54–55): leave one root service out, with learned vs feature-weighted PPR vs plain PPR.
+- **As built (2026-11-07):**
+  - The unit is a service's entry span (one request's work), as for `error_share_shift`. An entry is an error origin when a span of its own work (the entry or a same-service span below it) is `ERROR` and none of that span's children is (`helios/graph/span_features.py`, column `error_origin`). The feature is its share after the trigger minus before.
+  - The S2.2 model stays loadable and unchanged. A parameter file that names no `features` is read over the ten S2.2 columns (`S22_COLUMNS`), so today's frozen file keeps its hash and scores; a refit model names its columns in `features`. This keeps *old* runnable beside *new* for O-f.
+  - `bin/gpipe_select.py --columns all --report <new path>` runs the reselection; the defaults reproduce the S2.2 run, and an existing report other than S2.2's is never overwritten.
 - **D-pipe stays metrics-only.** Its span-metric error series carry only `service_name`, so they cannot tell where an error starts. Reading traces in D-pipe would also blur what HELIOS-D (A-H3) ablates.
 
 **O-c. Fix B: a memory-trend channel in D-pipe, built only if it passes a build-data gate.**
@@ -35,6 +39,15 @@ On OTel build v3, HELIOS-noRouter's fused HR@3 is 50/63. None of the 13 misses c
 - **Gate, fixed now:** the channel enters the refit only if, on build data with the frozen trigger, it beats the current resource channel at ranking email among in-scope services in at least 5 of the 7 leak cases. It must also not lower D-pipe's build HR@3 on RCAEval or on the other 8 OTel fault types.
 - **If B fails the gate,** it is dropped and recorded; A goes ahead alone.
 - **RCAEval has memory faults,** so B is the change that can touch the confirmatory corpus. That is why it is gated.
+- **Statistic and gate procedure, fixed 2026-11-08 before any code read the leak cases:**
+  - *Series:* per service, each memory metric (`mem` in RCAEval, `container_memory_usage_total_bytes` in OTel), split at the frozen trigger as D-pipe's other channels are. Memory leaves the resource channel; the resource channel keeps the other resource metrics.
+  - *Trend:* the Theil–Sen slope (median of pairwise slopes, per step) of all finite values after the trigger, *s*. Reference: with *L* = min(points after, ⌊points before / 2⌋), the Theil–Sen slopes of every run of *L* consecutive finite values before the trigger. If *L* < 3 the channel is zero.
+  - *Score:* (*s* − median of the reference slopes) / scale, upward only (as D-h). The scale is the reference slopes' robust spread (`robust_scale`, gauge rule), floored at `REL_FLOOR` × |median level before| / *L*, a 5% level change over a run. A service with several memory metrics takes the largest.
+  - *Old chain:* a parameter file without `w_memory` keeps memory inside the resource channel and scores exactly as before, with the same hash.
+  - *Gate (run once, `bin/dpipe_memory_gate.py`):* the 7 `emailMemoryLeak` cases of OTel build v3, the frozen trigger. For each case, email's rank among the in-scope services by (a) the current resource channel and (b) the memory trend: 1 + the number of services with a strictly larger value, and last when email's value is zero. The channel passes if (b) is strictly better than (a) in at least 5 of the 7. The no-loss half of the gate (RCAEval build and the other 8 OTel fault types) is checked on the refit grid's selected setting in ENG07.
+  - *Result (2026-11-08, run once, `calibration/memory_gate.json`, code 1efd6da):* **passes, 5 of 7**, at the threshold. All 7 cases used the fallback trigger. Email's rank (resource → memory trend, of 20): 3→1, 8→1, 4→2, 7→1, 9→2 better; 1→2 and 1→20 worse. In the last case the trend is zero: email's memory did not rise faster after the fallback split than before it. B enters the ENG07 refit; its no-loss half is still open.
+  - *Refit grid (entry 77, `calibration/dpipe_refit.json`, code 3a25665; 3100 settings, run once to completion 2026-11-08):* **fix B is dropped.** The selected setting is the current frozen one (w_error 0.7, w_resource 0.1, rho 0.2, boost 1; mean HR@3 85.37%, RCAEval 94.55%, OTel 76.19%), reproducing S2.1 exactly; it ties with 49 other settings without w_memory. The best setting with w_memory reaches 84.88% (RCAEval 95.15%, OTel 74.60%). At the frozen weights, w_memory 0.1 keeps OTel at 76.19% and lowers RCAEval to 93.13%. `data/frozen/dpipe_params.json` and its hash are unchanged; the refit continues with fix A alone. A first start of this run (9347145) was stopped after 2.5 h with no output or report: it recomputed the trend for every setting; 14c8f0c and 3a25665 removed that cost without changing any value.
+  - *Production cost, for any later version:* on a 4200-step window the trend costs about 2.5 s per memory series (about 30 s for 12 series). A later memory channel should bound its horizon.
 
 **O-d. Held-out corpus: OTel v4.**
 - **Protocol:** the v3 protocol unchanged:
@@ -93,3 +106,23 @@ The detector is unchanged.
 - **A shifts G-pipe's ranker weights.** paymentUnreachable's labelled root is the caller (checkout), and error origin points at payment. Ranker reselection is by leave-one-root-out HR@3, so a loss there shows before the freeze.
 - **Fallback triggers (about half of OTel) misplace the before/after split for both fixes.** Error origin is robust to this: errors are absent before the fault, wherever the split falls. The memory trend is less robust, which is one more reason for B's gate.
 - **36 held-out cases** detect only a large change. The +2 margin guards against noise, not against a small real loss; the per-fault report shows where any change comes from.
+
+## 5. Result and decision (entry 81, 2026-11-08)
+
+Validation run once (`bin/otel_fix_validate.py` at 957ef9a; report `calibration/otel_fix_validation.json`, 0def33e): 2,124 incident runs, none excluded; v4 L-pipe answers from the pinned model (digest checked), RCAEval build from the cache.
+
+| | OTel v4 held out (36) | RCAEval build (495) |
+|---|---|---|
+| *old*, HELIOS-Full | 30/36 (83.33%) | 478/495 (96.57%) |
+| *new*, HELIOS-Full | 30/36 (83.33%) | 478/495 (96.57%) |
+| *old* and *new*, HELIOS-noRouter (reported) | 30/36 | 482/495 (97.37%) |
+
+v4 per fault type, identical for both chains: 4/4 for adFailure, adHighCpu, adManualGc, cartFailure, paymentFailure, paymentUnreachable; productCatalogFailure 3/4; emailMemoryLeak 2/4; recommendationCacheFailure 1/4.
+
+**Decision (O-f):** the v4 condition fails (30 against 30 + 2), the RCAEval condition holds, so ***old* stays frozen**. `data/frozen/` and every frozen hash are unchanged. Per O-g, no S3.3 replay run 3.
+
+**What it shows (exploratory, Chapter 4):**
+- Fix A improved G-pipe's own list (51/63 on build, cross-fitted) but changed no published answer: on the error faults the fused verdict follows D-pipe's error channel and the L-pipe, which both credit the callers. A further OTel change would start there (fix C, Stage B backlog).
+- Fix B passed its gate (5/7) but lost in the D-pipe refit grid (entry 77) and was dropped.
+- The frozen chain scores higher on held-out v4 (83.33%) than on the v3 build cases it was fitted on (79.37%).
+- The code of both fixes stays behind parameters the frozen files do not set; `data/candidate/otel_fix/` and the build reports (entries 77–80) are the record.
