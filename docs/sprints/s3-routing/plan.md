@@ -117,6 +117,9 @@ S3 adds the router's entries to what the addendum must cover, so the draft start
 
 - **OTel fix and held-out v4** (entries 76–81, design `s3_otel_fix_design.md`). Exploratory, no pipeline change: the OTel v4 corpus (36 cases, sealed, manifest digest 22248602f708) was read once by a pre-registered adoption rule; the refit chain (fixes A and B) tied the frozen chain (v4 30/36, RCAEval build 478/495) and was not adopted. Reported: the frozen chain's v4 result (HELIOS-Full and noRouter, per fault type) and the null result of the fixes. v4 is not part of the confirmatory pool.
 
+- **E-H8 not testable in Stage A; ACP label set** (S3.2, entries 82 and 83, design `s3_2_acp_design.md`). The ACP is built and frozen but recorded only: the frozen router does not read it, so HELIOS-Full and HELIOS-noACP route identically and E-H8's latency-constraint satisfaction cannot differ. E-H8 moves to Stage B (router refit with the ACP block). The ACP predicts four remediation families mapped from injected fault types (resource, network, config, code) in place of Ch3's schema change, data mutation and config change; its build figures are exploratory.
+- **S3.4 Knowledge Cortex** moved to Stage B (entry 82).
+
 After the S3.1 build run, recheck the D11 compute estimate (about 1,500 L-pipe runs, 30–50 h) against the measured escalation share: noRouter and LLM-only call the L-pipe on every case.
 
 ## Expected deviation entries

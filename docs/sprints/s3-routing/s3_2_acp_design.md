@@ -1,6 +1,6 @@
 # S3.2 Action-Class Predictor (design)
 
-Row S2-M8-ENG02 · Tier 2 · Flag `acp_stateful` (`VCLFlag.ACP_STATEFUL`; OFF = HELIOS-noACP) · 2026-11-08 · Owner scope 2026-11-07: exploratory, kept out of HELIOS-Full's confirmatory path · Owner 2026-11-08: build S3.2, move S3.4 to Stage B · **Draft for owner approval**
+Row S2-M8-ENG02 · Tier 2 · Flag `acp_stateful` (`VCLFlag.ACP_STATEFUL`; OFF = HELIOS-noACP) · 2026-11-08 · Owner scope 2026-11-07: exploratory, kept out of HELIOS-Full's confirmatory path · Owner 2026-11-08: build S3.2, move S3.4 to Stage B · **Approved 2026-11-08 (entry 82); fitted and frozen (entry 83)**
 
 ## 1. What Chapter 3 asks for
 
@@ -104,3 +104,28 @@ S3.4 (Knowledge Cortex) moves to Stage B in the same pre-run entry: row S2-M8-EN
 - **The ACP is close to a fault-family classifier.** The signal-type indicators and the D-pipe metric family nearly name the class. High cross-fitted accuracy is expected and says little about real remediation prediction; the report says so.
 - **Class imbalance.** `code` has 30 build cases and `config` 42, against 195 for `network` and 291 for `resource`. Macro-F1 and the per-class confusion are reported beside accuracy.
 - **OTel classes are corpus-specific.** `config` comes only from OTel and `code` only from RCAEval, so the corpus is close to a feature. The per-corpus confusion makes this visible.
+
+## 6. Result (entries 82 and 83, 2026-11-08)
+
+Fit run once (`bin/acp_fit.py` at 03abe13; report `calibration/acp_fit.json`, a600f5f): 558 build cases under HELIOS-noLLM, none excluded. Labels: resource 291, network 195, config 42, code 30.
+
+| | Cross-fitted (5 folds) | In sample |
+|---|---|---|
+| Accuracy | 78.85% (440/558) | 81.54% |
+| Macro-F1 | 0.717 | 0.772 |
+| Log loss | 0.498 | 0.446 |
+
+Always predicting `resource` gives 52.15%.
+
+| True label | Correct (cross-fitted) | Main confusions |
+|---|---|---|
+| config | 40/42 | 2 → resource |
+| resource | 236/291 | 39 → network, 8 → code, 8 → config |
+| network | 154/195 | 37 → resource |
+| code | 10/30 | 12 → resource, 8 → network |
+
+- Per corpus: OTel v3 84.13% (13 of 21 resource cases right, the other 8 read as config); RCAEval build 78.18%.
+- Blast-radius tier: OTel v3 tier 1 on 34 cases, tier 2 on 29; RCAEval build `unknown` on all 495 (no call edges).
+- Frozen: `data/frozen/acp_params.json`, hash `dd7b63d3fed0…` (entry 83).
+
+**Reading (exploratory, Chapter 4).** The expected near-perfect separation did not happen. Config faults are recognised (they show as error signals), but resource and network symptoms overlap on RCAEval, and code-level faults show as resource or network symptoms and are mostly missed. Remediation prediction from symptoms alone is weak for code changes, which supports moving it to Stage B with realised remediation labels.
