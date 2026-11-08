@@ -87,3 +87,28 @@ def test_memory_check_needs_no_loss_outside_the_leak() -> None:
     assert not check["adopted"]
     check = memory_check(grid, hr3, gains_leak, current, current, cases)
     assert check["no_loss"] and not check["adopted"]  # fix B dropped
+
+
+def test_the_grid_computes_each_memory_trend_once_per_case(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import numpy as np
+
+    from bin import dpipe_calibrate
+    from helios.pipelines.d_pipe.stages.b_anomaly_scorer import memory_trend
+
+    calls: list[int] = []
+
+    def counted(series: list[float], before: np.ndarray) -> float:
+        calls.append(1)
+        return memory_trend(series, before)
+
+    monkeypatch.setattr(dpipe_calibrate, "_TREND", counted)
+    trend = dpipe_calibrate._memoised_trend()
+    series = [float(100 + 3 * t + (7 * t % 5)) for t in range(24)]
+    before = np.arange(24) < 12
+    first = trend(series, before)
+    assert trend(series, before) == first == memory_trend(series, before)
+    assert len(calls) == 1
+    trend([*series[:-1], 999], before)
+    assert len(calls) == 2

@@ -28,7 +28,9 @@ import statistics
 import sys
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -52,6 +54,7 @@ from helios.pipelines.d_pipe.params import (
     load_dpipe_params,
 )
 from helios.pipelines.d_pipe.pipeline import run_dpipe
+from helios.pipelines.d_pipe.stages import b_anomaly_scorer
 from helios.telemetry.trigger import (
     detect,
     detector_hash,
@@ -61,6 +64,9 @@ from helios.vcl import get_variant, set_current_manifest
 from helios.vcl.config import VCLManifest  # noqa: F401  # flag-guard compliance
 from helios.vcl.utils import canonical_json
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 REPORT = Path("docs/sprints/s2-reasoning/s2_1_dpipe_calibration.json")
 VARIANT = "HELIOS-Full"
@@ -68,10 +74,28 @@ MEMORY_FAULT = "emailMemoryLeak"
 OTEL = "otel_build_v3"
 RCAEVAL = "rcaeval_build"
 _DIGITS = 6
+_TREND = b_anomaly_scorer.memory_trend
+
+
+def _memoised_trend() -> Callable[[list[float], np.ndarray], float]:
+    """``memory_trend`` cached by series and split for one case: the trend does
+    not depend on the weights, so the grid computes it once per series, not
+    once per setting. Same values; running time only."""
+    seen: dict[tuple[bytes, bytes], float] = {}
+
+    def trend(series: list[float], before: np.ndarray) -> float:
+        key = (np.asarray(series, dtype="float64").tobytes(), before.tobytes())
+        if key not in seen:
+            seen[key] = _TREND(series, before)
+        return seen[key]
+
+    return trend
 
 
 def _case_hits(case: CalibrationCase, memory: bool = False) -> tuple[bool, list[int]]:
     """Whether the case has a graph, and HR@3 (0/1) for every grid setting."""
+    # This worker, this case; the cached function has the same signature.
+    b_anomaly_scorer.memory_trend = _memoised_trend()  # type: ignore[assignment]
     manifest = get_variant(VARIANT)
     set_current_manifest(manifest)
     config_hash = manifest.compute_variant_config_hash()
