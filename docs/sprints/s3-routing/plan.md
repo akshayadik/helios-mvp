@@ -52,8 +52,8 @@ The OTel build diagnosis (`otel_diagnosis/README.md`) found all 13 misses visibl
 | 2 | OTel-fix design and pre-run entry. Capture the held-out OTel v4 corpus, then seal it and leave it unread. Write the S3.2 and S3.4 design notes |
 | 3 | Build fixes A and B on build data |
 | 4 | One refit chain: D-pipe → G-pipe → MAHC → router (row S2-M8-ENG07) |
-| 5 | Score once on v4 and RCAEval build; adopt or revert by the pre-registered rule |
-| 6 | Rerun the S3.3 replay (run 3); build S3.2 and S3.4 as exploratory |
+| 5 | Score once on v4 and RCAEval build; adopt or revert by the pre-registered rule — **Done 2026-11-08 (entry 81): old chain kept** (v4 30/36 both chains; RCAEval build 478/495 both) |
+| 6 | Rerun the S3.3 replay (run 3) — not needed, chain not adopted (entry 81); build S3.2 and S3.4 as exploratory |
 | 7 | S3 exit gate |
 
 ### Carried-in items that shape the tasks
@@ -114,6 +114,8 @@ S3 adds the router's entries to what the addendum must cover, so the draft start
   - TTCD and TTT are measured from the trigger handover (entry 46); the contract's "invocation" wording is superseded by entry 46.
 - **LLM availability covariate** (S3.5, design note `s3_5_llm_fallback.md`). Every run that asked the L-pipe records `llm_unavailable` in its CoE routing step: `endpoint` (model endpoint unreachable, no usable cache), `cache_miss` (endpoint unreachable, prompt not in the cache), `calls` (every model call failed), or none. A routed run whose escalation met an unavailable LLM publishes its cheap arm (`fallback`). Reported per variant and corpus beside every confirmatory result. A confirmatory comparison is reported with and without its affected incidents if any pair is affected; neither variant is rerun selectively.
 - **E-H5 delayed-label subset** (S3.3, design note `s3_3_reward_design.md`, pre-run entry). The pool replay runs after the confirmatory runs are scored, on a seeded 25% of each pool corpus. The selection rule (seed and stratification) is fixed here before `build-freeze`. Rewards, clock, update rule and starting state are as in the build replay; RRE and learning curves are reported with BCa intervals, outside the Holm family.
+
+- **OTel fix and held-out v4** (entries 76–81, design `s3_otel_fix_design.md`). Exploratory, no pipeline change: the OTel v4 corpus (36 cases, sealed, manifest digest 22248602f708) was read once by a pre-registered adoption rule; the refit chain (fixes A and B) tied the frozen chain (v4 30/36, RCAEval build 478/495) and was not adopted. Reported: the frozen chain's v4 result (HELIOS-Full and noRouter, per fault type) and the null result of the fixes. v4 is not part of the confirmatory pool.
 
 After the S3.1 build run, recheck the D11 compute estimate (about 1,500 L-pipe runs, 30–50 h) against the measured escalation share: noRouter and LLM-only call the L-pipe on every case.
 

@@ -106,3 +106,23 @@ The detector is unchanged.
 - **A shifts G-pipe's ranker weights.** paymentUnreachable's labelled root is the caller (checkout), and error origin points at payment. Ranker reselection is by leave-one-root-out HR@3, so a loss there shows before the freeze.
 - **Fallback triggers (about half of OTel) misplace the before/after split for both fixes.** Error origin is robust to this: errors are absent before the fault, wherever the split falls. The memory trend is less robust, which is one more reason for B's gate.
 - **36 held-out cases** detect only a large change. The +2 margin guards against noise, not against a small real loss; the per-fault report shows where any change comes from.
+
+## 5. Result and decision (entry 81, 2026-11-08)
+
+Validation run once (`bin/otel_fix_validate.py` at 957ef9a; report `calibration/otel_fix_validation.json`, 0def33e): 2,124 incident runs, none excluded; v4 L-pipe answers from the pinned model (digest checked), RCAEval build from the cache.
+
+| | OTel v4 held out (36) | RCAEval build (495) |
+|---|---|---|
+| *old*, HELIOS-Full | 30/36 (83.33%) | 478/495 (96.57%) |
+| *new*, HELIOS-Full | 30/36 (83.33%) | 478/495 (96.57%) |
+| *old* and *new*, HELIOS-noRouter (reported) | 30/36 | 482/495 (97.37%) |
+
+v4 per fault type, identical for both chains: 4/4 for adFailure, adHighCpu, adManualGc, cartFailure, paymentFailure, paymentUnreachable; productCatalogFailure 3/4; emailMemoryLeak 2/4; recommendationCacheFailure 1/4.
+
+**Decision (O-f):** the v4 condition fails (30 against 30 + 2), the RCAEval condition holds, so ***old* stays frozen**. `data/frozen/` and every frozen hash are unchanged. Per O-g, no S3.3 replay run 3.
+
+**What it shows (exploratory, Chapter 4):**
+- Fix A improved G-pipe's own list (51/63 on build, cross-fitted) but changed no published answer: on the error faults the fused verdict follows D-pipe's error channel and the L-pipe, which both credit the callers. A further OTel change would start there (fix C, Stage B backlog).
+- Fix B passed its gate (5/7) but lost in the D-pipe refit grid (entry 77) and was dropped.
+- The frozen chain scores higher on held-out v4 (83.33%) than on the v3 build cases it was fitted on (79.37%).
+- The code of both fixes stays behind parameters the frozen files do not set; `data/candidate/otel_fix/` and the build reports (entries 77–80) are the record.
