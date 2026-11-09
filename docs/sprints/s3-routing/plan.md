@@ -1,6 +1,6 @@
 # Sprint S3 — Routing and learning · plan
 
-**Window:** 4–15 Jan 2027 (10 working days); may start early once the owner confirms, as S1 and S2 did (S2 closed 2026-11-01, about eight weeks ahead) · **Milestone:** S2-M8 · **Exit tag:** `rb-s3-exit` · **Status:** planned — refreshed 2026-11-06 with the S0–S2 carry-overs
+**Window:** 4–15 Jan 2027 (10 working days); may start early once the owner confirms, as S1 and S2 did (S2 closed 2026-11-01, about eight weeks ahead) · **Milestone:** S2-M8 · **Exit tag:** `rb-s3-exit` · **Status:** closed 2026-11-09 ([exit report](exit_report.md)); refreshed 2026-11-06 with the S0–S2 carry-overs
 
 Task details: `docs/tracking/helios_task_breakdown.md` § Sprint S3 (authoritative).
 

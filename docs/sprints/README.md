@@ -12,8 +12,8 @@ One folder per sprint for the whole product: Stage A (S0–S5, evidence, analysi
 |---|---|---|---|---|---|
 | S0 Foundation | [`s0-foundation/`](s0-foundation/) | 2–13 Nov 2026 | S2-M5 | `rb-s0-exit` | **Closed 2026-10-24** · [exit report](s0-foundation/exit_report.md) |
 | S1 Data and graph | [`s1-data-graph/`](s1-data-graph/) | 16 Nov – 4 Dec 2026 | S2-M6 | `rb-s1-exit` | **Closed 2026-10-27** · [exit report](s1-data-graph/exit_report.md) |
-| S2 Reasoning, consensus, narratives | [`s2-reasoning/`](s2-reasoning/) | 7–25 Dec 2026 | S2-M7 | `rb-s2-exit` | **Closed 2026-11-01** · [exit report](s2-reasoning/exit_report.md) (tag local until the next push; S2.9 rater training scheduled before S5) |
-| S3 Routing and learning | [`s3-routing/`](s3-routing/) | 4–15 Jan 2027 | S2-M8 | `rb-s3-exit` | Planned · [plan](s3-routing/plan.md) refreshed 2026-11-06 with the S0–S2 carry-overs |
+| S2 Reasoning, consensus, narratives | [`s2-reasoning/`](s2-reasoning/) | 7–25 Dec 2026 | S2-M7 | `rb-s2-exit` | **Closed 2026-11-01** · [exit report](s2-reasoning/exit_report.md) (tag pushed; S2.9 rater training scheduled before S5) |
+| S3 Routing and learning | [`s3-routing/`](s3-routing/) | 4–15 Jan 2027 | S2-M8 | `rb-s3-exit` | **Closed 2026-11-09** · [exit report](s3-routing/exit_report.md) (S3.4 Knowledge Cortex moved to Stage B, entry 82) |
 | S4 Product shell and evaluation tooling | [`s4-product-eval-tooling/`](s4-product-eval-tooling/) | 18–29 Jan 2027 | S2-M9 | `rb-s4-exit` | Planned |
 | S5 Integration and freeze | [`s5-integration-freeze/`](s5-integration-freeze/) | 1–12 Feb 2027 | S2-M10 | `build-freeze` | Planned |
 | E Evidence collection | [`e-evidence/`](e-evidence/) | 15 Feb – 12 Mar 2027 | S2-M11 | `rb-e-exit` | Planned |

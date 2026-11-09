@@ -4,7 +4,7 @@
 
 **Update cadence:** On any tracking-doc add/remove/rename
 **Owner module:** Researcher (solo)
-**Last updated:** 2026-11-01 (S2 exit documentation sync: dashboard, tracker, sprint folder)
+**Last updated:** 2026-11-09 (S3 exit documentation sync: dashboard, deviation mirror, tracker, sprint folder, Stage B plan)
 
 ---
 
@@ -26,13 +26,13 @@ Status key: ✅ current · ⚠️ stale (content predates the October re-baselin
 | # | Document | Path | Purpose | First active stage | Update trigger | Last updated | Status |
 |---|----------|------|---------|-------------------|----------------|--------------|--------|
 | 1 | Ablation Architecture | `ablation_architecture.md` | Architectural decision record | Stage 0 | On any pipeline/component architectural change | 2026-10-26 | ✅ Current (v0.12: D2 flag names; UEG-C schema-draft-v0.2, Algorithm 5 pruner, verdict schema-draft-v0.5) |
-| 2 | Calibration Thresholds | `calibration_thresholds.md` | Thresholds used by the integrity gate | Stage 1 | After threshold tuning | 2026-10-29 | ⚠️ May values on the OTel corpus. S2.1 froze the detection trigger and D-pipe parameters, S2.2 the G-pipe ranker, on build data in `data/frozen/` (`trigger_detector.json`, `dpipe_params.json`, `gpipe_params.json`; deviation entries 52, 53, 56; reports in `docs/sprints/s2-reasoning/`); the remaining thresholds are recalibrated in S2–S3. K-hop K and top-n are recorded in `s1_7_khop_pruner.md` and entry 40 (re-checked on the S1.2 corpus at the S1 exit) |
-| 3 | Dashboard | `dashboard.md` | Sprint Gantt, architecture, evidence grid, integrity snapshot | Stage 0 | At every sprint exit | 2026-11-01 | ✅ Current (S2 exit) |
+| 2 | Calibration Thresholds | `calibration_thresholds.md` | Thresholds used by the integrity gate | Stage 1 | After threshold tuning | 2026-10-29 | ⚠️ May values on the OTel corpus. S2.1 froze the detection trigger and D-pipe parameters, S2.2 the G-pipe ranker, on build data in `data/frozen/` (`trigger_detector.json`, `dpipe_params.json`, `gpipe_params.json`; deviation entries 52, 53, 56; reports in `docs/sprints/s2-reasoning/`); S3 froze the router (`router_params.json`, entry 70) and the exploratory ACP (`acp_params.json`, entry 83); the document itself still lists the May values. K-hop K and top-n are recorded in `s1_7_khop_pruner.md` and entry 40 (re-checked on the S1.2 corpus at the S1 exit) |
+| 3 | Dashboard | `dashboard.md` | Sprint Gantt, architecture, evidence grid, integrity snapshot | Stage 0 | At every sprint exit | 2026-11-09 | ✅ Current (S3 exit) |
 | 4 | Data Collection Log | `data_collection_log.md` | Per-incident capture record; imported corpora as summaries | Stage 0 | After every capture or import | 2026-10-27 | ✅ Current (20 OTel captures; RCAEval build 495 and pool 240; OTel build corpus 63, S1.2) |
-| 5 | Deviation Log | `deviation_log.md` | Mirror of `deviation_log.jsonl` | Stage 0 | After every `bin/log_deviation.py` append | 2026-10-31 | ✅ Current (68 entries) |
+| 5 | Deviation Log | `deviation_log.md` | Mirror of `deviation_log.jsonl` | Stage 0 | After every `bin/log_deviation.py` append | 2026-11-09 | ✅ Current (83 entries; rows 69–83 added at the S3 exit) |
 | 6 | Disjointness Audit Log | `disjointness_audit_log.md` | Every DisjointnessAuditor run | Stage 1 | After each audit run | 2026-05-21 | ✅ Current as a history (3 entries, May flag names); next entry at S5.2 certification |
 | 7 | Ground Truth Labelling | `ground_truth_labelling.md` | Fault → root-cause labels, OTel corpus | Stage 0 | On corpus expansion or label correction | 2026-10-27 | ✅ Current: 20 May OTel labels listed; RCAEval and OTel build labels are signed files (pointers added at the S1 exit) |
-| 8 | Helios MVP Tracking | `helios_mvp_tracking.md` | Task tracker with SHAs and evidence (schema R0–R9) | Stage 0 | Every task start and finish | 2026-11-01 | ✅ Current (Milestone 7 = S2 closed; S2-M7-RES01 rater training and S2-M5-RES05 open) |
+| 8 | Helios MVP Tracking | `helios_mvp_tracking.md` | Task tracker with SHAs and evidence (schema R0–R9) | Stage 0 | Every task start and finish | 2026-11-09 | ✅ Current (Milestone 8 = S3 closed, S2-M8-ENG04 DEFERRED to Stage B; S2-M7-RES01 rater training and S2-M5-RES05 open) |
 | 9 | Hypothesis–Variant–Metric Mapping | `hypothesis_variant_metric_mapping.md` | Readable view of Families A, B, E | Stage 0 | On analysis-plan change | 2026-10-24 | ✅ Current (generated from `helios/research/analysis_plan.py`) |
 | 10 | Price Book | `price_book.md` | Cost coefficients for CpR | Stage 2 | Frozen at `build-freeze` | 2026-10-27 | 🟢 price-book-v2 (S1.10, deviation entries 42-43): AWS primary profile fully verified against AWS price data (S3 Standard checked 2026-10-27); GCP and Azure sensitivity profiles unverified; read by `helios/evaluation/cost.py` |
 | 11 | Prompt Version Registry | `prompt_version_registry.md` | Frozen L-pipe prompts with SHA | Stage 3 | Before each prompt change | 2026-05-19 | ✅ Current (rca_v1); new prompts in S2.3 |
@@ -40,7 +40,7 @@ Status key: ✅ current · ⚠️ stale (content predates the October re-baselin
 | 13 | Reproducibility Manifest | `reproducibility_manifest.md` | Environment pins, schema freeze, checklist | Stage 0 | On environment change or schema freeze | 2026-05-19 | ⚠️ Predates the Ed25519 layer, `cryptography`, the baseline images and `drain3==0.9.11` (S1.4); full update at `build-freeze` (S5.6) |
 | 14 | Seed Register | `seed_register.md` | Seed registry | Stage 0 | Before any new seed is used | 2026-10-24 | ✅ Current (binding register SEED-SA0-01, entry 34) |
 | 15 | Snapshot Hash Registry | `snapshot_hash_registry.md` | Incident → snapshot hash mirror | Stage 0 | After every capture | 2026-05-15 | ✅ Current: its source `data/snapshot_registry.jsonl` was reset on purpose in `b24955c` (May re-capture) and is recreated by runs; checked in S1.1 |
-| 16 | Tracking Documents Register | `tracking_documents_register.md` | This index | Stage 0 | On any tracking-doc add/remove/rename and at every sprint exit | 2026-10-27 | ✅ Current |
+| 16 | Tracking Documents Register | `tracking_documents_register.md` | This index | Stage 0 | On any tracking-doc add/remove/rename and at every sprint exit | 2026-11-09 | ✅ Current |
 | 17 | Validity Tracking | `validity_tracking.md` | Threat-to-validity register | Stage 0 | After each new threat | 2026-11-01 | ✅ Current (22 threats; T22 A-H7 narrowed by the pick-and-order narrator; T12 rewritten for the S2.9 instrument) |
 | 18 | VCL Manifest Tracking | `vcl_manifest_tracking.md` | Variant configuration hashes | Stage 0 | After every VCL change or new variant | 2026-10-24 | ✅ Current (15 variants; confirmatory hashes match OSF deposit 1) |
 | 19 | E2E Product Plan | `helios_e2e_product_plan_2026-10.md` | Schedule, principles, decisions D1–D12 | Stage A | On a plan change approved by the owner | 2026-10-24 | ✅ Current |
