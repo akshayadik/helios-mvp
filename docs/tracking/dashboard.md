@@ -2,7 +2,7 @@
 
 _Manual until a weekly CI job regenerates the dynamic sections. Refreshed at every sprint exit (see `docs/sprints/README.md`)._
 
-**Last updated:** 2026-11-01 (S2 exit documentation sync)
+**Last updated:** 2026-11-09 (S3 exit documentation sync)
 
 ## Sprint progress (manual)
 
@@ -17,8 +17,8 @@ gantt
     section Stage A build
     S0 Foundation (closed 24 Oct)        :done, s0, 2026-10-23, 2d
     S1 Data and graph (closed 27 Oct)    :done, s1, 2026-10-24, 4d
-    S2 Reasoning, consensus, narratives  :s2, 2026-12-07, 2026-12-25
-    S3 Routing and learning              :s3, 2027-01-04, 2027-01-15
+    S2 Reasoning (closed 1 Nov)          :done, s2, 2026-10-27, 6d
+    S3 Routing and learning (closed 9 Nov) :done, s3, 2026-11-06, 4d
     S4 Product shell, evaluation tooling :s4, 2027-01-18, 2027-01-29
     S5 Integration and build freeze      :crit, s5, 2027-02-01, 2027-02-12
 
@@ -38,8 +38,9 @@ gantt
 |---|---|---|
 | S0 Foundation | Closed 2026-10-24 | `rb-s0-exit`; [exit report](../sprints/s0-foundation/exit_report.md) |
 | S1 Data and graph | Closed 2026-10-27 (started early, 2026-10-24) | `rb-s1-exit`; [exit report](../sprints/s1-data-graph/exit_report.md) |
-| S2 Reasoning, consensus, narratives | Closed 2026-11-01 (started early, 2026-10-27); S2.9 rater training scheduled before S5 | `rb-s2-exit` (local until the next push); [exit report](../sprints/s2-reasoning/exit_report.md) |
-| S3 Routing and learning | Next (plan refresh before it starts) | — |
+| S2 Reasoning, consensus, narratives | Closed 2026-11-01 (started early, 2026-10-27); S2.9 rater training scheduled before S5 | `rb-s2-exit`; [exit report](../sprints/s2-reasoning/exit_report.md) |
+| S3 Routing and learning | Closed 2026-11-09 (started early, 2026-11-06); S3.4 moved to Stage B | `rb-s3-exit`; [exit report](../sprints/s3-routing/exit_report.md) |
+| S4 Product shell, evaluation tooling | Next (plan refresh before it starts) | — |
 
 ## Architecture flow (manual; updated when ablation_architecture.md changes)
 
@@ -78,7 +79,7 @@ Legend: ✅ ≥80% complete · 🟡 partial · ⏳ not yet started · ❌ blocke
 
 | Invariant | Status | Evidence (as of 2026-11-01 unless stated) |
 |---|---|---|
-| Deviation log (HMAC chain + Ed25519) | ✅ | 68 entries; `verify-public` passes with the public key only; entries 35–68 Ed25519-signed |
+| Deviation log (HMAC chain + Ed25519) | ✅ | 83 entries (2026-11-09); `verify-public` passes with the public key only; entries 35–83 Ed25519-signed |
 | Chain-of-Evidence ledgers (S2.7) | ✅ | One signed file per orchestrator run (HMAC per entry, Ed25519 anchor); `verify_ledgers.py --coe DIR [--public-only]`; build ledgers for rater training verify (1,116 entries) |
 | Annotations ledger (S2.9) | ✅ (no labels yet) | Own HMAC secret and Ed25519 key (`.env.labelling`); `verify_ledgers.py --annotations DIR`; the labelling server refuses deviation secrets |
 | Reconciliation ledger | ✅ | 25 entries; chain and anchor verified |
@@ -94,13 +95,13 @@ Legend: ✅ ≥80% complete · 🟡 partial · ⏳ not yet started · ❌ blocke
 
 ## Latest deviation log entries (manual)
 
-*Source: `deviation_log.jsonl` — 68 entries; 6 most recent shown. Full text: `deviation_log.md`.*
+*Source: `deviation_log.jsonl` — 83 entries; 6 most recent shown. Full text: `deviation_log.md`.*
 
 | # | Date | Change (short) | sig[:12] |
 |---|---|---|---|
-| 63 | 2026-10-31 | MAHC frozen from build run 3 (floor, priors, calibrator) | `01d2d49a8e6a` |
-| 64 | 2026-10-31 | Chain-of-Evidence ledger, unified evidence namespace | `d5f859b4c98a` |
-| 65 | 2026-10-31 | H_fact judged against cited evidence, not ground truth | `405f0b659017` |
-| 66 | 2026-10-31 | Narrator rules: template for noLLM/D/G, verifier, closed vocabulary | `907b88c2a71c` |
-| 67 | 2026-11-01 | Narrator frozen: LLM picks and orders verified claims (owner N-k) | `529bde17dad0` |
-| 68 | 2026-11-01 | Narrator review fixes: log quotes from logged templates only | `da4f44b5cf0b` |
+| 78 | 2026-11-08 | OTel fix: G-pipe reselection on the candidate chain | `36b07fa335b2` |
+| 79 | 2026-11-08 | OTel fix: MAHC run 4 on the candidate chain | `f6de3055c6aa` |
+| 80 | 2026-11-08 | OTel fix: router run 3 on the candidate chain | `244dbfd4a768` |
+| 81 | 2026-11-08 | OTel v4 validation: tie (30/36), old chain kept | `b48d6289089a` |
+| 82 | 2026-11-08 | S3.2 ACP pre-run (four remediation families, recorded not routed); S3.4 to Stage B | `5f2b5cc697eb` |
+| 83 | 2026-11-08 | ACP fitted once and frozen (`dd7b63d3`) | `cd5f12ab2d12` |
