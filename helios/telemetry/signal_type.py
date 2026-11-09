@@ -34,6 +34,7 @@ __all__ = [
     "SignalType",
     "classify",
     "signal_type",
+    "strongest_series",
 ]
 
 HELIOS_ENABLE_SIGNAL_TYPE: bool = True
@@ -83,19 +84,32 @@ def signal_type(
     bucket_seconds: int,
 ) -> SignalType:
     """The type of the top suspect's strongest series at the trigger bucket."""
+    name = strongest_series(window, trigger, root=root, bucket_seconds=bucket_seconds)
+    return SignalType.UNCLASSIFIED if name is None else classify(name)
+
+
+def strongest_series(
+    window: TelemetryWindow,
+    trigger: TriggerRecord,
+    *,
+    root: Path,
+    bucket_seconds: int,
+) -> str | None:
+    """Name of the top suspect's series with the largest causal z at the
+    trigger bucket; None for a fallback trigger, no metrics or no finite z."""
     if (
         trigger.source == TriggerSource.FALLBACK
         or not trigger.suspects
         or window.p1_metrics_path is None
     ):
-        return SignalType.UNCLASSIFIED
+        return None
     path = Path(window.p1_metrics_path)
     metrics = pd.read_parquet(path if path.is_absolute() else root / path)
     n = bucket_count(window.window_start_iso, window.window_end_iso, bucket_seconds)
     start = pd.Timestamp(window.window_start_iso).timestamp()
     bucket = int(math.floor((trigger.trigger_time_s - start) / bucket_seconds))
     if not 0 <= bucket < n:
-        return SignalType.UNCLASSIFIED
+        return None
     series = named_metric_series(
         metrics, window.window_start_iso, n, bucket_seconds, fold_histograms=True
     ).get(trigger.suspects[0], [])
@@ -108,4 +122,4 @@ def signal_type(
         )
         if np.isfinite(z) and (best is None or (z, name) > best):
             best = (z, name)
-    return SignalType.UNCLASSIFIED if best is None else classify(best[1])
+    return None if best is None else best[1]

@@ -128,3 +128,20 @@ def test_never_reads_beyond_p1(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     window = window.model_copy(update={"p3_logs_path": str(tmp_path / "x.parquet")})
     signal_type(window, _trigger(), root=tmp_path, bucket_seconds=BUCKET)
     assert opened == [window.p1_metrics_path]
+
+
+def test_strongest_series_names_the_series_signal_type_classifies(
+    tmp_path: Path,
+) -> None:
+    """S3.2: the ACP reads the series name; signal_type is classify(name)."""
+    from helios.telemetry.signal_type import classify, strongest_series
+
+    series = {"cpu": _flat(), "latency-90": _spike(90)}
+    window = _window(tmp_path, series)
+    name = strongest_series(window, _trigger(), root=tmp_path, bucket_seconds=BUCKET)
+    assert name == "latency-90"
+    assert classify(name) == _type(tmp_path, series)
+    fallback = _trigger(TriggerSource.FALLBACK)
+    assert (
+        strongest_series(window, fallback, root=tmp_path, bucket_seconds=BUCKET) is None
+    )

@@ -1,9 +1,9 @@
 {
-  "anchor_ed25519_signature": "d9d92ff856ae167369e4de633b70349963217a9943f0db451662ca6e3ee81dbe701e334312eaabea804fc9d306fdf8efd8baae1f2273654ecde07ca2b6ede202",
-  "anchor_signature": "6e7ab5b277c7a7c348cb975daedd99408897092a338cd79d3bd2d2cc6849ea2e",
+  "anchor_ed25519_signature": "7fb729f3a8f460c40891edd13775049f2d870bb6c463ab0842ef0770cfad9398d5d7c6109cd2f7e8c6e1a93930de3b90d4b74e9bc9e2f463587d5749c3d3ac0f",
+  "anchor_signature": "b5a8ef13e00adfbcbd40909fa656004e6d5c39861fba804c6652b6da2a04bdce",
   "anchor_version": 1,
-  "entries": 81,
-  "head_signature": "b48d6289089ae99e238de2d3b9cd77af0c896b05e1d2bbb8fe2590f70fb66c03",
+  "entries": 83,
+  "head_signature": "cd5f12ab2d128408fa33ec86822f18414b1940e1c72b408c72ff3b6dfdd0fd29",
   "log_kind": "deviation",
-  "log_sha256": "50e6d29b318dd5d514ddae5d3879e1e791d8c703ba7e9b015f94f2ef4c5c8c3a"
+  "log_sha256": "dd1acaf3c9a617f247080d3eb44a0fb07dcdc8da0ee2a3616ee043d0d0ba1f85"
 }

@@ -19,6 +19,14 @@ import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from helios.acp.features import (
+    BlastTier,
+    acp_features,
+    blast_radius_tier,
+    metric_family,
+)
+from helios.acp.params import ACP_PARAMS_PATH, acp_params_hash, load_acp_params
+from helios.acp.predictor import acp_block
 from helios.consensus.mahc import run_mahc, run_vote_only
 from helios.consensus.params import load_mahc_params, mahc_params_hash
 from helios.consensus.router import decide_escalation, decide_g
@@ -69,7 +77,12 @@ from helios.schemas.verdict import (
 from helios.store.result_store import ResultStore
 from helios.telemetry.reader import CaptureReader
 from helios.telemetry.scope import OUT_OF_SCOPE_SERVICES, filter_in_scope, in_scope
-from helios.telemetry.signal_type import signal_type
+from helios.telemetry.signal_type import (
+    SignalType,
+    classify,
+    signal_type,
+    strongest_series,
+)
 from helios.telemetry.trigger import (
     DetectorParams,
     ExternalTriggerRefusedError,
@@ -88,6 +101,7 @@ if TYPE_CHECKING:
 
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
+    from helios.acp.params import ACPParams
     from helios.consensus.params import MAHCParams
     from helios.consensus.router_params import RouterParams
     from helios.narrative.params import NarratorParams
@@ -102,6 +116,7 @@ __all__ = ["RunOrchestrator", "incident_graph"]
 HELIOS_ENABLE_ORCHESTRATOR: bool = True
 
 _MS_PER_S = 1_000
+_UNKNOWN_TIER = BlastTier.UNKNOWN
 _REPO_ROOT = (
     Path(__file__).resolve().parents[2]
 )  # L-pipe resolves the validated trace roots here
@@ -145,6 +160,7 @@ class RunOrchestrator:
         narrator_params: NarratorParams | None = None,
         router_params: RouterParams | None = None,
         price_book_digest: str | None = None,
+        acp_params: ACPParams | None = None,
     ) -> None:
         """``detector_params``, ``dpipe_params`` and ``gpipe_params`` default to
         the frozen files; ``lpipe_client`` defaults to the local Ollama model and
@@ -156,7 +172,9 @@ class RunOrchestrator:
         runs. ``router_params`` (S3.1) default to the frozen file;
         ``price_book_digest`` is the current price book's digest, supplied by
         the caller (the run path never imports ``helios.evaluation``) and
-        required for confirmatory routed runs."""
+        required for confirmatory routed runs. ``acp_params`` (S3.2) default
+        to the frozen file when it exists; without it an ACP-on run records
+        the features only (``unfit``)."""
         set_current_manifest(manifest)
         self._manifest = manifest
         self._lpipe_client = lpipe_client
@@ -166,6 +184,9 @@ class RunOrchestrator:
             router_params if router_params is not None else load_router_params()
         )
         self._price_book_digest = price_book_digest
+        self._acp = acp_params
+        if self._acp is None and manifest.acp_stateful and ACP_PARAMS_PATH.is_file():
+            self._acp = load_acp_params(ACP_PARAMS_PATH)
         self._narrator = (
             narrator_params if narrator_params is not None else load_narrator_params()
         )
@@ -363,6 +384,10 @@ class RunOrchestrator:
                 root=_REPO_ROOT,
                 bucket_seconds=self._detector.bucket_seconds,
             )
+        # S3.2: the ACP block is recorded, never read by the router (design P-e).
+        routing["acp"] = self._acp_record(
+            window, trigger, graph, d_verdict, dpipe_scores
+        )
         x: tuple[float, ...] = ()
         if not g_allowed:
             routing["reason"] = "gpipe_off"
@@ -594,6 +619,8 @@ class RunOrchestrator:
         }
         if self._manifest.cbr_routing:
             hashes["router"] = router_params_hash(self._router)
+        if self._manifest.acp_stateful and self._acp is not None:
+            hashes["acp"] = acp_params_hash(self._acp)
         if self._manifest.coe_narrative:
             hashes["narrator_params"] = narrator_params_hash(self._narrator)
             if self._manifest.l2c_llm:
@@ -605,6 +632,45 @@ class RunOrchestrator:
             for name, sha in sorted(WORKER_PROMPT_SHAS.items()):
                 hashes[f"lpipe_prompt_{name}"] = sha or ""
         return hashes
+
+    def _acp_record(
+        self,
+        window: TelemetryWindow,
+        trigger: TriggerRecord,
+        graph: object,
+        d_verdict: PipelineVerdict,
+        dpipe_scores: Mapping[str, float],
+    ) -> dict[str, Any]:
+        """The ACP block (S3.2): features, class probabilities, blast tier."""
+        if not self._manifest.acp_stateful:
+            return acp_block(on=False, params=None, features=None, tier=_UNKNOWN_TIER)
+        series = strongest_series(
+            window,
+            trigger,
+            root=_REPO_ROOT,
+            bucket_seconds=self._detector.bucket_seconds,
+        )
+        top = _top(d_verdict)
+        d_ranked = (
+            filter_in_scope(d_verdict.ranked_candidates)
+            if d_verdict.status == VerdictStatus.RANKED
+            else []
+        )
+        features = acp_features(
+            signal=SignalType.UNCLASSIFIED if series is None else classify(series),
+            family=metric_family(series),
+            has_logs=window.p3_logs_path is not None,
+            has_traces=window.p2_traces_path is not None,
+            graph=graph,
+            d_ranked=d_ranked,
+            d_scores=dpipe_scores,
+        )
+        return acp_block(
+            on=True,
+            params=self._acp,
+            features=features,
+            tier=blast_radius_tier(graph, top),
+        )
 
     def _dispatch(
         self,
