@@ -143,3 +143,36 @@ About 1¾ days against the 1½ estimate. The extra quarter day is the runner tim
 | H_fact read as zero where labels are missing | Pending claims leave the case empty and are counted; only a narrative with no claims is 0 |
 | Strata thresholds chosen after seeing results | τ_N is fixed on build data and frozen by entry before `build-freeze`; ambiguity uses no label |
 | Timing is hardware-specific | Hardware recorded in every report; the comparison is paired by case on one machine |
+
+## 7. Result: exploratory build run (2026-11-11)
+
+HELIOS-Full and HELIOS-noRouter on OTel build v3 (63 cases each, traces present), run as built (frozen chain, L-pipe cache-only) into a temporary store, then scored with `score_store` and `score_run_metrics`. No exclusions, no unlabelled case. Ground truth `c4a7abdff082…`; price-book-v2 AWS `3b0bb9250933…`. Script kept outside the repository; only aggregates were printed. Exploratory, build data, not tuned to.
+
+| | HELIOS-Full (routed) | HELIOS-noRouter (uniform) |
+|---|---|---|
+| Graph build (M-a), median / p90 | 0.37 s / 0.43 s | 0.40 s / 0.46 s |
+| TTT before M-a, median | 0.91 s | 15.2 s |
+| TTT with graph build, median / p90 | 1.28 s / 1.53 s | 15.6 s / 19.7 s |
+| TTCD, uncensored runs, median / p90 | 1.3 s / 12.6 s | 14.3 s / 16.7 s |
+| TTCD censored (never right at top-1) | 28 of 63 | 32 of 63 |
+| Escalated to the L-pipe | 57 of 63 | — (uniform) |
+| Human review requested (PROVISIONAL) | 38 | 32 |
+| Non-converged | 0 | 0 |
+| log CpR, median | 7.09 | 12.03 |
+| Opportunity share of CpR, median | about all of it | about all of it |
+| Ambiguous (A-H4 stratum, from Full) | 39 of 63 | same cases |
+| H_struct, mean | 0.0159 | 0.0159 |
+
+- **Graph build** adds about 0.4 s to every timing on traced data, about a third of Full's TTT. On RCAEval build data (no traces) no graph is built.
+- **Escalation 57 of 63** is the frozen router run in-sample (S3.1 router report, `refit_in_sample` 90.48%). The "every OTel case escalates" figure in the S3 exit report is the cross-fitted held-out one. Both are correct for what they measure.
+- **Finding for the owner: CpR is almost entirely opportunity cost, so log-CpR mostly encodes whether the top-1 was ever right.**
+  - At 5,600 per minute, a censored run costs 30 × 5,600 = 168,000 (log 12.03). A run right at 1.3 s costs about 121 in opportunity plus 16 in review time (log about 4.9).
+  - Token cost is zero under local inference, and infrastructure is cents.
+  - A-H5 ("CpR at matched HR@3", noRouter vs Full) matches on HR@3, not on top-1. Within matched pairs, a TTCD censoring difference therefore still dominates the comparison, and the router's compute saving barely moves CpR.
+  - This follows from the signed contract (§3, §4) and the price book, not from S4.9. M-a only adds about 0.4 s of graph build to TTCD.
+  - Options for the owner (chair-call item, alongside the opportunity-cost sensitivity already on the agenda):
+    - (a) keep as registered and report the component split;
+    - (b) pre-register, before `build-freeze`, a sensitivity analysis of A-H5 on CpR without the opportunity component (the operational cost of running HELIOS), reported beside the primary;
+    - (c) also match A-H5 on top-1 (HR@1).
+
+  (b) and (c) need a deviation entry and the addendum. Nothing is changed here.
