@@ -1,6 +1,6 @@
 # S4.9 Metrics suite (design)
 
-Row S2-M9-ENG09 · Tier 1 · 2026-11-11 · **Draft for owner approval (decisions M-a to M-h)**
+Row S2-M9-ENG09 · Tier 1 · 2026-11-11 · **Approved 2026-11-11 (M-a to M-h as recommended)**
 
 ## 1. What is asked
 

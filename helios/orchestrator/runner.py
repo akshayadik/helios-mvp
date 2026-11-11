@@ -317,6 +317,7 @@ class RunOrchestrator:
         ueg_c, seeds = incident_graph(
             window, self._manifest, self._config_hash, trigger
         )
+        graph_done_unix = time.time()
         self._store.insert_trigger(
             trigger,
             run_id=run_id,
@@ -324,6 +325,9 @@ class RunOrchestrator:
             seeds_from_trigger=bool(seeds),
             handover_unix=handover_unix,
         )
+        # S4.9 M-a: graph build is inside TTT and TTCD (entry 46), recorded
+        # from the handover so scoring adds it to the replayed publication time.
+        self._store.insert_graph_timing(run_id, handover_unix, graph_done_unix)
 
         base: dict[str, Any] = {
             "run_id": run_id,
@@ -575,6 +579,7 @@ class RunOrchestrator:
             for verdict in verdicts:
                 self._store.insert(verdict)
             self._store.insert_fusion(run_id, incident_id, self._config_hash, fused)
+            self._store.insert_routing(run_id, incident_id, routing)
             # Only stored runs carry H_struct, so A-H7 pairs match the verdicts.
             self._store.insert_hstruct(
                 run_id,
