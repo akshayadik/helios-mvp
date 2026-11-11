@@ -1,6 +1,6 @@
 # Sprint S4 — Product shell and evaluation tooling · plan
 
-**Window:** 18–29 Jan 2027 (10 working days); starts early once the owner confirms, as S1–S3 did (S3 closed 2026-11-09, about nine weeks ahead) · **Milestone:** S2-M9 · **Exit tag:** `rb-s4-exit` · **Status:** planned; refreshed 2026-11-11 with the S3 carry-overs
+**Window:** 18–29 Jan 2027 (10 working days); starts early once the owner confirms, as S1–S3 did (S3 closed 2026-11-09, about nine weeks ahead) · **Milestone:** S2-M9 · **Exit tag:** `rb-s4-exit` · **Status:** in progress (started early 2026-11-11, owner); refreshed 2026-11-11 with the S3 carry-overs
 
 Task details: `docs/tracking/helios_task_breakdown.md` § Sprint S4 (authoritative).
 
@@ -91,7 +91,9 @@ Several S4 tasks extend code that earlier sprints built; each starts by reading 
 
 Capacity no longer forces S4.4–S4.7 out. What decides each is whether it changes the frozen evidence path or the variant hashes.
 
-| Item | Flag | Consideration | Recommendation |
+**Owner decision 2026-11-11:** all four are built in S4. S4.4 and S4.5 are built as option (a), product settings outside the VCL manifest; the variant hashes and `variants.py` are unchanged, so no VCL re-freeze is needed. S4.6 and S4.7 are built behind their existing flags.
+
+| Item | Flag | Consideration | Recommendation (decided as below) |
 |---|---|---|---|
 | S4.6 FGSV lite | `fgsv_ks_gate` exists, ON in HELIOS-Full | HELIOS-noFGSV (E-H4) exists but behaves exactly like Full until FGSV is built, so E-H4 cannot differ. FGSV validates remediation; it does not change the ranking | **Build in S4** |
 | S4.7 IOL lite | `iol_self_telemetry` exists, ON in HELIOS-Full | Same as FGSV: HELIOS-noIOL (E-H6) is a no-op today. Self-telemetry must stay out of the incident graph the pipelines rank (`tenant=self` only), or it changes Full's verdicts | **Build in S4**, with a test that Full's verdicts on build data are byte-identical with the flag ON and OFF |
@@ -102,8 +104,8 @@ Capacity no longer forces S4.4–S4.7 out. What decides each is whether it chang
 
 | Item | Source | Needed by |
 |---|---|---|
-| Confirm the early start of S4 (as for S1–S3) | This refresh | Before the first S4 row opens |
-| Decide S4.4 and S4.5 (table above); confirm building S4.6 and S4.7 in S4 | This refresh | Before step 7 |
+| Confirm the early start of S4 (as for S1–S3) | This refresh | **Done 2026-11-11** (S4 started early) |
+| Decide S4.4 and S4.5 (table above); confirm building S4.6 and S4.7 in S4 | This refresh | **Done 2026-11-11**: S4.4 and S4.5 as product settings outside the manifest (option a); S4.6 and S4.7 built in S4 |
 | IRB: status of the RQ4 application (L1 said submission around 2026-11-03). S4.2 is the instrument; the study runs only if approval arrives by early February | S0.11 L1 | Approval by 2027-02-05 |
 | Rater 2 and adjudicator (L2, L3; row S2-M5-RES05) | Carried since S0 | 30 Nov 2026 |
 | S2.9 rater training to κ ≥ 0.7, rubric freeze, row S2-M7-RES01 | S2 exit | Before S5 |
