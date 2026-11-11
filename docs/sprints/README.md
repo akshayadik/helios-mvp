@@ -14,7 +14,7 @@ One folder per sprint for the whole product: Stage A (S0–S5, evidence, analysi
 | S1 Data and graph | [`s1-data-graph/`](s1-data-graph/) | 16 Nov – 4 Dec 2026 | S2-M6 | `rb-s1-exit` | **Closed 2026-10-27** · [exit report](s1-data-graph/exit_report.md) |
 | S2 Reasoning, consensus, narratives | [`s2-reasoning/`](s2-reasoning/) | 7–25 Dec 2026 | S2-M7 | `rb-s2-exit` | **Closed 2026-11-01** · [exit report](s2-reasoning/exit_report.md) (tag pushed; S2.9 rater training scheduled before S5) |
 | S3 Routing and learning | [`s3-routing/`](s3-routing/) | 4–15 Jan 2027 | S2-M8 | `rb-s3-exit` | **Closed 2026-11-09** · [exit report](s3-routing/exit_report.md) (S3.4 Knowledge Cortex moved to Stage B, entry 82) |
-| S4 Product shell and evaluation tooling | [`s4-product-eval-tooling/`](s4-product-eval-tooling/) | 18–29 Jan 2027 | S2-M9 | `rb-s4-exit` | Planned |
+| S4 Product shell and evaluation tooling | [`s4-product-eval-tooling/`](s4-product-eval-tooling/) | 18–29 Jan 2027 | S2-M9 | `rb-s4-exit` | **In progress** (started early 2026-11-11) · [plan](s4-product-eval-tooling/plan.md) refreshed 2026-11-11 |
 | S5 Integration and freeze | [`s5-integration-freeze/`](s5-integration-freeze/) | 1–12 Feb 2027 | S2-M10 | `build-freeze` | Planned |
 | E Evidence collection | [`e-evidence/`](e-evidence/) | 15 Feb – 12 Mar 2027 | S2-M11 | `rb-e-exit` | Planned |
 | A Analysis | [`a-analysis/`](a-analysis/) | 15–31 Mar 2027 | S2-M12 | `results-ready` | Planned — **results ready 31 March** |
@@ -31,7 +31,7 @@ Effort is the sum of the breakdown's task estimates, in working days, against th
 | S1 | 16 | 15 | Over by one day; started early on 2026-10-24 (owner), so about 30 working days are available |
 | S2 | 15½ | 15 | Tight; S2.9 rater training also needs the raters' time |
 | S3 | 9 | 10 | Four of the five tasks are Tier 2 |
-| S4 | 13½ | 10 | Over by 3½ days; Tier-2 items (S4.4–S4.7) are the first to move to Stage B |
+| S4 | 13½ | 10 | Over by 3½ days in the January window, but about nine weeks ahead of it (refresh 2026-11-11): Tier 2 is decided on content, not capacity |
 | S5 | 8 | 10 | Two days of slack before the freeze |
 
 Rule from the plan: if time is short, Tier 2 moves to Stage B; Tier 1 is never rushed, and the frozen evidence build is never touched.

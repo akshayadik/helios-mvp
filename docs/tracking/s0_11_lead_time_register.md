@@ -16,7 +16,7 @@ Items with a long lead time that only the owner can start, each with the date it
 | L2 | Second rater for H_fact (two raters, blind to variant, κ ≥ 0.7) | AA | Confirmed by 2026-11-30 | S2.9 training (January), E5 | Not started |
 | L3 | Standby adjudicator (re-labels when κ < 0.7) | AA | Confirmed by 2026-11-30 | E5 | Not started |
 | L4 | Rating rubric, blind labelling tool, rubric in OSF deposit 2 | Claude (S2.9) | Rubric drafted by 2026-12-23; frozen after training; deposited at S5.7 | Rater training, E5 | Added as task S2.9 |
-| L5 | Compute for the 8B confirmatory runs | AA (decision) | 2027-02-05 (S5.3 pilot measures time per incident) | E1, E3 | Local first: llama3.1:8b already on this machine |
+| L5 | Compute for the 8B confirmatory runs | AA (decision) | 2027-02-05 (S5.3 pilot measures time per incident) | E1, E3 | Local first: llama3.1:8b already on this machine. **Rechecked 2026-11-11** (`docs/sprints/s4-product-eval-tooling/s4_d11_compute_recheck.md`): worker calls are shared across variants by the response cache, so the router share does not drive compute; the LLM narrator does. E1 + E3 about 5–6 h central, 11–14 h conservative, 52–67 h extreme; local compute suffices; S5.3 pilot confirms |
 | L6 | Budget decision: 70B sensitivity subset (RB2, E6) | AA | 2027-02-05 | E6 | Open; options in §3 |
 | L7 | Budget decision: judge models for FAE (optional, E5) | AA | 2027-02-05 | E5 (optional part only) | Open |
 | L8 | Baseline environments for B1–B5 and the alternates | Claude | Before S4.8 (2027-01-18) | S4.8, E2 | Spike done 2026-10-24: both environments build and every agreed method imports; B4 needs an adapter (§4) |
