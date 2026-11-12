@@ -1,6 +1,6 @@
 # S4.11 Analysis suite — design (for owner approval)
 
-**Row:** S2-M9-ENG11 · **Effort:** 2 days · **Depends on:** S0.6 (analysis plan), S4.9 (`eval_score`, `eval_run`) · **Status:** draft, 2026-11-12. Built on the recommended options (owner: "move to S4.11"); T-a and T-c await explicit approval, and both T-a readings and all three T-c modes are switches in `bin/analyse.py`
+**Row:** S2-M9-ENG11 · **Effort:** 2 days · **Depends on:** S0.6 (analysis plan), S4.9 (`eval_score`, `eval_run`) · **Status:** approved 2026-11-12 (T-a to T-j as recommended: data-order Holm, A-H7 intersection-union); deviation entry 86. The other T-a reading and T-c modes remain switches in `bin/analyse.py`
 
 ## 1. Scope and fixed inputs
 
