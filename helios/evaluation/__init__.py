@@ -1,5 +1,6 @@
-"""Evaluation metrics for HELIOS ablation runs."""
+"""Evaluation for HELIOS runs: scoring (per list) and run metrics (per run).
 
-from helios.evaluation.metrics import hr_at_k
-
-__all__ = ["hr_at_k"]
+Accuracy scores live in ``helios.evaluation.scoring``; run-level TTT, TTCD,
+CpR, H_struct, H_fact and strata in ``helios.evaluation.run_metrics`` (S4.9).
+The May ``metrics.hr_at_k`` stub was retired into ``scoring.hr_at``.
+"""

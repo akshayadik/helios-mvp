@@ -491,10 +491,19 @@ class TestSharedTrigger:
         store = _store(tmp_path)
         run_id = str(store.fetch_all()[0]["run_id"])
         timings = store.fetch_timings(run_id)
-        assert {str(t["pipeline"]) for t in timings} == {"dpipe", "lpipe"}
+        # S4.9 M-a: the graph build is its own row (ueg_c), from the handover.
+        assert {str(t["pipeline"]) for t in timings} == {"dpipe", "lpipe", "ueg_c"}
         trigger = store._con.execute("SELECT handover_unix FROM trigger_row").fetchone()
         assert trigger is not None
         assert all(float(str(t["started_unix"])) >= trigger[0] for t in timings)
+        graph = next(t for t in timings if t["pipeline"] == "ueg_c")
+        assert float(str(graph["started_unix"])) == trigger[0]
+        dpipe = next(t for t in timings if t["pipeline"] == "dpipe")
+        assert float(str(graph["published_unix"])) <= float(str(dpipe["started_unix"]))
+        # S4.9: the routing record is stored beside the fused verdict.
+        routing = store.fetch_routing(run_id)
+        assert routing is not None
+        assert routing["mode"] in {"routed", "uniform"}
 
     def test_external_trigger_is_used_in_exploratory_runs(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

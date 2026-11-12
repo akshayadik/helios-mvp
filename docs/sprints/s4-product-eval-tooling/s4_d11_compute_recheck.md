@@ -28,7 +28,7 @@ Each range runs from 7 to 9 narrated variants (below) and includes the 10% deter
 | Calls in the build cache | 4,900; mean wall time 8.45 s; median 5.74 s; 90th percentile 21.17 s | `data/cache/lpipe_cache.sqlite` (read-only) |
 | Worker vs narrator call time | Long prompts (over 1,200 tokens, 2,672 calls): mean 13.18 s; short prompts (2,228 calls): mean 2.79 s | Same cache. The cache stores no call kind; long = worker and short = narrator is inferred from prompt size and call counts. The S5.3 pilot checks it |
 | Narrator calls per narrative | 2.27 (560 slots over 247 RCAEval held-out narratives); first-pass slot acceptance on held-out: every slot, so no retries | `docs/sprints/s2-reasoning/calibration/narrator_final.json` |
-| Router escalation share | RCAEval build 197 of 495 held out (39.8%); OTel build 63 of 63. Pool share unknown (RCAEval *with* traces, never seen by the router, S2-BL-01) | S3.1 design §11 |
+| Router escalation share | RCAEval build 197 of 495 held out (39.8%); OTel build 63 of 63 cross-fitted held out (the frozen router in-sample: 57 of 63, S4.9 build run). Pool share unknown (RCAEval *with* traces, never seen by the router, S2-BL-01) | S3.1 design §11 |
 
 ## Which variants call the model
 

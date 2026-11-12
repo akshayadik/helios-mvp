@@ -233,3 +233,68 @@ CREATE TABLE IF NOT EXISTS narrative_row (
 INSERT INTO schema_tag (tag)
 VALUES ('narrative-v1')
 ON CONFLICT (tag) DO NOTHING;
+
+-- routing-v1 (S4.9): the run's routing record (mode, arms, escalation,
+-- llm_unavailable), as in the CoE R step, so scoring reads it from the store.
+CREATE TABLE IF NOT EXISTS routing_row (
+    run_id               VARCHAR     NOT NULL PRIMARY KEY,
+    incident_id          VARCHAR     NOT NULL,
+    routing_json         VARCHAR     NOT NULL
+);
+
+INSERT INTO schema_tag (tag)
+VALUES ('routing-v1')
+ON CONFLICT (tag) DO NOTHING;
+
+-- eval-run-v1 (S4.9, design M-g): run-level metrics written by the scoring
+-- path after dispatch, beside eval_score (per list). Analysis reads only the
+-- harness-written eval_* tables. TTT and TTCD include graph build (M-a) and
+-- follow the publication sequence (M-b); CpR under the named price book (M-c);
+-- H_fact NULL until every claim of the run is labelled (M-d). The label itself
+-- is never stored.
+CREATE TABLE IF NOT EXISTS eval_run (
+    run_id                 VARCHAR     NOT NULL PRIMARY KEY,
+    incident_id            VARCHAR     NOT NULL,
+    variant_config_hash    VARCHAR     NOT NULL,
+    corpus                 VARCHAR     NOT NULL,
+    state                  VARCHAR     NOT NULL,   -- published fused state
+    non_converged          BOOLEAN     NOT NULL,
+    requests_human         BOOLEAN     NOT NULL,
+    routing_mode           VARCHAR,                -- routed | uniform
+    escalated              BOOLEAN,                -- routed runs only
+    llm_consulted          BOOLEAN     NOT NULL,
+    llm_unavailable        VARCHAR,
+    trigger_source         VARCHAR,
+    graph_build_ms         DOUBLE      NOT NULL,
+    ttt_ms                 DOUBLE      NOT NULL,
+    ttcd_s                 DOUBLE      NOT NULL,
+    ttcd_censored          BOOLEAN     NOT NULL,
+    detection_delay_s      DOUBLE,
+    operational_ttcd_s     DOUBLE,
+    time_to_narrative_ms   DOUBLE,
+    cpr_token              DOUBLE      NOT NULL,
+    cpr_infrastructure     DOUBLE      NOT NULL,
+    cpr_storage            DOUBLE      NOT NULL,
+    cpr_human              DOUBLE      NOT NULL,
+    cpr_opportunity        DOUBLE      NOT NULL,
+    cpr_total              DOUBLE      NOT NULL,
+    log_cpr                DOUBLE      NOT NULL,
+    h_struct               DOUBLE      NOT NULL,
+    h_struct_structural_zero BOOLEAN   NOT NULL,
+    narrative_claims       INTEGER,
+    grounding_rejected     INTEGER,
+    grounding_drafted      INTEGER,
+    h_fact                 DOUBLE,
+    h_fact_pending         INTEGER,
+    ambiguous              BOOLEAN,
+    narrative_heavy        BOOLEAN,
+    confidence             DOUBLE,
+    price_book_digest      VARCHAR     NOT NULL,
+    ground_truth_sha256    VARCHAR     NOT NULL,
+    metrics_version        VARCHAR     NOT NULL,
+    scored_at              TIMESTAMP               DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO schema_tag (tag)
+VALUES ('eval-run-v1')
+ON CONFLICT (tag) DO NOTHING;

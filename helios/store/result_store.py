@@ -22,7 +22,10 @@ if TYPE_CHECKING:
     from helios.schemas.verdict import PipelineName, PipelineVerdict
     from helios.telemetry.trigger import TriggerRecord
 
-__all__ = ["ResultStore"]
+__all__ = ["GRAPH_TIMING", "ResultStore"]
+
+# timing_row.pipeline value of the graph build (S4.9 M-a); not a pipeline.
+GRAPH_TIMING = "ueg_c"
 
 _PIPELINES = frozenset({"dpipe", "gpipe", "lpipe"})
 _SCHEMA_SQL = Path(__file__).parent / "schema.sql"
@@ -476,6 +479,74 @@ class ResultStore:
             "ORDER BY published_unix, pipeline",
             [run_id],
         )
+        cols = [d[0] for d in cur.description or []]
+        return [dict(zip(cols, row, strict=False)) for row in cur.fetchall()]
+
+    def insert_graph_timing(
+        self, run_id: str, started_unix: float, published_unix: float
+    ) -> None:
+        """Wall-clock graph build of a run (S4.9 M-a): timing row ``ueg_c``."""
+        self._con.execute(
+            "INSERT INTO timing_row (run_id, pipeline, started_unix, published_unix) "
+            "VALUES (?, ?, ?, ?)",
+            [run_id, GRAPH_TIMING, started_unix, published_unix],
+        )
+
+    def fetch_trigger_row(self, run_id: str) -> dict[str, Any] | None:
+        """The trigger row of one run (handover, source, times), or None."""
+        cur = self._con.execute(
+            "SELECT run_id, incident_id, trigger_time_s, source, handover_unix, "
+            "known_at_s FROM trigger_row WHERE run_id = ?",
+            [run_id],
+        )
+        cols = [d[0] for d in cur.description or []]
+        row = cur.fetchone()
+        return None if row is None else dict(zip(cols, row, strict=True))
+
+    def fetch_run_pipeline_rows(self, run_id: str) -> list[dict[str, object]]:
+        """The pipeline result rows of one run, ordered by pipeline."""
+        cur = self._con.execute(
+            "SELECT * FROM result_row WHERE run_id = ? ORDER BY pipeline", [run_id]
+        )
+        cols = [d[0] for d in cur.description or []]
+        return [dict(zip(cols, row, strict=False)) for row in cur.fetchall()]
+
+    # ------------------------------------------------------------------
+    # Routing record and run-level metrics (S4.9)
+    # ------------------------------------------------------------------
+
+    def insert_routing(
+        self, run_id: str, incident_id: str, routing: Mapping[str, Any]
+    ) -> None:
+        """Store a run's routing record (the CoE R step's content)."""
+        self._con.execute(
+            "INSERT INTO routing_row (run_id, incident_id, routing_json) "
+            "VALUES (?, ?, ?)",
+            [run_id, incident_id, canonical_json(dict(routing))],
+        )
+
+    def fetch_routing(self, run_id: str) -> dict[str, Any] | None:
+        """The routing record of one run, or None (runs stored before S4.9)."""
+        row = self._con.execute(
+            "SELECT routing_json FROM routing_row WHERE run_id = ?", [run_id]
+        ).fetchone()
+        return None if row is None else dict(json.loads(row[0]))
+
+    def replace_run_metrics(self, rows: list[dict[str, object]]) -> None:
+        """Insert eval_run rows, replacing any earlier row of the same run."""
+        if not rows:
+            return
+        cols = list(rows[0])
+        placeholders = ", ".join("?" for _ in cols)
+        self._con.executemany(
+            f"INSERT OR REPLACE INTO eval_run ({', '.join(cols)}) "
+            f"VALUES ({placeholders})",
+            [[row[c] for c in cols] for row in rows],
+        )
+
+    def fetch_run_metrics(self) -> list[dict[str, object]]:
+        """Every eval_run row, ordered by run."""
+        cur = self._con.execute("SELECT * FROM eval_run ORDER BY run_id")
         cols = [d[0] for d in cur.description or []]
         return [dict(zip(cols, row, strict=False)) for row in cur.fetchall()]
 
