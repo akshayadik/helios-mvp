@@ -1,0 +1,8 @@
+{
+  "cases": 120,
+  "corpus": "build",
+  "fit_commit": "73f391f36e83540770bb3198d229c135ae66f102",
+  "report_sha256": "90d9a1b58af375b7b41503e13e49be16984c0c188109d95d7296981057675de7",
+  "tau_n": 0.000164,
+  "version": "narrative-stratum-v1"
+}
