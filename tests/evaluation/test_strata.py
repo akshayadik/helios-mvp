@@ -194,3 +194,17 @@ def test_tau_params_hash_is_stable_and_order_free() -> None:
     b = tau_params_hash({"version": STRATUM_VERSION, "tau_n": 0.25})
     assert a == b
     assert len(a) == 12
+
+
+def test_committed_tau_matches_its_fit_report() -> None:
+    import hashlib
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[2]
+    report = (
+        root / "docs/sprints/s4-product-eval-tooling/calibration/narrative_share.json"
+    )
+    frozen = json.loads((root / strata.TAU_PATH).read_text(encoding="utf-8"))
+    assert load_tau(root) == json.loads(report.read_text(encoding="utf-8"))["tau_n"]
+    assert frozen["report_sha256"] == hashlib.sha256(report.read_bytes()).hexdigest()
+    assert tau_params_hash(frozen) == "571509dd4ba7"
