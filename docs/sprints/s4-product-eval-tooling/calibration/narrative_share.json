@@ -1,0 +1,53 @@
+{
+  "version": "narrative-stratum-v1",
+  "commit": "73f391f36e83540770bb3198d229c135ae66f102",
+  "drain": {
+    "sim_th": 0.4,
+    "depth": 4,
+    "bucket_seconds": 30
+  },
+  "tau_n": 0.000164,
+  "tau_source": "median over RCAEval build cases with post-injection logs",
+  "build": {
+    "corpus": "build",
+    "windows": 495,
+    "seal_failed": 0,
+    "without_logs": 375,
+    "without_post_injection_logs": 0,
+    "without_pre_injection_logs": 0,
+    "with_share": 120,
+    "post_injection_lines": 4658096,
+    "novel_post_injection_lines": 70101,
+    "share_min": 0.0,
+    "share_quantiles": {
+      "p10": 0.0,
+      "p25": 0.0,
+      "p50": 0.000164,
+      "p75": 0.01494,
+      "p90": 0.046202
+    },
+    "share_max": 0.21796,
+    "narrative_heavy_at_tau": 60
+  },
+  "otel_build_v3_descriptive": {
+    "corpus": "otel_build_v3",
+    "windows": 63,
+    "seal_failed": 0,
+    "without_logs": 0,
+    "without_post_injection_logs": 0,
+    "without_pre_injection_logs": 0,
+    "with_share": 63,
+    "post_injection_lines": 295277,
+    "novel_post_injection_lines": 2860,
+    "share_min": 0.0,
+    "share_quantiles": {
+      "p10": 0.0,
+      "p25": 0.0,
+      "p50": 0.007662,
+      "p75": 0.014386,
+      "p90": 0.019402
+    },
+    "share_max": 0.04374,
+    "narrative_heavy_at_tau": 43
+  }
+}
