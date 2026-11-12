@@ -1,6 +1,6 @@
 # S4.11 Analysis suite — design (for owner approval)
 
-**Row:** S2-M9-ENG11 · **Effort:** 2 days · **Depends on:** S0.6 (analysis plan), S4.9 (`eval_score`, `eval_run`) · **Status:** draft, 2026-11-12
+**Row:** S2-M9-ENG11 · **Effort:** 2 days · **Depends on:** S0.6 (analysis plan), S4.9 (`eval_score`, `eval_run`) · **Status:** draft, 2026-11-12. Built on the recommended options (owner: "move to S4.11"); T-a and T-c await explicit approval, and both T-a readings and all three T-c modes are switches in `bin/analyse.py`
 
 ## 1. Scope and fixed inputs
 
@@ -123,3 +123,28 @@ One entry before merge records T-a to T-h as computational rules: the Holm readi
 | Binary HR@3 makes Wilcoxon a sign test | Reported as a finding; the test runs as registered |
 | BCa degenerate on near-constant differences | Point estimate without interval, with the reason |
 | Exploratory output mistaken for confirmatory | Guard plus "exploratory" labels on every output; tests |
+
+## 7. Exploratory build run (OTel build v3, 2026-11-12)
+
+All 8 confirmatory variants were run on the 63 OTel v3 build cases (504 runs, none excluded), scored into `eval_score` and `eval_run`, and analysed with `bin/analyse.py` (data-order Holm, A-H7 intersection-union). The guard labelled the output **exploratory** (corpus not the pool, no `build-freeze`). Build data, so this shows only that the suite works end to end and what the decisions change; it is not evidence.
+
+| Hypothesis | Comparison | Pairs | Discordant / non-zero | Means (a, b) | p (one-sided) | BCa of mean difference |
+|---|---|---|---|---|---|---|
+| A-H3 | Full vs D, HR@3 | 63 | 4 | 0.794, 0.762 | 0.3125 | −0.016 to 0.111 |
+| A-H7 | Full vs noLLM, H_fact + H_struct | — | — | — | untestable: no rater labels yet | — |
+| A-H1 | Full vs noLLM, HR@3 | 63 | 3 | 0.794, 0.746 | 0.125 | 0.016 to 0.127 |
+| A-H2 | Full vs LLM-only, HR@3 | 63 | 16 | 0.794, 0.698 | 0.105 | −0.016 to 0.222 |
+| A-H6 | Full vs G, narrative-heavy | — | — | — | untestable: stratum not computed in this run | — |
+| A-H5 | noRouter vs Full, log-CpR, matched HR@3 | 63 (63 of 63 matched) | 63 | 9.64, 8.10 | 4.4e-7 | 1.13 to 2.10 |
+| A-H4 | Full vs noConsensus, ambiguous | 39 | 2 | 0.744, 0.744 | 0.75 | −0.077 to 0.077 |
+| A-H8 | Full vs noStructural, HR@3 | 63 | 3 | 0.794, 0.810 | 0.875 | −0.079 to 0.032 |
+
+What it shows:
+
+- **T-a matters.** Under data-order Holm, A-H5 is below its threshold (its p is the smallest of the eight). Under the fixed-sequence reading nothing is, because A-H3 (rank 1) fails first and blocks every later hypothesis. Benjamini–Hochberg gives A-H5 too.
+- **T-b finding confirmed.** The HR@3 tests rest on very few discordant cases (2 to 16 of 63); the Hodges–Lehmann estimate is 0 for every one of them.
+- **A-H5 is the CpR finding again.** Its effect is larger on stopped runs (6 cases, mean difference 3.19) than on escalated ones (57, 1.38): the saving comes from earlier correct publication, valued at the opportunity rate.
+- **A-H1 split by escalation** (entry 69): the whole difference sits in the 57 escalated runs (mean 0.053); the 6 stopped runs differ by 0.
+- **Sensitivity rows ran.** Group-level Wilcoxon over 9 groups, rank mixed model (ICC about 0.36 to 0.50, all fits converged), BH.
+- **Sanity floors:** prior-only and HELIOS-D (HR@3 0.762) are reported; the random floor is empty because the OTel ground truth has no `candidate_services` list (RCAEval has it).
+- **Family B** is untestable until S4.8 runs the baselines; **Family E:** E-H2 (TTT, noRouter − Full, mean 14.2 s) and E-H10 are computed, the rest are not built or Stage B.

@@ -253,3 +253,18 @@ def test_e_h5_both_forms() -> None:
     assert out["same_case_form"]["n"] == 2
     assert out["same_case_form"]["mean_difference"] == pytest.approx(2)
     assert e_h5_forms({"a": 1}, {"b": 2})["same_case_form"] is None
+
+
+def test_untestable_reasons_name_the_missing_input() -> None:
+    # No H_fact anywhere (labels pending) and no narrative-heavy flag computed.
+    scores, runs = _merge(
+        _rows("HELIOS-Full", [1] * N),
+        _rows("HELIOS-noLLM", [1] * N),
+        _rows("HELIOS-G", [1] * N),
+    )
+    out = analyse(
+        scores, runs, expected_cases=N, groups={}, n_services={}, frozen=lambda: False
+    )
+    a = _by_id(out["family_a"])
+    assert "no values for h_fact" in a["A-H7"]["untestable"]
+    assert "narrative_heavy is empty" in a["A-H6"]["untestable"]

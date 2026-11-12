@@ -294,6 +294,15 @@ def _confirmatory_hypothesis(
         }
     n_pairs = min(len(v[2]) for v in per_key.values())
     base["n_pairs"] = n_pairs
+    if stratum is not None and not stratum:
+        return _untestable(base, f"stratum {h['stratum']} is empty or not computed")
+    missing = [
+        k
+        for k in keys
+        if not _values(table[a_name], k) or not _values(table[b_name], k)
+    ]
+    if missing:
+        return _untestable(base, f"no values for {', '.join(missing)} (not scored yet)")
     if n_expected == 0 or Fraction(n_pairs, n_expected) < CELL_INCLUSION:
         return _untestable(
             base, f"{n_pairs} of {n_expected} cases paired, below the cell rule"
