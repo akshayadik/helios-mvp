@@ -53,6 +53,8 @@ __all__ = [
     "LogTemplateFeatures",
     "extract_templates",
     "features_for_window",
+    "line_templates",
+    "read_window_logs",
     "template_id",
 ]
 
@@ -134,18 +136,13 @@ def _empty(skipped: int) -> LogTemplateFeatures:
     )
 
 
-def extract_templates(
-    logs: pd.DataFrame,
-    window_start_iso: str,
-    bucket_seconds: int = BUCKET_SECONDS,
-) -> LogTemplateFeatures:
-    """Mine templates from P3 log rows (timestamp, service_name, body).
+def line_templates(logs: pd.DataFrame) -> tuple[pd.DataFrame, int]:
+    """Assign each usable P3 log line its final template; also the skipped count.
 
-    Buckets are aligned to the window start. The input row order does not
-    affect the result.
+    Returns columns ts (UTC), service, body, template, template_id in the
+    canonical order (time, service, body), and the number of lines with an
+    empty body or no parsable timestamp. The input row order does not matter.
     """
-    if bucket_seconds <= 0:
-        raise ValueError("bucket_seconds must be positive")
     stamps = pd.to_datetime(
         logs["timestamp"], utc=True, format="ISO8601", errors="coerce"
     )
@@ -160,13 +157,33 @@ def extract_templates(
     skipped = int((~usable).sum())
     frame = frame[usable].sort_values(["ts", "service", "body"], kind="stable")
     if frame.empty:
-        return _empty(skipped)
+        frame = frame.assign(template=pd.Series(dtype="string"))
+        frame = frame.assign(template_id=pd.Series(dtype="string"))
+        return frame, skipped
 
     miner = _miner()
     clusters = [miner.add_log_message(b)["cluster_id"] for b in frame["body"]]
     final = {c.cluster_id: c.get_template() for c in miner.drain.clusters}
     frame["template"] = [final[c] for c in clusters]
     frame["template_id"] = frame["template"].map(template_id)
+    return frame, skipped
+
+
+def extract_templates(
+    logs: pd.DataFrame,
+    window_start_iso: str,
+    bucket_seconds: int = BUCKET_SECONDS,
+) -> LogTemplateFeatures:
+    """Mine templates from P3 log rows (timestamp, service_name, body).
+
+    Buckets are aligned to the window start. The input row order does not
+    affect the result.
+    """
+    if bucket_seconds <= 0:
+        raise ValueError("bucket_seconds must be positive")
+    frame, skipped = line_templates(logs)
+    if frame.empty:
+        return _empty(skipped)
 
     start = pd.Timestamp(window_start_iso)
     start = (
@@ -223,6 +240,21 @@ def features_for_window(
     ``root`` resolves repo-relative window paths. Confirmatory windows go
     through the pool lock first, as in CaptureReader.
     """
+    logs = read_window_logs(window, root, pool_lock)
+    if logs is None:
+        return None
+    return extract_templates(logs, window.window_start_iso, bucket_seconds)
+
+
+def read_window_logs(
+    window: TelemetryWindow,
+    root: Path,
+    pool_lock: Callable[[str], None] = require_unlocked,
+) -> pd.DataFrame | None:
+    """P3 log rows (timestamp, service_name, body) of a window; None without logs.
+
+    Confirmatory windows go through the pool lock first.
+    """
     if window.evaluation_phase == EvaluationPhase.CONFIRMATORY:
         pool_lock(window.incident_id)
     if window.p3_logs_path is None:
@@ -230,4 +262,5 @@ def features_for_window(
     path = Path(window.p3_logs_path)
     path = path if path.is_absolute() else root / path
     logs = pq.read_table(path, columns=["timestamp", "service_name", "body"])
-    return extract_templates(logs.to_pandas(), window.window_start_iso, bucket_seconds)
+    frame: pd.DataFrame = logs.to_pandas()
+    return frame

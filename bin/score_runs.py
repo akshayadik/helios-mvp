@@ -36,7 +36,14 @@ from helios.evaluation.scoring import (
     mean_scores,
     score_store,
 )
+from helios.evaluation.strata import (
+    load_inject_times,
+    load_tau,
+    narrative_heavy_by_incident,
+    novelty_share,
+)
 from helios.store.result_store import ResultStore
+from helios.telemetry.log_templates import read_window_logs
 from helios.telemetry.pool_lock import PoolLockedError
 from helios.telemetry.reader import CaptureReader
 from helios.vcl.config import VCLManifest  # noqa: F401  # flag-guard compliance
@@ -45,20 +52,47 @@ from helios.vcl.variants import CONFIRMATORY_VARIANTS
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
-def run_metrics(store: ResultStore, gt: GroundTruth, captures: Path) -> int:
+def narrative_strata(
+    reader: CaptureReader, incidents: set[str], gt: GroundTruth, key: bytes | None
+) -> dict[str, bool] | None:
+    """A-H6 stratum per incident once tau_N is frozen; None before (or no key)."""
+    tau = load_tau(REPO_ROOT)
+    if tau is None or key is None or gt.corpus == Corpus.CAPTURES:
+        return None
+    inject = load_inject_times(gt.corpus, root=REPO_ROOT, key=key)
+    shares: dict[str, float | None] = {}
+    for incident_id in sorted(incidents & inject.keys()):
+        logs = read_window_logs(reader.read(incident_id).window, REPO_ROOT)
+        counts = None if logs is None else novelty_share(logs, inject[incident_id])
+        shares[incident_id] = None if counts is None else counts.share
+    return narrative_heavy_by_incident(shares, tau)
+
+
+def run_metrics(
+    store: ResultStore, gt: GroundTruth, captures: Path, key: bytes | None = None
+) -> int:
     """Write eval_run; print counts and medians only (no case, no label)."""
     book = load_price_book()
     reader = CaptureReader(captures)
     incidents = {str(f["incident_id"]) for f in store.fetch_all_fusion_rows()}
     storage = {i: window_bytes(reader.read(i).window, REPO_ROOT) for i in incidents}
     full = CONFIRMATORY_VARIANTS["HELIOS-Full"].compute_variant_config_hash()
+    heavy = narrative_strata(reader, incidents, gt, key)
     report = score_run_metrics(
         store,
         gt,
         book,
         storage_bytes=storage,
         full_config_hash=full,
+        narrative_heavy=heavy,
     )
+    if heavy is None:
+        print("[metrics] narrative-heavy stratum: tau_N not frozen, left empty")
+    else:
+        print(
+            f"[metrics] narrative-heavy: {sum(heavy.values())} of {len(heavy)} "
+            "incidents with post-injection logs"
+        )
     rows = report.rows
 
     def median(key: str) -> float:
@@ -105,7 +139,7 @@ def score(db: Path, corpus: str, captures: Path | None = None) -> int:
         )
     if captures is not None:
         try:
-            run_metrics(store, gt, captures)
+            run_metrics(store, gt, captures, key)
         except PoolLockedError as exc:
             print(f"[metrics] refused: {exc}")
             store.close()
