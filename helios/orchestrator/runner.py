@@ -16,6 +16,7 @@ import contextlib
 import datetime as dt
 import time
 import uuid
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -95,6 +96,7 @@ from helios.telemetry.trigger import (
 )
 from helios.vcl.decorators import GatedComponentInactiveError, set_current_manifest
 from helios.vcl.snapshot_registry import DuplicateSnapshotError, SnapshotRegistry
+from helios.vcl.utils import canonical_json
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Collection, Mapping
@@ -111,7 +113,7 @@ if TYPE_CHECKING:
     from helios.schemas.ueg_c import UEGCSnapshot
     from helios.vcl.config import VCLManifest
 
-__all__ = ["RunOrchestrator", "incident_graph"]
+__all__ = ["RunOrchestrator", "RunOutcome", "incident_graph", "run_covariates"]
 
 HELIOS_ENABLE_ORCHESTRATOR: bool = True
 
@@ -125,6 +127,48 @@ _ANALYTIC_CONSEQUENCE = (
     "C1 gate failure — incident excluded from analysis; "
     "see exclusion_ledger.jsonl for details"
 )
+
+
+@dataclass(frozen=True)
+class RunOutcome:
+    """What one run produced (S4.10 O-c): passed or excluded at the gate."""
+
+    outcome: str
+    gate_check: str | None
+    covariates: dict[str, Any]
+
+
+_STREAM_FIELDS = (
+    "p1_metrics_path",
+    "p2_traces_path",
+    "p3_logs_path",
+    "p4_events_path",
+    "p5_profiles_path",
+)
+
+
+def run_covariates(
+    window: TelemetryWindow,
+    trigger: TriggerRecord,
+    signal: SignalType | None,
+    routing: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Label-free covariates of a run (S4.10 O-d). Never ground truth."""
+    present = [f for f in _STREAM_FIELDS if getattr(window, f, None)]
+    size = 0
+    for f in present:
+        path = _REPO_ROOT / str(getattr(window, f))
+        if path.is_file():
+            size += path.stat().st_size
+    return {
+        "modalities": [f.split("_")[0] for f in present],
+        "window_bytes": size,
+        "signal": None if signal is None else signal.value,
+        "trigger_source": str(trigger.source),
+        "suspects": len(trigger.suspects),
+        "escalated": routing.get("escalate"),
+        "llm_unavailable": routing.get("llm_unavailable"),
+    }
 
 
 class MissingSigningKeyError(RuntimeError):
@@ -267,39 +311,99 @@ class RunOrchestrator:
             return self._external[window.incident_id]
         return detect(window, self._detector)
 
-    def run(self, corpus: Path, incidents: Collection[str] | None = None) -> None:
-        """Process every incident in corpus through the full C1 path, or only
-        those named in ``incidents`` (a build round's split, S2.8)."""
+    @property
+    def config_hash(self) -> str:
+        """This orchestrator's variant_config_hash."""
+        return self._config_hash
+
+    def discard_run(self, run_id: str) -> int:
+        """Remove an unfinished run's rows before it is re-run (S4.10 O-i)."""
+        return self._store.delete_run(run_id)
+
+    def prepare(self) -> None:
+        """Checks that stop a run before any incident writes."""
         if self._manifest.l2c_llm:
             verify_model(self._lpipe_client)  # entry 58: before any incident writes
         self._coe.check_append()  # S2.7: a ledger we cannot extend stops the run here
+
+    def run(self, corpus: Path, incidents: Collection[str] | None = None) -> None:
+        """Process every incident in corpus through the full C1 path, or only
+        those named in ``incidents`` (a build round's split, S2.8)."""
+        self.prepare()
         for incident_id in CorpusLoader(corpus).incident_ids():
             if incidents is None or incident_id in incidents:
-                self._process_incident(incident_id)
+                self.run_incident(incident_id, str(uuid.uuid4()))
 
-    def _process_incident(self, incident_id: str) -> None:
-        run_id = str(uuid.uuid4())
+    def run_incident(
+        self,
+        incident_id: str,
+        run_id: str,
+        context: Mapping[str, str] | None = None,
+    ) -> RunOutcome:
+        """One run of this variant on one incident (S4.10 O-c).
 
+        Every result-store write of the run commits together; an exception
+        rolls them back and propagates, so the campaign decides between retry
+        and exclusion. ``context`` (phase, corpus, attempt, schedule digest)
+        is written into any exclusion entry.
+        """
+        set_current_manifest(self._manifest)
+        with self._store.transaction():
+            return self._process_incident(incident_id, run_id, dict(context or {}))
+
+    def _exclude_unread(
+        self,
+        run_id: str,
+        incident_id: str,
+        context: dict[str, str],
+        *,
+        gate_check: str,
+        reason: str,
+    ) -> RunOutcome:
+        """A capture that fails its hash or seal (contract §1: an exclusion)."""
+        self._exclusion_ledger.append(
+            {
+                **context,
+                "variant_config_hash": self._config_hash,
+                "snapshot_hash": "UNKNOWN",
+                "run_id": run_id,
+                "incident_id": incident_id,
+                "gate_check": gate_check,
+                "reason": reason,
+                "analytic_consequence": _ANALYTIC_CONSEQUENCE,
+                "covariates": "{}",
+            }
+        )
+        self._reconciliation.record(
+            run_id=run_id,
+            incident_id=incident_id,
+            variant_config_hash=self._config_hash,
+            outcome="excluded",
+            gate_check=gate_check,
+        )
+        return RunOutcome("excluded", gate_check, {})
+
+    def _process_incident(
+        self, incident_id: str, run_id: str, context: dict[str, str]
+    ) -> RunOutcome:
         verification = self._reader.read(incident_id)
         if not verification.hash_matches:
-            self._reconciliation.record(
-                run_id=run_id,
-                incident_id=incident_id,
-                variant_config_hash=self._config_hash,
-                outcome="skipped",
+            return self._exclude_unread(
+                run_id,
+                incident_id,
+                context,
                 gate_check="capture_hash_mismatch",
+                reason="capture window_hash does not match its manifest",
             )
-            return
         # Parquet bytes are outside window_hash; the content seal covers them.
         if not verification.content_intact:
-            self._reconciliation.record(
-                run_id=run_id,
-                incident_id=incident_id,
-                variant_config_hash=self._config_hash,
-                outcome="skipped",
+            return self._exclude_unread(
+                run_id,
+                incident_id,
+                context,
                 gate_check="capture_seal_invalid",
+                reason="capture content seal missing or not matching",
             )
-            return
 
         window = verification.window
         snapshot_hash = window.compute_window_hash()
@@ -534,11 +638,13 @@ class RunOrchestrator:
         else:
             fused = run_vote_only(verdicts, latency_ms=latency_ms, sched=sched)
 
+        covariates = run_covariates(window, trigger, signal, routing)
         gate = MetricIntegrityGate.from_manifest(
             self._manifest,
             ledger=self._exclusion_ledger,
             run_id=run_id,
             analytic_consequence=_ANALYTIC_CONSEQUENCE,
+            extra={**context, "covariates": canonical_json(covariates)},
         )
         rows = [v.model_dump() for v in verdicts]
         gate_result = gate.check_consistency(rows, incident_id=incident_id)
@@ -598,14 +704,15 @@ class RunOrchestrator:
                 variant_config_hash=self._config_hash,
                 outcome="passed",
             )
-        else:
-            self._reconciliation.record(
-                run_id=run_id,
-                incident_id=incident_id,
-                variant_config_hash=self._config_hash,
-                outcome="excluded",
-                gate_check=gate_result.gate_check or "",
-            )
+            return RunOutcome("passed", None, covariates)
+        self._reconciliation.record(
+            run_id=run_id,
+            incident_id=incident_id,
+            variant_config_hash=self._config_hash,
+            outcome="excluded",
+            gate_check=gate_result.gate_check or "",
+        )
+        return RunOutcome("excluded", gate_result.gate_check, covariates)
 
     def _parameter_hashes(
         self, trigger: TriggerRecord, lpipe_evidence: Mapping[str, Any] | None = None

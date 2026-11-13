@@ -21,6 +21,7 @@ from helios.vcl.variants import CONFIRMATORY_VARIANTS
 
 N = 10
 CASES = [f"c{i:02d}" for i in range(N)]
+APPS = dict.fromkeys(CASES, "OB")
 
 
 def _hash(name: str) -> str:
@@ -150,7 +151,7 @@ def test_family_a_on_build_data_is_exploratory_and_hand_computed() -> None:
     out = analyse(
         scores,
         runs,
-        expected_cases=N,
+        apps=APPS,
         groups=groups,
         n_services=dict.fromkeys(CASES, 10),
         frozen=lambda: False,
@@ -189,7 +190,7 @@ def test_family_a_on_build_data_is_exploratory_and_hand_computed() -> None:
 def test_a_h7_modes_and_holm_reading_switch() -> None:
     scores, runs = _family_a_fixture()
     kwargs: dict[str, Any] = {
-        "expected_cases": N,
+        "apps": APPS,
         "groups": {},
         "n_services": {},
         "frozen": lambda: False,
@@ -213,7 +214,7 @@ def test_cell_rule_makes_a_short_pair_set_untestable() -> None:
         _rows("HELIOS-D", [0] * 7, cases=CASES[:7]),
     )
     out = analyse(
-        scores, runs, expected_cases=N, groups={}, n_services={}, frozen=lambda: False
+        scores, runs, apps=APPS, groups={}, n_services={}, frozen=lambda: False
     )
     a3 = _by_id(out["family_a"])["A-H3"]
     assert a3["p_value"] is None
@@ -226,7 +227,7 @@ def test_confirmatory_label_uses_rejected_wording() -> None:
         _rows("HELIOS-D", [0] * N, corpus="pool"),
     )
     out = analyse(
-        scores, runs, expected_cases=N, groups={}, n_services={}, frozen=lambda: True
+        scores, runs, apps=APPS, groups={}, n_services={}, frozen=lambda: True
     )
     assert out["label"] == "confirmatory"
     holm = {r["id"]: r for r in out["family_a"]["holm_binding"]}
@@ -263,8 +264,59 @@ def test_untestable_reasons_name_the_missing_input() -> None:
         _rows("HELIOS-G", [1] * N),
     )
     out = analyse(
-        scores, runs, expected_cases=N, groups={}, n_services={}, frozen=lambda: False
+        scores, runs, apps=APPS, groups={}, n_services={}, frozen=lambda: False
     )
     a = _by_id(out["family_a"])
     assert "no values for h_fact" in a["A-H7"]["untestable"]
     assert "narrative_heavy is empty" in a["A-H6"]["untestable"]
+
+
+def test_failing_cell_narrows_the_hypothesis_to_the_passing_system() -> None:
+    # 5 OB + 5 TT cases. HELIOS-D has all OB cases but only 3 of 5 TT
+    # (3/5 < 4/5): A-H3 is tested on OB only -> 5 discordant pairs, p = 2^-5.
+    apps = {c: ("OB" if i < 5 else "TT") for i, c in enumerate(CASES)}
+    scores, runs = _merge(
+        _rows("HELIOS-Full", [1] * N),
+        _rows("HELIOS-D", [0] * 8, cases=CASES[:8]),
+    )
+    cov = {
+        c: {"app": apps[c], "fault": "cpu" if i % 2 else "mem"}
+        for i, c in enumerate(CASES)
+    }
+    out = analyse(
+        scores,
+        runs,
+        apps=apps,
+        groups={},
+        n_services={},
+        frozen=lambda: False,
+        covariates=cov,
+    )
+    a3 = _by_id(out["family_a"])["A-H3"]
+    assert a3["apps_tested"] == {"hr_at_3": ["OB"]}
+    assert a3["p_value"] == pytest.approx(2**-5)
+    md = a3["sensitivity"]["missing_data"]
+    # Scheduled pairs 10, complete (OB) 5: 5 missing, all TT -> descriptive.
+    assert md["mcar"]["n_missing"] == 5
+    assert md["mcar"]["covariates"]["app"]["counts"]["TT"] == {"missing": 5, "total": 5}
+    assert md["ipw"]["n_complete"] == 5
+    failed = [c for c in out["cells"] if not c["passes"] and c["metric"] == "hr_at_3"]
+    assert [(c["system"], c["app"]) for c in failed] == [("HELIOS-D", "TT")]
+
+
+def test_schedule_sets_the_cell_denominator() -> None:
+    # Scheduled only on the 7 cases it has: the cell passes, A-H3 is testable.
+    scores, runs = _merge(
+        _rows("HELIOS-Full", [1] * N),
+        _rows("HELIOS-D", [0] * 7, cases=CASES[:7]),
+    )
+    out = analyse(
+        scores,
+        runs,
+        apps=APPS,
+        groups={},
+        n_services={},
+        frozen=lambda: False,
+        scheduled={"HELIOS-Full": CASES, "HELIOS-D": CASES[:7]},
+    )
+    assert _by_id(out["family_a"])["A-H3"]["p_value"] == pytest.approx(2**-7)

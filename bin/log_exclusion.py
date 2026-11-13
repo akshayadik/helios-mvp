@@ -3,7 +3,10 @@
 
 Records runtime metric-integrity-gate failures (§3.6.8). Each entry is
 HMAC-SHA256 chained identically to the deviation log. Written by the
-metric integrity gate (Stage 1+) or this CLI for manual entries.
+metric integrity gate and the run campaign (S4.10, helios/orchestrator/
+campaign.py), or by this CLI for manual entries. The repo-root ledger is the
+confirmatory pool campaign's; every other campaign keeps its own ledger in its
+campaign directory (S4.10 O-d).
 
 Schema (§3.6.8):
     timestamp_utc:        ISO-8601 with Z suffix (UTC)
@@ -17,6 +20,11 @@ Schema (§3.6.8):
     reason:               Human-readable explanation
     analytic_consequence: Which runs / hypothesis is affected
     signature:            HMAC-SHA256 hex over canonical JSON of all above fields
+
+Optional signed fields (S4.10 O-d, written by campaigns): phase, corpus, app
+(benchmark system), system (variant or baseline), seed, attempt,
+schedule_digest, metric (score-time exclusions) and covariates (canonical JSON
+of label-free run covariates; ground truth is never written here).
 """
 
 from __future__ import annotations
@@ -77,13 +85,15 @@ def main() -> int:
     parser.add_argument("--gate-check")
     parser.add_argument("--reason")
     parser.add_argument("--analytic-consequence")
+    parser.add_argument("--metric", help="exclude the run for this metric only")
+    parser.add_argument("--log-file", type=Path, default=LOG_FILE)
 
     sub.add_parser("verify", help="Verify the entire HMAC chain.")
 
     args = parser.parse_args()
 
     if args.cmd == "verify":
-        ledger = ExclusionLedger(key=load_key(), log_path=LOG_FILE)
+        ledger = ExclusionLedger(key=load_key(), log_path=args.log_file)
         # Required even for an empty log: deleting log + anchor together
         # must not read as a fresh, valid log.
         if not ledger.anchor_path.exists():
@@ -116,7 +126,9 @@ def main() -> int:
         "reason": args.reason,
         "analytic_consequence": args.analytic_consequence,
     }
-    ledger = ExclusionLedger(key=load_key(), log_path=LOG_FILE)
+    if args.metric:
+        fields["metric"] = args.metric
+    ledger = ExclusionLedger(key=load_key(), log_path=args.log_file)
     entry = ledger.append(fields)
     print(
         f"✅ Exclusion logged: {entry['run_id']} | gate={entry['gate_check']}"

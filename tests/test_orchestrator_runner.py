@@ -117,7 +117,8 @@ class TestRunOrchestrator:
         ok, msg = rec.verify()
         assert ok, msg
 
-    def test_tampered_capture_is_skipped(self, tmp_path: Path) -> None:
+    def test_tampered_capture_is_excluded(self, tmp_path: Path) -> None:
+        # S4.10 O-c: a hash failure is an exclusion (contract §1), not a skip.
         captures = tmp_path / "captures"
         _make_capture(captures, "inc-001")
         mpath = captures / "inc-001" / "manifest.json"
@@ -131,7 +132,13 @@ class TestRunOrchestrator:
         row = json.loads(
             (tmp_path / "reconciliation.jsonl").read_text().splitlines()[0]
         )
-        assert row["outcome"] == "skipped"
+        assert (row["outcome"], row["gate_check"]) == (
+            "excluded",
+            "capture_hash_mismatch",
+        )
+        entry = orch._exclusion_ledger.append.call_args.args[0]  # type: ignore[attr-defined]
+        assert entry["gate_check"] == "capture_hash_mismatch"
+        assert entry["snapshot_hash"] == "UNKNOWN"
 
     def test_three_pipeline_verdicts_inserted_per_incident(
         self, tmp_path: Path

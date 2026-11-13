@@ -1,6 +1,6 @@
 # S4.10 Run orchestrator and integrity — design (for owner approval)
 
-**Row:** S2-M9-ENG10 · **Effort:** 1½–2 days · **Depends on:** S4.9 (`eval_score`, `eval_run`), S4.11 (reads the cell table) · **Status:** draft 2026-11-13, decisions O-a to O-j open
+**Row:** S2-M9-ENG10 · **Effort:** 1½–2 days · **Depends on:** S4.9 (`eval_score`, `eval_run`), S4.11 (reads the cell table) · **Status:** approved 2026-11-13 (O-a to O-j as recommended); deviation entry to follow
 
 ## 1. Scope and fixed inputs
 
@@ -148,3 +148,43 @@ The hypotheses, metrics, analysis plan, metric contract and variant hashes are u
 
 - O-e (a) versus (b): whether a system-level failure narrows a hypothesis or voids it.
 - O-g: stride selection from the random opaque order instead of a separate seeded draw.
+
+## 7. Implementation notes and the build dry run (2026-11-13)
+
+### Where the build differs in detail from §3
+
+- **Retries are logged in the campaign log** (`campaign_log.jsonl`: started, retry, passed, excluded, discarded, stopped, metric_excluded), not as a reconciliation outcome; the reconciliation ledger's outcome set is unchanged. Each HELIOS variant writes its own reconciliation ledger in `reconciliation/`.
+- **Descriptive MCAR branch:** Fisher's exact test only for two-level covariates (the benchmark system). Fault type has more than two levels; scipy's exact test for larger tables resamples at random, which would need a seed outside the register, so it gets per-level counts only. The logistic branch also needs at least 10 complete pairs, not just 10 missing ones.
+- **Covariates:** run time writes modalities, window bytes, signal type, trigger source, number of suspects, escalation and `llm_unavailable`. The analysis uses benchmark system, fault type (signed ground truth) and window bytes; "observed services" is left out because the build ground truth has no candidate-service list.
+- **Determinism flag:** `compare` writes `determinism.json` (per run: equal or not, and which part differs). Joining it into `eval_run` as a covariate is left to the S5.3 pilot, so the S4.9 tables stay as they are.
+- **Baselines:** the schedule holds their 1,200 slots now; `run` skips the phase until S4.8 supplies an executor.
+- **Scoring stays a separate step** (`bin/score_runs.py --metrics`); `helios_campaign.py cells` refuses to run on an unscored store.
+
+### O-j (1): full schedule on fixtures
+
+`tests/orchestrator/test_campaign.py::test_full_schedule_dry_run_on_fixtures`: 240 opaque cases, two benchmark systems, 4,032 specs (1,920 + 1,200 + 720 + 192), with a stub executor for every system:
+- 30 gate exclusions on one variant's TT cases make exactly that variant's TT cells fail and leave its OB cells passing;
+- an infrastructure error is retried and passes;
+- a run error is excluded with a ledger entry while the campaign continues;
+- a simulated crash, then a resume that discards the unfinished run and finishes every spec.
+
+The schedule tests check the counts, the seeds (registered, unique outside the rerun), the noRouter-first case order, the stride subsets (24 rerun cases, 60 E-H5 cases) and that regenerating the schedule gives a byte-identical digest.
+
+### O-j (2): real execution on OTel build v3 (exploratory, cache-only client)
+
+| Item | Result |
+|---|---|
+| Schedule | digest `076c02bf1712`: 504 confirmatory, 315 baseline, 189 exploratory, 48 rerun specs; HIS3, noCogni, noFGSV, noIOL refused (no flag reader) |
+| Confirmatory phase | 504 of 504 passed, no retry, no exclusion; 12 minutes |
+| Exploratory phase | 189 of 189 passed (noACP, noReconcile, noExpl) |
+| Equivalence with the S4.11 build run | `eval_score` identical row for row (1,596 rows). `eval_run` differs only in live-measured timing: graph build (median 13 ms), TTT, TTCD, and through TTCD the CpR opportunity component. `narrative_heavy` differs because the S4.11 scratch run was scored without the τ_N wiring (all NULL); the campaign was scored by `bin/score_runs.py` (344 of 504 runs heavy = 43 of 63 cases × 8) |
+| Cells | 112 cells, 64 below the rule: 35 baseline (not built), 21 exploratory (not scored into the case table), 8 H_fact (no labels) |
+| Ledgers | campaign exclusion ledger and 13 reconciliation ledgers verify (`verify_ledgers.py --campaign`) |
+| Determinism rerun | **not run**: it bypasses the cache, so it needs the live model. Its comparison is implemented (`compare`) |
+
+### Finding for the chair call (with the CpR item)
+
+**A-H5 is sensitive to timing noise.** The two build runs differ only in live-measured timing, yet A-H5's exact Wilcoxon statistic moved from T+ = 1,689 to 1,631 and its p from 4.4e-7 to 4.4e-6. CpR's opportunity component follows the measured TTCD, and Full and noRouter differ little on many cases, so millisecond noise reorders their ranks. It does not change the build reading (both are far below threshold), but on the pool a borderline A-H5 could flip between two runs of the same campaign. The determinism rerun checks token sequences, not timing. Options for the call:
+- (a) Keep it as registered and report the spread.
+- (b) Replay the graph-build time from the first run of the case, as is already done for L-pipe calls.
+- (c) Use the CpR-without-opportunity column (entry 86, exploratory) as a sensitivity row.
