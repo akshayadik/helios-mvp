@@ -1,6 +1,6 @@
 # S4.10 Run orchestrator and integrity — design (for owner approval)
 
-**Row:** S2-M9-ENG10 · **Effort:** 1½–2 days · **Depends on:** S4.9 (`eval_score`, `eval_run`), S4.11 (reads the cell table) · **Status:** approved 2026-11-13 (O-a to O-j as recommended); deviation entry to follow
+**Row:** S2-M9-ENG10 · **Effort:** 1½–2 days · **Depends on:** S4.9 (`eval_score`, `eval_run`), S4.11 (reads the cell table) · **Status:** approved 2026-11-13 (O-a to O-j as recommended); deviation entry 87 (b235a523a6f2)
 
 ## 1. Scope and fixed inputs
 
