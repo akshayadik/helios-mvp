@@ -278,3 +278,41 @@ No hypothesis, comparator, metric, alpha or Holm rank changes.
    - The recommendation, for the record, was (b), It changes no scoring rule, it is the minimal change that lets the method run on the data it was written for, and failures-as-misses (B-f) stays a sensitivity row.
 2. **Multi-source BARO fails at trigger time on 13 cases** (`IndexError`) when HELIOS's trigger falls near the edge of the window, leaving one side empty. It affects only the B-b sensitivity row, and is reported there.
 3. **Multi-source RCD returns two services per case.** RCD returns a partial candidate set by design, which explains its low HR@3; RCAEval's own `--report-decomposition` notes this. No change.
+
+### After the TraceRCA decision: OTel build v3 campaign `camp_v3c` (schedule-v2, digest `ff89b57c75f6`)
+
+The adapter digest is part of every baseline's config hash, so the campaign was rerun from scratch.
+
+- **Runs:**
+  - 504 confirmatory runs (cache-only), all passed;
+  - **315 of 315 baseline runs passed**: TraceRCA now runs on all 63 cases;
+  - 315 trigger-time runs: 302 passed and 13 excluded (Multi-source BARO, the window-edge `IndexError`).
+- **TraceRCA:** HR@3 0.238 (n = 63), trigger time 0.222.
+
+**Family B (exploratory label):**
+
+| | n | p |
+|---|---|---|
+| B-H1 | 63 | 2.4e-4 |
+| B-H2 | 63 | 1.5e-11 |
+| B-H3 | 63 | 9.7e-9 |
+| B-H4 | 63 | 7.0e-7 |
+| B-H5 | 63 | 5.0e-12 |
+| B-H7 | 63 | 0.15 |
+| B-H6 | 63 | 0.097 |
+| B-H8 | 63 | 0.0019 |
+
+- **B-H6 and B-H7 moved** from the first campaign (0.073 and 0.13). The baselines' measured times didn't cause it; HELIOS's live timings differ between campaigns, the same timing-noise effect as on A-H5 (S4.10 §7).
+- **Sensitivity rows:**
+  - trigger time: B-H2 to B-H5 testable and below threshold, the rest untestable (Multi-source BARO's trigger cell at 50 of 63);
+  - no human time: B-H7 p = 0.68;
+  - failures as misses: not reported, because no binding baseline run was excluded.
+
+### Determinism rerun with the baselines (B-g; `camp_v3b`, live model)
+
+- **Runs:** 78 reruns: 77 passed, and 1 TraceRCA run was excluded (before the decision).
+- **Pairs compared:** 55. **0 non-deterministic:**
+  - all 25 baseline pairs identical, Multi-source RCD included, so the registered seed fixes RCD's output;
+  - 15 HELIOS pairs fully identical;
+  - 15 HELIOS pairs with a narrative not comparable, because the cache-only first run had no narrator answer.
+- **Why only 30 HELIOS pairs:** `camp_v3b` never ran its exploratory phase, so 18 exploratory reruns had no first run to compare against.
