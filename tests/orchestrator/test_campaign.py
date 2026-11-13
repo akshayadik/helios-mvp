@@ -7,7 +7,12 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from helios.orchestrator.campaign import MAX_RETRIES, Campaign, read_log
+from helios.orchestrator.campaign import (
+    MAX_RETRIES,
+    Campaign,
+    compare_rerun,
+    read_log,
+)
 from helios.orchestrator.runner import RunOutcome
 from helios.orchestrator.schedule import Phase, build_schedule
 from helios.pipelines.l_pipe.ollama_client import OllamaConnectionError
@@ -251,3 +256,41 @@ def test_full_schedule_dry_run_on_fixtures(tmp_path: Path) -> None:
     assert not cells[cell_key("HELIOS-noStructural", "TT", "hr_at_3")].passes
     assert cells[cell_key("HELIOS-noStructural", "OB", "hr_at_3")].passes
     assert cells[cell_key("HELIOS-G", "TT", "hr_at_3")].passes  # 119 of 120
+
+
+def test_rerun_comparison_ignores_operational_fields() -> None:
+    ev = {"workers": {"log": {"wall_ms": 4782, "cache_hit": True, "picks": ["a"]}}}
+    again = {"workers": {"log": {"wall_ms": 4691, "cache_hit": False, "picks": ["a"]}}}
+    narr = {"fallbacks": 0, "rendered": "x", "wall_ms": 3}
+    first = {"fused": ["a", "b"], "lpipe": ev, "narrative": narr}
+    same = {"fused": ["a", "b"], "lpipe": again, "narrative": dict(narr, wall_ms=9)}
+    assert compare_rerun(first, same) == {"differs": [], "not_comparable": []}
+    changed = {"workers": {"log": {"wall_ms": 1, "cache_hit": False, "picks": ["b"]}}}
+    out = compare_rerun(first, dict(same, lpipe=changed, fused=["b", "a"]))
+    assert out["differs"] == ["fused", "lpipe"]
+
+
+def _narr(text: str, *reasons: str) -> dict[str, Any]:
+    slot = {"fallback": bool(reasons), "rejections": [[-1, r] for r in reasons]}
+    return {"rendered": text, "slots": {"story": slot}}
+
+
+def test_rerun_comparison_of_narratives() -> None:
+    base: dict[str, Any] = {"fused": [], "lpipe": None}
+    ok = dict(base, narrative=_narr("model text"))
+    no_answer = dict(base, narrative=_narr("template", "model_error", "model_error"))
+    rejected = dict(base, narrative=_narr("template", "unknown_pick", "model_error"))
+    none = dict(base, narrative=None)
+    # No model answer on one side (cache miss, outage): nothing to compare.
+    assert compare_rerun(no_answer, ok) == {
+        "differs": [],
+        "not_comparable": ["narrative"],
+    }
+    # A model answer rejected on one side only is a real difference.
+    assert compare_rerun(rejected, ok)["differs"] == ["narrative"]
+    assert compare_rerun(ok, dict(base, narrative=_narr("other")))["differs"] == [
+        "narrative"
+    ]
+    assert compare_rerun(no_answer, no_answer)["differs"] == []
+    assert compare_rerun(none, ok)["differs"] == ["narrative"]
+    assert compare_rerun(none, none)["differs"] == []

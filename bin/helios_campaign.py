@@ -40,7 +40,7 @@ from helios.analysis.run import build_case_table, variant_names
 from helios.evaluation.cells import cell_table, missing_metrics
 from helios.evaluation.cost import load_price_book
 from helios.evaluation.scoring import GROUND_TRUTH_FILES, Corpus
-from helios.orchestrator.campaign import Campaign, read_log
+from helios.orchestrator.campaign import Campaign, compare_rerun, read_log
 from helios.orchestrator.runner import RunOrchestrator
 from helios.orchestrator.schedule import (
     Phase,
@@ -326,44 +326,44 @@ def cmd_compare(args: argparse.Namespace, key: bytes) -> int:
             f"{Phase.CONFIRMATORY}/{s['case']}/{s['system']}"
         ) or final.get(f"{Phase.EXPLORATORY}/{s['case']}/{s['system']}")
         again = final.get(f"{Phase.RERUN}/{s['case']}/{s['system']}")
-        if not first or not again or "passed" not in (first["event"], again["event"]):
-            continue
+        if not (first and again) or {first["event"], again["event"]} != {"passed"}:
+            continue  # compare only when both runs passed
         a, b = first["run_id"], again["run_id"]
-        parts = {
-            "fused": (_ranked(main.fetch_fusion(a)), _ranked(rerun.fetch_fusion(b))),
-            "narrative": (
-                _text(main.fetch_narrative(a)),
-                _text(rerun.fetch_narrative(b)),
-            ),
-            "lpipe": (
-                main.fetch_evidence(a, "lpipe"),
-                rerun.fetch_evidence(b, "lpipe"),
-            ),
-        }
-        differ = sorted(k for k, (x, y) in parts.items() if x != y)
+        result = compare_rerun(
+            {
+                "fused": _ranked(main.fetch_fusion(a)),
+                "lpipe": main.fetch_evidence(a, "lpipe"),
+                "narrative": main.fetch_narrative(a),
+            },
+            {
+                "fused": _ranked(rerun.fetch_fusion(b)),
+                "lpipe": rerun.fetch_evidence(b, "lpipe"),
+                "narrative": rerun.fetch_narrative(b),
+            },
+        )
         rows.append(
             {
                 "run_id": a,
                 "rerun_id": b,
                 "system": s["system"],
-                "nondeterministic": bool(differ),
-                "differs": differ,
+                "nondeterministic": bool(result["differs"]),
+                **result,
             }
         )
     main.close()
     rerun.close()
     (args.dir / "determinism.json").write_text(json.dumps(rows, indent=1) + "\n")
     n_bad = sum(r["nondeterministic"] for r in rows)
-    print(f"[campaign] determinism: {len(rows)} pairs compared, {n_bad} not equal")
+    n_nc = sum(bool(r["not_comparable"]) for r in rows)
+    print(
+        f"[campaign] determinism: {len(rows)} pairs compared, {n_bad} not equal, "
+        f"{n_nc} with a narrative not comparable (no model answer on one side)"
+    )
     return 0
 
 
 def _ranked(fusion: dict[str, Any] | None) -> Any:
     return None if fusion is None else fusion.get("ranked")
-
-
-def _text(narrative: dict[str, Any] | None) -> Any:
-    return None if narrative is None else narrative.get("rendered")
 
 
 def main(argv: list[str] | None = None) -> int:

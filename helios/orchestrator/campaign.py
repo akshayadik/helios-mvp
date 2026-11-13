@@ -55,11 +55,15 @@ if TYPE_CHECKING:
 __all__ = [
     "INFRASTRUCTURE_ERRORS",
     "MAX_RETRIES",
+    "NO_ANSWER_REASON",
+    "OPERATIONAL_KEYS",
     "STOP_ERRORS",
     "Campaign",
     "CampaignState",
     "Executor",
+    "compare_rerun",
     "read_log",
+    "strip_operational",
 ]
 
 HELIOS_ENABLE_ORCHESTRATOR: bool = True
@@ -306,3 +310,64 @@ class Campaign:
             }
         )
         return "excluded"
+
+
+# ── determinism rerun (O-g) ─────────────────────────────────────────────────
+
+# Per-call measurements and bookkeeping that legitimately differ between a run
+# and its rerun (the rerun bypasses the cache by design); never model output.
+OPERATIONAL_KEYS: frozenset[str] = frozenset({"wall_ms", "cache_hit"})
+
+
+def strip_operational(value: Any) -> Any:
+    """``value`` without ``OPERATIONAL_KEYS``, at any depth."""
+    if isinstance(value, dict):
+        return {
+            k: strip_operational(v)
+            for k, v in value.items()
+            if k not in OPERATIONAL_KEYS
+        }
+    if isinstance(value, list):
+        return [strip_operational(v) for v in value]
+    return value
+
+
+NO_ANSWER_REASON = "model_error"
+
+
+def _no_answer(narrative: Mapping[str, Any]) -> bool:
+    """A slot fell back to the template without any model answer to judge
+    (every rejection is a model error: a cache miss, timeout or outage)."""
+    for slot in (narrative.get("slots") or {}).values():
+        reasons = [r[1] for r in slot.get("rejections", [])]
+        if slot.get("fallback") and reasons and set(reasons) == {NO_ANSWER_REASON}:
+            return True
+    return False
+
+
+def compare_rerun(
+    first: Mapping[str, Any], again: Mapping[str, Any]
+) -> dict[str, list[str]]:
+    """Compare one run with its rerun: fused list, L-pipe evidence, narrative.
+
+    Each side maps ``fused`` (ranked list), ``lpipe`` (evidence) and
+    ``narrative`` (the stored narrative record or None). Rendered narratives
+    that differ are ``not_comparable`` when either side has a slot that got no
+    model answer at all (``_no_answer``): there is no token sequence to compare.
+    A slot whose model answers were rejected differently is a real difference.
+    """
+    differs: list[str] = []
+    not_comparable: list[str] = []
+    if first.get("fused") != again.get("fused"):
+        differs.append("fused")
+    if strip_operational(first.get("lpipe")) != strip_operational(again.get("lpipe")):
+        differs.append("lpipe")
+    na, nb = first.get("narrative"), again.get("narrative")
+    if (na is None) != (nb is None):
+        differs.append("narrative")
+    elif na is not None and nb is not None and na.get("rendered") != nb.get("rendered"):
+        if _no_answer(na) or _no_answer(nb):
+            not_comparable.append("narrative")
+        else:
+            differs.append("narrative")
+    return {"differs": differs, "not_comparable": not_comparable}
