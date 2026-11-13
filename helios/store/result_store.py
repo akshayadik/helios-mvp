@@ -6,6 +6,7 @@ VCLManifest provides variant_config_hash; inclusion_rate() supports C1 gate (§5
 
 from __future__ import annotations
 
+import contextlib
 import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -15,7 +16,7 @@ import duckdb
 from helios.vcl.utils import canonical_json
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Iterator, Mapping
 
     from helios.consensus.mahc import FusedVerdict
     from helios.consensus.verdict import ConsensusVerdict
@@ -549,6 +550,40 @@ class ResultStore:
         cur = self._con.execute("SELECT * FROM eval_run ORDER BY run_id")
         cols = [d[0] for d in cur.description or []]
         return [dict(zip(cols, row, strict=False)) for row in cur.fetchall()]
+
+    # ------------------------------------------------------------------
+    # Run atomicity (S4.10 O-c, O-i)
+    # ------------------------------------------------------------------
+
+    @contextlib.contextmanager
+    def transaction(self) -> Iterator[None]:
+        """Every write of one run commits together or not at all."""
+        self._con.execute("BEGIN TRANSACTION")
+        try:
+            yield
+        except BaseException:
+            self._con.execute("ROLLBACK")
+            raise
+        self._con.execute("COMMIT")
+
+    def delete_run(self, run_id: str) -> int:
+        """Remove every row of ``run_id`` (an unfinished run before its retry)."""
+        removed = 0
+        for (table,) in self._con.execute(
+            "SELECT table_name FROM information_schema.columns "
+            "WHERE table_schema = 'main' AND column_name = 'run_id' "
+            "ORDER BY table_name"
+        ).fetchall():
+            before = self._count(table, run_id)
+            self._con.execute(f'DELETE FROM "{table}" WHERE run_id = ?', [run_id])
+            removed += before
+        return removed
+
+    def _count(self, table: str, run_id: str) -> int:
+        row = self._con.execute(
+            f'SELECT count(*) FROM "{table}" WHERE run_id = ?', [run_id]
+        ).fetchone()
+        return int(row[0]) if row else 0
 
     # ------------------------------------------------------------------
     # Cleanup

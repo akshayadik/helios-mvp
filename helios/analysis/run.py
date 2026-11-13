@@ -14,11 +14,11 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from fractions import Fraction
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from helios.analysis.missing import ipw_effect, mcar_test
 from helios.analysis.sensitivity import group_differences, rank_mixed_model
 from helios.analysis.stats import (
     MultiplicityRow,
@@ -35,6 +35,12 @@ from helios.analysis.stats import (
     sign_test,
     wilcoxon_exact,
 )
+from helios.evaluation.cells import (
+    CELL_METRICS,
+    CellTable,
+    cell_table,
+    passing_apps,
+)
 from helios.evaluation.run_metrics import METRICS_VERSION
 from helios.evaluation.scoring import SCORING_VERSION
 from helios.research.analysis_plan import (
@@ -50,12 +56,11 @@ from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
 from helios.vcl.variants import CONFIRMATORY_VARIANTS, EXPLORATORY_VARIANTS
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Mapping, Sequence
+    from collections.abc import Callable, Collection, Mapping, Sequence
 
 __all__ = [
     "ANALYSIS_VERSION",
     "A_H7_MODES",
-    "CELL_INCLUSION",
     "HOLM_READINGS",
     "CaseTable",
     "Guard",
@@ -70,7 +75,6 @@ __all__ = [
 HELIOS_ENABLE_ANALYSIS_RUN: bool = True
 
 ANALYSIS_VERSION = "analysis-v1"
-CELL_INCLUSION = Fraction(4, 5)  # cell rule: at least 80 % of the cases included
 HOLM_READINGS = ("data_order", "fixed_sequence")  # T-a (a), (b)
 A_H7_MODES = ("intersection_union", "h_fact_only", "sum")  # T-c (a), (b), (c)
 PRIOR_SERVICES = 5  # prior-only floor: the 5 injected services (contract §8)
@@ -89,6 +93,7 @@ _METRICS: dict[str, tuple[str, str]] = {
 # Family E items that the eval tables can measure (others: not built / Stage B)
 _E_METRICS: dict[str, str] = {"E-H2": "ttt_ms", "E-H10": "hr_at_3"}
 _BINARY = frozenset({"hr_at_3"})
+_CELL_KEYS = frozenset(CELL_METRICS)
 _SCORE_FIELDS = ("hr_at_1", "hr_at_3", "hr_at_10", "avg_at_5", "mrr", "corpus")
 _LOG_T = frozenset({"B-H6", "B-H7"})  # paired t on log values (T-g)
 _RAW_T = frozenset({"B-H8"})  # Avg@5 is not a log quantity
@@ -249,7 +254,8 @@ def _untestable(base: dict[str, Any], reason: str) -> _Outcome:
 def _confirmatory_hypothesis(
     h: Mapping[str, Any],
     table: CaseTable,
-    expected: Mapping[str, int],
+    cells: CellTable,
+    apps: Mapping[str, str],
     a_h7_mode: str,
 ) -> _Outcome:
     hid = str(h["id"])
@@ -279,8 +285,11 @@ def _confirmatory_hypothesis(
         if stratum is not None:
             cases = [c for c in cases if c in stratum]
         per_key[k] = (a_vals, b_vals, cases)
-    n_expected = len(stratum) if stratum is not None else expected.get(a_name, 0)
-    base["n_expected"] = n_expected
+    # S4.10 O-e (a): only cases of the apps where both compared cells pass.
+    ok_apps = {k: passing_apps(cells, a_name, b_name, k) for k in keys}
+    base["apps_tested"] = dict(ok_apps)
+    for k, (a_vals, b_vals, cases) in per_key.items():
+        per_key[k] = (a_vals, b_vals, [c for c in cases if apps.get(c) in ok_apps[k]])
     if hid == "A-H7" and a_h7_mode == "sum":
         a_f, b_f, cf = per_key["h_fact"]
         a_s, b_s, cs = per_key["h_struct"]
@@ -303,9 +312,12 @@ def _confirmatory_hypothesis(
     ]
     if missing:
         return _untestable(base, f"no values for {', '.join(missing)} (not scored yet)")
-    if n_expected == 0 or Fraction(n_pairs, n_expected) < CELL_INCLUSION:
+    failed = [k for k in keys if not ok_apps[k]]
+    if failed:
         return _untestable(
-            base, f"{n_pairs} of {n_expected} cases paired, below the cell rule"
+            base,
+            f"cell rule: no system where both {a_name} and {b_name} have at "
+            f"least 4/5 of their cases on {', '.join(failed)}",
         )
     if str(h["primary_metric"]).startswith("log-CpR at matched"):
         hr_a, hr_b = (
@@ -382,6 +394,40 @@ def _sensitivity(
     return out
 
 
+def _missing_data(
+    h: Mapping[str, Any],
+    outcome: _Outcome,
+    table: CaseTable,
+    scheduled: Mapping[str, Collection[str]],
+    covariates: Mapping[str, Mapping[str, Any]],
+) -> dict[str, Any]:
+    """S4.10 O-f: MCAR evidence and the IPW estimate over the scheduled pairs."""
+    if outcome.p_value is None or not outcome.pairs:
+        return {}
+    hid = str(h["id"])
+    a_name, b_name = outcome.result["a"], outcome.result["b"]
+    key = next(iter(outcome.pairs))
+    if key not in _CELL_KEYS:
+        key = next(iter(outcome.result["apps_tested"]))
+    a_vals, b_vals = _values(table[a_name], key), _values(table[b_name], key)
+    ok = set(outcome.result["apps_tested"].get(key, []))
+    sched = sorted(set(scheduled.get(a_name, ())) & set(scheduled.get(b_name, ())))
+    stratum = _stratum_cases(table, h["stratum"]) if h["stratum"] else None
+    if stratum is not None:
+        sched = [c for c in sched if c in stratum]
+    diffs = {
+        c: a_vals[c] - b_vals[c]
+        for c in sched
+        if c in a_vals and c in b_vals and covariates.get(c, {}).get("app") in ok
+    }
+    missing = {c: c not in diffs for c in sched}
+    return {
+        "metric": key,
+        "mcar": mcar_test(sched, missing, covariates),
+        "ipw": ipw_effect(sched, diffs, covariates, bca_seed(hid)),
+    }
+
+
 def _splits(
     h: Mapping[str, Any], outcome: _Outcome, table: CaseTable
 ) -> dict[str, Any]:
@@ -427,15 +473,18 @@ def _splits(
 def _family(
     hypotheses: Sequence[Mapping[str, Any]],
     table: CaseTable,
-    expected: Mapping[str, int],
+    cells: CellTable,
+    apps: Mapping[str, str],
     groups: Mapping[str, str],
     *,
     a_h7_mode: str,
     holm: str,
     confirmatory: bool,
+    scheduled: Mapping[str, Collection[str]],
+    covariates: Mapping[str, Mapping[str, Any]] | None,
 ) -> dict[str, Any]:
     outcomes = {
-        str(h["id"]): _confirmatory_hypothesis(h, table, expected, a_h7_mode)
+        str(h["id"]): _confirmatory_hypothesis(h, table, cells, apps, a_h7_mode)
         for h in hypotheses
     }
     ranks = {str(h["id"]): int(h["rank"]) for h in hypotheses}
@@ -472,6 +521,10 @@ def _family(
         if h["asymmetric_rule"] and not decisions[hid]:
             res["reading"] = "inconclusive at delivered power (asymmetric rule)"
         res["sensitivity"] = _sensitivity(h, o, table, groups)
+        if covariates is not None:
+            res["sensitivity"]["missing_data"] = _missing_data(
+                h, o, table, scheduled, covariates
+            )
         res["splits"] = _splits(h, o, table)
         results.append(res)
     return {
@@ -578,22 +631,36 @@ def analyse(
     scores: list[dict[str, Any]],
     runs: list[dict[str, Any]],
     *,
-    expected_cases: int,
+    apps: Mapping[str, str],
     groups: Mapping[str, str],
     n_services: Mapping[str, int],
     holm: str = "data_order",
     a_h7_mode: str = "intersection_union",
     frozen: Callable[[], bool] = build_frozen,
+    scheduled: Mapping[str, Collection[str]] | None = None,
+    covariates: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """The full analysis as one JSON-ready dict (no case IDs in it)."""
+    """The full analysis as one JSON-ready dict (no case IDs in it).
+
+    ``apps`` maps every case of the corpus to its benchmark system.
+    ``scheduled`` (the campaign schedule, system -> cases) sets each cell's
+    denominator; without a campaign every system is taken as scheduled on
+    every case of ``apps``. ``covariates`` (case -> app, fault, window
+    bytes, ...) turn on the MCAR test and IPW of S4.10 O-f; they must include
+    ``app``.
+    """
     if holm not in HOLM_READINGS:
         raise ValueError(f"holm must be one of {HOLM_READINGS}")
     if a_h7_mode not in A_H7_MODES:
         raise ValueError(f"a_h7_mode must be one of {A_H7_MODES}")
     guard = confirmatory_guard(scores, runs, frozen=frozen)
     table = build_case_table(scores, runs, variant_names())
-    expected = dict.fromkeys(table, expected_cases)
+    if scheduled is None:
+        scheduled = {name: list(apps) for name in table}
+    cells = cell_table(table, apps, scheduled)
     kwargs: dict[str, Any] = {
+        "scheduled": scheduled,
+        "covariates": covariates,
         "a_h7_mode": a_h7_mode,
         "holm": holm,
         "confirmatory": guard.confirmatory,
@@ -603,9 +670,10 @@ def analyse(
         "label": "confirmatory" if guard.confirmatory else "exploratory",
         "guard_reasons": list(guard.reasons),
         "systems": {name: len(rows) for name, rows in sorted(table.items())},
-        "expected_cases": expected_cases,
-        "family_a": _family(FAMILY_A_HYPOTHESES, table, expected, groups, **kwargs),
-        "family_b": _family(FAMILY_B_HYPOTHESES, table, expected, groups, **kwargs),
+        "cases": len(apps),
+        "cells": [c.as_dict() for c in cells.values()],
+        "family_a": _family(FAMILY_A_HYPOTHESES, table, cells, apps, groups, **kwargs),
+        "family_b": _family(FAMILY_B_HYPOTHESES, table, cells, apps, groups, **kwargs),
         "family_e": _family_e(table),
         "sanity_floors": sanity_floors(table, n_services),
     }

@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Mapping, Sequence
 
     from helios.vcl.config import VCLManifest
 
@@ -35,7 +35,7 @@ __all__ = [
 class AppendOnlyLedger(Protocol):
     """Structural protocol satisfied by ExclusionLedger (and test doubles)."""
 
-    def append(self, fields: dict[str, str]) -> None: ...
+    def append(self, fields: dict[str, str]) -> object: ...
 
 
 @dataclass(frozen=True)
@@ -68,11 +68,13 @@ class MetricIntegrityGate:
         ledger: AppendOnlyLedger,
         run_id: str,
         analytic_consequence: str,
+        extra: Mapping[str, str] | None = None,
     ) -> None:
         self._expected = expected_config_hash
         self._ledger = ledger
         self._run_id = run_id
         self._analytic_consequence = analytic_consequence
+        self._extra = dict(extra or {})
 
     @classmethod
     def from_manifest(
@@ -82,13 +84,19 @@ class MetricIntegrityGate:
         ledger: AppendOnlyLedger,
         run_id: str,
         analytic_consequence: str,
+        extra: Mapping[str, str] | None = None,
     ) -> MetricIntegrityGate:
-        """Construct using the hash of an active VCLManifest as the expected hash."""
+        """Construct using the hash of an active VCLManifest as the expected hash.
+
+        ``extra`` (S4.10 O-d): campaign context and the run's label-free
+        covariates, signed into every exclusion entry beside the required fields.
+        """
         return cls(
             expected_config_hash=manifest.compute_variant_config_hash(),
             ledger=ledger,
             run_id=run_id,
             analytic_consequence=analytic_consequence,
+            extra=extra,
         )
 
     def check(self, row: dict[str, Any], *, incident_id: str) -> GateResult:
@@ -159,6 +167,7 @@ class MetricIntegrityGate:
     ) -> GateResult:
         self._ledger.append(
             {
+                **self._extra,
                 "variant_config_hash": str(row.get("variant_config_hash", "UNKNOWN")),
                 "snapshot_hash": str(row.get("snapshot_hash", "UNKNOWN")),
                 "run_id": self._run_id,

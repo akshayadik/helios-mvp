@@ -8,6 +8,8 @@
     verify_ledgers.py --annotations DIR [--public-only]   every *.annotations.jsonl
                                       in DIR (S2.9), against the annotations key
     verify_ledgers.py --reward DIR [--public-only]   every *.reward.jsonl in DIR
+    verify_ledgers.py --campaign DIR     a campaign's own exclusion ledger and
+                                      reconciliation ledgers (S4.10 O-d)
                                       (S3.3): chain, signed anchor, reward pairs
 
 A ledger passes only if its chain verifies, every entry has the fields of its
@@ -112,12 +114,35 @@ def verify_annotations_dir(
     return _verify_anchored_dir(directory, key, public_path, AnnotationLedger)
 
 
+def verify_campaign_dir(directory: Path, key: bytes) -> int:
+    """A campaign's exclusion ledger and per-system reconciliation ledgers."""
+    paths: list[tuple[type[HMACChainedLog], Path]] = [
+        (ExclusionLedger, directory / "exclusion_ledger.jsonl"),
+        *(
+            (ReconciliationLedger, p)
+            for p in sorted((directory / "reconciliation").glob("*.jsonl"))
+            if not p.name.endswith(".anchor.json")
+        ),
+    ]
+    failed = False
+    for cls, path in paths:
+        ledger = cls(key=key, log_path=path)
+        if not ledger.anchor_path.exists():
+            ok, msg = False, f"anchor {ledger.anchor_path.name} missing."
+        else:
+            ok, msg = ledger.verify()
+        print(f"{'✅' if ok else '❌'} {path}: {msg}")
+        failed |= not ok
+    return 1 if failed else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--init-anchors", action="store_true")
     parser.add_argument("--coe", type=Path, metavar="DIR")
     parser.add_argument("--annotations", type=Path, metavar="DIR")
     parser.add_argument("--reward", type=Path, metavar="DIR")
+    parser.add_argument("--campaign", type=Path, metavar="DIR")
     parser.add_argument("--public-key", type=Path, default=None)
     parser.add_argument("--public-only", action="store_true")
     args = parser.parse_args(argv)
@@ -128,6 +153,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.reward is not None:
         key = None if args.public_only else load_key()
         return verify_reward_dir(args.reward, key, args.public_key or PUBLIC_KEY_FILE)
+    if args.campaign is not None:
+        return verify_campaign_dir(args.campaign, load_key())
     if args.annotations is not None:
         key = None if args.public_only else load_annotations_hmac()
         if key is None and not args.public_only:

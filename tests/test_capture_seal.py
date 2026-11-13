@@ -219,7 +219,7 @@ def test_orchestrator_skips_altered_capture(tmp_path: Path) -> None:
         for line in (tmp_path / "reconciliation.jsonl").read_text().splitlines()
     ]
     assert [(r["outcome"], r["gate_check"]) for r in rows] == [
-        ("skipped", "capture_seal_invalid")
+        ("excluded", "capture_seal_invalid")
     ]
     assert not (tmp_path / "registry.jsonl").exists()
 
