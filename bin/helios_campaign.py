@@ -37,9 +37,12 @@ from bin.log_deviation import load_key
 from bin.log_exclusion import ExclusionLedger
 from helios.adapters.rcaeval import verify_ground_truth
 from helios.analysis.run import build_case_table, variant_names
+from helios.baselines.container import DockerRunner
+from helios.baselines.executor import DATASET_ARG, BaselineExecutor
 from helios.evaluation.cells import cell_table, missing_metrics
 from helios.evaluation.cost import load_price_book
 from helios.evaluation.scoring import GROUND_TRUTH_FILES, Corpus
+from helios.evaluation.strata import load_inject_times
 from helios.orchestrator.campaign import Campaign, compare_rerun, read_log
 from helios.orchestrator.runner import RunOrchestrator
 from helios.orchestrator.schedule import (
@@ -176,6 +179,51 @@ def executors(
     return out
 
 
+def baseline_executors(
+    directory: Path,
+    config: dict[str, Any],
+    schedule: Schedule,
+    systems: set[str],
+    *,
+    ledger: ExclusionLedger,
+    key: bytes,
+    phase: str,
+) -> dict[str, BaselineExecutor]:
+    """One executor per baseline slot (S4.8). The trigger-time sensitivity
+    phase (B-b) and the rerun (B-g) use the same methods; the rerun writes
+    to its own store."""
+    stem = "rerun" if phase == Phase.RERUN else "results"
+    anomaly = "trigger" if phase == Phase.BASELINE_TRIGGER else "inject"
+    dataset_for = {
+        c: DATASET_ARG.get(app.lower(), DATASET_ARG["ob"])
+        for c, app in schedule.apps.items()
+    }
+    runner = DockerRunner()
+
+    def inject() -> dict[str, float]:
+        return load_inject_times(config["gt_corpus"], root=REPO_ROOT, key=key)
+
+    return {
+        slot: BaselineExecutor(
+            system_name(slot),
+            anomaly=anomaly,
+            captures_dir=REPO_ROOT / config["captures"],
+            repo_root=REPO_ROOT,
+            db_path=directory / f"{stem}.duckdb",
+            reconciliation_path=directory
+            / "reconciliation"
+            / f"{stem}.{slot}.{anomaly}.jsonl",
+            exclusion_ledger=ledger,
+            hmac_key=key,
+            runner=runner,
+            inject_times=inject,
+            dataset_for=dataset_for,
+        )
+        for slot in sorted(systems)
+        if slot.startswith("BASELINE-")
+    }
+
+
 def cmd_run(args: argparse.Namespace, key: bytes) -> int:
     config = json.loads((args.dir / CONFIG).read_text())
     schedule = schedule_for(config, key)
@@ -184,18 +232,26 @@ def cmd_run(args: argparse.Namespace, key: bytes) -> int:
     for phase in phases:
         specs = [s for s in schedule.specs if s.phase == phase]
         systems = {s.system for s in specs}
-        if phase == Phase.BASELINE:
-            print("[campaign] baseline phase: no executor until S4.8; skipped")
-            continue
-        execs = executors(
-            args.dir,
-            config,
-            systems,
-            ledger=ledger,
-            key=key,
-            rerun=phase == Phase.RERUN,
-            cache_only=args.cache_only,
-        )
+        execs: dict[str, Any] = {
+            **executors(
+                args.dir,
+                config,
+                systems,
+                ledger=ledger,
+                key=key,
+                rerun=phase == Phase.RERUN,
+                cache_only=args.cache_only,
+            ),
+            **baseline_executors(
+                args.dir,
+                config,
+                schedule,
+                systems,
+                ledger=ledger,
+                key=key,
+                phase=phase,
+            ),
+        }
         campaign = Campaign(args.dir, schedule, execs, exclusion_ledger=ledger)
         done = campaign.run([phase], limit=args.limit)
         print(f"[campaign] {phase}: {done}")
@@ -322,25 +378,19 @@ def cmd_compare(args: argparse.Namespace, key: bytes) -> int:
     for s in body["specs"]:
         if s["phase"] != Phase.RERUN:
             continue
-        first = final.get(
-            f"{Phase.CONFIRMATORY}/{s['case']}/{s['system']}"
-        ) or final.get(f"{Phase.EXPLORATORY}/{s['case']}/{s['system']}")
+        first = next(
+            (
+                final[k]
+                for ph in (Phase.CONFIRMATORY, Phase.EXPLORATORY, Phase.BASELINE)
+                if (k := f"{ph}/{s['case']}/{s['system']}") in final
+            ),
+            None,
+        )
         again = final.get(f"{Phase.RERUN}/{s['case']}/{s['system']}")
         if not (first and again) or {first["event"], again["event"]} != {"passed"}:
             continue  # compare only when both runs passed
         a, b = first["run_id"], again["run_id"]
-        result = compare_rerun(
-            {
-                "fused": _ranked(main.fetch_fusion(a)),
-                "lpipe": main.fetch_evidence(a, "lpipe"),
-                "narrative": main.fetch_narrative(a),
-            },
-            {
-                "fused": _ranked(rerun.fetch_fusion(b)),
-                "lpipe": rerun.fetch_evidence(b, "lpipe"),
-                "narrative": rerun.fetch_narrative(b),
-            },
-        )
+        result = compare_rerun(_outputs(main, a), _outputs(rerun, b))
         rows.append(
             {
                 "run_id": a,
@@ -360,6 +410,19 @@ def cmd_compare(args: argparse.Namespace, key: bytes) -> int:
         f"{n_nc} with a narrative not comparable (no model answer on one side)"
     )
     return 0
+
+
+def _outputs(store: ResultStore, run_id: str) -> dict[str, Any]:
+    """What a rerun is compared on: a baseline's ranking (S4.8 B-g), or a
+    HELIOS run's fused list, L-pipe evidence and narrative."""
+    baseline = store.fetch_baseline(run_id)
+    if baseline is not None:
+        return {"fused": baseline["ranked"], "lpipe": None, "narrative": None}
+    return {
+        "fused": _ranked(store.fetch_fusion(run_id)),
+        "lpipe": store.fetch_evidence(run_id, "lpipe"),
+        "narrative": store.fetch_narrative(run_id),
+    }
 
 
 def _ranked(fusion: dict[str, Any] | None) -> Any:

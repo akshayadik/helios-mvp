@@ -236,7 +236,8 @@ def test_full_schedule_dry_run_on_fixtures(tmp_path: Path) -> None:
     camp = Campaign(tmp_path / "c", schedule, stubs, exclusion_ledger=ledger)
     camp.run()
     final = camp.state().final
-    assert len(final) == len(schedule.specs) == 1920 + 1200 + 720 + 192
+    # schedule-v2: + 1,200 trigger-time baseline runs; rerun + 24 x 5 baselines.
+    assert len(final) == len(schedule.specs) == 1920 + 1200 + 720 + 1200 + 192 + 120
     outcomes = [r["event"] for r in final.values()]
     assert outcomes.count("excluded") == 30 + 1
     assert [e["gate_check"] for e in ledger.entries] == ["run_error"]

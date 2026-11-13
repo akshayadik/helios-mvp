@@ -14,6 +14,11 @@ Subsets (O-g): the case order is the sorted list of opaque IDs, which are drawn
 from the seed register, so a fixed stride through each system's cases is a
 seeded random sample and needs no new seed block. The determinism rerun takes
 every 10th case of each system, the E-H5 delayed-label subset every 4th.
+
+schedule-v2 (S4.8, design B-b and B-g): the baselines run a second time with
+HELIOS's detection-trigger time instead of the injection time
+(``baseline_trigger``, a sensitivity row under the same seed), and the
+determinism rerun also covers the baselines (RCD is stochastic).
 """
 
 from __future__ import annotations
@@ -38,6 +43,7 @@ __all__ = [
     "FIRST_VARIANT",
     "RERUN_STRIDE",
     "SCHEDULE_VERSION",
+    "TRIGGER_SUFFIX",
     "CacheMode",
     "Phase",
     "RunSpec",
@@ -51,10 +57,11 @@ __all__ = [
 
 HELIOS_ENABLE_ORCHESTRATOR: bool = True
 
-SCHEDULE_VERSION = "schedule-v1"
+SCHEDULE_VERSION = "schedule-v2"
 FIRST_VARIANT = "HELIOS-noRouter"
 RERUN_STRIDE = 10
 EH5_STRIDE = 4
+TRIGGER_SUFFIX = " [trigger time]"  # analysis name suffix of baseline_trigger runs
 BASELINE_SLOTS: tuple[str, ...] = tuple(
     s for s in RUN_SYSTEM_SLOTS if s.startswith("BASELINE-")
 )
@@ -66,6 +73,7 @@ class Phase(StrEnum):
     CONFIRMATORY = "confirmatory"
     BASELINE = "baseline"
     EXPLORATORY = "exploratory"
+    BASELINE_TRIGGER = "baseline_trigger"  # B-b sensitivity: trigger time
     RERUN = "rerun"
 
 
@@ -205,10 +213,14 @@ def build_schedule(
         (Phase.CONFIRMATORY, order, confirmatory_order(), CacheMode.SHARED),
         (Phase.BASELINE, order, list(baselines), CacheMode.SHARED),
         (Phase.EXPLORATORY, order, exploratory, CacheMode.SHARED),
+        (Phase.BASELINE_TRIGGER, order, list(baselines), CacheMode.SHARED),
         (
             Phase.RERUN,
             rerun_cases,
-            [v for v in (*confirmatory_order(), *exploratory) if _calls_model(v)],
+            [
+                *(v for v in (*confirmatory_order(), *exploratory) if _calls_model(v)),
+                *baselines,
+            ],
             CacheMode.BYPASS,
         ),
     ]
@@ -249,11 +261,15 @@ def system_name(slot: str) -> str:
 def scheduled_by_system(body: Mapping[str, Any]) -> dict[str, list[str]]:
     """System name -> its scheduled cases, from a ``schedule.json`` body.
 
-    The determinism rerun is not a scheduled case of the analysis.
+    The determinism rerun is not a scheduled case of the analysis; a
+    trigger-time baseline run counts under its suffixed name.
     """
     out: dict[str, list[str]] = {}
     for spec in body["specs"]:
         if spec["phase"] == Phase.RERUN:
             continue
-        out.setdefault(system_name(str(spec["system"])), []).append(str(spec["case"]))
+        name = system_name(str(spec["system"]))
+        if spec["phase"] == Phase.BASELINE_TRIGGER:
+            name += TRIGGER_SUFFIX
+        out.setdefault(name, []).append(str(spec["case"]))
     return out

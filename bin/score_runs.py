@@ -74,7 +74,9 @@ def run_metrics(
     """Write eval_run; print counts and medians only (no case, no label)."""
     book = load_price_book()
     reader = CaptureReader(captures)
-    incidents = {str(f["incident_id"]) for f in store.fetch_all_fusion_rows()}
+    incidents = {str(f["incident_id"]) for f in store.fetch_all_fusion_rows()} | {
+        str(b["incident_id"]) for b in store.fetch_all_baseline_rows()
+    }
     storage = {i: window_bytes(reader.read(i).window, REPO_ROOT) for i in incidents}
     full = CONFIRMATORY_VARIANTS["HELIOS-Full"].compute_variant_config_hash()
     heavy = narrative_strata(reader, incidents, gt, key)

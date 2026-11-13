@@ -43,6 +43,7 @@ from helios.evaluation.cells import (
 )
 from helios.evaluation.run_metrics import METRICS_VERSION
 from helios.evaluation.scoring import SCORING_VERSION
+from helios.orchestrator.schedule import TRIGGER_SUFFIX
 from helios.research.analysis_plan import (
     ANALYSIS_SETTINGS,
     BASELINES,
@@ -93,6 +94,10 @@ _METRICS: dict[str, tuple[str, str]] = {
 # Family E items that the eval tables can measure (others: not built / Stage B)
 _E_METRICS: dict[str, str] = {"E-H2": "ttt_ms", "E-H10": "hr_at_3"}
 _BINARY = frozenset({"hr_at_3"})
+# S4.8 B-k: the published-score anchor (entry 36; 0.61 in the sensitivity band).
+CHASE_HR_AT_3 = 0.60
+CHASE_BAND = 0.61
+TTCD_CENSOR_S = 1800  # metric contract §4 (Ch3's incident window)
 _CELL_KEYS = frozenset(CELL_METRICS)
 _SCORE_FIELDS = ("hr_at_1", "hr_at_3", "hr_at_10", "avg_at_5", "mrr", "corpus")
 _LOG_T = frozenset({"B-H6", "B-H7"})  # paired t on log values (T-g)
@@ -627,6 +632,114 @@ def sanity_floors(
     return out
 
 
+def _family_b_rows(result: Mapping[str, Any]) -> list[dict[str, Any]]:
+    verdict = next(
+        k
+        for k in ("rejected", "below_threshold_descriptive")
+        if k in result["hypotheses"][0]
+    )
+    return [
+        {
+            "id": h["id"],
+            "a": h.get("a"),
+            "b": h.get("b"),
+            "n_pairs": h.get("n_pairs"),
+            "p_value": h.get("p_value"),
+            verdict: h.get(verdict),
+            **({"untestable": h["untestable"]} if "untestable" in h else {}),
+        }
+        for h in result["hypotheses"]
+    ]
+
+
+def family_b_sensitivity(
+    table: CaseTable,
+    apps: Mapping[str, str],
+    groups: Mapping[str, str],
+    scheduled: Mapping[str, Collection[str]],
+    **kwargs: Any,
+) -> dict[str, Any]:
+    """S4.8 sensitivity rows for Family B (each reruns the whole family, so
+    Holm applies as in the binding analysis), and the CHASE anchor (B-k).
+
+    - ``trigger_time`` (B-b): every baseline replaced by its run with HELIOS's
+      detection-trigger time instead of the injection time;
+    - ``no_human_time`` (B-e): log-CpR without the human-review component on
+      both sides (it changes only B-H7);
+    - ``failures_as_misses`` (B-f): a scheduled baseline case with no run
+      (excluded for a method error or timeout) counts as a miss: HR@3 and
+      Avg@5 zero, TTCD censored; log-CpR stays missing.
+    """
+    kwargs = {**kwargs, "covariates": None}
+    out: dict[str, Any] = {
+        "chase_anchor": {
+            "hr_at_3": CHASE_HR_AT_3,
+            "sensitivity_band": CHASE_BAND,
+            "baselines_hr_at_3": {
+                b: _mean(table[b], "hr_at_3") for b in BASELINES if b in table
+            },
+        }
+    }
+
+    def run(alt: CaseTable, alt_scheduled: Mapping[str, Collection[str]]) -> Any:
+        cells = cell_table(alt, apps, alt_scheduled)
+        return _family_b_rows(
+            _family(
+                FAMILY_B_HYPOTHESES,
+                alt,
+                cells,
+                apps,
+                groups,
+                **{**kwargs, "scheduled": alt_scheduled},
+            )
+        )
+
+    suffix = TRIGGER_SUFFIX
+    if any(b + suffix in table for b in BASELINES):
+        alt = {k: v for k, v in table.items() if k not in BASELINES}
+        alt_s = {k: v for k, v in scheduled.items() if k not in BASELINES}
+        for b in BASELINES:
+            if b + suffix in table:
+                alt[b] = table[b + suffix]
+                alt_s[b] = scheduled.get(b + suffix, list(apps))
+        out["trigger_time"] = run(alt, alt_s)
+
+    def no_human(rows: Mapping[str, Mapping[str, Any]]) -> dict[str, dict[str, Any]]:
+        res = {}
+        for case, row in rows.items():
+            r = dict(row)
+            total, human = r.get("cpr_total"), r.get("cpr_human")
+            if total is not None and human is not None and total - human > 0:
+                r["log_cpr"] = math.log(total - human)
+            res[case] = r
+        return res
+
+    out["no_human_time"] = [
+        r
+        for r in run({k: no_human(v) for k, v in table.items()}, scheduled)
+        if r["id"] == "B-H7"
+    ]
+
+    censor = math.log(TTCD_CENSOR_S)
+    alt = dict(table)
+    filled = 0
+    for b in BASELINES:
+        if b not in table:
+            continue
+        rows = dict(table[b])
+        for case in scheduled.get(b, []):
+            if case not in rows:
+                rows[case] = {"hr_at_3": 0, "avg_at_5": 0, "log_ttcd": censor}
+                filled += 1
+        alt[b] = rows
+    if filled:
+        out["failures_as_misses"] = {
+            "filled": filled,
+            "hypotheses": [r for r in run(alt, scheduled) if r["id"] != "B-H7"],
+        }
+    return out
+
+
 def analyse(
     scores: list[dict[str, Any]],
     runs: list[dict[str, Any]],
@@ -674,6 +787,7 @@ def analyse(
         "cells": [c.as_dict() for c in cells.values()],
         "family_a": _family(FAMILY_A_HYPOTHESES, table, cells, apps, groups, **kwargs),
         "family_b": _family(FAMILY_B_HYPOTHESES, table, cells, apps, groups, **kwargs),
+        "family_b_sensitivity": family_b_sensitivity(table, apps, groups, **kwargs),
         "family_e": _family_e(table),
         "sanity_floors": sanity_floors(table, n_services),
     }

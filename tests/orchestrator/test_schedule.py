@@ -11,6 +11,7 @@ import pytest
 from helios.orchestrator.schedule import (
     BASELINE_SLOTS,
     FIRST_VARIANT,
+    TRIGGER_SUFFIX,
     Phase,
     build_schedule,
     confirmatory_order,
@@ -38,13 +39,15 @@ REFUSED = {
 
 def test_full_size_schedule_counts() -> None:
     s = build_schedule("pool", ORDER, APPS, refused=REFUSED)
-    # 8 x 240; 5 x 240; 3 consumed exploratory x 240; every 10th case per app
-    # (12 + 12) x the 8 variants that call the model (5 confirmatory + 3).
+    # 8 x 240; 5 x 240; 3 consumed exploratory x 240; the 5 baselines again
+    # with the trigger time (S4.8 B-b); every 10th case per app (12 + 12) x the
+    # 8 variants that call the model (5 confirmatory + 3) and the 5 baselines.
     assert s.counts() == {
         Phase.CONFIRMATORY: 1920,
         Phase.BASELINE: 1200,
         Phase.EXPLORATORY: 720,
-        Phase.RERUN: 192,
+        Phase.BASELINE_TRIGGER: 1200,
+        Phase.RERUN: 192 + 120,
     }
     assert len(s.rerun_cases) == 24
     assert len(s.eh5_cases) == 60  # every 4th per app: 30 + 30
@@ -63,12 +66,13 @@ def test_schedule_is_pure_and_its_digest_covers_everything() -> None:
 
 def test_seeds_are_registered_and_unique_outside_the_rerun() -> None:
     s = build_schedule("pool", ORDER, APPS, refused=REFUSED)
-    seeds = [x.seed for x in s.specs if x.phase != Phase.RERUN]
+    repeats = (Phase.RERUN, Phase.BASELINE_TRIGGER)
+    seeds = [x.seed for x in s.specs if x.phase not in repeats]
     assert len(set(seeds)) == len(seeds)
     assert all(REGISTER_START <= x < REGISTER_START + REGISTER_SIZE for x in seeds)
-    first = {(x.case, x.system): x.seed for x in s.specs if x.phase != Phase.RERUN}
+    first = {(x.case, x.system): x.seed for x in s.specs if x.phase not in repeats}
     for x in s.specs:
-        if x.phase == Phase.RERUN:  # the rerun repeats the run, same seed
+        if x.phase in repeats:  # the rerun and the trigger row reuse the seed
             assert x.seed == first[x.case, x.system]
 
 
@@ -117,7 +121,8 @@ def test_baseline_slots_map_to_registered_names() -> None:
     s = build_schedule("pool", ORDER[:3], APPS, refused=REFUSED)
     by = scheduled_by_system(json.loads(s.to_json()))
     assert by[BASELINES[0]] == ORDER[:3]
-    assert len(by) == 8 + 5 + 3
+    assert by[BASELINES[0] + TRIGGER_SUFFIX] == ORDER[:3]
+    assert len(by) == 8 + 5 + 3 + 5
 
 
 def test_flag_scan_refuses_exactly_the_unconsumed_variants() -> None:

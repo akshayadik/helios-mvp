@@ -1,6 +1,6 @@
 # S4.8 Baselines from the RCAEval suite: design (draft)
 
-**Row:** S2-M9-ENG08 · **Effort:** 2 days · **Depends on:** S4.10 (campaign, `Executor` protocol), S4.9 (`baseline_publications`, CpR) · **Status:** draft 2026-11-13, for owner approval (B-a to B-k)
+**Row:** S2-M9-ENG08 · **Effort:** 2 days · **Depends on:** S4.10 (campaign, `Executor` protocol), S4.9 (`baseline_publications`, CpR) · **Status:** approved 2026-11-13 (B-a to B-k as recommended); deviation entry to follow
 
 ## 1. What is fixed already
 
@@ -167,3 +167,113 @@ No hypothesis, comparator, metric, alpha or Holm rank changes.
   - the pool-lock refusal for `inject_time`.
 - **Container tests (marked, run locally):** the PDiagnose port against the script on the sample case; each method once on one OTel build case.
 - **Dry runs:** B-h; the OTel v3 build campaign replanned with the baseline phase executed; `cells` and `analyse` showing Family B testable on build data.
+
+## 7. Implementation and build runs (2026-11-13)
+
+### What was built
+
+- **Code:**
+  - `helios/baselines/`:
+    - `export.py`: the B-a export, `rcaeval-export-v1`;
+    - `container.py`: the pinned images, the offline `docker run` with fixed limits, and the outcome classes;
+    - `executor.py`: the S4.10 `Executor`; B-b anomaly time; B-c mapping.
+  - `baselines/rcaeval/adapters/`:
+    - `run_method.py`: the in-container wrapper, following `main.py`'s data preparation;
+    - `pdiagnose_adapter.py`: the B-d port.
+  - `baselines/rcaeval/LICENCES.md`: B-j.
+- **Store and scoring:**
+  - a `baseline_row` table (`baseline-v1`);
+  - `score_store` and `score_run_metrics` score baseline rows: one fused list under the baseline's name, and an `eval_run` row with state `BASELINE`.
+- **Schedule:** `schedule-v2` adds the `baseline_trigger` phase (B-b sensitivity, same seed) and the baselines in the rerun (B-g).
+- **Analysis:** `family_b_sensitivity` reports the CHASE anchor (B-k) and three reruns of Family B:
+  - trigger time (B-b);
+  - no human time (B-e);
+  - failures as misses (B-f).
+
+### Departures from the approved design, found while building
+
+1. **CPU time (B-e).**
+   - Infrastructure cost uses the CPU time measured inside the container (`time.process_time()`, the same measure HELIOS records), not runtime × 8 vCPU.
+   - This is closer to "timed the same way" (contract §4).
+   - The limits stay `--cpus 8 --memory 12g`.
+2. **Published-score check replaced by a stronger one (B-h).**
+   - RCAEval's repository holds no published figures for the build datasets: its CI and README reproduce only RE2-TT and Online Boutique, both pool or pool-like.
+   - Instead, BARO was run on RCAEval's **native** build files and on HELIOS's **export** of the same sealed cases, in the same pinned image (results below).
+3. **Derived series are rebuilt for the pool too.** The Hugging Face copy of RCAEval, from which the pool was imported, carries no `logts.csv` or `tracets_*.csv`, so the B-a rebuild applies to every case, not only to OTel. The definitions are in `export.py`.
+4. **Two departures from `main.py`, both inside the wrapper.**
+   - `main.py` derives `sli` from the case folder name, which carries the root-cause service. `sli` is passed as None; none of the five methods reads it (checked at 2fca61b).
+   - `main.py` hands TraceRCA the metric table. The wrapper passes the trace table and the anomaly time in µs, following TraceRCA's own commented conversion.
+5. **RCAEval dataset argument.**
+   - `re2-<system>` for every case, so a method never learns RE2 vs RE3 from it.
+   - OTel uses `re2-ob`, which turns on mmbaro's trace use.
+6. **The pinned default image has no Parquet reader.**
+   - This doesn't affect runs: the export writes CSV.
+   - The native side of the fidelity check was converted to CSV on the host with `pandas.read_parquet`, the call RCAEval's `read_metrics` makes.
+
+### Export fidelity (RCAEval build, 495 cases, BARO)
+
+| Dataset | n | AC@1 native / export | AC@3 native / export | Same top-1 | Same full list |
+|---|---|---|---|---|---|
+| RE1-OB | 125 | 0.728 / 0.728 | 0.912 / 0.912 | 123 (2 cases fail identically on both sides) | 119 |
+| RE1-SS | 125 | 0.848 / 0.848 | 0.992 / 0.992 | 125 | 125 |
+| RE1-TT | 125 | 0.560 / 0.560 | 0.808 / 0.808 | 125 | 119 |
+| RE2-SS | 90 | 0.067 / 0.067 | 0.956 / 0.956 | 90 | 90 |
+| RE3-SS | 30 | 0 / 0 | 0.967 / 0.967 | 30 | 30 |
+| **All** | **495** | **0.552 / 0.552** | **0.917 / 0.917** | **493 of 493 that run** | 483 |
+
+- **What it shows:** the export reproduces BARO's input exactly as far as accuracy goes. The 12 full-list differences are in the tail order only.
+- **What it can't check:** the log and trace derived series, because no native derived files exist to compare against.
+
+### PDiagnose port (B-d)
+
+- The port reproduces RCAEval's own script exactly on a synthetic case inside the script's working domain, run in the pinned image (`tests/baselines/test_containers.py`, run locally with `HELIOS_DOCKER_TESTS=1`).
+- A hand-computed fixture checks every departure (`tests/baselines/test_baselines.py`).
+
+### OTel build v3 campaign (schedule-v2, digest `ff89b57c75f6`)
+
+- **Runs:**
+  - 504 confirmatory runs (cache-only), all passed;
+  - 315 baseline runs: 265 passed, 50 excluded;
+  - 315 trigger-time runs: 265 passed, 50 excluded.
+- **Exclusions:**
+  - TraceRCA: 50 binding and 37 trigger-time;
+  - Multi-source BARO: 13, trigger time only.
+- **Scores:** 1,034 runs. HR@3:
+  - Multi-source BARO 0.540
+  - PDiagnose 0.381
+  - BARO metrics-only 0.302
+  - TraceRCA 0.231 (13 runs)
+  - Multi-source RCD 0.159
+  - HELIOS-Full, for comparison: Family A as before
+- **Family B (exploratory label):**
+
+| | Comparison | n | p |
+|---|---|---|---|
+| B-H1 | Full vs Multi-source BARO, HR@3 McNemar | 63 | 2.4e-4 |
+| B-H2 | Full vs TraceRCA | — | untestable (cell rule: 13 of 63) |
+| B-H3 | Full vs BARO metrics-only | 63 | 9.7e-9 |
+| B-H4 | Full vs PDiagnose | 63 | 7.0e-7 |
+| B-H5 | Full vs Multi-source RCD | 63 | 5.0e-12 |
+| B-H7 | log-CpR, best baseline (Multi-source BARO) vs Full | 63 | 0.13 |
+| B-H6 | log-TTCD | 63 | 0.073 |
+| B-H8 | Avg@5 | 63 | 0.0019 |
+
+- **Sensitivity rows:**
+  - **Trigger time:** B-H3 to B-H5 hold. B-H1 and B-H6 to B-H8 are untestable, because Multi-source BARO's trigger-time cell has 50 of 63 runs (below 4/5).
+  - **No human time:** B-H7 p = 0.65. Human time does not decide B-H7 on this data: most HELIOS verdicts here are PROVISIONAL, so both sides carry it, and the censored opportunity cost dominates.
+  - **Failures as misses:** 50 cases filled. B-H2 p = 3.6e-15; the other hypotheses are unchanged.
+- **CHASE anchor:** 0.60 is printed beside the baselines' HR@3.
+
+### Findings for the owner
+
+1. **TraceRCA fails on 50 of 63 OTel build cases (79%).**
+   - All failures are RCAEval's own `KeyError` in `tracerca.py`: an operation seen only after the anomaly time has no normal-period reference (`normal_slo[op]`).
+   - Under B-f (b) these runs are exclusions, so B-H2 is untestable on this data.
+   - Whether the pool behaves the same can't be checked before the freeze. RCAEval's authors built RE2/RE3 for TraceRCA, but OTel's sparse operations (feature-flag calls) are what trigger the failure.
+   - Options:
+     - (a) keep it faithful and accept that B-H2 may be untestable;
+     - (b) a recorded robustness departure: skip operations without a normal-period reference, the same as PDiagnose port departure 6;
+     - (c) replace TraceRCA with the first alternate, CIRCA, per entry 36. CIRCA is metrics-only, so trace-based coverage in Family B would be lost.
+   - **Recommended: (b)**, logged as a departure. It changes no scoring rule, it is the minimal change that lets the method run on the data it was written for, and failures-as-misses (B-f) stays a sensitivity row.
+2. **Multi-source BARO fails at trigger time on 13 cases** (`IndexError`) when HELIOS's trigger falls near the edge of the window, leaving one side empty. It affects only the B-b sensitivity row, and is reported there.
+3. **Multi-source RCD returns two services per case.** RCD returns a partial candidate set by design, which explains its low HR@3; RCAEval's own `--report-decomposition` notes this. No change.
