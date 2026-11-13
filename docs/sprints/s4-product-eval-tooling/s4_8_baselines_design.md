@@ -1,6 +1,6 @@
 # S4.8 Baselines from the RCAEval suite: design (draft)
 
-**Row:** S2-M9-ENG08 · **Effort:** 2 days · **Depends on:** S4.10 (campaign, `Executor` protocol), S4.9 (`baseline_publications`, CpR) · **Status:** approved 2026-11-13 (B-a to B-k as recommended); deviation entry to follow
+**Row:** S2-M9-ENG08 · **Effort:** 2 days · **Depends on:** S4.10 (campaign, `Executor` protocol), S4.9 (`baseline_publications`, CpR) · **Status:** approved 2026-11-13 (B-a to B-k as recommended; TraceRCA option (b)); deviation entry 88 (fe36f7dc19e8)
 
 ## 1. What is fixed already
 
