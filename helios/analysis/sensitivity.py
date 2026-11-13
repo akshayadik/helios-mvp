@@ -90,9 +90,14 @@ def rank_mixed_model(
     )
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        fit = smf.mixedlm("rank ~ variant_a", frame, groups=frame["group"]).fit(
-            reml=True
-        )
+        try:
+            fit = smf.mixedlm("rank ~ variant_a", frame, groups=frame["group"]).fit(
+                reml=True
+            )
+        except (np.linalg.LinAlgError, ValueError):
+            # A singular design (e.g. one case per group) cannot be fitted;
+            # whether the optimiser reaches it depends on the platform's BLAS.
+            return None
     coefficient = float(fit.params["variant_a"])
     se = float(fit.bse["variant_a"])
     if not (math.isfinite(se) and se > 0):
