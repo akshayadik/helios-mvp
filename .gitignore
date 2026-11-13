@@ -62,3 +62,7 @@ data/labelling/
 
 # local direnv (CLAUDE_CONFIG_DIR)
 .envrc
+
+# S4.1 API secrets (never committed): decisions HMAC secret and API key digests
+.env.api
+api_keys.json

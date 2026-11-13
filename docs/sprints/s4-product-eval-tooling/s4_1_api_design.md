@@ -1,6 +1,6 @@
 # S4.1 API: design (draft)
 
-**Row:** S2-M9-ENG01 · **Effort:** 1½ days · **Depends on:** S2.7 (CoE ledger), S4.9 (stored runs) · **Feeds:** S4.3 (compose), S4.2 (approval console, the RQ4 instrument) · **Status:** draft 2026-11-14, for owner approval (A-a to A-j)
+**Row:** S2-M9-ENG01 · **Effort:** 1½ days · **Depends on:** S2.7 (CoE ledger), S4.9 (stored runs) · **Feeds:** S4.3 (compose), S4.2 (approval console, the RQ4 instrument) · **Status:** approved 2026-11-14 (A-a to A-j as recommended)
 
 ## 1. What is fixed already
 
@@ -137,3 +137,69 @@
 
 - **None expected.** The API changes no pre-registered rule, metric or variant.
 - E-H7's time to decision becomes the server-measured `decision_ms` (A-e). That is the measurement the pre-registration's "time to decision" needs, not a change to it. If you'd rather record it, it can go in the OSF addendum (S2-BL-05).
+
+## 7. Implementation and dry run (2026-11-14)
+
+### What was built
+
+- **`helios/api/`:**
+  - `app.py`: the factory and the 7 paths;
+  - `models.py`: response and request models;
+  - `reader.py`: read-only DuckDB, which never reads `eval_score`, `eval_run` or `baseline_row`;
+  - `auth.py`: key digests and roles;
+  - `decisions.py`: `DecisionLedger` and signed view tokens.
+- **`bin/helios_api.py`:**
+  - `serve` refuses any `DEVIATION_*` variable and binds to `localhost`;
+  - `keygen` prints a key once and stores its digest;
+  - `secret` prints a decisions secret;
+  - `export-spec` writes `docs/api/openapi.json`.
+- **`bin/verify_ledgers.py --campaign`** also checks `decisions/decisions.jsonl` when the decisions secret is loaded, and says so when it isn't.
+- **Dependencies:** fastapi 0.115.14, starlette 0.46.2 and uvicorn 0.34.3 are pinned in `pyproject.toml` and `poetry.lock`; httpx was already in the lock.
+- **`.gitignore`** covers `.env.api` and `api_keys.json`.
+
+### Details settled while building
+
+- **The decisions ledger anchor is HMAC-only.** The API holds no Ed25519 private key, so "signed" in A-f means HMAC-chained with its own secret, like the exclusion ledger.
+- **The 422 error is declared as a problem-details response,** so the spec matches what the API returns instead of FastAPI's default validation schema.
+- **The incident list hides a confirmatory run until `build-freeze`,** and fetching one directly returns 423.
+
+### Tests
+
+`tests/api/test_api.py` has 13 contract tests over a fixture campaign:
+
+- **Fixture:** the real `ResultStore` schema and the real `CoELedger` with a generated Ed25519 key. It holds:
+  - two runs (CONFIRMED and PROVISIONAL);
+  - a HELIOS-noExpl run;
+  - a confirmatory run.
+- **Spec conformance:** every response is checked against the committed spec's schemas, and errors against problem details.
+- **Spec drift:** a test fails if the committed `docs/api/openapi.json` differs from the generated spec.
+- **Leakage:** every response is scanned for ground-truth fields, case names, injection times and scored metrics.
+- **What's covered:**
+  - roles: 401 and 403;
+  - paging and 422;
+  - the noExpl condition;
+  - the pool lock: 423, then served after the freeze;
+  - CoE verification, including a tampered ledger, which reports `degraded`;
+  - the decision flow with a fake clock (42.25 s gives `decision_ms` 42250);
+  - token refusals: another key, another run, forged or malformed (400), reused (409), expired (410);
+  - the latest decision counting;
+  - ledger verification, including a tampered decision;
+  - the CLI guards.
+- **Coverage:** `helios/api` 97–100%.
+
+### Dry run (A-j), OTel build v3 campaign `camp_v3c`
+
+The real server ran under `env -i`, with only the decisions secret, on `localhost`.
+
+| Check | Result |
+|---|---|
+| `/health` | ok; 63 incidents; all 8 CoE ledgers verified with the public key alone |
+| List and detail | 63 incidents of 8 runs each; all 8 confirmatory variants listed |
+| PROVISIONAL verdict | Ranked services with scores, narrative with 11 grounded claims |
+| CoE entry | Verified, 8 steps |
+| View, then decision | 201; `escalate`; server-measured `decision_ms` 16.1 beside the client's 40 |
+| Token reuse | 409 |
+| Reader opening a review | 403 |
+| Decisions ledger after | Chain verified |
+| Leakage scan | 11 responses, none with a label, case name, injection time or metric |
+| noExpl (on `camp_v3`, whose exploratory phase ran) | Narrative withheld for HELIOS-noExpl, shown for HELIOS-Full |

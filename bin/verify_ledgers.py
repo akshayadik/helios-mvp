@@ -31,6 +31,7 @@ preregistration.md deviation table).
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -42,6 +43,7 @@ from bin.log_deviation import (
     load_public_key_file,
 )
 from bin.log_exclusion import ExclusionLedger
+from helios.api.decisions import DECISIONS_SECRET_ENV, DecisionLedger
 from helios.labelling.annotations import (
     ANNOTATIONS_HMAC_ENV_VAR,
     ANNOTATIONS_PUBLIC_KEY_FILE,
@@ -133,7 +135,22 @@ def verify_campaign_dir(directory: Path, key: bytes) -> int:
             ok, msg = ledger.verify()
         print(f"{'✅' if ok else '❌'} {path}: {msg}")
         failed |= not ok
+    failed |= verify_decisions(directory / "decisions" / "decisions.jsonl") != 0
     return 1 if failed else 0
+
+
+def verify_decisions(path: Path, secret: bytes | None = None) -> int:
+    """The API's decisions ledger (S4.1 A-f), keyed by its own secret; skipped
+    (not failed) when the campaign has none or the secret is not loaded."""
+    if not path.exists():
+        return 0
+    raw = secret or os.environ.get(DECISIONS_SECRET_ENV, "").encode()
+    if not raw:
+        print(f"⚠️  {path}: not checked ({DECISIONS_SECRET_ENV} not loaded)")
+        return 0
+    ok, msg = DecisionLedger(key=raw, log_path=path).verify()
+    print(f"{'✅' if ok else '❌'} {path}: {msg}")
+    return 0 if ok else 1
 
 
 def main(argv: list[str] | None = None) -> int:
