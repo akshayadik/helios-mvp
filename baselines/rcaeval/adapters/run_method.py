@@ -15,12 +15,17 @@ Data preparation follows RCAEval's main.py ``process()`` at commit 2fca61b:
 drop the "time.1" column and ``*_latency-50``, replace infinities, forward
 fill then zero fill, keep ``length * 60 // 2`` metric rows either side of the
 anomaly time (``length * 4 // 2`` rows of the 15-second series), rename
-``*_latency-90`` to ``*_latency``. Two departures, both recorded:
+``*_latency-90`` to ``*_latency``. Three departures, all recorded:
 - ``sli`` is passed as None. main.py derives it from the case folder name,
   which carries the root-cause service; none of the five agreed methods reads
   it (checked at 2fca61b).
 - TraceRCA receives the trace table and the anomaly time in microseconds
   (its own commented conversion); main.py passes it the metric table.
+- TraceRCA (owner decision, deviation entry 88 item 10): spans of an
+  operation with no span ending before the anomaly time are dropped before
+  the call (``reference_spans_only``). RCAEval's tracerca.py looks up every
+  anomalous operation's normal-period mean and raises KeyError when there is
+  none; the operation is now skipped instead, and RCAEval's code is unchanged.
 
 Timing covers reading the inputs and the method call (the analogue of HELIOS
 reading its window); CPU time is ``time.process_time()``, as in HELIOS.
@@ -93,6 +98,18 @@ def prepare_metrics(df, anomaly_time, length):
     )
 
 
+def reference_spans_only(span_df, anomaly_time_us):
+    """Keep the spans of operations that have at least one normal-period span
+    (one that ends before the anomaly time), with TraceRCA's operation key."""
+    if span_df.shape[0] == 0:
+        return span_df
+    method = span_df["methodName"].fillna(span_df["operationName"])
+    operation = span_df["serviceName"] + "_" + method
+    normal = span_df["startTime"] + span_df["duration"] < anomaly_time_us
+    known = set(operation[normal])
+    return span_df[operation.isin(known)].reset_index(drop=True)
+
+
 def call_method(method, inputs, job):
     """Call one method with main.py's arguments; return its ranks."""
     t = int(job["anomaly_time"])
@@ -126,7 +143,9 @@ def call_method(method, inputs, job):
     if method == "tracerca":
         from RCAEval.e2e import tracerca
 
-        return tracerca(inputs["traces"], t * _US_PER_S, dataset=dataset)["ranks"]
+        t_us = t * _US_PER_S
+        spans = reference_spans_only(inputs["traces"], t_us)
+        return tracerca(spans, t_us, dataset=dataset)["ranks"]
     if method == "pdiagnose":
         from pdiagnose_adapter import pdiagnose
 

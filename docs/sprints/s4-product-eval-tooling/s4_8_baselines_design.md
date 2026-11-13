@@ -274,6 +274,7 @@ No hypothesis, comparator, metric, alpha or Holm rank changes.
      - (a) keep it faithful and accept that B-H2 may be untestable;
      - (b) a recorded robustness departure: skip operations without a normal-period reference, the same as PDiagnose port departure 6;
      - (c) replace TraceRCA with the first alternate, CIRCA, per entry 36. CIRCA is metrics-only, so trace-based coverage in Family B would be lost.
-   - **Recommended: (b)**, logged as a departure. It changes no scoring rule, it is the minimal change that lets the method run on the data it was written for, and failures-as-misses (B-f) stays a sensitivity row.
+   - **Owner decision 2026-11-13: (b)**, logged in entry 88 item 10. The wrapper drops spans of operations with no span ending before the anomaly time before calling `tracerca` (`reference_spans_only`); RCAEval's code is unchanged.
+   - The recommendation, for the record, was (b), It changes no scoring rule, it is the minimal change that lets the method run on the data it was written for, and failures-as-misses (B-f) stays a sensitivity row.
 2. **Multi-source BARO fails at trigger time on 13 cases** (`IndexError`) when HELIOS's trigger falls near the edge of the window, leaving one side empty. It affects only the B-b sensitivity row, and is reported there.
 3. **Multi-source RCD returns two services per case.** RCD returns a partial candidate set by design, which explains its low HR@3; RCAEval's own `--report-decomposition` notes this. No change.

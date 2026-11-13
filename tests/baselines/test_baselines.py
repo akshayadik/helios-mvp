@@ -622,3 +622,26 @@ def test_docker_runner_outcome_classes(
         with pytest.raises(exc):
             runner.run("default", inp, out, "n2", limits)
     assert calls[-2][1] == "kill"  # the timed-out container was killed
+
+
+def test_tracerca_keeps_only_operations_with_a_reference(
+    adapters: tuple[Any, Any],
+) -> None:
+    _, rm = adapters
+    spans = pd.DataFrame(
+        {
+            "serviceName": ["cart", "cart", "ad", "ad"],
+            "methodName": ["Get", "Get", None, "Late"],
+            "operationName": ["x", "x", "Serve", "y"],
+            "startTime": [1 * US, 11 * US, 2 * US, 12 * US],
+            "duration": [1000, 9000, 1000, 1000],
+        }
+    )
+    # cart_Get and ad_Serve end before 10 s; ad_Late only after: dropped.
+    kept = rm.reference_spans_only(spans, 10 * US)
+    assert list(kept["methodName"].fillna(kept["operationName"])) == [
+        "Get",
+        "Get",
+        "Serve",
+    ]
+    assert rm.reference_spans_only(spans.iloc[0:0], 10 * US).shape[0] == 0
