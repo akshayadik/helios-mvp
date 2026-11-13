@@ -298,3 +298,32 @@ CREATE TABLE IF NOT EXISTS eval_run (
 INSERT INTO schema_tag (tag)
 VALUES ('eval-run-v1')
 ON CONFLICT (tag) DO NOTHING;
+
+-- baseline-v1 (S4.8): one Family B baseline run. The ranking is already mapped
+-- to services (design B-c); raw_ranks_json keeps the method's own output.
+-- source is the eval_score source: the baseline name, or the name with
+-- " [trigger time]" for the anomaly-time sensitivity row (B-b).
+CREATE TABLE IF NOT EXISTS baseline_row (
+    run_id              VARCHAR     NOT NULL PRIMARY KEY,
+    incident_id         VARCHAR     NOT NULL,
+    baseline            VARCHAR     NOT NULL,
+    source              VARCHAR     NOT NULL,
+    method              VARCHAR     NOT NULL,
+    config_hash         VARCHAR     NOT NULL,
+    anomaly_source      VARCHAR     NOT NULL,   -- inject | trigger
+    anomaly_time_s      DOUBLE      NOT NULL,
+    ranked_json         VARCHAR     NOT NULL,
+    raw_ranks_json      VARCHAR     NOT NULL,
+    wall_ms             DOUBLE      NOT NULL,
+    cpu_ms              DOUBLE      NOT NULL,
+    cpus                INTEGER     NOT NULL,
+    run_seed            BIGINT      NOT NULL,
+    image_digest        VARCHAR     NOT NULL,
+    evaluation_phase    VARCHAR     NOT NULL,
+    snapshot_hash       VARCHAR     NOT NULL,
+    created_at          TIMESTAMP               DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO schema_tag (tag)
+VALUES ('baseline-v1')
+ON CONFLICT (tag) DO NOTHING;

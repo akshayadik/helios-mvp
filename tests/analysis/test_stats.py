@@ -219,3 +219,22 @@ def test_rank_mixed_model_detects_a_clear_effect() -> None:
 
 def test_rank_mixed_model_needs_two_groups() -> None:
     assert rank_mixed_model({"c": 1}, {"c": 0}, {"c": "g"}) is None
+
+
+def test_rank_mixed_model_returns_none_on_a_singular_fit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Whether the optimiser hits a singular matrix depends on the platform's
+    BLAS (it did on CI's Linux runner, not on macOS); either way the sensitivity
+    row is left out instead of crashing the analysis."""
+    import numpy as np
+    import statsmodels.regression.mixed_linear_model as mlm
+
+    def singular(*args: object, **kwargs: object) -> None:
+        raise np.linalg.LinAlgError("Singular matrix")
+
+    monkeypatch.setattr(mlm.MixedLM, "fit", singular)
+    cases = [f"c{i}" for i in range(6)]
+    a = {c: float(i) for i, c in enumerate(cases)}
+    b = {c: float(i) / 2 for i, c in enumerate(cases)}
+    assert rank_mixed_model(a, b, {c: c for c in cases}) is None

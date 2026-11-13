@@ -552,6 +552,44 @@ class ResultStore:
         return [dict(zip(cols, row, strict=False)) for row in cur.fetchall()]
 
     # ------------------------------------------------------------------
+    # Baselines (S4.8)
+    # ------------------------------------------------------------------
+
+    _BASELINE_JSON = ("ranked", "raw_ranks")
+
+    def insert_baseline(self, row: Mapping[str, Any]) -> None:
+        """Store one baseline run (``ranked`` and ``raw_ranks`` as lists)."""
+        values = dict(row)
+        for key in self._BASELINE_JSON:
+            values[f"{key}_json"] = json.dumps(list(values.pop(key)))
+        cols = list(values)
+        self._con.execute(
+            f"INSERT INTO baseline_row ({', '.join(cols)}) "
+            f"VALUES ({', '.join('?' for _ in cols)})",
+            [values[c] for c in cols],
+        )
+
+    def fetch_baseline(self, run_id: str) -> dict[str, Any] | None:
+        """One baseline run, or None."""
+        rows = self._baseline_rows("WHERE run_id = ?", [run_id])
+        return rows[0] if rows else None
+
+    def fetch_all_baseline_rows(self) -> list[dict[str, Any]]:
+        """Every baseline run, ordered by source and incident."""
+        return self._baseline_rows("ORDER BY source, incident_id, run_id", [])
+
+    def _baseline_rows(self, where: str, args: list[Any]) -> list[dict[str, Any]]:
+        cur = self._con.execute(f"SELECT * FROM baseline_row {where}", args)
+        cols = [d[0] for d in cur.description or []]
+        out = []
+        for values in cur.fetchall():
+            row = dict(zip(cols, values, strict=True))
+            for key in self._BASELINE_JSON:
+                row[key] = json.loads(row.pop(f"{key}_json"))
+            out.append(row)
+        return out
+
+    # ------------------------------------------------------------------
     # Run atomicity (S4.10 O-c, O-i)
     # ------------------------------------------------------------------
 

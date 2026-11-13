@@ -289,8 +289,10 @@ def score_store(
     counted, never imputed. Re-scoring replaces the earlier rows.
     """
     pipeline_rows = store.fetch_all_pipeline_rows()
+    baseline_rows = store.fetch_all_baseline_rows()
     if not frozen() and any(
-        r.get("evaluation_phase") == "confirmatory" for r in pipeline_rows
+        r.get("evaluation_phase") == "confirmatory"
+        for r in [*pipeline_rows, *baseline_rows]
     ):
         raise PoolLockedError(
             f"confirmatory runs are scored only after tag {BUILD_FREEZE_TAG!r}"
@@ -336,6 +338,21 @@ def score_store(
             source_status=str(f["state"]),
             ranked=list(f["ranked"]),
             variant_config_hash=str(f["variant_config_hash"]),
+        )
+        unlabelled += row is None
+        rows.extend([row] if row is not None else [])
+    # S4.8: a baseline publishes one list, scored as a fused list under its
+    # name (no variant hash), the way S4.11 reads it.
+    for b in baseline_rows:
+        row = _score_row(
+            gt,
+            run_id=str(b["run_id"]),
+            incident_id=str(b["incident_id"]),
+            list_kind=ListKind.FUSED,
+            source=str(b["source"]),
+            source_status="baseline",
+            ranked=list(b["ranked"]),
+            variant_config_hash=None,
         )
         unlabelled += row is None
         rows.extend([row] if row is not None else [])

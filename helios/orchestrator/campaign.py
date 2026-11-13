@@ -27,6 +27,7 @@ import traceback
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol
 
+from helios.baselines.container import BaselineConfigError
 from helios.orchestrator.runner import (
     MissingSigningKeyError,
     RouterParamsMismatchError,
@@ -85,6 +86,7 @@ STOP_ERRORS: tuple[type[BaseException], ...] = (
     ExternalTriggerRefusedError,
     ModelMismatchError,
     PoolLockedError,
+    BaselineConfigError,
 )
 LOG_NAME = "campaign_log.jsonl"
 _FINAL = frozenset({"passed", "excluded"})

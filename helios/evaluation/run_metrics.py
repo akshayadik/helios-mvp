@@ -42,6 +42,7 @@ if TYPE_CHECKING:
     from helios.store.result_store import ResultStore
 
 __all__ = [
+    "BASELINE_STATE",
     "METRICS_VERSION",
     "HFactCounts",
     "Publication",
@@ -50,6 +51,7 @@ __all__ = [
     "ambiguous",
     "ambiguous_by_incident",
     "baseline_publications",
+    "baseline_run_metrics_row",
     "graph_build_ms",
     "grounding_counts",
     "h_fact_by_run",
@@ -67,6 +69,7 @@ __all__ = [
 HELIOS_ENABLE_RUN_METRICS: bool = True
 
 METRICS_VERSION = "run-metrics-v1"
+BASELINE_STATE = "BASELINE"  # eval_run.state of a baseline run (S4.8)
 
 _MS_PER_S = 1000
 _HUMAN_STATES = frozenset({State.PROVISIONAL.value, State.NON_CONVERGED.value})
@@ -393,6 +396,77 @@ def run_metrics_row(
     }
 
 
+def baseline_run_metrics_row(
+    *,
+    baseline: Mapping[str, Any],
+    gt: GroundTruth,
+    book: PriceBook,
+    storage_bytes: int,
+) -> dict[str, Any] | None:
+    """The eval_run row of one baseline run (S4.8 B-e), or None without a label.
+
+    A baseline publishes one list at its measured runtime; its CPU time is
+    measured like HELIOS's (process time); it never consults a model; its
+    ranking has no verdict state that could confirm automatically, so it
+    always carries the price-book review time (B-e (a)). It publishes no
+    narrative or structural output (h_struct zero, structural zero).
+    """
+    incident_id = str(baseline["incident_id"])
+    if incident_id not in gt.labels:
+        return None
+
+    def correct_top1(ranked: Sequence[str]) -> bool:
+        case = gt.score(incident_id, ranked)
+        return case is not None and case.rank == 1
+
+    wall_ms = float(baseline["wall_ms"])
+    pubs = baseline_publications(wall_ms, list(baseline["ranked"]))
+    t = ttcd(pubs, correct_top1, censor_s=book.ttcd_censor_s)
+    usage = IncidentUsage(cpu_ms=float(baseline["cpu_ms"]), storage_bytes=storage_bytes)
+    cost = cpr(usage, requests_human=True, ttcd_s=t.seconds, book=book)
+    return {
+        "run_id": str(baseline["run_id"]),
+        "incident_id": incident_id,
+        "variant_config_hash": str(baseline["config_hash"]),
+        "corpus": gt.corpus.value,
+        "state": BASELINE_STATE,
+        "non_converged": False,
+        "requests_human": True,
+        "routing_mode": None,
+        "escalated": None,
+        "llm_consulted": False,
+        "llm_unavailable": None,
+        "trigger_source": f"baseline:{baseline['anomaly_source']}",
+        "graph_build_ms": 0,
+        "ttt_ms": wall_ms,
+        "ttcd_s": t.seconds,
+        "ttcd_censored": t.censored,
+        "detection_delay_s": None,
+        "operational_ttcd_s": None,
+        "time_to_narrative_ms": None,
+        "cpr_token": cost.token,
+        "cpr_infrastructure": cost.infrastructure,
+        "cpr_storage": cost.storage,
+        "cpr_human": cost.human,
+        "cpr_opportunity": cost.opportunity,
+        "cpr_total": cost.total,
+        "log_cpr": cost.log_total,
+        "h_struct": 0,
+        "h_struct_structural_zero": True,
+        "narrative_claims": None,
+        "grounding_rejected": None,
+        "grounding_drafted": None,
+        "h_fact": None,
+        "h_fact_pending": None,
+        "ambiguous": None,
+        "narrative_heavy": None,
+        "confidence": None,
+        "price_book_digest": book.digest,
+        "ground_truth_sha256": gt.digest,
+        "metrics_version": METRICS_VERSION,
+    }
+
+
 @dataclass(frozen=True)
 class RunMetricsReport:
     """What one pass wrote (counts only, no labels)."""
@@ -415,9 +489,10 @@ def score_run_metrics(
 ) -> RunMetricsReport:
     """Write eval_run for every stored fused verdict. Confirmatory runs are
     refused until build-freeze, as in the accuracy scoring path."""
+    baseline_rows = store.fetch_all_baseline_rows()
     if not frozen() and any(
         r.get("evaluation_phase") == "confirmatory"
-        for r in store.fetch_all_pipeline_rows()
+        for r in [*store.fetch_all_pipeline_rows(), *baseline_rows]
     ):
         raise PoolLockedError(
             f"confirmatory runs are scored only after tag {BUILD_FREEZE_TAG!r}"
@@ -450,6 +525,17 @@ def score_run_metrics(
             h_fact_counts=(h_fact_counts or {}).get(run_id),
             is_ambiguous=amb.get(incident_id),
             narrative_heavy=(narrative_heavy or {}).get(incident_id),
+        )
+        if row is None:
+            unlabelled += 1
+            continue
+        rows.append(row)
+    for b in baseline_rows:
+        row = baseline_run_metrics_row(
+            baseline=b,
+            gt=gt,
+            book=book,
+            storage_bytes=storage_bytes[str(b["incident_id"])],
         )
         if row is None:
             unlabelled += 1
