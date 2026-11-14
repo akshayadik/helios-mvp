@@ -1,0 +1,33 @@
+# S4.3: the HELIOS image copies only helios/, bin/, the public key and the
+# price book. Everything below stays out of the build context.
+.git
+.github
+.claude
+.gemini
+.venv
+venv
+**/__pycache__
+**/*.pyc
+.mypy_cache
+.pytest_cache
+.ruff_cache
+coverage.xml
+.coverage
+.env
+.env.*
+**/api_keys.json
+*.jsonl
+*.anchor.json
+data
+external
+experiments
+research
+docs
+!docs/tracking/price_book.md
+baselines
+tests
+deploy/secrets
+deploy/decisions
+deploy/runs
+keys/*
+!keys/deviation_log_ed25519.pub.pem

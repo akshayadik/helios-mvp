@@ -1,0 +1,168 @@
+# HELIOS compose deployment (S4.3, design docs/sprints/s4-product-eval-tooling/s4_3_compose_design.md).
+# Install steps are in deploy/README.md. Paths below are relative to deploy/.
+#
+#   api          read-only verdicts, CoE and decisions over one campaign (S4.1)
+#   model-init   pulls the model into the volume once, with internet access
+#   model        Ollama on the internal network only; no published port
+#   model-check  refuses to finish unless the served digest equals entry 58's
+#   runner       runs campaigns (profile "run"); the only service given .env
+#   admin        creates the decisions secret and API keys (profile "admin")
+#   console      added by S4.2
+#
+# The store is not a service: DuckDB is embedded, and the campaign directory
+# (HELIOS_CAMPAIGN) is mounted. Every pulled image is pinned by digest; the
+# HELIOS image is built from this repository and poetry.lock.
+
+name: helios
+
+x-helios-image: &helios-image
+  image: helios:${HELIOS_REVISION:-local}
+  build:
+    context: ..
+    dockerfile: deploy/Dockerfile
+    args:
+      HELIOS_REVISION: ${HELIOS_REVISION:-local}
+
+x-hardened: &hardened
+  read_only: true
+  tmpfs:
+    - /tmp
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+
+x-ollama-image: &ollama-image
+  image: ollama/ollama:0.40.16@sha256:910d0d8107b538fb0894e63163eb195de0cc7aefcbc666dc62d3b18f71124592
+
+services:
+  api:
+    <<: [*helios-image, *hardened]
+    command:
+      - bin/helios_api.py
+      - serve
+      - --campaign
+      - /campaign
+      - --decisions
+      - /decisions/decisions.jsonl
+      - --keys
+      - /secrets/api_keys.json
+      - --host
+      - ""  # empty host: every interface inside the container (asyncio)
+      - --port
+      - "8080"
+    env_file:
+      - path: ${HELIOS_SECRETS:-./secrets}/api.env
+        required: false
+    environment:
+      HOME: /tmp
+    volumes:
+      - ${HELIOS_CAMPAIGN:-./campaign}:/campaign:ro
+      - ${HELIOS_DECISIONS:-./decisions}:/decisions
+      - ${HELIOS_SECRETS:-./secrets}:/secrets:ro
+    ports:
+      # Loopback only (C-f). Publishing wider is a deliberate edit (README).
+      - "${HELIOS_API_BIND:-127.0.0.1}:${HELIOS_API_PORT:-8080}:8080"
+    networks:
+      - front
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8080/health', timeout=5)"
+      interval: 10s
+      timeout: 6s
+      retries: 6
+      start_period: 10s
+    restart: unless-stopped
+
+  model-init:
+    <<: *ollama-image
+    entrypoint: ["/bin/sh", "/init/model_init.sh"]
+    environment:
+      HELIOS_MODEL: llama3.1:8b
+    volumes:
+      - ./model_init.sh:/init/model_init.sh:ro
+      - ollama:/root/.ollama
+    networks:
+      - egress
+    restart: "no"
+
+  model:
+    <<: *ollama-image
+    volumes:
+      - ollama:/root/.ollama
+    networks:
+      - internal
+    depends_on:
+      model-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 6s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+
+  model-check:
+    <<: [*helios-image, *hardened]
+    command: ["bin/check_model.py"]
+    environment:
+      HELIOS_OLLAMA_URL: http://model:11434
+      HOME: /tmp
+    networks:
+      - internal
+    depends_on:
+      model:
+        condition: service_healthy
+    restart: "no"
+
+  runner:
+    <<: [*helios-image, *hardened]
+    profiles: ["run"]
+    command: ["bin/helios_campaign.py", "--help"]
+    env_file:
+      - path: ../.env
+        required: false
+    environment:
+      HELIOS_OLLAMA_URL: ${HELIOS_OLLAMA_URL:-http://model:11434}
+      HOME: /tmp
+      # The image has no git; ledgers record the commit through this variable
+      # (hmac_chain._resolve_commit_sha). Build with the full SHA (README).
+      GITHUB_SHA: ${HELIOS_REVISION:-LOCAL}
+      # Its own L-pipe cache: data/ is read-only, and answers from the CPU
+      # model server must not enter the host's calibrated cache.
+      HELIOS_LPIPE_CACHE: /cache/lpipe_cache.sqlite
+    volumes:
+      - ../data:/app/data:ro
+      - ${HELIOS_RUN_DIR:-./runs}:/campaign
+      - runner-cache:/cache
+    networks:
+      - internal
+    depends_on:
+      model-check:
+        condition: service_completed_successfully
+
+  admin:
+    <<: [*helios-image, *hardened]
+    profiles: ["admin"]
+    command: ["bin/helios_api.py", "--help"]
+    environment:
+      HOME: /tmp
+    volumes:
+      - ${HELIOS_SECRETS:-./secrets}:/secrets
+    network_mode: none
+
+  # console:  S4.2 approval console joins here (front network, talks to api).
+
+networks:
+  front: {}
+  egress: {}
+  internal:
+    internal: true
+
+volumes:
+  ollama: {}
+  runner-cache: {}

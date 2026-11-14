@@ -160,6 +160,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--annotations", type=Path, metavar="DIR")
     parser.add_argument("--reward", type=Path, metavar="DIR")
     parser.add_argument("--campaign", type=Path, metavar="DIR")
+    parser.add_argument("--decisions", type=Path, metavar="FILE")
     parser.add_argument("--public-key", type=Path, default=None)
     parser.add_argument("--public-only", action="store_true")
     args = parser.parse_args(argv)
@@ -172,6 +173,13 @@ def main(argv: list[str] | None = None) -> int:
         return verify_reward_dir(args.reward, key, args.public_key or PUBLIC_KEY_FILE)
     if args.campaign is not None:
         return verify_campaign_dir(args.campaign, load_key())
+    if args.decisions is not None:
+        # A decisions ledger outside its campaign (compose, S4.3): asked for
+        # explicitly, so a missing file or secret fails instead of skipping.
+        if not args.decisions.exists() or not os.environ.get(DECISIONS_SECRET_ENV):
+            print(f"❌ {args.decisions}: missing, or {DECISIONS_SECRET_ENV} not loaded")
+            return 1
+        return verify_decisions(args.decisions)
     if args.annotations is not None:
         key = None if args.public_only else load_annotations_hmac()
         if key is None and not args.public_only:

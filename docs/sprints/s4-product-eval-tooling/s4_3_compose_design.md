@@ -1,6 +1,6 @@
 # S4.3 Compose deployment: design (draft)
 
-**Row:** S2-M9-ENG03 · **Effort:** ½ day · **Depends on:** S4.1 (API, PR #95) · **Feeds:** S4.2 (approval console joins the same compose file) · **Status:** draft for owner approval (C-a to C-h)
+**Row:** S2-M9-ENG03 · **Effort:** ½ day · **Depends on:** S4.1 (API, PR #95) · **Feeds:** S4.2 (approval console joins the same compose file) · **Status:** approved 2026-11-14 (C-a to C-h as recommended)
 
 ## 1. What is fixed already
 

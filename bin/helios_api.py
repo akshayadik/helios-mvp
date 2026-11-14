@@ -58,12 +58,16 @@ def decisions_secret(environ: dict[str, str] | None = None) -> bytes:
     return raw.encode()
 
 
-def config_for(campaign: Path, keys: Path, secret: bytes) -> ApiConfig:
-    """A campaign directory's store, CoE ledgers and decisions ledger."""
+def config_for(
+    campaign: Path, keys: Path, secret: bytes, decisions: Path | None = None
+) -> ApiConfig:
+    """A campaign directory's store, CoE ledgers and decisions ledger. The
+    decisions ledger may live elsewhere (compose mounts the campaign
+    read-only, S4.3)."""
     return ApiConfig(
         store_path=campaign / "results.duckdb",
         coe_dir=campaign / "coe",
-        decisions_path=campaign / "decisions" / "decisions.jsonl",
+        decisions_path=decisions or campaign / "decisions" / "decisions.jsonl",
         keys_path=keys,
         decisions_secret=secret,
         public_key_path=PUBLIC_KEY,
@@ -98,6 +102,7 @@ def main(argv: list[str] | None = None) -> int:
     serve = sub.add_parser("serve")
     serve.add_argument("--campaign", type=Path, required=True)
     serve.add_argument("--keys", type=Path, required=True)
+    serve.add_argument("--decisions", type=Path, help="default CAMPAIGN/decisions/")
     serve.add_argument("--host", default=LOOPBACK)
     serve.add_argument("--port", type=int, default=DEFAULT_PORT)
     keygen = sub.add_parser("keygen")
@@ -126,7 +131,8 @@ def main(argv: list[str] | None = None) -> int:
     refuse_deviation_env()  # pragma: no cover - serve starts a server
     import uvicorn  # pragma: no cover
 
-    app = create_app(config_for(args.campaign, args.keys, decisions_secret()))
+    config = config_for(args.campaign, args.keys, decisions_secret(), args.decisions)
+    app = create_app(config)
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")
     return 0  # pragma: no cover
 

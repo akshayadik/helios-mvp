@@ -1,0 +1,16 @@
+# Override: point the runner at the host's Ollama instead of the model service
+# (S4.3, design C-d). Evaluation runs use the host model server, the one the
+# build data was calibrated on; model identity is still checked at run start.
+#
+#   docker compose -f deploy/compose.yaml -f deploy/compose.host-model.yaml \
+#       --profile run run --rm runner bin/helios_campaign.py ...
+
+services:
+  runner:
+    environment:
+      HELIOS_OLLAMA_URL: http://host.docker.internal:11434
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks: !override
+      - egress
+    depends_on: !reset {}

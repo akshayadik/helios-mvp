@@ -30,14 +30,20 @@ class PoolLockedError(PermissionError):
 
 
 def build_frozen(repo_root: Path = _REPO_ROOT) -> bool:
-    """True when the annotated or lightweight tag build-freeze exists."""
-    result = subprocess.run(
-        ["git", "rev-parse", "-q", "--verify", f"refs/tags/{BUILD_FREEZE_TAG}"],
-        cwd=repo_root,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    """True when the annotated or lightweight tag build-freeze exists.
+
+    Fails closed: without git or a repository (the S4.3 container image has
+    neither) the pool stays locked."""
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "-q", "--verify", f"refs/tags/{BUILD_FREEZE_TAG}"],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        return False
     return result.returncode == 0 and bool(result.stdout.strip())
 
 

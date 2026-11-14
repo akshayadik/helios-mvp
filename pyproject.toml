@@ -113,6 +113,7 @@ statsmodels = ">=0.14,<0.15"  # ADDED; Wilcoxon + Holm-Bonferroni for M4 ablatio
 drain3   = "==0.9.11"       # ADDED S1.4; log templates. Exact pin: templates feed features, so a new version is a deviation entry
 fastapi  = ">=0.115,<0.116"  # ADDED S4.1 (design A-a); API, OpenAPI from the pydantic models
 uvicorn  = ">=0.32,<0.35"    # ADDED S4.1; ASGI server for bin/helios_api.py serve
+pyyaml   = ">=6.0,<7.0"      # ADDED S4.3; cost.py reads the price book; was only installed through dev tools
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Development / CI dependencies (TIER 2)

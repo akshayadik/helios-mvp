@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -62,7 +63,12 @@ from helios.vcl.config import VCLManifest  # noqa: F401  # flag-guard compliance
 from helios.vcl.variants import EXPLORATORY_VARIANTS
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-CACHE_PATH = REPO_ROOT / "data/cache/lpipe_cache.sqlite"
+# S4.3: the compose runner mounts data/ read-only and keeps its own cache, so
+# answers from its CPU model server never enter the host's calibrated cache.
+CACHE_ENV = "HELIOS_LPIPE_CACHE"
+CACHE_PATH = Path(
+    os.environ.get(CACHE_ENV) or REPO_ROOT / "data/cache/lpipe_cache.sqlite"
+)
 CONFIG = "campaign.json"
 
 

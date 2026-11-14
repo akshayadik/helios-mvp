@@ -66,3 +66,8 @@ data/labelling/
 # S4.1 API secrets (never committed): decisions HMAC secret and API key digests
 .env.api
 api_keys.json
+
+# S4.3 compose deployment: local secrets, decisions and runs
+deploy/secrets/
+deploy/decisions/
+deploy/runs/
