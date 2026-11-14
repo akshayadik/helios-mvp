@@ -4,11 +4,16 @@ Any change to Protocol A values (temperature, top_p, top_k, LLAMA_SEED)
 requires a deviation log entry before the constant is updated.
 """
 
+import os
+
 from helios.vcl import VCLFlag  # noqa: F401 — satisfies flag-guard
 
 HELIOS_ENABLE_LPIPE: bool = True
 
-OLLAMA_BASE_URL: str = "http://localhost:11434"
+# S4.3 (C-d): the compose runner points this at its model service. Not part of
+# Protocol A: model identity is the digest check below, not the address.
+OLLAMA_URL_ENV = "HELIOS_OLLAMA_URL"
+OLLAMA_BASE_URL: str = os.environ.get(OLLAMA_URL_ENV, "http://localhost:11434")
 MODEL_NAME: str = "llama3.1:8b"
 TIMEOUT_S: float = 120.00
 LPIPE_MAX_RETRIES: int = 1
