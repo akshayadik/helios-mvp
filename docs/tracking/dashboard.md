@@ -2,7 +2,7 @@
 
 _Manual until a weekly CI job regenerates the dynamic sections. Refreshed at every sprint exit (see `docs/sprints/README.md`)._
 
-**Last updated:** 2026-11-09 (S3 exit documentation sync)
+**Last updated:** 2026-11-14 (S4 exit documentation sync)
 
 ## Sprint progress (manual)
 
@@ -19,7 +19,7 @@ gantt
     S1 Data and graph (closed 27 Oct)    :done, s1, 2026-10-24, 4d
     S2 Reasoning (closed 1 Nov)          :done, s2, 2026-10-27, 6d
     S3 Routing and learning (closed 9 Nov) :done, s3, 2026-11-06, 4d
-    S4 Product shell, evaluation tooling :s4, 2027-01-18, 2027-01-29
+    S4 Product shell, eval tooling (closed 14 Nov) :done, s4, 2026-11-11, 4d
     S5 Integration and build freeze      :crit, s5, 2027-02-01, 2027-02-12
 
     section Evidence and analysis
@@ -40,7 +40,8 @@ gantt
 | S1 Data and graph | Closed 2026-10-27 (started early, 2026-10-24) | `rb-s1-exit`; [exit report](../sprints/s1-data-graph/exit_report.md) |
 | S2 Reasoning, consensus, narratives | Closed 2026-11-01 (started early, 2026-10-27); S2.9 rater training scheduled before S5 | `rb-s2-exit`; [exit report](../sprints/s2-reasoning/exit_report.md) |
 | S3 Routing and learning | Closed 2026-11-09 (started early, 2026-11-06); S3.4 moved to Stage B | `rb-s3-exit`; [exit report](../sprints/s3-routing/exit_report.md) |
-| S4 Product shell, evaluation tooling | Next (plan refresh before it starts) | — |
+| S4 Product shell, evaluation tooling | Closed 2026-11-14 (started early, 2026-11-11); all four Tier-2 items built | `rb-s4-exit`; [exit report](../sprints/s4-product-eval-tooling/exit_report.md) |
+| S5 Integration and freeze | Next (plan refresh before it starts) | — |
 
 ## Architecture flow (manual; updated when ablation_architecture.md changes)
 
@@ -79,11 +80,12 @@ Legend: ✅ ≥80% complete · 🟡 partial · ⏳ not yet started · ❌ blocke
 
 | Invariant | Status | Evidence (as of 2026-11-01 unless stated) |
 |---|---|---|
-| Deviation log (HMAC chain + Ed25519) | ✅ | 83 entries (2026-11-09); `verify-public` passes with the public key only; entries 35–83 Ed25519-signed |
+| Deviation log (HMAC chain + Ed25519) | ✅ | 89 entries (2026-11-14); `verify-public` passes with the public key only; entries 35–89 Ed25519-signed |
 | Chain-of-Evidence ledgers (S2.7) | ✅ | One signed file per orchestrator run (HMAC per entry, Ed25519 anchor); `verify_ledgers.py --coe DIR [--public-only]`; build ledgers for rater training verify (1,116 entries) |
 | Annotations ledger (S2.9) | ✅ (no labels yet) | Own HMAC secret and Ed25519 key (`.env.labelling`); `verify_ledgers.py --annotations DIR`; the labelling server refuses deviation secrets |
 | Reconciliation ledger | ✅ | 25 entries; chain and anchor verified |
-| Exclusion ledger | ✅ (empty) | Anchor present; populated from phase E |
+| Exclusion ledger | ✅ (empty) | Anchor present; populated from phase E (pool campaign; build campaigns keep their own, S4.10) |
+| HITL decisions ledger (S4.1) | ✅ | One signed ledger per campaign with its own secret (`.env.api`); the API never holds a deviation secret; `verify_ledgers.py --decisions FILE` |
 | Capture content seals | ✅ | 20 exploratory OTel captures (`verify_captures.py`); RCAEval 240 pool + 495 build sealed (S1.1); 63 OTel build cases (`capture_campaign.py verify`, S1.2) |
 | VCL variants | ✅ | 15 variants (8 confirmatory, 7 exploratory), unique hashes; confirmatory hashes identical to OSF deposit 1 (`vcl_manifest_tracking.md`) |
 | OSF freeze | ✅ | Deposit 1, DOI 10.17605/OSF.IO/KMR3D; `verify_osf_freeze.py --verify` passes |
@@ -95,13 +97,13 @@ Legend: ✅ ≥80% complete · 🟡 partial · ⏳ not yet started · ❌ blocke
 
 ## Latest deviation log entries (manual)
 
-*Source: `deviation_log.jsonl` — 83 entries; 6 most recent shown. Full text: `deviation_log.md`.*
+*Source: `deviation_log.jsonl` — 89 entries; 6 most recent shown. Full text: `deviation_log.md`.*
 
 | # | Date | Change (short) | sig[:12] |
 |---|---|---|---|
-| 78 | 2026-11-08 | OTel fix: G-pipe reselection on the candidate chain | `36b07fa335b2` |
-| 79 | 2026-11-08 | OTel fix: MAHC run 4 on the candidate chain | `f6de3055c6aa` |
-| 80 | 2026-11-08 | OTel fix: router run 3 on the candidate chain | `244dbfd4a768` |
-| 81 | 2026-11-08 | OTel v4 validation: tie (30/36), old chain kept | `b48d6289089a` |
-| 82 | 2026-11-08 | S3.2 ACP pre-run (four remediation families, recorded not routed); S3.4 to Stage B | `5f2b5cc697eb` |
-| 83 | 2026-11-08 | ACP fitted once and frozen (`dd7b63d3`) | `cd5f12ab2d12` |
+| 84 | 2026-11-11 | S4.9 metrics suite: graph build in TTT and TTCD, operational TTCD, CpR, H_struct, H_fact | `c73d18fdbaa2` |
+| 85 | 2026-11-12 | S4.9b narrative-heavy stratum: τ_N frozen on RCAEval build | `73aba93f4d53` |
+| 86 | 2026-11-12 | S4.11 analysis suite: Holm in data order binding, fixed sequence reported | `afc1652e6f8c` |
+| 87 | 2026-11-13 | S4.10 schedule, determinism rerun, cell rule, MCAR and IPW | `b235a523a6f2` |
+| 88 | 2026-11-13 | S4.8 baselines: export from the sealed window, PDiagnose adapter | `fe36f7dc19e8` |
+| 89 | 2026-11-14 | S4.6 FGSV lite and S4.7 IOL lite operationalise E-H4 and E-H6 | `5f5f10425a52` |

@@ -12,6 +12,19 @@ Prove every variant runs end to end, certify the flags, pilot the whole pipeline
 
 `rb-s4-exit`. Rating rubric trialled and ready to freeze (S2.9).
 
+## Carried in from S4 (exit 2026-11-14; full refresh before S5 starts)
+
+Listed at the S4 exit ([exit report](../s4-product-eval-tooling/exit_report.md) §6); this plan gets its full refresh (capacity, owner items) before S5 starts.
+
+| Item | Note |
+|---|---|
+| `ablation_architecture.md` stale for S4 | Describe CoE steps A (FGSV) and S (self-telemetry), the API, console and compose shell (register row 1) |
+| `r1_traceability_matrix.md` §2 note | FGSV and IOL are now built as lite versions (entry 89) (register row 21) |
+| S5.1 system test includes noFGSV and noIOL | Phase E now runs them; noCogni and HIS3 stay refused |
+| S5.3 pilot joins `determinism.json` into `eval_run` | Left to the pilot by S4.10 |
+| OSF addendum deposit: entries 46–89 and the S4 frozen files | Before `build-freeze` |
+| Pool-only checks after `build-freeze` (span status-code format, rebuilt series) | S4.8 open item |
+
 ## Capacity
 
 8 days of tasks in 10 working days: 2 days of slack before the freeze.
