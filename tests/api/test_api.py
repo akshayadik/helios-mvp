@@ -24,6 +24,7 @@ from bin.helios_api import (
     refuse_deviation_env,
     spec_text,
 )
+from helios.api import API_VERSION
 from helios.api.app import ApiConfig, create_app
 from helios.api.auth import ApiKey, KeyStore, add_key
 from helios.api.decisions import DecisionLedger, ViewTokens, read_entries
@@ -145,6 +146,10 @@ def env(tmp_path: Path) -> dict[str, Any]:
     reader = add_key(keys, "obs", ["reader"])
     reviewer = add_key(keys, "R1", ["reviewer"])
     other = add_key(keys, "R2", ["reviewer"])
+    blind = add_key(keys, "P1", ["reviewer"], blind=True)
+    simulated = add_key(keys, "S1", ["reviewer"], simulated=True)
+    assignments = tmp_path / "assignments.json"
+    assignments.write_text(json.dumps({"assignments": {"P1": ["run-p", "run-x"]}}))
     frozen = {"v": False}
     clock = Clock()
     config = ApiConfig(
@@ -156,6 +161,7 @@ def env(tmp_path: Path) -> dict[str, Any]:
         public_key_path=pub,
         frozen=lambda: frozen["v"],
         clock=clock,
+        assignments_path=assignments,
     )
     client = TestClient(create_app(config))
     return {
@@ -163,6 +169,8 @@ def env(tmp_path: Path) -> dict[str, Any]:
         "reader": {"X-API-Key": reader},
         "reviewer": {"X-API-Key": reviewer},
         "other": {"X-API-Key": other},
+        "blind": {"X-API-Key": blind},
+        "simulated": {"X-API-Key": simulated},
         "frozen": frozen,
         "clock": clock,
         "config": config,
@@ -242,7 +250,7 @@ def test_committed_spec_matches_the_app(tmp_path: Path) -> None:
     assert (
         spec_text(tmp_path) == SPEC_PATH.read_text()
     ), "docs/api/openapi.json is stale: run bin/helios_api.py export-spec"
-    assert SPEC["info"]["version"] == "api-v1"
+    assert SPEC["info"]["version"] == API_VERSION
 
 
 # ── health and authentication ────────────────────────────────────────────────
@@ -251,7 +259,7 @@ def test_committed_spec_matches_the_app(tmp_path: Path) -> None:
 def test_health_needs_no_key_and_reports_ledgers(env: dict[str, Any]) -> None:
     body = _check(env["client"].get("/health"), "get", "/health")
     assert body["status"] == "ok" and body["incidents"] == 3
-    assert body["keys_configured"] == 3 and body["build_frozen"] is False
+    assert body["keys_configured"] == 5 and body["build_frozen"] is False
     assert "baseline-v1" in body["schema_tags"]
     assert body["coe_ledgers"]["results.HELIOS-Full.coe.jsonl"].startswith("Verified")
 
@@ -488,3 +496,200 @@ def test_verify_ledgers_checks_the_decisions_ledger(
     assert "not checked" in capsys.readouterr().out
     path.write_text(path.read_text().replace("reject", "accept"))
     assert verify_decisions(path, SECRET) == 1
+
+
+# ── S4.2: review queue, blind keys, decision fields (design K-e to K-g) ──────
+
+
+def _decide(
+    env: dict[str, Any], who: str, run: str, **body: Any
+) -> tuple[int, dict[str, Any]]:
+    c, h = env["client"], env[who]
+    view = c.post(f"/v1/verdicts/{run}/views", headers=h).json()
+    resp = c.post(
+        f"/v1/verdicts/{run}/decisions",
+        headers=h,
+        json={"view_token": view["view_token"], **body},
+    )
+    return resp.status_code, _check(resp, "post", "/v1/verdicts/{run_id}/decisions")
+
+
+def test_queue_lists_assigned_cases_in_order(env: dict[str, Any]) -> None:
+    c = env["client"]
+    q = _check(c.get("/v1/queue", headers=env["blind"]), "get", "/v1/queue")
+    assert [(i["position"], i["run_id"], i["decided"]) for i in q["items"]] == [
+        (1, "run-p", False),
+        (2, "run-x", False),
+    ]
+    assert q["next_position"] == 1
+    assert _decide(env, "blind", "run-p", decision="escalate")[0] == 201
+    q = c.get("/v1/queue", headers=env["blind"]).json()
+    assert [i["decided"] for i in q["items"]] == [True, False]
+    assert q["next_position"] == 2
+    assert _decide(env, "blind", "run-x", decision="accept")[0] == 201
+    assert c.get("/v1/queue", headers=env["blind"]).json()["next_position"] is None
+    unassigned = c.get("/v1/queue", headers=env["reviewer"]).json()
+    assert unassigned == {"key_id": "R1", "items": [], "next_position": None}
+    assert c.get("/v1/queue", headers=env["reader"]).status_code == 403
+
+
+def test_queue_is_removed_when_the_console_is_off(env: dict[str, Any]) -> None:
+    env["config"].console = False
+    resp = env["client"].get("/v1/queue", headers=env["blind"])
+    assert _check(resp, "get", "/v1/queue")["status"] == 404
+
+
+def test_blind_key_sees_only_its_cases_and_no_variant(env: dict[str, Any]) -> None:
+    c, h = env["client"], env["blind"]
+    full = _check(
+        c.get("/v1/verdicts/run-p", headers=h), "get", "/v1/verdicts/{run_id}"
+    )
+    noexpl = c.get("/v1/verdicts/run-x", headers=h).json()
+    assert full["variant"] is None and noexpl["variant"] is None
+    assert full["narrative"] is not None and noexpl["narrative"] is None
+    assert "HELIOS" not in json.dumps([full, noexpl])
+    assert c.get("/v1/verdicts/run-c", headers=h).status_code == 404  # not assigned
+    assert c.post("/v1/verdicts/run-c/views", headers=h).status_code == 404
+    assert c.get("/v1/incidents", headers=h).status_code == 403
+    assert c.get("/v1/incidents/inc-1", headers=h).status_code == 403
+    coe = _check(
+        c.get("/v1/verdicts/run-p/coe", headers=h), "get", "/v1/verdicts/{run_id}/coe"
+    )
+    assert set(coe["entry"]) == {"run_id", "steps"} and coe["ledger"] == ""
+    assert coe["verified"] is True
+    assert FULL not in json.dumps(coe)
+    seen = c.get("/v1/verdicts/run-p", headers=env["reviewer"]).json()
+    assert seen["variant"] == "HELIOS-Full"
+
+
+def test_blind_key_sees_only_its_own_decisions(env: dict[str, Any]) -> None:
+    assert _decide(env, "reviewer", "run-p", decision="escalate")[0] == 201
+    assert _decide(env, "blind", "run-p", decision="reject")[0] == 201
+    c = env["client"]
+    mine = c.get("/v1/verdicts/run-p/decisions", headers=env["blind"]).json()
+    assert [d["key_id"] for d in mine["decisions"]] == ["P1"]
+    everyone = c.get("/v1/verdicts/run-p/decisions", headers=env["reader"]).json()
+    assert [d["key_id"] for d in everyone["decisions"]] == ["R1", "P1"]
+
+
+def test_chosen_service_rules(env: dict[str, Any]) -> None:
+    # Ranked list in the fixture: checkout, email, ad, cart.
+    status, d = _decide(env, "reviewer", "run-p", decision="accept")
+    assert (status, d["chosen_service"]) == (201, "checkout")
+    status, d = _decide(
+        env, "reviewer", "run-p", decision="reject", chosen_service="ad"
+    )
+    assert (status, d["chosen_service"]) == (201, "ad")
+    status, d = _decide(
+        env, "reviewer", "run-p", decision="reject", chosen_service="none"
+    )
+    assert (status, d["chosen_service"]) == (201, "none")
+    status, d = _decide(env, "reviewer", "run-p", decision="reject")
+    assert (status, d["chosen_service"]) == (201, None)
+    status, d = _decide(env, "reviewer", "run-p", decision="escalate")
+    assert (status, d["chosen_service"]) == (201, None)
+    for bad in (
+        {"decision": "accept", "chosen_service": "email"},
+        {"decision": "escalate", "chosen_service": "email"},
+        {"decision": "reject", "chosen_service": "checkout"},
+        {"decision": "reject", "chosen_service": "frontend"},
+    ):
+        assert _decide(env, "reviewer", "run-p", **bad)[0] == 400, bad
+
+
+def test_hidden_time_and_simulated_tag_are_recorded(env: dict[str, Any]) -> None:
+    status, d = _decide(
+        env,
+        "simulated",
+        "run-p",
+        decision="escalate",
+        client_ms=1200,
+        client_hidden_ms=350,
+    )
+    assert status == 201
+    assert (d["simulated"], d["client_ms"], d["client_hidden_ms"]) == (True, 1200, 350)
+    status, human = _decide(env, "reviewer", "run-p", decision="escalate")
+    assert human["simulated"] is False and human["client_hidden_ms"] is None
+    entries = read_entries(env["config"].decisions_path)
+    assert [e["simulated"] for e in entries] == [True, True, False, False]
+    assert DecisionLedger(key=SECRET, log_path=env["config"].decisions_path).verify()[0]
+    bad = env["client"].post(
+        "/v1/verdicts/run-p/decisions",
+        headers=env["reviewer"],
+        json={"decision": "accept", "view_token": "x" * 20, "client_hidden_ms": -1},
+    )
+    assert bad.status_code == 422
+
+
+def test_key_attributes_round_trip(tmp_path: Path) -> None:
+    keys = tmp_path / "k.json"
+    add_key(keys, "P9", ["reviewer"], blind=True)
+    add_key(keys, "S9", ["reviewer"], simulated=True)
+    add_key(keys, "R9", ["reviewer"])
+    stored = {k["id"]: k for k in json.loads(keys.read_text())["keys"]}
+    assert stored["P9"]["blind"] is True and "simulated" not in stored["P9"]
+    assert stored["S9"]["simulated"] is True and "blind" not in stored["S9"]
+    assert set(stored["R9"]) == {"id", "sha256", "roles"}
+
+
+def test_simulated_hitl_decides_every_review_run_once(env: dict[str, Any]) -> None:
+    from bin import simulate_hitl as sim
+
+    c, key = env["client"], env["simulated"]["X-API-Key"]
+    counts = sim.simulate(c, "", key, "S1", sim.Policy("accept"), think_ms=900000)
+    # run-p and run-x need review; run-c is confirmed; run-k is locked (423).
+    assert counts == {"accept": 2}
+    again = sim.simulate(c, "", key, "S1", sim.Policy("accept"), think_ms=900000)
+    assert again == {"skipped": 2}
+    entries = [
+        e
+        for e in read_entries(env["config"].decisions_path)
+        if e["event"] == "decision"
+    ]
+    assert {e["run_id"] for e in entries} == {"run-p", "run-x"}
+    assert all(e["simulated"] and e["client_ms"] == 900000 for e in entries)
+    assert all(e["chosen_service"] == "checkout" for e in entries)
+
+
+def test_simulated_hitl_policies_and_guards(env: dict[str, Any]) -> None:
+    from bin import simulate_hitl as sim
+
+    assert sim.Policy("escalate").decide({"confidence": 0.99}) == "escalate"
+    gate = sim.Policy("confidence", threshold=0.9)
+    assert gate.decide({"confidence": 0.95}) == "accept"
+    assert gate.decide({"confidence": 0.85}) == "escalate"
+    assert gate.decide({"confidence": None}) == "escalate"
+    with pytest.raises(ValueError, match="threshold"):
+        sim.Policy("confidence")
+    with pytest.raises(ValueError, match="unknown"):
+        sim.Policy("random")
+    human = env["reviewer"]["X-API-Key"]
+    with pytest.raises(sim.ApiError, match="not a simulated key"):
+        sim.simulate(env["client"], "", human, "R1", sim.Policy("accept"), think_ms=1)
+    with pytest.raises(sim.ApiError, match="HTTP 401"):
+        sim.simulate(env["client"], "", "wrong", "R1", sim.Policy("accept"), think_ms=1)
+
+
+def test_simulated_hitl_cli(
+    env: dict[str, Any], monkeypatch: pytest.MonkeyPatch, capsys: Any
+) -> None:
+    import requests
+
+    from bin import simulate_hitl as sim
+
+    class Session:
+        def __init__(self) -> None:
+            self.client = env["client"]
+
+        def __enter__(self) -> Any:
+            return self.client
+
+        def __exit__(self, *exc: object) -> None:
+            return None
+
+    monkeypatch.setattr(requests, "Session", Session)
+    key_file = env["tmp"] / "sim.key"
+    key_file.write_text(env["simulated"]["X-API-Key"] + "\n")
+    argv = ["--api", "", "--key-file", str(key_file), "--key-id", "S1"]
+    assert sim.main([*argv, "--policy", "escalate", "--limit", "1"]) == 0
+    assert "{'escalate': 1}" in capsys.readouterr().out

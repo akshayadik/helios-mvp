@@ -6,6 +6,10 @@ is printed once by ``bin/helios_api.py keygen`` and never logged.
 
 Roles: ``reader`` (GET), ``reviewer`` (reader plus views and decisions),
 ``admin`` (reserved). A role includes the ones below it.
+
+Attributes (S4.2 K-e, K-f): a ``blind`` key (an RQ4 participant) sees only the
+cases assigned to it and never a variant name; a ``simulated`` key is the
+scripted reviewer, and every ledger entry it writes says so.
 """
 
 from __future__ import annotations
@@ -37,6 +41,8 @@ def hash_key(key: str) -> str:
 class ApiKey:
     id: str
     roles: tuple[str, ...]
+    blind: bool = False
+    simulated: bool = False
 
     def allows(self, role: str) -> bool:
         """True when the key holds ``role`` or a role above it."""
@@ -54,7 +60,13 @@ class KeyStore:
                 roles = tuple(str(r) for r in k["roles"])
                 if unknown := set(roles) - set(ROLES):
                     raise ValueError(f"unknown roles {sorted(unknown)}")
-                self._keys.append((str(k["sha256"]), ApiKey(str(k["id"]), roles)))
+                key = ApiKey(
+                    str(k["id"]),
+                    roles,
+                    blind=bool(k.get("blind", False)),
+                    simulated=bool(k.get("simulated", False)),
+                )
+                self._keys.append((str(k["sha256"]), key))
 
     def __len__(self) -> int:
         return len(self._keys)
@@ -71,7 +83,14 @@ class KeyStore:
         return found
 
 
-def add_key(path: Path, key_id: str, roles: list[str]) -> str:
+def add_key(
+    path: Path,
+    key_id: str,
+    roles: list[str],
+    *,
+    blind: bool = False,
+    simulated: bool = False,
+) -> str:
     """Create a key, store its digest, return the key (shown once)."""
     if unknown := set(roles) - set(ROLES):
         raise ValueError(f"unknown roles {sorted(unknown)}")
@@ -79,7 +98,12 @@ def add_key(path: Path, key_id: str, roles: list[str]) -> str:
     if any(k["id"] == key_id for k in body["keys"]):
         raise ValueError(f"key id {key_id!r} exists")
     key = secrets.token_urlsafe(_KEY_BYTES)
-    body["keys"].append({"id": key_id, "sha256": hash_key(key), "roles": roles})
+    record: dict[str, object] = {"id": key_id, "sha256": hash_key(key), "roles": roles}
+    if blind:
+        record["blind"] = True
+    if simulated:
+        record["simulated"] = True
+    body["keys"].append(record)
     path.write_text(json.dumps(body, indent=1) + "\n")
     os.chmod(path, 0o600)
     return key

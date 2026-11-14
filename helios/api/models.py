@@ -25,6 +25,8 @@ __all__ = [
     "IncidentSummary",
     "Narrative",
     "Problem",
+    "QueueItem",
+    "QueueOut",
     "RankedService",
     "RunSummary",
     "TriggerOut",
@@ -73,7 +75,7 @@ class IncidentPage(_Out):
 
 class RunSummary(_Out):
     run_id: str
-    variant: str
+    variant: str | None
     state: str
     needs_review: bool
     confidence: float | None
@@ -114,7 +116,7 @@ class TriggerOut(_Out):
 class Verdict(_Out):
     run_id: str
     incident_id: str
-    variant: str
+    variant: str | None = Field(description="Null for a blind (participant) key.")
     state: str
     needs_review: bool
     non_converged: bool
@@ -156,6 +158,19 @@ class DecisionIn(BaseModel):
         ge=0,
         description="The client's own timing, kept beside the server's.",
     )
+    client_hidden_ms: float | None = Field(
+        default=None,
+        ge=0,
+        description="How long the page was hidden while the case was shown (K-d).",
+    )
+    chosen_service: str | None = Field(
+        default=None,
+        max_length=200,
+        description=(
+            "On reject: the service the reviewer believes is the root cause, "
+            "from the ranked list, or 'none'. Set by the server on accept."
+        ),
+    )
 
 
 class DecisionOut(_Out):
@@ -168,6 +183,9 @@ class DecisionOut(_Out):
     decided_at: float
     decision_ms: float
     client_ms: float | None
+    client_hidden_ms: float | None
+    chosen_service: str | None
+    simulated: bool
     signature: str
 
 
@@ -175,3 +193,17 @@ class DecisionsOut(_Out):
     run_id: str
     decisions: list[DecisionOut]
     latest: str | None
+
+
+class QueueItem(_Out):
+    position: int
+    run_id: str
+    decided: bool
+
+
+class QueueOut(_Out):
+    """The cases assigned to the calling key, in order (S4.2 K-e)."""
+
+    key_id: str
+    items: list[QueueItem]
+    next_position: int | None = Field(description="First undecided case, if any.")

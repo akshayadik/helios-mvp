@@ -1,8 +1,14 @@
-"""API v1 application factory (S4.1 design A-a to A-i).
+"""API v1 application factory (S4.1 design A-a to A-i; S4.2 K-e to K-g).
 
 ``create_app(ApiConfig(...))`` builds the FastAPI app over one campaign:
 its store (read-only), its CoE ledgers (verified with the public key alone)
 and its decisions ledger. Errors are RFC 9457 problem details.
+
+S4.2 adds the review queue (``GET /v1/queue``, from an admin-written
+assignments file), blind keys (RQ4 participants: only their assigned cases,
+never a variant name, a CoE entry reduced to its citable evidence, only their
+own decisions) and three decision fields (``chosen_service``,
+``client_hidden_ms``, ``simulated``).
 """
 
 from __future__ import annotations
@@ -17,7 +23,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from helios.api import API_VERSION
+from helios.api import API_VERSION, HELIOS_ENABLE_CONSOLE
 from helios.api.auth import ApiKey, KeyStore
 from helios.api.decisions import (
     TOKEN_TTL_S,
@@ -38,6 +44,8 @@ from helios.api.models import (
     IncidentSummary,
     Narrative,
     Problem,
+    QueueItem,
+    QueueOut,
     RankedService,
     RunSummary,
     TriggerOut,
@@ -57,6 +65,7 @@ if TYPE_CHECKING:
 __all__ = ["ApiConfig", "create_app"]
 
 _HUMAN_STATES = frozenset({"provisional", "non_converged"})
+NONE_OF_THESE = "none"  # a reject whose root cause is not in the ranked list
 _PROBLEM = "application/problem+json"
 _ROUND = 3
 
@@ -72,6 +81,8 @@ class ApiConfig:
     frozen: Callable[[], bool] = build_frozen
     clock: Callable[[], float] = time.time
     token_ttl_s: float = TOKEN_TTL_S
+    assignments_path: Path | None = None
+    console: bool = HELIOS_ENABLE_CONSOLE
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
 
@@ -105,6 +116,30 @@ class _CoEIndex:
             self.status[path.name] = (ok, msg)
             for entry in read_entries(path):
                 self.entries[str(entry["run_id"])] = (path.name, entry)
+
+
+def load_assignments(path: Path | None) -> dict[str, list[str]]:
+    """Key ID -> ordered run IDs (``{"assignments": {...}}``); none if absent."""
+    if path is None or not path.is_file():
+        return {}
+    body = json.loads(path.read_text()).get("assignments", {})
+    return {str(k): [str(r) for r in runs] for k, runs in body.items()}
+
+
+def blind_entry(entry: dict[str, Any]) -> dict[str, Any]:
+    """A CoE entry reduced to what citations resolve to (the evidence items
+    and the F step), without the variant hash or parameter hashes (K-e)."""
+    steps = [
+        {"id": s.get("id"), "items": s["items"]}
+        for s in entry["steps"]
+        if s.get("items")
+    ]
+    steps += [
+        {"id": "F", "ranked": s.get("ranked"), "confidence": s.get("confidence")}
+        for s in entry["steps"]
+        if s.get("id") == "F"
+    ]
+    return {"run_id": entry["run_id"], "steps": steps}
 
 
 def _key_of(request: Request, x_api_key: str | None) -> ApiKey:
@@ -145,6 +180,7 @@ def create_app(config: ApiConfig) -> FastAPI:
         config.decisions_path.touch()
         ledger.init_anchor()
     coe = _CoEIndex(config.coe_dir, config.public_key_path)
+    assignments = load_assignments(config.assignments_path)
 
     app = FastAPI(
         title="HELIOS API",
@@ -180,6 +216,17 @@ def create_app(config: ApiConfig) -> FastAPI:
             )
         return fusion
 
+    def visible_run(run_id: str, key: ApiKey) -> dict[str, Any]:
+        """The run for this key: a blind key sees only its assigned cases,
+        and any other run is reported as absent."""
+        if key.blind and run_id not in assignments.get(key.id, []):
+            raise HTTPException(404, "no such run")
+        return run_or_404(run_id)
+
+    def not_blind(key: ApiKey) -> None:
+        if key.blind:
+            raise HTTPException(403, "a participant key sees only its queue")
+
     def summary(row: dict[str, Any]) -> RunSummary:
         state = str(row["state"])
         return RunSummary(
@@ -207,6 +254,13 @@ def create_app(config: ApiConfig) -> FastAPI:
             decided_at=float(e["decided_at"]),
             decision_ms=float(e["decision_ms"]),
             client_ms=None if e.get("client_ms") is None else float(e["client_ms"]),
+            client_hidden_ms=(
+                None
+                if e.get("client_hidden_ms") is None
+                else float(e["client_hidden_ms"])
+            ),
+            chosen_service=e.get("chosen_service"),
+            simulated=bool(e.get("simulated", False)),
             signature=e["signature"],
         )
 
@@ -228,10 +282,11 @@ def create_app(config: ApiConfig) -> FastAPI:
 
     @app.get("/v1/incidents", response_model=IncidentPage, tags=["incidents"])
     def incidents(
-        _: ReaderKey,
+        key: ReaderKey,
         limit: Limit = 50,
         offset: Offset = 0,
     ) -> IncidentPage:
+        not_blind(key)
         items = [IncidentSummary(**r) for r in reader.incidents(limit, offset)]
         return IncidentPage(
             items=items, total=reader.count_incidents(), limit=limit, offset=offset
@@ -243,7 +298,8 @@ def create_app(config: ApiConfig) -> FastAPI:
         responses={404: {"model": Problem}},
         tags=["incidents"],
     )
-    def incident(incident_id: str, _: ReaderKey) -> IncidentDetail:
+    def incident(incident_id: str, key: ReaderKey) -> IncidentDetail:
+        not_blind(key)
         rows = reader.runs_of(incident_id)
         if not rows:
             raise HTTPException(404, "no such incident")
@@ -260,8 +316,8 @@ def create_app(config: ApiConfig) -> FastAPI:
         responses={404: {"model": Problem}, 423: {"model": Problem}},
         tags=["verdicts"],
     )
-    def verdict(run_id: str, _: ReaderKey) -> Verdict:
-        f = run_or_404(run_id)
+    def verdict(run_id: str, key: ReaderKey) -> Verdict:
+        f = visible_run(run_id, key)
         variant = reader.variant(str(f["variant_config_hash"]))
         scores = json.loads(f["scores_json"] or "{}")
         ranked = _json_list(f["ranked_json"])
@@ -290,7 +346,7 @@ def create_app(config: ApiConfig) -> FastAPI:
         return Verdict(
             run_id=run_id,
             incident_id=str(f["incident_id"]),
-            variant=variant.name,
+            variant=None if key.blind else variant.name,
             state=state,
             needs_review=state in _HUMAN_STATES,
             non_converged=bool(f["non_converged"]),
@@ -321,14 +377,18 @@ def create_app(config: ApiConfig) -> FastAPI:
         responses={404: {"model": Problem}, 423: {"model": Problem}},
         tags=["verdicts"],
     )
-    def chain_of_evidence(run_id: str, _: ReaderKey) -> CoEOut:
-        run_or_404(run_id)
+    def chain_of_evidence(run_id: str, key: ReaderKey) -> CoEOut:
+        visible_run(run_id, key)
         if run_id not in coe.entries:
             raise HTTPException(404, "no CoE entry for this run")
         name, entry = coe.entries[run_id]
         ok, msg = coe.status[name]
         return CoEOut(
-            run_id=run_id, ledger=name, verified=ok, verification=msg, entry=entry
+            run_id=run_id,
+            ledger="" if key.blind else name,
+            verified=ok,
+            verification=msg,
+            entry=blind_entry(entry) if key.blind else entry,
         )
 
     @app.post(
@@ -339,7 +399,7 @@ def create_app(config: ApiConfig) -> FastAPI:
         tags=["decisions"],
     )
     def open_view(run_id: str, key: ReviewerKey) -> ViewOut:
-        f = run_or_404(run_id)
+        f = visible_run(run_id, key)
         now = config.clock()
         text, token = tokens.issue(run_id, key.id, now)
         with config._lock:
@@ -351,6 +411,7 @@ def create_app(config: ApiConfig) -> FastAPI:
                     "key_id": key.id,
                     "token_digest": token.digest,
                     "shown_at": round(now, _ROUND),
+                    "simulated": key.simulated,
                 }
             )
         return ViewOut(
@@ -374,7 +435,8 @@ def create_app(config: ApiConfig) -> FastAPI:
         tags=["decisions"],
     )
     def decide(run_id: str, body: DecisionIn, key: ReviewerKey) -> DecisionOut:
-        f = run_or_404(run_id)
+        f = visible_run(run_id, key)
+        chosen = chosen_service(body, _json_list(f["ranked_json"]))
         now = config.clock()
         try:
             token = tokens.check(body.view_token, run_id=run_id, key_id=key.id, now=now)
@@ -397,6 +459,9 @@ def create_app(config: ApiConfig) -> FastAPI:
                     "decided_at": round(now, _ROUND),
                     "decision_ms": round(tokens.decision_ms(token, now), _ROUND),
                     "client_ms": body.client_ms,
+                    "client_hidden_ms": body.client_hidden_ms,
+                    "chosen_service": chosen,
+                    "simulated": key.simulated,
                 }
             )
         return decision_out(entry)
@@ -407,11 +472,61 @@ def create_app(config: ApiConfig) -> FastAPI:
         responses={404: {"model": Problem}, 423: {"model": Problem}},
         tags=["decisions"],
     )
-    def decisions(run_id: str, _: ReaderKey) -> DecisionsOut:
-        run_or_404(run_id)
-        out = [decision_out(e) for e in decisions_of(run_id)]
+    def decisions(run_id: str, key: ReaderKey) -> DecisionsOut:
+        visible_run(run_id, key)
+        out = [
+            decision_out(e)
+            for e in decisions_of(run_id)
+            if not key.blind or e["key_id"] == key.id
+        ]
         return DecisionsOut(
             run_id=run_id, decisions=out, latest=out[-1].decision if out else None
         )
 
+    @app.get(
+        "/v1/queue",
+        response_model=QueueOut,
+        responses={404: {"model": Problem}},
+        tags=["decisions"],
+    )
+    def queue(key: ReviewerKey) -> QueueOut:
+        if not config.console:
+            raise HTTPException(404, "the approval console is disabled")
+        decided = {
+            e["run_id"]
+            for e in read_entries(config.decisions_path)
+            if e["event"] == "decision" and e["key_id"] == key.id
+        }
+        items = [
+            QueueItem(position=i + 1, run_id=r, decided=r in decided)
+            for i, r in enumerate(assignments.get(key.id, []))
+        ]
+        pending = [q.position for q in items if not q.decided]
+        return QueueOut(
+            key_id=key.id, items=items, next_position=pending[0] if pending else None
+        )
+
     return app
+
+
+def chosen_service(body: DecisionIn, ranked: list[str]) -> str | None:
+    """The service a decision names (K-e): the top-ranked one on accept,
+    nothing on escalate, and on reject an optional pick from the ranked list
+    (not the top one) or ``none``. Anything else is a 400."""
+    pick = body.chosen_service
+    top = ranked[0] if ranked else None
+    if body.decision == "accept":
+        if pick is not None and pick != top:
+            raise HTTPException(400, "accept names the top-ranked service only")
+        return top
+    if body.decision == "escalate":
+        if pick is not None:
+            raise HTTPException(400, "escalate does not name a service")
+        return None
+    if pick is None:
+        return None
+    if pick != NONE_OF_THESE and (pick not in ranked or pick == top):
+        raise HTTPException(
+            400, "reject names a lower-ranked service from the list, or 'none'"
+        )
+    return pick

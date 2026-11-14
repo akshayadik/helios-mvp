@@ -70,6 +70,32 @@
    "DecisionIn": {
     "additionalProperties": false,
     "properties": {
+     "chosen_service": {
+      "anyOf": [
+       {
+        "maxLength": 200,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "On reject: the service the reviewer believes is the root cause, from the ranked list, or 'none'. Set by the server on accept.",
+      "title": "Chosen Service"
+     },
+     "client_hidden_ms": {
+      "anyOf": [
+       {
+        "minimum": 0.0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "How long the page was hidden while the case was shown (K-d).",
+      "title": "Client Hidden Ms"
+     },
      "client_ms": {
       "anyOf": [
        {
@@ -121,6 +147,28 @@
    "DecisionOut": {
     "additionalProperties": false,
     "properties": {
+     "chosen_service": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Chosen Service"
+     },
+     "client_hidden_ms": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Client Hidden Ms"
+     },
      "client_ms": {
       "anyOf": [
        {
@@ -174,6 +222,10 @@
      "signature": {
       "title": "Signature",
       "type": "string"
+     },
+     "simulated": {
+      "title": "Simulated",
+      "type": "boolean"
      }
     },
     "required": [
@@ -186,6 +238,9 @@
      "decided_at",
      "decision_ms",
      "client_ms",
+     "client_hidden_ms",
+     "chosen_service",
+     "simulated",
      "signature"
     ],
     "title": "DecisionOut",
@@ -435,6 +490,66 @@
     "title": "Problem",
     "type": "object"
    },
+   "QueueItem": {
+    "additionalProperties": false,
+    "properties": {
+     "decided": {
+      "title": "Decided",
+      "type": "boolean"
+     },
+     "position": {
+      "title": "Position",
+      "type": "integer"
+     },
+     "run_id": {
+      "title": "Run Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "position",
+     "run_id",
+     "decided"
+    ],
+    "title": "QueueItem",
+    "type": "object"
+   },
+   "QueueOut": {
+    "additionalProperties": false,
+    "description": "The cases assigned to the calling key, in order (S4.2 K-e).",
+    "properties": {
+     "items": {
+      "items": {
+       "$ref": "#/components/schemas/QueueItem"
+      },
+      "title": "Items",
+      "type": "array"
+     },
+     "key_id": {
+      "title": "Key Id",
+      "type": "string"
+     },
+     "next_position": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "First undecided case, if any.",
+      "title": "Next Position"
+     }
+    },
+    "required": [
+     "key_id",
+     "items",
+     "next_position"
+    ],
+    "title": "QueueOut",
+    "type": "object"
+   },
    "RankedService": {
     "additionalProperties": false,
     "properties": {
@@ -500,8 +615,15 @@
       "type": "array"
      },
      "variant": {
-      "title": "Variant",
-      "type": "string"
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Variant"
      }
     },
     "required": [
@@ -645,8 +767,16 @@
       ]
      },
      "variant": {
-      "title": "Variant",
-      "type": "string"
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Null for a blind (participant) key.",
+      "title": "Variant"
      }
     },
     "required": [
@@ -702,7 +832,7 @@
  "info": {
   "description": "Stored HELIOS verdicts and the human decisions on them (S4.1). Never returns ground truth or metrics derived from it.",
   "title": "HELIOS API",
-  "version": "api-v1"
+  "version": "api-v1.1"
  },
  "openapi": "3.1.0",
  "paths": {
@@ -934,6 +1064,85 @@
     "summary": "Incident",
     "tags": [
      "incidents"
+    ]
+   }
+  },
+  "/v1/queue": {
+   "get": {
+    "operationId": "queue_v1_queue_get",
+    "parameters": [
+     {
+      "in": "header",
+      "name": "x-api-key",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Api-Key"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/QueueOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "No or unknown API key"
+     },
+     "403": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "The key lacks the role"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "Invalid request"
+     }
+    },
+    "summary": "Queue",
+    "tags": [
+     "decisions"
     ]
    }
   },

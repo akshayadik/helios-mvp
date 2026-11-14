@@ -31,3 +31,4 @@ deploy/decisions
 deploy/runs
 keys/*
 !keys/deviation_log_ed25519.pub.pem
+console

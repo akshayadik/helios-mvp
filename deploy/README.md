@@ -19,8 +19,9 @@ alias hc='docker compose -f deploy/compose.yaml'
 | `model-check` | Exits non-zero unless the served digest equals `EXPECTED_MODEL_DIGEST` (entry 58) | `internal` | none |
 | `runner` | Runs campaigns (profile `run`) | `internal` | `.env` (deviation-log secrets) |
 | `admin` | Creates the decisions secret and API keys (profile `admin`) | none | writes `deploy/secrets/` |
+| `console` | Approval console (S4.2): static page, and a same-origin proxy for `/v1/` and `/health` | `front`, published on loopback port 8081 only | none |
 
-The store is not a service. DuckDB is embedded, and the campaign directory is mounted read-only into `api`. The approval console (S4.2) joins this file later.
+The store is not a service. DuckDB is embedded, and the campaign directory is mounted read-only into `api`. The console holds no secrets: each reviewer types an API key, which is kept for that browser session only.
 
 ## First install
 
@@ -51,6 +52,32 @@ The decisions ledger is written to `deploy/decisions/` (or `HELIOS_DECISIONS`). 
 ```bash
 set -a; . deploy/secrets/api.env; set +a
 poetry run python bin/verify_ledgers.py --decisions deploy/decisions/decisions.jsonl
+```
+
+## Approval console
+
+Open `http://localhost:8081` and sign in with a key.
+
+- **Operations mode** (any key with no queue): incidents, runs, verdicts with the full chain of evidence, and decision history. A reviewer key can record decisions.
+- **Review mode** (a key with a queue): one case at a time, with "case N of M". The case is revealed only once its view token is issued, so the server's `decision_ms` covers exactly the time the case was on screen.
+
+For an RQ4 session, create one blind key per participant. A blind key sees only its assigned cases, never a variant name, and only its own decisions. Then write the queues:
+
+```bash
+hc run --rm admin bin/helios_api.py keygen --keys /secrets/api_keys.json --id P01 --role reviewer --blind
+cat > deploy/secrets/assignments.json <<'JSON'
+{"assignments": {"P01": ["<run id>", "<run id>"]}}
+JSON
+hc up -d --force-recreate api                    # queues are read at start
+```
+
+Each decision records the server's `decision_ms`, the browser's `client_ms`, `client_hidden_ms` (the time the page was hidden) and, on reject, an optional `chosen_service`.
+
+**Simulated HITL** (scripted reviewer over every run that requests a human; its decisions are tagged `simulated`):
+
+```bash
+hc run --rm admin bin/helios_api.py keygen --keys /secrets/api_keys.json --id SIM --role reviewer --simulated > sim.key
+poetry run python bin/simulate_hitl.py --api http://localhost:8080 --key-file sim.key --key-id SIM --policy accept
 ```
 
 ## Runs
@@ -86,6 +113,8 @@ The run-start digest check applies either way.
 | `HELIOS_SECRETS` | `deploy/secrets` | `api.env` and `api_keys.json` |
 | `HELIOS_RUN_DIR` | `deploy/runs` | Runner campaign directory |
 | `HELIOS_API_PORT` | 8080 | Host port |
+| `HELIOS_CONSOLE_PORT` | 8081 | Console host port |
+| `HELIOS_CONSOLE_BIND` | loopback | Host address the console is published on |
 | `HELIOS_API_BIND` | loopback | Host address the port is published on |
 | `HELIOS_OLLAMA_URL` | `http://model:11434` | Runner's model server |
 

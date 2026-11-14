@@ -4,6 +4,7 @@
 Usage (from the repository root):
     poetry run python bin/helios_api.py secret >> .env.api        # once; chmod 600
     poetry run python bin/helios_api.py keygen --keys api_keys.json --id R1 --role reviewer
+    poetry run python bin/helios_api.py keygen --keys api_keys.json --id P01 --role reviewer --blind
     env -i PATH="$PATH" HOME="$HOME" sh -c 'set -a; . ./.env.api; set +a; \\
         poetry run python bin/helios_api.py serve --campaign CAMPAIGN --keys api_keys.json'
     poetry run python bin/helios_api.py export-spec               # docs/api/openapi.json
@@ -59,7 +60,11 @@ def decisions_secret(environ: dict[str, str] | None = None) -> bytes:
 
 
 def config_for(
-    campaign: Path, keys: Path, secret: bytes, decisions: Path | None = None
+    campaign: Path,
+    keys: Path,
+    secret: bytes,
+    decisions: Path | None = None,
+    assignments: Path | None = None,
 ) -> ApiConfig:
     """A campaign directory's store, CoE ledgers and decisions ledger. The
     decisions ledger may live elsewhere (compose mounts the campaign
@@ -71,6 +76,7 @@ def config_for(
         keys_path=keys,
         decisions_secret=secret,
         public_key_path=PUBLIC_KEY,
+        assignments_path=assignments,
     )
 
 
@@ -103,12 +109,15 @@ def main(argv: list[str] | None = None) -> int:
     serve.add_argument("--campaign", type=Path, required=True)
     serve.add_argument("--keys", type=Path, required=True)
     serve.add_argument("--decisions", type=Path, help="default CAMPAIGN/decisions/")
+    serve.add_argument("--assignments", type=Path, help="review queues (S4.2 K-e)")
     serve.add_argument("--host", default=LOOPBACK)
     serve.add_argument("--port", type=int, default=DEFAULT_PORT)
     keygen = sub.add_parser("keygen")
     keygen.add_argument("--keys", type=Path, required=True)
     keygen.add_argument("--id", required=True)
     keygen.add_argument("--role", action="append", choices=ROLES, required=True)
+    keygen.add_argument("--blind", action="store_true", help="RQ4 participant (K-e)")
+    keygen.add_argument("--simulated", action="store_true", help="scripted reviewer")
     sub.add_parser("secret")
     spec = sub.add_parser("export-spec")
     spec.add_argument("--output", type=Path, default=SPEC_PATH)
@@ -118,7 +127,14 @@ def main(argv: list[str] | None = None) -> int:
         print(f"{DECISIONS_SECRET_ENV}={secrets.token_urlsafe(_SECRET_BYTES)}")
         return 0
     if args.cmd == "keygen":
-        print(add_key(args.keys, args.id, list(args.role)))  # shown once
+        key = add_key(
+            args.keys,
+            args.id,
+            list(args.role),
+            blind=args.blind,
+            simulated=args.simulated,
+        )
+        print(key)  # shown once
         return 0
     if args.cmd == "export-spec":
         import tempfile
@@ -131,7 +147,9 @@ def main(argv: list[str] | None = None) -> int:
     refuse_deviation_env()  # pragma: no cover - serve starts a server
     import uvicorn  # pragma: no cover
 
-    config = config_for(args.campaign, args.keys, decisions_secret(), args.decisions)
+    config = config_for(
+        args.campaign, args.keys, decisions_secret(), args.decisions, args.assignments
+    )
     app = create_app(config)
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")
     return 0  # pragma: no cover

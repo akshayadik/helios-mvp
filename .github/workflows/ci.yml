@@ -240,6 +240,22 @@ jobs:
           retention-days: 14
  
 # ─────────────────────────────────────────────────────────────────────────────
+# JOB 3b: console (S4.2 design K-i)
+# The approval console's pure JavaScript modules, tested with Node's built-in
+# runner. No npm packages are installed.
+# ─────────────────────────────────────────────────────────────────────────────
+  console:
+    name: Console (node --test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: node --test
+        run: node --test tests/console/*.test.mjs
+
+# ─────────────────────────────────────────────────────────────────────────────
 # JOB 4: tracking
 # Re-runs validate_tracking.py to catch `git commit --no-verify` bypasses.
 # stdlib only — no Poetry install needed.

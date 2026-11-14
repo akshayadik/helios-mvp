@@ -8,4 +8,6 @@ truth or anything derived from it (HR@k, TTCD, CpR).
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
 
 HELIOS_ENABLE_API: bool = True
-API_VERSION = "api-v1"
+# S4.2 approval console: off removes GET /v1/queue (and compose's console).
+HELIOS_ENABLE_CONSOLE: bool = True
+API_VERSION = "api-v1.1"  # S4.2 K-g: additive (queue, blind keys, decision fields)
