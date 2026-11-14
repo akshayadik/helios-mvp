@@ -206,4 +206,72 @@ About 2½ days, as planned (½ + ½ + 1 + ½), plus the walk-through.
 
 ## 7. Results
 
-*(Filled in after implementation.)*
+Implementation 2026-11-14 on branch `s4/tier2`. Aggregates (no case IDs, no labels) are in `calibration/`: `fgsv_calibration.json`, `tier2_walkthrough.json`, `iol_eh6_sweep.json`, `pii_scan.json`.
+
+### 7.1 What was built
+
+| Task | Code | Flag or setting |
+|---|---|---|
+| S4.6 FGSV lite | `helios/actions/fgsv.py`; CoE step `A`; `bin/fgsv_calibrate.py`; frozen `data/frozen/fgsv_params.json` | `VCLFlag.FGSV_KS_GATE` (noFGSV records `UNVALIDATED`) |
+| S4.5 Modes | `helios/actions/modes.py`; API shadow visibility; console recommendation line | `HELIOS_ACTION_MODE=recommend\|shadow` (no automatic mode) |
+| S4.7 IOL lite | `helios/telemetry/self_telemetry.py`; CoE step `S`; `bin/iol_sweep.py`; frozen `data/frozen/iol_injection.json` | `VCLFlag.IOL_SELF_TELEMETRY` |
+| S4.4 Redaction | `helios/privacy/redact.py` in `LLMGateway.generate`; cache key namespaced when on; `bin/pii_scan.py` | `HELIOS_PII_REDACTION=off\|on` (confirmatory runs refuse `on`) |
+
+- **API v1.2** (additive): `Verdict.action` (kind, target, mode, FGSV verdict, reason) and `Verdict.control_plane_degraded`, both null for blind keys. Shadow runs return 404 to reader and reviewer keys until a decision exists on their incident; admin keys always see them.
+- **Campaign:** `plan --fgsv-perturb` (E-H4) and `plan --iol-inject SPEC` (E-H6) are stored in the campaign config only when set, refused for the pool, and the injection must be on the frozen ladder. Each variant keeps its self-telemetry in `self/<stem>.<variant>.jsonl`, so a resumed campaign keeps its history.
+- **Compose:** the runner passes both product settings through with the evidence defaults (`off`, `recommend`); `deploy/README.md` documents them.
+- **Schedule (T-j):** both flags now have readers, so phase E includes HELIOS-noFGSV and HELIOS-noIOL; only noCogni and HIS3 stay refused (test pinned).
+
+### 7.2 Departures from §3, and why
+
+1. **KS gate pools per pillar** (T-e said per series, Holm within the pillar). The build windows have 3–5 one-minute buckets per half: per-series tests have almost no power, and the Holm correction over many series removes the rest. Each series is scaled by its production half (median, MAD) and pooled, one test per pillar at a 15-second sampling interval, Holm across pillars. Traces enter through the OTel span metrics in P1; there is no separate trace pillar.
+2. **The pipelines rank on the production graph only.** The self partition is composed onto the incident graph for step `S` (`with_self_partition`), not passed into D/G/L. That is the strongest form of the byte-identical rule; the partition and the cross-tenant query are still one UEG-C object.
+3. **Frozen files live in `data/frozen/`** (the repository's convention), not `helios/actions/`.
+4. **Compose defaults redaction to `off`**, not `on` (T-c): confirmatory runs refuse `on`, so a default of `on` would block the pool campaign in compose. Operators set it for production telemetry.
+5. **The perturbation is a flag** (`fgsv_perturb`) applying the frozen `perturb_shift`, not a free `shift=k`; a no-op for noFGSV.
+
+### 7.3 FGSV lite
+
+**KS gate on clean build data** (owner decision 2026-11-14, after the risk in §5 materialised). Over every in-scope service of the 63 OTel build graphs (1,260 targets), the gate marks **52%** STALE. Metrics cause it (median KS distance 0.19 between the halves, above Ch3's d = 0.3 equivalent of about 0.12); logs reject at the nominal rate (6%). The v3 captures vary load in the normal period by design (entry 50), so the twin really is stale. An effect-size gate would still mark 56%, per-series Holm 75%. **Kept as Chapter 3 has it**; STALE stays a first-class covariate.
+
+**Replay parameters** (Youden's J over targets that clear the gate and are actionable; ties to the stricter setting): coverage ≥ 0.75, at most 3 direct callers. Correct targets pass 84% (26 of 31), wrong targets 36% (175 of 484). RCAEval build cases have no trace edges (0 of 495 with structure): every one is STALE `no_structure`. The fidelity break chosen for E-H4 is one production-half spread (k = 1): the gate catches it on 97.6% of targets (k = 2: 99.6%).
+
+**On HELIOS-Full's own top-1** (63 runs, cache only):
+
+| Arm | PASS | FAIL | STALE | UNVALIDATED | Wrong targets accepted | Correct targets accepted |
+|---|---|---|---|---|---|---|
+| Full | 24 | 10 (coverage) | 29 (`ks_gate`) | — | 12 of 32 (37.5%) | 12 of 31 (38.7%) |
+| noFGSV | — | — | — | 63 | 32 of 32 | 31 of 31 |
+| Full, fidelity break | — | — | 63 (`ks_gate`) | — | 0 of 32 | 0 of 31 |
+
+- 52 proposals are `restart`, 11 `scale-out`; no top-1 was stateful.
+- **Honest reading for E-H4 and Chapter 4:** FGSV's lower false-accept rate comes almost entirely from the gate (STALE), not from replay. Among proposals that clear the gate, replay passes 12 of 17 wrong targets and 12 of 17 correct ones: it does not separate HELIOS's own mistakes, which tend to be upstream callers that cover the anomalous services as well as the true root cause does. The all-candidate calibration (J = 0.48) overstates replay's value on the targets HELIOS actually proposes. E-H4 is reported with this split; the perturbed contrast only shows that the gate fires.
+
+### 7.4 IOL lite
+
+- **Byte-identical rule:** Full against noIOL on the 63 OTel build cases: all 189 verdict rows, 63 fused rows and 63 narratives are identical (decision content; run IDs, config hashes and wall time excluded). Full has step `S` on every run, noIOL on none; no run of the clean campaign was flagged degraded.
+- The same holds for Full against noFGSV (step `A` is the only difference).
+- **E-H6 severity ladder** (owner decision 2026-11-14): the frozen rule (z ≥ 10 for 3 runs) flags a model slowdown injected at run 30 of the recorded history:
+
+| Factor | ×2 | ×3 | ×5 | ×8 |
+|---|---|---|---|---|
+| Detected (latency in runs) | no | no | yes (3) | yes (3) |
+
+  A clean history is never flagged. Three runs is the shortest the persistence rule allows. Per-run timings vary about 40% between incidents, which is why ×2 and ×3 stay below the threshold; injected from run 20 (less history), ×5 is missed and ×8 takes 5 runs. The ladder is frozen in `data/frozen/iol_injection.json`; phase E runs one exploratory campaign per factor and reports detection rate and latency per factor, noIOL never detecting.
+- The first E-H6 attempt (×3, a single factor) found nothing, which is what led to the ladder question; it is reported, not hidden.
+
+### 7.5 PII redaction
+
+- **Build-data check (T-c):** redaction changes **no** prompt. Over every L-pipe worker prompt of the build data (otel_build_v3: 189 prompts from 63 cases; rcaeval_build: 615 from 495), no rule matches. Turning redaction on would therefore change nothing on build prompts.
+- **Why:** the raw log lines do contain such values. OTel: 687,072 IP addresses, 7,937 email-shaped strings and 77 card-like numbers, in all 63 cases. RCAEval: 115,881 IPs, 332,185 emails and 8,554 card-like numbers, in 120 of 495 cases. The digests template every log line (variable parts become `<*>`) and replace service names with aliases before a prompt is built, so none of it reaches the model. Redaction is the guard for any future digest or narrator input that carries raw text.
+- **Card rule:** the first scan, with Luhn alone, matched 2,741 and 35,440 numbers in raw logs (long numeric ids). Requiring a card-scheme prefix cut that to 77 and 8,554. `RULES_VERSION` is part of the ruleset id, so a change to a rule's check changes the id and the cache namespace.
+- **Evidence runs** keep redaction off (confirmatory runs refuse it); with it off, every response-cache key is the pre-S4.4 key (test).
+- The narrator's inputs are CoE evidence items built from the same digests; the scan covers the L-pipe prompts only.
+
+### 7.6 Verification
+
+- **New tests:** FGSV (`tests/actions/test_fgsv.py`, 14), modes and the no-actuator scan (`tests/actions/test_modes.py`), redaction rules, near misses, cache keys and gateway (`tests/test_redact.py`), self-telemetry and the frozen ladder (`tests/test_self_telemetry.py`), runner equivalence for noIOL and noFGSV plus the confirmatory refusals (`tests/test_runner_tier2.py`, 8), API v1.2 and shadow visibility (`tests/api/test_api_tier2.py`, 5), compose defaults, the refused-variant pin, and one console test (16 in all).
+- **Full pre-push gate** (with pipefail) passed on the final tree: ruff, ruff format, black, mypy, pytest (coverage 96.48%), `verify_ledgers`, `verify-public` (88 entries), `verify_captures`, `verify_osf_freeze --verify`, `validate-tracking`, the ablation notebook, and `node --test tests/console/`.
+- **Walk-through:** HELIOS-Full, noIOL, noFGSV, Full with the fidelity break, and Full with self-telemetry recorded, each over the 63 otel_build_v3 cases from the response cache (no model calls). The comparison was done with scratch scripts; their aggregates are in `tier2_walkthrough.json`, and the E-H6 ladder is reproducible with `bin/iol_sweep.py`.
+- **Packaging:** one feature commit instead of the four T-a proposed. The runner and the API carry all four tasks in the same functions, so a split would have been artificial; the table in §7.1 maps each task to its files.
+- **Pool:** never read. Calibration and scans use `otel_build_v3` and `rcaeval_build` only.
