@@ -15,6 +15,7 @@ the orchestrator, so the two never overlap.
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -23,6 +24,7 @@ from helios.pipelines.l_pipe.ollama_client import (
     OllamaResponseError,
     OllamaTimeoutError,
 )
+from helios.privacy.redact import redact, redaction_enabled
 from helios.vcl import VCLFlag  # noqa: F401 — satisfies flag-guard
 
 if TYPE_CHECKING:
@@ -57,6 +59,14 @@ class LLMGateway:
     def __init__(self, client: OllamaClient) -> None:
         self._client = client
         self._usage = LLMUsage()
+        # S4.4: read once per gateway (one episode); counts per rule only.
+        self._redact = redaction_enabled()
+        self.redactions: Counter[str] = Counter()
+
+    @property
+    def redacting(self) -> bool:
+        """True when prompts are redacted before they reach the model (S4.4)."""
+        return self._redact
 
     @property
     def usage(self) -> LLMUsage:
@@ -69,6 +79,10 @@ class LLMGateway:
         format, S2.8); L-pipe calls are unchanged."""
         u = self._usage
         extra = {} if schema is None else {"schema": schema}
+        if self._redact:
+            redacted = redact(prompt)
+            prompt = redacted.text
+            self.redactions.update(redacted.counts)
         try:
             result = self._client.generate(prompt, timeout_s=timeout_s, **extra)
         except (OllamaTimeoutError, OllamaConnectionError, OllamaResponseError):

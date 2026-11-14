@@ -1,0 +1,9 @@
+{
+  "alpha_ks": 0.05,
+  "sample_seconds": 15,
+  "min_samples": 8,
+  "coverage_min": 0.75,
+  "blast_max": 3,
+  "perturb_shift": 1,
+  "provisional": false
+}

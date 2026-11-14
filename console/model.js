@@ -103,7 +103,26 @@ export function caseModel(verdict, coeEntry) {
         }
       : null,
     narrative,
+    action: actionText(verdict.action),
+    degraded: verdict.control_plane_degraded ?? null,
     rejectOptions: [...ranked.slice(1).map((r) => r.service), NONE_OF_THESE],
+  };
+}
+
+// S4.5/S4.6: the proposal is a recommendation; HELIOS never carries it out.
+const ACTION_LABELS = Object.freeze({
+  restart: "Restart",
+  "scale-out": "Scale out",
+  "escalate-to-human": "Hand to a person:",
+});
+
+export function actionText(action) {
+  if (!action || action.kind === "none" || !action.target) return null;
+  const verb = ACTION_LABELS[action.kind] ?? action.kind;
+  return {
+    text: `${verb} ${action.target}`,
+    validation: `Shadow validation: ${action.validation} (${action.reason})`,
+    shadow: action.mode === "shadow",
   };
 }
 

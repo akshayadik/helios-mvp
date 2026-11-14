@@ -1,0 +1,6 @@
+{
+  "component": "helios.model",
+  "metric": "compute_ms",
+  "from_run": 30,
+  "factors": [2, 3, 5, 8]
+}

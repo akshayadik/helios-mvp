@@ -1,0 +1,31 @@
+{
+  "ruleset": "eb90b49bd595aad0",
+  "corpora": {
+    "otel_build_v3": {
+      "cases": 63,
+      "cases_changed": 0,
+      "prompts": 189,
+      "prompts_changed": 0,
+      "redactions_by_rule": {},
+      "raw_log_matches_by_rule": {
+        "CARD": 77,
+        "EMAIL": 7937,
+        "IP": 687072
+      },
+      "cases_with_raw_matches": 63
+    },
+    "rcaeval_build": {
+      "cases": 495,
+      "cases_changed": 0,
+      "prompts": 615,
+      "prompts_changed": 0,
+      "redactions_by_rule": {},
+      "raw_log_matches_by_rule": {
+        "CARD": 8554,
+        "EMAIL": 332185,
+        "IP": 115881
+      },
+      "cases_with_raw_matches": 120
+    }
+  }
+}

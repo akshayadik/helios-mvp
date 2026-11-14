@@ -137,6 +137,11 @@ services:
       # Its own L-pipe cache: data/ is read-only, and answers from the CPU
       # model server must not enter the host's calibrated cache.
       HELIOS_LPIPE_CACHE: /cache/lpipe_cache.sqlite
+      # Product settings outside the VCL manifest (S4.4, S4.5). Redaction is
+      # off by default because confirmatory runs refuse it; set it on for
+      # production telemetry. There is no automatic action mode.
+      HELIOS_PII_REDACTION: ${HELIOS_PII_REDACTION:-off}
+      HELIOS_ACTION_MODE: ${HELIOS_ACTION_MODE:-recommend}
     volumes:
       - ../data:/app/data:ro
       - ${HELIOS_RUN_DIR:-./runs}:/campaign

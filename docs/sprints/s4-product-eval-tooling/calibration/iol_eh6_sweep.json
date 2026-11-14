@@ -1,0 +1,41 @@
+{
+  "runs": 63,
+  "protocol": {
+    "component": "helios.model",
+    "metric": "compute_ms",
+    "from_run": 30,
+    "factors": [
+      2,
+      3,
+      5,
+      8
+    ]
+  },
+  "clean_false_flag": false,
+  "ladder": [
+    {
+      "factor": 2,
+      "detected": false,
+      "latency_runs": null,
+      "component": null
+    },
+    {
+      "factor": 3,
+      "detected": false,
+      "latency_runs": null,
+      "component": null
+    },
+    {
+      "factor": 5,
+      "detected": true,
+      "latency_runs": 3,
+      "component": "helios.model"
+    },
+    {
+      "factor": 8,
+      "detected": true,
+      "latency_runs": 3,
+      "component": "helios.model"
+    }
+  ]
+}

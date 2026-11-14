@@ -212,6 +212,22 @@ function renderRanked(model) {
       el("p", { class: "hint" }, `Trigger suspects: ${model.trigger.suspects.join(", ") || "none"}`),
     );
   }
+  const act = $("action");
+  act.replaceChildren();
+  if (model.action) {
+    act.append(
+      el("p", {}, "Recommendation: ", el("strong", {}, model.action.text)),
+      el("p", { class: "hint" }, model.action.validation),
+    );
+    if (model.action.shadow) {
+      act.append(el("p", { class: "hint" }, "Shadow mode: recorded for comparison only."));
+    }
+  }
+  show("action", Boolean(model.action));
+  $("degraded").textContent = model.degraded
+    ? `HELIOS control plane degraded (${model.degraded}) when this run started.`
+    : "";
+  show("degraded", Boolean(model.degraded));
 }
 
 function renderClaims(model) {

@@ -1,0 +1,82 @@
+{
+  "iol_identical": {
+    "verdict_rows": true,
+    "fused_rows": true,
+    "narratives": true
+  },
+  "iol_counts": {
+    "verdict_rows": 189,
+    "fused_rows": 63,
+    "narratives": 63
+  },
+  "full_S_steps": 63,
+  "noiol_S_steps": 0,
+  "full_degraded_flags": 0,
+  "fgsv_identical": {
+    "verdict_rows": true,
+    "fused_rows": true,
+    "narratives": true
+  },
+  "fgsv_full": {
+    "runs": 63,
+    "verdicts": {
+      "STALE": 29,
+      "FAIL": 10,
+      "PASS": 24
+    },
+    "reasons": {
+      "STALE:ks_gate": 29,
+      "FAIL:coverage": 10,
+      "PASS:validated": 24
+    },
+    "kinds": {
+      "restart": 52,
+      "scale-out": 11
+    },
+    "correct_targets": 31,
+    "wrong_targets": 32,
+    "false_accept_rate": 0.375,
+    "correct_accept_rate": 0.3871,
+    "gated_wrong": 17,
+    "false_accept_among_gated": 0.7059
+  },
+  "fgsv_nofgsv": {
+    "runs": 63,
+    "verdicts": {
+      "UNVALIDATED": 63
+    },
+    "reasons": {
+      "UNVALIDATED:fgsv_off": 63
+    },
+    "kinds": {
+      "restart": 52,
+      "scale-out": 11
+    },
+    "correct_targets": 31,
+    "wrong_targets": 32,
+    "false_accept_rate": 1.0,
+    "correct_accept_rate": 1.0,
+    "gated_wrong": 0,
+    "false_accept_among_gated": 0.0
+  },
+  "fgsv_perturb": {
+    "runs": 63,
+    "verdicts": {
+      "STALE": 63
+    },
+    "reasons": {
+      "STALE:ks_gate": 63
+    },
+    "kinds": {
+      "restart": 52,
+      "scale-out": 11
+    },
+    "correct_targets": 31,
+    "wrong_targets": 32,
+    "false_accept_rate": 0.0,
+    "correct_accept_rate": 0.0,
+    "gated_wrong": 0,
+    "false_accept_among_gated": 0.0
+  },
+  "note": "otel_build_v3, 63 cases, cache only; E-H6 is in iol_eh6_sweep.json"
+}

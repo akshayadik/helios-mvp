@@ -113,6 +113,14 @@ def _check_prompts(evaluation_phase: str) -> dict[str, str]:
     return shas
 
 
+def _redaction_fields(gateway: LLMGateway) -> dict[str, Any]:
+    """S4.4: counts per redaction rule, only when redaction is on (so the
+    output is unchanged when it is off)."""
+    if not gateway.redacting:
+        return {}
+    return {"pii_redactions": dict(sorted(gateway.redactions.items()))}
+
+
 def _usage_fields(usage: LLMUsage) -> dict[str, Any]:
     return {
         "prompt_tokens": usage.prompt_tokens,
@@ -249,6 +257,7 @@ def run_lpipe(
         + " "
         + ",".join(f"{n}:{s[:12]}" for n, s in sorted(shas.items())),
         **_usage_fields(gateway.usage),
+        **_redaction_fields(gateway),
         "narrative": f"l-pipe k={merged.k}",
         "latency_ms": (time.monotonic() - t0) * 1_000 + replayed_ms,
         "cache_hit": bool(called) and all(r.cache_hit for r in called),
@@ -283,6 +292,7 @@ def _failed(
         "ranked_candidates": [],
         "prompt_version": "workers_v1",
         **_usage_fields(gateway.usage),
+        **_redaction_fields(gateway),
         "narrative": narrative,
         "latency_ms": (time.monotonic() - t0) * 1_000,
         "cache_hit": False,

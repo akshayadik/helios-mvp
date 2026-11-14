@@ -54,6 +54,15 @@ set -a; . deploy/secrets/api.env; set +a
 poetry run python bin/verify_ledgers.py --decisions deploy/decisions/decisions.jsonl
 ```
 
+## Product settings (S4.4, S4.5)
+
+Two settings outside the VCL manifest; neither changes a variant hash. Set them in the shell or in a `.env` beside `compose.yaml` before `docker compose run runner ...`:
+
+| Setting | Values | Default | Effect |
+|---|---|---|---|
+| `HELIOS_PII_REDACTION` | `off`, `on` | `off` | `on` redacts emails, IP and MAC addresses, card and phone numbers, tokens and key=value secrets from every prompt before it reaches the model, with numbered placeholders (`<EMAIL_1>`). Confirmatory runs refuse `on`. Use `on` for production telemetry |
+| `HELIOS_ACTION_MODE` | `recommend`, `shadow` | `recommend` | `recommend` shows each run's proposed action as a recommendation. `shadow` hides a run from reader and reviewer keys until a person has decided on its incident; admin keys always see it. There is no automatic mode: HELIOS never acts on production in Stage A |
+
 ## Approval console
 
 Open `http://localhost:8081` and sign in with a key.

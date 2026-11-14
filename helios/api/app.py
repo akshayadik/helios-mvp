@@ -23,6 +23,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from helios.actions.modes import ActionMode
 from helios.api import API_VERSION, HELIOS_ENABLE_CONSOLE
 from helios.api.auth import ApiKey, KeyStore
 from helios.api.decisions import (
@@ -33,6 +34,7 @@ from helios.api.decisions import (
     read_entries,
 )
 from helios.api.models import (
+    ActionOut,
     Claim,
     CoEOut,
     DecisionIn,
@@ -216,12 +218,55 @@ def create_app(config: ApiConfig) -> FastAPI:
             )
         return fusion
 
+    def coe_step(run_id: str, step_id: str) -> dict[str, Any] | None:
+        found = coe.entries.get(run_id)
+        if found is None:
+            return None
+        return next((s for s in found[1]["steps"] if s.get("id") == step_id), None)
+
+    def shadow_hidden(run_id: str, incident_id: str, key: ApiKey) -> bool:
+        """S4.5 shadow mode: responders see a run only once a person has
+        decided on its incident; admin keys always see it."""
+        action = coe_step(run_id, "A")
+        if action is None or action.get("mode") != ActionMode.SHADOW.value:
+            return False
+        if key.allows("admin"):
+            return False
+        return not any(
+            e["event"] == "decision" and e["incident_id"] == incident_id
+            for e in read_entries(config.decisions_path)
+        )
+
     def visible_run(run_id: str, key: ApiKey) -> dict[str, Any]:
-        """The run for this key: a blind key sees only its assigned cases,
+        """The run for this key: a blind key sees only its assigned cases, a
+        shadow run is hidden from responders until its incident is decided,
         and any other run is reported as absent."""
         if key.blind and run_id not in assignments.get(key.id, []):
             raise HTTPException(404, "no such run")
-        return run_or_404(run_id)
+        fusion = run_or_404(run_id)
+        if shadow_hidden(run_id, str(fusion["incident_id"]), key):
+            raise HTTPException(404, "no such run")
+        return fusion
+
+    def action_of(run_id: str) -> ActionOut | None:
+        step = coe_step(run_id, "A")
+        if step is None:
+            return None
+        proposal = step.get("proposal", {})
+        return ActionOut(
+            kind=str(proposal.get("kind", "none")),
+            target=proposal.get("target"),
+            mode=str(step.get("mode", ActionMode.RECOMMEND.value)),
+            validation=str(step.get("verdict", "")),
+            reason=str(step.get("reason", "")),
+        )
+
+    def degraded_of(run_id: str) -> str | None:
+        step = coe_step(run_id, "S")
+        if step is None:
+            return None
+        value = step.get("measured", {}).get("degraded")
+        return None if value is None else str(value)
 
     def not_blind(key: ApiKey) -> None:
         if key.blind:
@@ -306,7 +351,8 @@ def create_app(config: ApiConfig) -> FastAPI:
         runs = [
             summary(r)
             for r in rows
-            if reader.phase(str(r["run_id"])) != "confirmatory" or config.frozen()
+            if (reader.phase(str(r["run_id"])) != "confirmatory" or config.frozen())
+            and not shadow_hidden(str(r["run_id"]), incident_id, key)
         ]
         return IncidentDetail(incident_id=incident_id, runs=runs)
 
@@ -369,6 +415,8 @@ def create_app(config: ApiConfig) -> FastAPI:
                 )
             ),
             narrative=narrative,
+            action=None if key.blind else action_of(run_id),
+            control_plane_degraded=None if key.blind else degraded_of(run_id),
         )
 
     @app.get(

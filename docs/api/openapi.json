@@ -1,6 +1,51 @@
 {
  "components": {
   "schemas": {
+   "ActionOut": {
+    "additionalProperties": false,
+    "description": "The run's remediation proposal (S4.5, S4.6). A recommendation only:\nHELIOS never carries it out in Stage A.",
+    "properties": {
+     "kind": {
+      "description": "restart, scale-out, escalate-to-human or none.",
+      "title": "Kind",
+      "type": "string"
+     },
+     "mode": {
+      "description": "recommend or shadow.",
+      "title": "Mode",
+      "type": "string"
+     },
+     "reason": {
+      "title": "Reason",
+      "type": "string"
+     },
+     "target": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Target"
+     },
+     "validation": {
+      "description": "FGSV verdict: PASS, FAIL, STALE or UNVALIDATED.",
+      "title": "Validation",
+      "type": "string"
+     }
+    },
+    "required": [
+     "kind",
+     "target",
+     "mode",
+     "validation",
+     "reason"
+    ],
+    "title": "ActionOut",
+    "type": "object"
+   },
    "Claim": {
     "additionalProperties": false,
     "properties": {
@@ -667,6 +712,17 @@
    "Verdict": {
     "additionalProperties": false,
     "properties": {
+     "action": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ActionOut"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Null without a CoE entry, and for a blind (participant) key."
+     },
      "confidence": {
       "anyOf": [
        {
@@ -677,6 +733,18 @@
        }
       ],
       "title": "Confidence"
+     },
+     "control_plane_degraded": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The HELIOS component its self-telemetry found degraded when this run started (S4.7); null when none, and for a blind key.",
+      "title": "Control Plane Degraded"
      },
      "escalated": {
       "anyOf": [
@@ -793,7 +861,9 @@
      "terminal_published_ms",
      "escalated",
      "trigger",
-     "narrative"
+     "narrative",
+     "action",
+     "control_plane_degraded"
     ],
     "title": "Verdict",
     "type": "object"
@@ -832,7 +902,7 @@
  "info": {
   "description": "Stored HELIOS verdicts and the human decisions on them (S4.1). Never returns ground truth or metrics derived from it.",
   "title": "HELIOS API",
-  "version": "api-v1.1"
+  "version": "api-v1.2"
  },
  "openapi": "3.1.0",
  "paths": {
