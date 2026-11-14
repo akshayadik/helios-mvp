@@ -1,6 +1,6 @@
-# S4.4–S4.7 Tier 2: design (draft)
+# S4.4–S4.7 Tier 2: design
 
-**Rows:** S2-M9-ENG04 (PII redaction), ENG05 (shadow and recommendation modes), ENG06 (FGSV lite), ENG07 (IOL lite) · **Effort:** ½ + ½ + 1 + ½ days · **Depends on:** S4.1 (API), S4.2 (console) · **Status:** draft for owner approval
+**Rows:** S2-M9-ENG04 (PII redaction), ENG05 (shadow and recommendation modes), ENG06 (FGSV lite), ENG07 (IOL lite) · **Effort:** ½ + ½ + 1 + ½ days · **Depends on:** S4.1 (API), S4.2 (console) · **Status:** approved 2026-11-14 (T-a to T-k as recommended)
 
 ## 1. What is fixed already
 
