@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>HELIOS approval console</title>
+  <link rel="stylesheet" href="console.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <header class="bar">
+    <span class="brand">HELIOS</span>
+    <span id="where" class="where" aria-live="polite"></span>
+    <button id="signout" class="quiet" type="button" hidden>Sign out</button>
+  </header>
+
+  <main>
+    <noscript><p class="notice">The console needs JavaScript.</p></noscript>
+    <p id="status" class="notice" role="status" hidden></p>
+
+    <section id="login" class="panel narrow" hidden>
+      <h1>Sign in</h1>
+      <form id="login-form" autocomplete="off">
+        <label for="key">API key</label>
+        <input id="key" name="key" type="password" required spellcheck="false">
+        <p class="hint">The key is kept for this browser session only.</p>
+        <button type="submit" class="primary">Continue</button>
+      </form>
+    </section>
+
+    <section id="ops" hidden>
+      <h1>Incidents</h1>
+      <table class="grid">
+        <thead><tr><th>Incident</th><th>Runs</th><th>Confirmed</th><th>Needs review</th></tr></thead>
+        <tbody id="incident-rows"></tbody>
+      </table>
+      <div class="pager">
+        <button id="prev" class="quiet" type="button">Previous</button>
+        <span id="page-label"></span>
+        <button id="next" class="quiet" type="button">Next</button>
+      </div>
+      <div id="incident" hidden>
+        <h2 id="incident-title"></h2>
+        <table class="grid">
+          <thead><tr><th>Variant</th><th>State</th><th>Confidence</th><th>Top 3</th><th></th></tr></thead>
+          <tbody id="run-rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="case" hidden>
+      <div class="case-head">
+        <h1 id="case-title" tabindex="-1"></h1>
+        <span id="case-state" class="badge"></span>
+      </div>
+
+      <div class="columns">
+        <div class="panel">
+          <h2>Ranked services</h2>
+          <div class="confidence">
+            <span>Confidence</span>
+            <meter id="confidence-meter" min="0" max="1"></meter>
+            <strong id="confidence-text"></strong>
+          </div>
+          <ol id="ranked" class="ranked"></ol>
+          <div id="trigger" class="trigger"></div>
+        </div>
+
+        <div class="panel" id="explanation">
+          <h2>Explanation</h2>
+          <ul id="claims" class="claims"></ul>
+          <p id="no-narrative" class="hint" hidden>No explanation is shown for this case.</p>
+        </div>
+      </div>
+
+      <details id="coe" class="panel" hidden>
+        <summary>Chain of evidence</summary>
+        <p id="coe-status" class="hint"></p>
+        <pre id="coe-json"></pre>
+      </details>
+
+      <div id="history" class="panel" hidden>
+        <h2>Decisions</h2>
+        <ul id="history-rows"></ul>
+      </div>
+
+      <form id="decide" class="decide" hidden>
+        <label for="note">Note (optional)</label>
+        <textarea id="note" rows="2" maxlength="2000"></textarea>
+        <div class="actions">
+          <button type="button" data-action="accept" class="accept">Accept <kbd>A</kbd></button>
+          <button type="button" data-action="escalate" class="escalate">Escalate <kbd>E</kbd></button>
+          <button type="button" data-action="reject" class="reject">Reject <kbd>R</kbd></button>
+        </div>
+        <fieldset id="chooser" hidden>
+          <legend>Which service is the root cause?</legend>
+          <div id="choices"></div>
+          <div class="actions">
+            <button type="button" id="confirm-reject" class="reject">Record reject</button>
+            <button type="button" id="cancel-reject" class="quiet">Back</button>
+          </div>
+        </fieldset>
+      </form>
+      <p id="done" class="notice" hidden></p>
+    </section>
+  </main>
+</body>
+</html>

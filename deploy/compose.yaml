@@ -7,7 +7,7 @@
 #   model-check  refuses to finish unless the served digest equals entry 58's
 #   runner       runs campaigns (profile "run"); the only service given .env
 #   admin        creates the decisions secret and API keys (profile "admin")
-#   console      added by S4.2
+#   console      approval console (S4.2): static files and a same-origin API proxy
 #
 # The store is not a service: DuckDB is embedded, and the campaign directory
 # (HELIOS_CAMPAIGN) is mounted. Every pulled image is pinned by digest; the
@@ -47,6 +47,8 @@ services:
       - /decisions/decisions.jsonl
       - --keys
       - /secrets/api_keys.json
+      - --assignments
+      - /secrets/assignments.json  # review queues (S4.2 K-e); absent = none
       - --host
       - ""  # empty host: every interface inside the container (asyncio)
       - --port
@@ -155,7 +157,21 @@ services:
       - ${HELIOS_SECRETS:-./secrets}:/secrets
     network_mode: none
 
-  # console:  S4.2 approval console joins here (front network, talks to api).
+  console:
+    image: nginxinc/nginx-unprivileged:1.29.3-alpine@sha256:5aea7cc516b419e3526f47dd1531be31a56a046cfe44754d94f9383e13e2ee99
+    <<: *hardened
+    volumes:
+      - ../console:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      # Loopback only, like the API (S4.2 K-h).
+      - "${HELIOS_CONSOLE_BIND:-127.0.0.1}:${HELIOS_CONSOLE_PORT:-8081}:8080"
+    networks:
+      - front
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
 
 networks:
   front: {}

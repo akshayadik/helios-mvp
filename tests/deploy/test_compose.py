@@ -215,3 +215,45 @@ def test_runner_keeps_its_own_lpipe_cache(monkeypatch: pytest.MonkeyPatch) -> No
     finally:
         monkeypatch.delenv(campaign.CACHE_ENV, raising=False)
         importlib.reload(campaign)
+
+
+def test_console_is_pinned_on_loopback_with_a_strict_policy() -> None:
+    console = _services()["console"]
+    assert DIGEST.search(console["image"]) and "nginx-unprivileged" in console["image"]
+    (mapping,) = console["ports"]
+    match = DEFAULT.match(mapping)
+    assert match and match.group(1).startswith("127.")
+    assert console["networks"] == ["front"]
+    assert console["read_only"] is True and console["cap_drop"] == ["ALL"]
+    assert "../console:/usr/share/nginx/html:ro" in console["volumes"]
+    assert console["depends_on"]["api"]["condition"] == "service_healthy"
+    assert "env_file" not in console
+    conf = (DEPLOY / "nginx.conf").read_text()
+    csp = re.search(r'Content-Security-Policy "([^"]+)"', conf)
+    assert csp
+    policy = csp.group(1)
+    assert "default-src 'self'" in policy and "frame-ancestors 'none'" in policy
+    assert "unsafe-inline" not in policy and "unsafe-eval" not in policy
+    proxied = re.findall(r"location (=?\s?\S+) \{\s+proxy_pass", conf)
+    assert proxied == ["/v1/", "= /health"]
+    served = re.search(r"location ~ \^/\(([^)]+)\)\$", conf)
+    assert served
+    files = {f.replace("\\.", ".") for f in served.group(1).split("|")}
+    assert files == {p.name for p in (REPO / "console").iterdir() if p.is_file()}
+
+
+def test_console_never_builds_html_from_data() -> None:
+    for path in (REPO / "console").glob("*.js"):
+        text = path.read_text()
+        for unsafe in (
+            "innerHTML",
+            "outerHTML",
+            "insertAdjacentHTML",
+            "eval(",
+            "document.write",
+        ):
+            assert unsafe not in text, f"{path.name} uses {unsafe}"
+    page = (REPO / "console" / "index.html").read_text()
+    assert "<script>" not in page and " style=" not in page  # CSP: no inline code
+    api = _services()["api"]["command"]
+    assert api[api.index("--assignments") + 1] == "/secrets/assignments.json"
