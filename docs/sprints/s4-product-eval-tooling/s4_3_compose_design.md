@@ -128,3 +128,60 @@
 | `helios/pipelines/l_pipe/lpipe_config.py` | `HELIOS_OLLAMA_URL` override (C-d) |
 | `tests/deploy/test_compose.py` | Pinning and secrets checks (C-c, C-e) |
 | `.dockerignore` | Keeps data, ledgers, `.env*`, key files and caches out of the build context |
+
+## 7. Implementation and fresh-install test (2026-11-14)
+
+### What was built
+
+- `deploy/compose.yaml`: `api`, `model-init`, `model`, `model-check`, `runner` (profile `run`), `admin` (profile `admin`); networks `front`, `egress`, `internal` (internal-only); volumes `ollama`, `runner-cache`. The HELIOS services run read-only, with all capabilities dropped and `no-new-privileges`.
+- `deploy/Dockerfile`: `python:3.11-slim` pinned by digest. A first stage exports `poetry.lock` (Poetry 2.5.1, export plugin 1.10.1). The final stage installs it with `--require-hashes --no-deps`, as uid 10001, labelled with the git SHA.
+- Ollama `0.40.16`, pinned by digest. It serves `llama3.1:8b` with digest `46e0c10c039e`, the one entry 58 fixed.
+- `deploy/model_init.sh`: pulls the model with a private server, before `model` starts.
+- `bin/check_model.py` (the `model-check` service): compares the served digest with `EXPECTED_MODEL_DIGEST`.
+- `deploy/compose.host-model.yaml`: points the runner at the host model server (C-d).
+- `deploy/README.md`: install steps, settings and exposure notes.
+- `.dockerignore`: excludes data, ledgers, `.env*`, key files, tests and docs (except the price book).
+- `tests/deploy/test_compose.py`: 13 tests covering pinning, secrets, exposure, start order, the build context, the model check, and the code changes below.
+
+### Details settled while building
+
+- **Pull before serve.** The Ollama server, not the client, downloads the model, so the server that pulls needs internet. `model-init` therefore runs its own short-lived server on the `egress` network. `model` starts only after it exits, so the two servers never share the volume, and `model` stays internal-only (C-f kept as approved).
+- **Listening address.** The API listens on every interface inside its container, using an empty `--host`, and is published on the host's loopback address only. The owner authorised the loopback literal in the compose file, which the research-compliance hook blocks in tool writes.
+- **Decisions ledger outside the campaign.** The campaign is mounted read-only, so the decisions ledger has its own mount. That needed `--decisions` on `helios_api.py serve` and on `verify_ledgers.py` (the latter fails, rather than skips, when the file or secret is missing).
+- **Ledger commit.** The image has no git. The runner passes the build revision through `GITHUB_SHA`, which `hmac_chain._resolve_commit_sha` already reads.
+
+### Defects the image exposed (fixed)
+
+| Defect | Fix |
+|---|---|
+| `helios/evaluation/cost.py` imports `yaml`, but PyYAML was only installed through the dev tools | Declared as a main dependency; the lock still resolves to 6.0.3 |
+| The runner creates the L-pipe cache under `data/cache/`, which is gitignored and mounted read-only, so a fresh install would fail | `HELIOS_LPIPE_CACHE` override (default unchanged). The runner keeps its own cache volume, so answers from the CPU model never enter the host's calibrated cache |
+| `build_frozen` raised `FileNotFoundError` without git | Fails closed: the pool stays locked |
+
+### Fresh-install test (C-h)
+
+From a new clone of the branch (03c0a30), following `deploy/README.md`, with no Poetry environment used and a new, empty model volume:
+
+| Check | Result |
+|---|---|
+| `build --no-cache` | Image `helios:03c0a30…` built from the lock file with hash checking |
+| Secret and reviewer key via `admin` | Created; the key was printed once, and the key file stores only its digest |
+| `up -d` until `model-check` exits 0 | 159 s, including the 4.9 GB model download |
+| `model-check` | `llama3.1:8b digest 46e0c10c039e matches entry 58` |
+| `/health` over `camp_v3c` | ok, 63 incidents, CoE 8/8 verified with the public key |
+| Decision round trip | View 201, decision 201 (server time 4.1 ms), token reuse 409, decisions ledger verified on the host |
+| Leakage scan | 11 responses, 0 matches |
+| Runner on the build corpus (plan, then one confirmatory spec) | passed; its CoE verifies with the public key |
+| Exposure | API published on loopback port 8080 only; `model` has no published port and is on the internal network only; no `DEVIATION_*` variable in the API container |
+
+### Container model versus host (C-d caveat)
+
+On two build specs (HELIOS-Full and noRouter, one incident), run against the container's CPU model with an empty cache, the final ranked list, scores, confidence and state equal the host runs in `camp_v3c`. The first publication of the noRouter run differs (the container's provisional top-1 was another service). That is a timing effect: the CPU model answers later, so the early verdict is published on fewer pipelines. It is why evaluation runs stay on the host model server. Two specs took 79 s on CPU.
+
+### Gate
+
+Full pre-push gate green: ruff, ruff format, black, mypy, pytest (coverage 96.55%), ledgers, verify-public (88 entries), captures, OSF freeze, tracking validation, notebook.
+
+### Deviation entry
+
+None, as approved (§4). No protocol, metric or test changed. The new environment overrides default to today's values, and model identity is still checked at run start.
