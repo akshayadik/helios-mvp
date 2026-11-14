@@ -7,6 +7,7 @@ import { test } from "node:test";
 import { ApiError, keyStore, makeApi } from "../../console/api.js";
 import {
   actionForKey,
+  actionText,
   caseModel,
   citableIndex,
   decisionBody,
@@ -233,4 +234,22 @@ test("the key lives in the session store only", () => {
   assert.equal(keys.get(), "k1");
   keys.clear();
   assert.equal(keys.get(), null);
+});
+
+// ── recommendation and control-plane state (S4.5–S4.7) ───────────────────────
+
+test("the proposal shows as a recommendation; none for a blind key", () => {
+  const action = { kind: "restart", target: "cart", mode: "recommend", validation: "PASS", reason: "validated" };
+  const m = caseModel({ ...VERDICT, action, control_plane_degraded: "helios.model" }, ENTRY);
+  assert.deepEqual(m.action, {
+    text: "Restart cart",
+    validation: "Shadow validation: PASS (validated)",
+    shadow: false,
+  });
+  assert.equal(m.degraded, "helios.model");
+  assert.equal(caseModel(VERDICT, ENTRY).action, null);
+  assert.equal(caseModel(VERDICT, ENTRY).degraded, null);
+  assert.equal(actionText({ ...action, kind: "none", target: null }), null);
+  assert.equal(actionText({ ...action, mode: "shadow" }).shadow, true);
+  assert.equal(actionText({ ...action, kind: "escalate-to-human" }).text, "Hand to a person: cart");
 });

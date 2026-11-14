@@ -15,6 +15,7 @@ import sqlite3
 from dataclasses import astuple, dataclass
 from typing import TYPE_CHECKING
 
+from helios.privacy.redact import RULESET_ID, redaction_enabled
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
 
 if TYPE_CHECKING:
@@ -37,8 +38,13 @@ class CachedCall:
 
 
 def cache_key(model_digest: str, prompt_sha: str, rendered: str) -> str:
-    """Content key of one call."""
-    payload = "\x00".join((model_digest, prompt_sha, rendered)).encode("utf-8")
+    """Content key of one call. With PII redaction on (S4.4) the key also
+    covers the ruleset, so redacted and raw answers never share a key; off,
+    every key is unchanged."""
+    parts: tuple[str, ...] = (model_digest, prompt_sha, rendered)
+    if redaction_enabled():
+        parts += (f"pii:{RULESET_ID}",)
+    payload = "\x00".join(parts).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
 
 

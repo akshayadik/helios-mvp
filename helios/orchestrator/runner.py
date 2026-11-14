@@ -28,6 +28,8 @@ from helios.acp.features import (
 )
 from helios.acp.params import ACP_PARAMS_PATH, acp_params_hash, load_acp_params
 from helios.acp.predictor import acp_block
+from helios.actions import fgsv
+from helios.actions.modes import ActionMode
 from helios.consensus.mahc import run_mahc, run_vote_only
 from helios.consensus.params import load_mahc_params, mahc_params_hash
 from helios.consensus.router import decide_escalation, decide_g
@@ -68,7 +70,9 @@ from helios.pipelines.l_pipe.lpipe_config import (
     WORKER_PROMPT_SHAS,
 )
 from helios.pipelines.l_pipe.pipeline import run_lpipe, verify_model
+from helios.privacy.redact import RULESET_ID, redaction_enabled
 from helios.schemas.telemetry import EvaluationPhase
+from helios.schemas.ueg_c import TENANT_SELF
 from helios.schemas.verdict import (
     PipelineName,
     PipelineVerdict,
@@ -78,6 +82,12 @@ from helios.schemas.verdict import (
 from helios.store.result_store import ResultStore
 from helios.telemetry.reader import CaptureReader
 from helios.telemetry.scope import OUT_OF_SCOPE_SERVICES, filter_in_scope, in_scope
+from helios.telemetry.self_telemetry import (
+    HISTORY_RUNS,
+    SelfTelemetry,
+    detect_degradation,
+    with_self_partition,
+)
 from helios.telemetry.signal_type import (
     SignalType,
     classify,
@@ -93,6 +103,7 @@ from helios.telemetry.trigger import (
     detector_hash,
     load_detector_params,
     load_external_triggers,
+    service_scores,
 )
 from helios.vcl.decorators import GatedComponentInactiveError, set_current_manifest
 from helios.vcl.snapshot_registry import DuplicateSnapshotError, SnapshotRegistry
@@ -205,6 +216,10 @@ class RunOrchestrator:
         router_params: RouterParams | None = None,
         price_book_digest: str | None = None,
         acp_params: ACPParams | None = None,
+        action_mode: ActionMode = ActionMode.RECOMMEND,
+        fgsv_params: fgsv.FGSVParams | None = None,
+        fgsv_perturb: bool = False,
+        self_telemetry: SelfTelemetry | None = None,
     ) -> None:
         """``detector_params``, ``dpipe_params`` and ``gpipe_params`` default to
         the frozen files; ``lpipe_client`` defaults to the local Ollama model and
@@ -218,7 +233,11 @@ class RunOrchestrator:
         the caller (the run path never imports ``helios.evaluation``) and
         required for confirmatory routed runs. ``acp_params`` (S3.2) default
         to the frozen file when it exists; without it an ACP-on run records
-        the features only (``unfit``)."""
+        the features only (``unfit``). ``action_mode`` (S4.5) is stamped on
+        every proposal; ``fgsv_params`` (S4.6) default to the frozen file when
+        ``fgsv_ks_gate`` is on; ``fgsv_perturb`` applies the frozen E-H4 fidelity break
+        (exploratory runs only). ``self_telemetry`` (S4.7) holds the run
+        history read under ``iol_self_telemetry``; by default an in-memory one."""
         set_current_manifest(manifest)
         self._manifest = manifest
         self._lpipe_client = lpipe_client
@@ -257,6 +276,17 @@ class RunOrchestrator:
         )
         self._dpipe = dpipe_params if dpipe_params is not None else load_dpipe_params()
         self._gpipe = gpipe_params if gpipe_params is not None else load_gpipe_params()
+        self._action_mode = action_mode
+        self._fgsv: fgsv.FGSVParams | None = fgsv_params
+        if self._fgsv is None and manifest.fgsv_ks_gate:
+            self._fgsv = fgsv.load_fgsv_params()
+        self._self = self_telemetry if self_telemetry is not None else SelfTelemetry()
+        # HELIOS-noFGSV has no twin to perturb: the option is a no-op there.
+        self._fgsv_shift: float = (
+            self._fgsv.perturb_shift
+            if fgsv_perturb and self._fgsv is not None and manifest.fgsv_ks_gate
+            else 0
+        )
         self._external = (
             load_external_triggers(external_triggers)
             if external_triggers is not None
@@ -289,6 +319,20 @@ class RunOrchestrator:
                 raise ProvisionalParametersError(
                     "narrator prompt or parameters are provisional; freeze them "
                     "first (S2.8)"
+                )
+            if redaction_enabled():
+                raise ValueError(
+                    "PII redaction is off in confirmatory runs (S4.4, owner "
+                    "decision 2026-11-11): unset HELIOS_PII_REDACTION"
+                )
+            if self._fgsv_shift:
+                raise ValueError(
+                    "the FGSV fidelity-break perturbation is for exploratory runs "
+                    "only (E-H4)"
+                )
+            if self._manifest.fgsv_ks_gate and self._fgsv and self._fgsv.provisional:
+                raise ProvisionalParametersError(
+                    "FGSV parameters are provisional; freeze them first (S4.6)"
                 )
             if self._coe_signer is None:
                 raise MissingSigningKeyError(
@@ -682,6 +726,16 @@ class RunOrchestrator:
                     cache=self._lpipe_cache,
                 ).as_step()
                 coe_entry["steps"].append(narrative)
+            # S4.6: after the fused verdict and the narrative; the ranking,
+            # the narrative and the publication time are already fixed.
+            coe_entry["steps"].append(
+                self._action_step(window, graph, trigger, fused, signal)
+            )
+            if self._manifest.iol_self_telemetry:
+                coe_entry["steps"].append(self._self_step(window, graph))
+                self._self.record(
+                    run_id, _self_metrics(verdicts, fused, narrative, l_out)
+                )
             for verdict in verdicts:
                 self._store.insert(verdict)
             self._store.insert_fusion(run_id, incident_id, self._config_hash, fused)
@@ -737,6 +791,10 @@ class RunOrchestrator:
             hashes["narrator_params"] = narrator_params_hash(self._narrator)
             if self._manifest.l2c_llm:
                 hashes["narrator_prompt"] = narrator_prompt.NARRATOR_PROMPT_SHA
+        if redaction_enabled():
+            hashes["pii_ruleset"] = RULESET_ID
+        if self._manifest.fgsv_ks_gate and self._fgsv is not None:
+            hashes["fgsv"] = fgsv.fgsv_params_hash(self._fgsv)
         if self._manifest.l2c_llm:
             hashes["lpipe_model"] = str(
                 (lpipe_evidence or {}).get("model_digest") or ""
@@ -744,6 +802,83 @@ class RunOrchestrator:
             for name, sha in sorted(WORKER_PROMPT_SHAS.items()):
                 hashes[f"lpipe_prompt_{name}"] = sha or ""
         return hashes
+
+    def _action_step(
+        self,
+        window: TelemetryWindow,
+        graph: UEGCSnapshot | None,
+        trigger: TriggerRecord,
+        fused: Any,
+        signal: SignalType | None,
+    ) -> dict[str, Any]:
+        """CoE step ``A`` (S4.6): the proposal for the fused top-1, validated
+        by FGSV when ``fgsv_ks_gate`` is on, else recorded as unvalidated."""
+        top = fused.ranked[0] if fused.ranked else None
+        proposal = fgsv.propose(top, None if signal is None else signal.value)
+        mode = self._action_mode.value
+        if not self._manifest.fgsv_ks_gate or self._fgsv is None:
+            return fgsv.unvalidated_step(proposal, mode)
+        target = proposal.target
+        anomalous: list[str] = []
+        pairs = None
+        if (
+            proposal.kind in ("restart", "scale-out")
+            and target is not None
+            and graph is not None
+            and fgsv.has_structure(graph, target)
+        ):
+            scores = service_scores(
+                window, self._detector.bucket_seconds, root=_REPO_ROOT
+            )
+            first = int(
+                (trigger.trigger_time_s - scores.start_s)
+                // self._detector.bucket_seconds
+            )
+            anomalous = fgsv.anomalous_services(
+                scores.services, scores.z, first, self._detector.threshold
+            )
+            pairs = fgsv.twin_pairs(
+                window,
+                [target, *fgsv.callers(graph, target)],
+                trigger.trigger_time_s,
+                self._fgsv,
+                root=_REPO_ROOT,
+            )
+        return fgsv.validate(
+            proposal,
+            mode=mode,
+            graph=graph,
+            anomalous=anomalous,
+            pairs=pairs,
+            params=self._fgsv,
+            shift=self._fgsv_shift,
+        )
+
+    def _self_step(
+        self, window: TelemetryWindow, graph: UEGCSnapshot | None
+    ) -> dict[str, Any]:
+        """CoE step ``S`` (S4.7): the self partition of earlier runs, composed
+        onto this incident's graph and read by the frozen firing rule. Timing
+        data, so all of it sits under ``measured``."""
+        first_run = max(0, len(self._self.records) - HISTORY_RUNS)
+        composed = with_self_partition(
+            graph,
+            self._self.series(),
+            incident_id=window.incident_id,
+            config_hash=self._config_hash,
+            captured_at_iso=window.window_end_iso,
+        )
+        found = detect_degradation(composed, self._detector, first_run=first_run)
+        inj = self._self.injection
+        return {
+            "id": "S",
+            "measured": {
+                **found,
+                "run_index": len(self._self.records),
+                "self_nodes": sum(n.tenant == TENANT_SELF for n in composed.nodes),
+                "synthetic_degradation": None if inj is None else inj.as_dict(),
+            },
+        }
 
     def _acp_record(
         self,
@@ -868,6 +1003,35 @@ def incident_graph(
         ueg_c, seeds=seeds or None, exclude=OUT_OF_SCOPE_SERVICES
     )
     return ueg_c, seeds
+
+
+def _self_metrics(
+    verdicts: list[PipelineVerdict],
+    fused: Any,
+    narrative: dict[str, Any] | None,
+    l_out: Mapping[str, Any],
+) -> dict[str, dict[str, float]]:
+    """One run's self-telemetry record (S4.7): what each component did."""
+    out: dict[str, dict[str, float]] = {}
+    for v in verdicts:
+        if v.status != VerdictStatus.SKIPPED and v.latency_ms is not None:
+            out[f"helios.{v.pipeline.value}"] = {"wall_ms": float(v.latency_ms)}
+    sched = fused.schedule
+    out["helios.consensus"] = {
+        "first_ms": float(sched.first_ms),
+        "non_converged": float(bool(sched.non_converged)),
+    }
+    if l_out.get("llm_calls"):
+        out["helios.model"] = {
+            "compute_ms": float(l_out.get("gpu_ms") or 0),
+            "errors": float(l_out.get("llm_failed_calls") or 0),
+        }
+    if narrative is not None:
+        slots = narrative.get("slots", {})
+        out["helios.narrator"] = {
+            "fallbacks": float(sum(bool(s.get("fallback")) for s in slots.values()))
+        }
+    return out
 
 
 def _top(verdict: PipelineVerdict) -> str | None:

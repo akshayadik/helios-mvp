@@ -149,3 +149,13 @@ def test_flag_scan_on_a_synthetic_tree(tmp_path: Path) -> None:
     assert readers["fgsv_ks_gate"] == []  # helios/vcl is the flag system itself
     refused = unconsumed_variants(["HELIOS-noCogni", "HELIOS-noFGSV"], readers)
     assert list(refused) == ["HELIOS-noFGSV"]
+
+
+def test_fgsv_and_iol_have_readers_so_only_cogni_and_his3_are_refused() -> None:
+    """S4.6/S4.7 (design T-j): with FGSV and IOL built, phase E runs
+    HELIOS-noFGSV and HELIOS-noIOL; noCogni and HIS3 stay out (Stage B)."""
+    readers = flag_readers(REPO)
+    assert readers["fgsv_ks_gate"]
+    assert readers["iol_self_telemetry"]
+    refused = unconsumed_variants(list(EXPLORATORY_VARIANTS), readers)
+    assert sorted(refused) == ["HELIOS-HIS3", "HELIOS-noCogni"]

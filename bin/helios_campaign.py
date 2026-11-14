@@ -36,6 +36,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from bin.helios_run import _load_coe_signer
 from bin.log_deviation import load_key
 from bin.log_exclusion import ExclusionLedger
+from helios.actions.modes import action_mode
 from helios.adapters.rcaeval import verify_ground_truth
 from helios.analysis.run import build_case_table, variant_names
 from helios.baselines.container import DockerRunner
@@ -57,6 +58,11 @@ from helios.pipelines.l_pipe.cache import ResponseCache
 from helios.pipelines.l_pipe.lpipe_config import MODEL_NAME, OLLAMA_BASE_URL
 from helios.store.result_store import ResultStore
 from helios.telemetry.pool_lock import BUILD_FREEZE_TAG, PoolLockedError, build_frozen
+from helios.telemetry.self_telemetry import (
+    SelfTelemetry,
+    check_protocol,
+    parse_injection,
+)
 from helios.vcl import get_variant
 from helios.vcl.catalog import flag_readers, unconsumed_variants
 from helios.vcl.config import VCLManifest  # noqa: F401  # flag-guard compliance
@@ -122,6 +128,19 @@ def cmd_plan(args: argparse.Namespace, key: bytes) -> int:
         "gt_corpus": args.gt_corpus,
         "captures": str(args.captures),
     }
+    # Exploratory conditions (S4.6 E-H4, S4.7 E-H6): stored only when set, so
+    # earlier campaigns keep an equal config. Never on the pool.
+    if getattr(args, "fgsv_perturb", False):
+        config["fgsv_perturb"] = True
+    if getattr(args, "iol_inject", None):
+        # Refuse a bad spec, or one outside the frozen ladder, before planning.
+        check_protocol(parse_injection(args.iol_inject))
+        config["iol_inject"] = args.iol_inject
+    if args.gt_corpus == Corpus.POOL and (
+        "fgsv_perturb" in config or "iol_inject" in config
+    ):
+        print("[campaign] refused: perturbation and injection are exploratory only")
+        return 2
     path = args.dir / CONFIG
     if path.is_file() and json.loads(path.read_text()) != config:
         print(f"[campaign] refused: {args.dir} was planned with another config")
@@ -164,6 +183,8 @@ def executors(
     stem = "rerun" if rerun else "results"
     signer = _load_coe_signer()
     digest = load_price_book().digest
+    mode = action_mode()
+    inject = config.get("iol_inject")
     out: dict[str, RunOrchestrator] = {}
     for name in sorted(systems):
         if name.startswith("BASELINE-"):
@@ -181,6 +202,12 @@ def executors(
             lpipe_client=client,
             lpipe_cache=None if rerun else ResponseCache(CACHE_PATH),
             coe_path=directory / "coe" / f"{stem}.{name}.coe.jsonl",
+            action_mode=mode,
+            fgsv_perturb=bool(config.get("fgsv_perturb")),
+            self_telemetry=SelfTelemetry(
+                path=directory / "self" / f"{stem}.{name}.jsonl",
+                injection=parse_injection(inject) if inject else None,
+            ),
         )
     return out
 
@@ -442,6 +469,16 @@ def main(argv: list[str] | None = None) -> int:
     plan.add_argument("--manifest", type=Path, required=True)
     plan.add_argument("--gt-corpus", choices=sorted(GROUND_TRUTH_FILES), required=True)
     plan.add_argument("--captures", type=Path, required=True)
+    plan.add_argument(
+        "--fgsv-perturb",
+        action="store_true",
+        help="E-H4: apply the frozen FGSV fidelity break (exploratory only)",
+    )
+    plan.add_argument(
+        "--iol-inject",
+        metavar="SPEC",
+        help="E-H6: component=helios.model,metric=compute_ms,from=30,factor=F (F in the frozen ladder)",
+    )
     run = sub.add_parser("run")
     run.add_argument("--phase", action="append", choices=[p.value for p in Phase])
     run.add_argument("--limit", type=int)

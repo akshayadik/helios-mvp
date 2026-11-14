@@ -14,6 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
 
 __all__ = [
+    "ActionOut",
     "Claim",
     "CoEOut",
     "DecisionIn",
@@ -113,6 +114,19 @@ class TriggerOut(_Out):
     source: str
 
 
+class ActionOut(_Out):
+    """The run's remediation proposal (S4.5, S4.6). A recommendation only:
+    HELIOS never carries it out in Stage A."""
+
+    kind: str = Field(description="restart, scale-out, escalate-to-human or none.")
+    target: str | None
+    mode: str = Field(description="recommend or shadow.")
+    validation: str = Field(
+        description="FGSV verdict: PASS, FAIL, STALE or UNVALIDATED."
+    )
+    reason: str
+
+
 class Verdict(_Out):
     run_id: str
     incident_id: str
@@ -129,6 +143,15 @@ class Verdict(_Out):
     trigger: TriggerOut | None
     narrative: Narrative | None = Field(
         description="Null when the run's variant has no narrative (HELIOS-noExpl)."
+    )
+    action: ActionOut | None = Field(
+        description="Null without a CoE entry, and for a blind (participant) key.",
+    )
+    control_plane_degraded: str | None = Field(
+        description=(
+            "The HELIOS component its self-telemetry found degraded when this "
+            "run started (S4.7); null when none, and for a blind key."
+        ),
     )
 
 

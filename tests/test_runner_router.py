@@ -97,6 +97,7 @@ def _run(
     name: str = "r",
     llm_down: bool = False,
     graph: bool = True,
+    **orch_kw: Any,
 ) -> tuple[dict[str, Any], list[str]]:
     manifest = get_variant(variant)
     hash_ = manifest.compute_variant_config_hash()
@@ -138,6 +139,7 @@ def _run(
         exclusion_ledger=MagicMock(spec=AppendOnlyLedger),
         hmac_key=_KEY,
         router_params=params or _params(P_STOP),
+        **orch_kw,
     )
     orch.run(captures)
     (entry,) = _entries(orch.coe_path)

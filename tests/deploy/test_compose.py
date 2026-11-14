@@ -257,3 +257,11 @@ def test_console_never_builds_html_from_data() -> None:
     assert "<script>" not in page and " style=" not in page  # CSP: no inline code
     api = _services()["api"]["command"]
     assert api[api.index("--assignments") + 1] == "/secrets/assignments.json"
+
+
+def test_runner_product_settings_default_to_the_evidence_values() -> None:
+    """S4.4/S4.5: redaction off (confirmatory runs refuse it) and
+    recommendation mode, unless the operator sets them."""
+    env = _services()["runner"]["environment"]
+    assert DEFAULT.findall(env["HELIOS_PII_REDACTION"]) == ["off"]
+    assert DEFAULT.findall(env["HELIOS_ACTION_MODE"]) == ["recommend"]
