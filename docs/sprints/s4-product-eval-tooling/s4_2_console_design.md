@@ -129,7 +129,7 @@
 ### K-j. Walk-through and timing verification (done-when)
 
 - **Recommended**, on build data only, through compose:
-  1. A queue of 8 cases for a blind reviewer key: 4 HELIOS-Full runs from `camp_v3c` and 4 HELIOS-noExpl runs from the build campaign that has them (`camp_v3`), interleaved.
+  1. A queue of 8 cases for a blind reviewer key, interleaved: 4 HELIOS-Full and 4 HELIOS-noExpl runs, all from the OTel build campaign `camp_v3`, which has both variants. The API serves one campaign at a time.
   2. Walk through it in a real browser:
      - Full cases show the narrative and expandable citations; noExpl cases show none;
      - the variant is never shown, nor present in the responses;
