@@ -154,3 +154,78 @@
 - the trust questionnaire (IRB survey instrument);
 - live incidents and remediation actions (Stage B);
 - multi-tenant administration (Stage B).
+
+## 7. Implementation and walk-through (2026-11-14)
+
+### What was built
+
+- **Console** (`console/`): `index.html`, `app.js` (DOM and flow), `model.js` (view models), `timing.js` (case timer), `api.js` (client), `console.css`.
+  - No npm packages and no build step.
+  - Every string is inserted as text.
+  - Keyboard shortcuts A, E and R.
+  - A neutral, single-colour confidence bar.
+  - Review and operations modes.
+- **nginx** (`deploy/nginx.conf`, `nginxinc/nginx-unprivileged:1.29.3-alpine`, pinned by digest):
+  - serves only the six console files, proxies `/v1/` and `/health`, and returns 404 for everything else, including the API's `/docs` and `/openapi.json`;
+  - sets a strict CSP, `nosniff`, `X-Frame-Options: DENY` and `no-referrer`.
+  - The `console` service runs read-only with capabilities dropped, on `front` only, published on loopback port 8081.
+- **API (`api-v1.1`, additive):**
+  - `GET /v1/queue`;
+  - blind and simulated key attributes (`keygen --blind`, `--simulated`);
+  - `chosen_service` and `client_hidden_ms` on decisions, and `simulated` on every new ledger entry;
+  - `serve --assignments`;
+  - committed spec regenerated.
+- **`bin/simulate_hitl.py`:** the scripted reviewer (K-f).
+- **CI:** new `console` job (`node --test tests/console/*.test.mjs`, Node 22, no packages).
+
+### Details settled while building
+
+- **Blind keys are stricter than drafted.** Besides returning `variant` as null:
+  - the incident endpoints return 403;
+  - any run outside the key's queue is reported as absent (404);
+  - the CoE entry is reduced to its citable items and the F step, without the variant hash or parameter hashes;
+  - decision lists show only the key's own decisions.
+- **Chosen-service rules** (enforced by the server, 400 otherwise):
+  - accept names the top-ranked service (set by the server);
+  - escalate names none;
+  - reject names a lower-ranked service, `none`, or nothing ("not sure").
+- **Simulated think time** is sent as `client_ms` (the price book's 15 minutes) instead of waiting. The server's `decision_ms` stays the real elapsed time. Simulated entries are tagged, so neither figure can reach the human analysis.
+- **The console starts by default** with the stack (no compose profile). `HELIOS_ENABLE_CONSOLE` off removes `/v1/queue`, which is what review mode needs.
+- **Neutral confidence colour:** the browser's default green, amber and red meter colours would cue a participant. One accent colour is used at every level.
+- **`/favicon.ico`** returns 204, so the browser's automatic request is not logged as an error.
+
+### Tests
+
+- **Python:** 10 new API tests (queue, the console flag, blind-key scope and redaction, own decisions only, chosen-service rules, hidden time and the simulated tag, key attributes, the simulated reviewer and its CLI) and 2 new compose tests (console pinning, loopback, CSP, proxied paths, served files; no `innerHTML` / `eval` / inline script or style). Full suite: coverage 96.58%.
+- **JavaScript:** 15 tests (timer, citation index, evidence rows, case model, noExpl, variant display, shortcuts, decision body, API client, key store).
+
+### Walk-through (K-j), OTel build campaign `camp_v3`, through compose
+
+Headless Chrome (Playwright, a scratch tool outside the repo). The blind key P01 had a queue of 8 cases on 8 different incidents: Full and noExpl alternating.
+
+| Case | Condition | Action | Server `decision_ms` | `client_ms` | Gap |
+|---|---|---|---|---|---|
+| 1 | Full | Citation expanded, held 3 s, key A | 3210.3 | 3197.4 | 12.9 |
+| 2 | noExpl | Reject, chose `currency` | 259.8 | 250.9 | 8.9 |
+| 3 | Full | Escalate | 2092.8 | 2084.8 | 8.0 |
+| 4 | noExpl | Escalate | 556.8 | 549.5 | 7.3 |
+| 5 | Full | Accept | 560.5 | 552.7 | 7.8 |
+| 6 | noExpl | Escalate | 561.3 | 553.8 | 7.5 |
+| 7 | Full | Accept | 560.3 | 550.9 | 9.4 |
+| 8 | noExpl | Escalate | 558.4 | 548.9 | 9.5 |
+
+- **Timing:** on every decision the server measure exceeds the client's by 7 to 13 ms (one loopback round trip), and the 3-second hold measured 3.2 s on both clocks.
+- **Conditions:** Full cases showed 9 or 10 claims with expandable citations. noExpl cases showed "No explanation is shown for this case". Review mode never showed the CoE panel.
+- **Blinding:** a second blind key (P02, 2 cases) received 12 API responses: none carried a variant name or a variant hash.
+- **Final screen:** "All cases are done". 8 views and 8 decisions were recorded for P01. The ledger verifies on the host.
+- **Operations mode** (non-blind reviewer key): incident list, incident runs with variant names, verdict with the verified CoE ("Verified with the public key: 63 entries") and decision history.
+- **CSP in force:** Playwright's own string-eval helpers were refused by the page's CSP. The only browser console error in the first run was the favicon request, since fixed.
+- **Hidden time:** Playwright keeps every page "visible" (it disables Chrome's background and occlusion handling), so a tab switch or a minimised window does not hide the page under automation.
+  - The wiring was checked instead by firing real `visibilitychange` events with `document.hidden` overridden (1.5 s and 0.7 s hidden): `client_hidden_ms` recorded 2208.5 ms against 2200 planned.
+  - A manual check in an ordinary browser (switch tabs for a few seconds, then decide) is a 30-second confirmation of the browser side.
+- **Simulated HITL** over `camp_v3c`: 282 human-requesting runs, 282 accept decisions in 4.4 s, all tagged `simulated`, `client_ms` 900000. A second pass skipped all 282. The ledger verifies.
+- **Port:** 8081 was taken on this machine by another project's container, so the walk-through used `HELIOS_CONSOLE_PORT=8091`, the documented override.
+
+### Deviation entry
+
+None, as approved (§4).
