@@ -1,0 +1,1469 @@
+{
+ "components": {
+  "schemas": {
+   "Claim": {
+    "additionalProperties": false,
+    "properties": {
+     "cites": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Cites",
+      "type": "array"
+     },
+     "kind": {
+      "title": "Kind",
+      "type": "string"
+     },
+     "sentence": {
+      "title": "Sentence",
+      "type": "string"
+     },
+     "slot": {
+      "title": "Slot",
+      "type": "string"
+     }
+    },
+    "required": [
+     "slot",
+     "kind",
+     "sentence",
+     "cites"
+    ],
+    "title": "Claim",
+    "type": "object"
+   },
+   "CoEOut": {
+    "additionalProperties": false,
+    "properties": {
+     "entry": {
+      "title": "Entry",
+      "type": "object"
+     },
+     "ledger": {
+      "title": "Ledger",
+      "type": "string"
+     },
+     "run_id": {
+      "title": "Run Id",
+      "type": "string"
+     },
+     "verification": {
+      "title": "Verification",
+      "type": "string"
+     },
+     "verified": {
+      "title": "Verified",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "run_id",
+     "ledger",
+     "verified",
+     "verification",
+     "entry"
+    ],
+    "title": "CoEOut",
+    "type": "object"
+   },
+   "DecisionIn": {
+    "additionalProperties": false,
+    "properties": {
+     "client_ms": {
+      "anyOf": [
+       {
+        "minimum": 0.0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The client's own timing, kept beside the server's.",
+      "title": "Client Ms"
+     },
+     "decision": {
+      "enum": [
+       "accept",
+       "escalate",
+       "reject"
+      ],
+      "title": "Decision",
+      "type": "string"
+     },
+     "note": {
+      "anyOf": [
+       {
+        "maxLength": 2000,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Note"
+     },
+     "view_token": {
+      "maxLength": 1024,
+      "minLength": 16,
+      "title": "View Token",
+      "type": "string"
+     }
+    },
+    "required": [
+     "decision",
+     "view_token"
+    ],
+    "title": "DecisionIn",
+    "type": "object"
+   },
+   "DecisionOut": {
+    "additionalProperties": false,
+    "properties": {
+     "client_ms": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Client Ms"
+     },
+     "decided_at": {
+      "title": "Decided At",
+      "type": "number"
+     },
+     "decision": {
+      "title": "Decision",
+      "type": "string"
+     },
+     "decision_ms": {
+      "title": "Decision Ms",
+      "type": "number"
+     },
+     "incident_id": {
+      "title": "Incident Id",
+      "type": "string"
+     },
+     "key_id": {
+      "title": "Key Id",
+      "type": "string"
+     },
+     "note": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Note"
+     },
+     "run_id": {
+      "title": "Run Id",
+      "type": "string"
+     },
+     "shown_at": {
+      "title": "Shown At",
+      "type": "number"
+     },
+     "signature": {
+      "title": "Signature",
+      "type": "string"
+     }
+    },
+    "required": [
+     "run_id",
+     "incident_id",
+     "key_id",
+     "decision",
+     "note",
+     "shown_at",
+     "decided_at",
+     "decision_ms",
+     "client_ms",
+     "signature"
+    ],
+    "title": "DecisionOut",
+    "type": "object"
+   },
+   "DecisionsOut": {
+    "additionalProperties": false,
+    "properties": {
+     "decisions": {
+      "items": {
+       "$ref": "#/components/schemas/DecisionOut"
+      },
+      "title": "Decisions",
+      "type": "array"
+     },
+     "latest": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Latest"
+     },
+     "run_id": {
+      "title": "Run Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "run_id",
+     "decisions",
+     "latest"
+    ],
+    "title": "DecisionsOut",
+    "type": "object"
+   },
+   "Health": {
+    "additionalProperties": false,
+    "properties": {
+     "api_version": {
+      "title": "Api Version",
+      "type": "string"
+     },
+     "build_frozen": {
+      "title": "Build Frozen",
+      "type": "boolean"
+     },
+     "coe_ledgers": {
+      "additionalProperties": {
+       "type": "string"
+      },
+      "title": "Coe Ledgers",
+      "type": "object"
+     },
+     "decisions_ledger": {
+      "title": "Decisions Ledger",
+      "type": "string"
+     },
+     "incidents": {
+      "title": "Incidents",
+      "type": "integer"
+     },
+     "keys_configured": {
+      "title": "Keys Configured",
+      "type": "integer"
+     },
+     "schema_tags": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Schema Tags",
+      "type": "array"
+     },
+     "status": {
+      "enum": [
+       "ok",
+       "degraded"
+      ],
+      "title": "Status",
+      "type": "string"
+     }
+    },
+    "required": [
+     "status",
+     "api_version",
+     "schema_tags",
+     "build_frozen",
+     "incidents",
+     "keys_configured",
+     "decisions_ledger",
+     "coe_ledgers"
+    ],
+    "title": "Health",
+    "type": "object"
+   },
+   "IncidentDetail": {
+    "additionalProperties": false,
+    "properties": {
+     "incident_id": {
+      "title": "Incident Id",
+      "type": "string"
+     },
+     "runs": {
+      "items": {
+       "$ref": "#/components/schemas/RunSummary"
+      },
+      "title": "Runs",
+      "type": "array"
+     }
+    },
+    "required": [
+     "incident_id",
+     "runs"
+    ],
+    "title": "IncidentDetail",
+    "type": "object"
+   },
+   "IncidentPage": {
+    "additionalProperties": false,
+    "properties": {
+     "items": {
+      "items": {
+       "$ref": "#/components/schemas/IncidentSummary"
+      },
+      "title": "Items",
+      "type": "array"
+     },
+     "limit": {
+      "title": "Limit",
+      "type": "integer"
+     },
+     "offset": {
+      "title": "Offset",
+      "type": "integer"
+     },
+     "total": {
+      "title": "Total",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "items",
+     "total",
+     "limit",
+     "offset"
+    ],
+    "title": "IncidentPage",
+    "type": "object"
+   },
+   "IncidentSummary": {
+    "additionalProperties": false,
+    "properties": {
+     "confirmed": {
+      "title": "Confirmed",
+      "type": "integer"
+     },
+     "incident_id": {
+      "title": "Incident Id",
+      "type": "string"
+     },
+     "needs_review": {
+      "title": "Needs Review",
+      "type": "integer"
+     },
+     "runs": {
+      "title": "Runs",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "incident_id",
+     "runs",
+     "confirmed",
+     "needs_review"
+    ],
+    "title": "IncidentSummary",
+    "type": "object"
+   },
+   "Narrative": {
+    "additionalProperties": false,
+    "properties": {
+     "claims": {
+      "items": {
+       "$ref": "#/components/schemas/Claim"
+      },
+      "title": "Claims",
+      "type": "array"
+     },
+     "narrator": {
+      "title": "Narrator",
+      "type": "string"
+     },
+     "rendered": {
+      "title": "Rendered",
+      "type": "string"
+     },
+     "template_fallbacks": {
+      "title": "Template Fallbacks",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "narrator",
+     "rendered",
+     "claims",
+     "template_fallbacks"
+    ],
+    "title": "Narrative",
+    "type": "object"
+   },
+   "Problem": {
+    "additionalProperties": false,
+    "description": "RFC 9457 problem details (``application/problem+json``).",
+    "properties": {
+     "detail": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Detail"
+     },
+     "status": {
+      "title": "Status",
+      "type": "integer"
+     },
+     "title": {
+      "title": "Title",
+      "type": "string"
+     },
+     "type": {
+      "default": "about:blank",
+      "title": "Type",
+      "type": "string"
+     }
+    },
+    "required": [
+     "title",
+     "status"
+    ],
+    "title": "Problem",
+    "type": "object"
+   },
+   "RankedService": {
+    "additionalProperties": false,
+    "properties": {
+     "rank": {
+      "title": "Rank",
+      "type": "integer"
+     },
+     "score": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Score"
+     },
+     "service": {
+      "title": "Service",
+      "type": "string"
+     }
+    },
+    "required": [
+     "rank",
+     "service",
+     "score"
+    ],
+    "title": "RankedService",
+    "type": "object"
+   },
+   "RunSummary": {
+    "additionalProperties": false,
+    "properties": {
+     "confidence": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Confidence"
+     },
+     "needs_review": {
+      "title": "Needs Review",
+      "type": "boolean"
+     },
+     "run_id": {
+      "title": "Run Id",
+      "type": "string"
+     },
+     "state": {
+      "title": "State",
+      "type": "string"
+     },
+     "top3": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Top3",
+      "type": "array"
+     },
+     "variant": {
+      "title": "Variant",
+      "type": "string"
+     }
+    },
+    "required": [
+     "run_id",
+     "variant",
+     "state",
+     "needs_review",
+     "confidence",
+     "top3"
+    ],
+    "title": "RunSummary",
+    "type": "object"
+   },
+   "TriggerOut": {
+    "additionalProperties": false,
+    "properties": {
+     "source": {
+      "title": "Source",
+      "type": "string"
+     },
+     "suspects": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Suspects",
+      "type": "array"
+     },
+     "time_s": {
+      "title": "Time S",
+      "type": "number"
+     }
+    },
+    "required": [
+     "time_s",
+     "suspects",
+     "source"
+    ],
+    "title": "TriggerOut",
+    "type": "object"
+   },
+   "Verdict": {
+    "additionalProperties": false,
+    "properties": {
+     "confidence": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Confidence"
+     },
+     "escalated": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Escalated"
+     },
+     "first_published_ms": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "First Published Ms"
+     },
+     "first_ranked": {
+      "items": {
+       "type": "string"
+      },
+      "title": "First Ranked",
+      "type": "array"
+     },
+     "incident_id": {
+      "title": "Incident Id",
+      "type": "string"
+     },
+     "narrative": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Narrative"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Null when the run's variant has no narrative (HELIOS-noExpl)."
+     },
+     "needs_review": {
+      "title": "Needs Review",
+      "type": "boolean"
+     },
+     "non_converged": {
+      "title": "Non Converged",
+      "type": "boolean"
+     },
+     "ranked": {
+      "items": {
+       "$ref": "#/components/schemas/RankedService"
+      },
+      "title": "Ranked",
+      "type": "array"
+     },
+     "run_id": {
+      "title": "Run Id",
+      "type": "string"
+     },
+     "state": {
+      "title": "State",
+      "type": "string"
+     },
+     "terminal_published_ms": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Terminal Published Ms"
+     },
+     "trigger": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/TriggerOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "variant": {
+      "title": "Variant",
+      "type": "string"
+     }
+    },
+    "required": [
+     "run_id",
+     "incident_id",
+     "variant",
+     "state",
+     "needs_review",
+     "non_converged",
+     "confidence",
+     "ranked",
+     "first_ranked",
+     "first_published_ms",
+     "terminal_published_ms",
+     "escalated",
+     "trigger",
+     "narrative"
+    ],
+    "title": "Verdict",
+    "type": "object"
+   },
+   "ViewOut": {
+    "additionalProperties": false,
+    "properties": {
+     "expires_at": {
+      "title": "Expires At",
+      "type": "number"
+     },
+     "issued_at": {
+      "title": "Issued At",
+      "type": "number"
+     },
+     "run_id": {
+      "title": "Run Id",
+      "type": "string"
+     },
+     "view_token": {
+      "title": "View Token",
+      "type": "string"
+     }
+    },
+    "required": [
+     "run_id",
+     "view_token",
+     "issued_at",
+     "expires_at"
+    ],
+    "title": "ViewOut",
+    "type": "object"
+   }
+  }
+ },
+ "info": {
+  "description": "Stored HELIOS verdicts and the human decisions on them (S4.1). Never returns ground truth or metrics derived from it.",
+  "title": "HELIOS API",
+  "version": "api-v1"
+ },
+ "openapi": "3.1.0",
+ "paths": {
+  "/health": {
+   "get": {
+    "operationId": "health_health_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Health"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "No or unknown API key"
+     },
+     "403": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "The key lacks the role"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "Invalid request"
+     }
+    },
+    "summary": "Health",
+    "tags": [
+     "health"
+    ]
+   }
+  },
+  "/v1/incidents": {
+   "get": {
+    "operationId": "incidents_v1_incidents_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "limit",
+      "required": false,
+      "schema": {
+       "default": 50,
+       "maximum": 500,
+       "minimum": 1,
+       "title": "Limit",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "query",
+      "name": "offset",
+      "required": false,
+      "schema": {
+       "default": 0,
+       "minimum": 0,
+       "title": "Offset",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "header",
+      "name": "x-api-key",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Api-Key"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/IncidentPage"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "No or unknown API key"
+     },
+     "403": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "The key lacks the role"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "Invalid request"
+     }
+    },
+    "summary": "Incidents",
+    "tags": [
+     "incidents"
+    ]
+   }
+  },
+  "/v1/incidents/{incident_id}": {
+   "get": {
+    "operationId": "incident_v1_incidents__incident_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "incident_id",
+      "required": true,
+      "schema": {
+       "title": "Incident Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "header",
+      "name": "x-api-key",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Api-Key"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/IncidentDetail"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "No or unknown API key"
+     },
+     "403": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "The key lacks the role"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "Invalid request"
+     }
+    },
+    "summary": "Incident",
+    "tags": [
+     "incidents"
+    ]
+   }
+  },
+  "/v1/verdicts/{run_id}": {
+   "get": {
+    "operationId": "verdict_v1_verdicts__run_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "run_id",
+      "required": true,
+      "schema": {
+       "title": "Run Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "header",
+      "name": "x-api-key",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Api-Key"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Verdict"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "No or unknown API key"
+     },
+     "403": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "The key lacks the role"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "Invalid request"
+     },
+     "423": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "Locked"
+     }
+    },
+    "summary": "Verdict",
+    "tags": [
+     "verdicts"
+    ]
+   }
+  },
+  "/v1/verdicts/{run_id}/coe": {
+   "get": {
+    "operationId": "chain_of_evidence_v1_verdicts__run_id__coe_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "run_id",
+      "required": true,
+      "schema": {
+       "title": "Run Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "header",
+      "name": "x-api-key",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Api-Key"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CoEOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "No or unknown API key"
+     },
+     "403": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "The key lacks the role"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "Invalid request"
+     },
+     "423": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "Locked"
+     }
+    },
+    "summary": "Chain Of Evidence",
+    "tags": [
+     "verdicts"
+    ]
+   }
+  },
+  "/v1/verdicts/{run_id}/decisions": {
+   "get": {
+    "operationId": "decisions_v1_verdicts__run_id__decisions_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "run_id",
+      "required": true,
+      "schema": {
+       "title": "Run Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "header",
+      "name": "x-api-key",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Api-Key"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DecisionsOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "No or unknown API key"
+     },
+     "403": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "The key lacks the role"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "Invalid request"
+     },
+     "423": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "Locked"
+     }
+    },
+    "summary": "Decisions",
+    "tags": [
+     "decisions"
+    ]
+   },
+   "post": {
+    "operationId": "decide_v1_verdicts__run_id__decisions_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "run_id",
+      "required": true,
+      "schema": {
+       "title": "Run Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "header",
+      "name": "x-api-key",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Api-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/DecisionIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DecisionOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "400": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "Bad Request"
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "No or unknown API key"
+     },
+     "403": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "The key lacks the role"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "View token already used"
+     },
+     "410": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "View token expired"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "Invalid request"
+     },
+     "423": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "Locked"
+     }
+    },
+    "summary": "Decide",
+    "tags": [
+     "decisions"
+    ]
+   }
+  },
+  "/v1/verdicts/{run_id}/views": {
+   "post": {
+    "operationId": "open_view_v1_verdicts__run_id__views_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "run_id",
+      "required": true,
+      "schema": {
+       "title": "Run Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "header",
+      "name": "x-api-key",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Api-Key"
+      }
+     }
+    ],
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ViewOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "No or unknown API key"
+     },
+     "403": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "The key lacks the role"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "Invalid request"
+     },
+     "423": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      },
+      "description": "Locked"
+     }
+    },
+    "summary": "Open View",
+    "tags": [
+     "decisions"
+    ]
+   }
+  }
+ }
+}
