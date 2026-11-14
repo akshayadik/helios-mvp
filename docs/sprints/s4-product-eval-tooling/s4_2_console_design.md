@@ -1,6 +1,6 @@
 # S4.2 Approval console (RQ4 instrument): design (draft)
 
-**Row:** S2-M9-ENG02 · **Effort:** 2 days · **Depends on:** S4.1 (API), S2.8 (grounded narratives), S4.3 (compose) · **Feeds:** E4 RQ4 user study (only if IRB approval arrives by 2027-02-05) · **Status:** draft for owner approval (K-a to K-j)
+**Row:** S2-M9-ENG02 · **Effort:** 2 days · **Depends on:** S4.1 (API), S2.8 (grounded narratives), S4.3 (compose) · **Feeds:** E4 RQ4 user study (only if IRB approval arrives by 2027-02-05) · **Status:** approved 2026-11-14 (K-a to K-j as recommended)
 
 ## 1. What is fixed already
 
