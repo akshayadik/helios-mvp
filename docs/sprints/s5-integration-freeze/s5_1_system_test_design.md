@@ -110,3 +110,8 @@ Order: OTel v3 first, because it is quickest and exercises every flag. Then the 
   - updated: the S5.2 audit-log row (dynamic result).
 - **Deviation entry:** none expected; one only if a defect fix needs it (S-e).
 - **Effort:** about 2 days of work, plus overnight compute, within the plan's 2.
+
+## 6. Changes in execution (2026-11-15)
+
+- **May captures dropped (owner decision 2026-11-15).** `bin/helios_campaign.py plan` reads each case's benchmark system from a signed ground-truth file, and the May file `data/ground_truth.json` was never signed. It is OSF deposit 1 data, so it stays untouched, and the tool is not changed for it. OTel v3 and RCAEval build already exercise every flag mark. S5.1 therefore runs two corpora, not three.
+- **RCAEval build split into three campaigns of 165 cases.** The seed register (`helios/research/seeds.py`, 7,200 run slots) is sized for the 240-case pool, and a 495-case schedule runs past it. The split keeps every case, in manifest order, with no code change. Each part gets its own campaign directory, and its manifest (`rcaeval_build_{1,2,3}_manifest.json`, cases 1–165, 166–330, 331–495) sits beside it. Seeds repeat across the three parts, which is harmless on build data, where nothing is tested. The finding goes into the S5.3 pilot, because a phase E campaign larger than the pool would hit the same limit.
