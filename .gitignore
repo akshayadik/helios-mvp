@@ -71,3 +71,6 @@ api_keys.json
 deploy/secrets/
 deploy/decisions/
 deploy/runs/
+
+# S5.1 system-test campaign stores (digests in docs/sprints/s5-integration-freeze/system_test/)
+data/campaigns/
