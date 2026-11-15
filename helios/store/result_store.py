@@ -52,6 +52,30 @@ class ResultStore:
         self._archive_pre_v05()
         self._con.execute(_SCHEMA_SQL.read_text(encoding="utf-8"))
         self._add_trigger_known_at()
+        self._add_eval_run_nondeterministic()
+
+    def _add_eval_run_nondeterministic(self) -> None:
+        """Add eval_run.nondeterministic (S5.3 Q-d) to an older database.
+
+        Existing rows keep NULL until ``score_runs --determinism`` fills them.
+        """
+        if "nondeterministic" not in self._result_row_columns("eval_run"):
+            self._con.execute(
+                "ALTER TABLE eval_run ADD COLUMN nondeterministic BOOLEAN"
+            )
+
+    def mark_nondeterministic(self, flags: Mapping[str, bool]) -> int:
+        """Set eval_run.nondeterministic for runs with a rerun pair; return
+        how many eval_run rows were updated (S5.3 Q-d, D11 section 4)."""
+        # Whole rows re-inserted: DuckDB's UPDATE on a table with a primary
+        # key can raise a false duplicate-key error (its index limitations).
+        rows = [
+            {**row, "nondeterministic": bool(flags[str(row["run_id"])])}
+            for row in self.fetch_run_metrics()
+            if str(row["run_id"]) in flags
+        ]
+        self.replace_run_metrics(rows)
+        return len(rows)
 
     def _add_trigger_known_at(self) -> None:
         """Add trigger_row.known_at_s to a database created before S2-BL-12.

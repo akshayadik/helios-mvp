@@ -289,6 +289,7 @@ CREATE TABLE IF NOT EXISTS eval_run (
     ambiguous              BOOLEAN,
     narrative_heavy        BOOLEAN,
     confidence             DOUBLE,
+    nondeterministic       BOOLEAN,                -- S5.3 Q-d: rerun pair not equal; NULL = no rerun
     price_book_digest      VARCHAR     NOT NULL,
     ground_truth_sha256    VARCHAR     NOT NULL,
     metrics_version        VARCHAR     NOT NULL,

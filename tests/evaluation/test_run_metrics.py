@@ -596,3 +596,38 @@ def test_score_run_metrics_refuses_confirmatory_before_freeze(tmp_path: Path) ->
         score_run_metrics(
             store, GT, BOOK, storage_bytes={"inc-1": 0}, frozen=lambda: False
         )
+
+
+def test_determinism_join_marks_only_runs_with_a_rerun_pair(tmp_path: Path) -> None:
+    # S5.3 Q-d: determinism.json from bin/helios_campaign.py compare becomes the
+    # D11 covariate eval_run.nondeterministic; runs without a pair stay NULL.
+    import json
+
+    from bin.score_runs import join_determinism
+
+    store = _seed_store(tmp_path / "r.duckdb")
+    score_run_metrics(store, GT, BOOK, storage_bytes={"inc-1": 0}, frozen=lambda: False)
+    (row,) = store.fetch_run_metrics()
+    assert row["nondeterministic"] is None
+    path = tmp_path / "determinism.json"
+    path.write_text(
+        json.dumps(
+            [
+                {"run_id": "run-a", "nondeterministic": True},
+                {"run_id": "not-scored", "nondeterministic": False},
+            ]
+        )
+    )
+    assert join_determinism(store, path) == 1
+    (row,) = store.fetch_run_metrics()
+    assert row["nondeterministic"] is True
+
+
+def test_an_older_database_gains_the_determinism_column(tmp_path: Path) -> None:
+    store = _seed_store(tmp_path / "r.duckdb")
+    store._con.execute("ALTER TABLE eval_run DROP COLUMN nondeterministic")
+    store.close()
+    store = ResultStore(tmp_path / "r.duckdb")
+    score_run_metrics(store, GT, BOOK, storage_bytes={"inc-1": 0}, frozen=lambda: False)
+    assert store.fetch_run_metrics()[0]["nondeterministic"] is None
+    store.close()
