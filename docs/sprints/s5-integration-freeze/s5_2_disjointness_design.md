@@ -124,3 +124,27 @@ No variant, hash, metric or frozen file changes. The entry gives examiners the a
   The existing registry tests stay.
 - **Done when:** `python -m helios.vcl.disjointness` reports 13 flags covered, 3 declared no-consumer, 3 declared interactions, 0 violations and 0 undeclared combinations. The full gate is green. The audit-log row is written. The S5.1 per-variant checks are recorded as the dynamic part when S5.1 closes.
 - **Effort:** about 1½ days, within the 2 days the plan gives S5.2 (1 plus 1 for the audit extension).
+
+## 6. Implementation result (2026-11-15)
+
+Built as designed in `helios/vcl/disjointness.py`. `catalog.flag_readers` now delegates to the scanner, and `.github/workflows/disjointness_audit.yml` runs the audit and its tests. `python -m helios.vcl.disjointness` reports: **13 covered, 3 declared no-consumer, 9 declared interaction rows, 0 violations.**
+
+**Two refinements made while building, both narrowing what counts as a combination:**
+
+- **Guards.** An exiting `if` counts as a guard only when the flag's state alone decides it: `if not F: return`, or `F` / `not F` as one operand of an `or`. A refusal such as `if F and provisional: raise` decides nothing about the code after it, because that code runs with the flag in either state.
+- **Aliases.** Only boolean aliases are followed (`routed_run = manifest.cbr_routing`). A value computed from a flag, such as the narrative the narrator returns, is data flow. It is left to the S5.1 output checks (D-e).
+
+Tests plant each counted form and each excluded form.
+
+**Combinations found: nine sites in six flag sets.** §3 listed three. The full scan, which also covers `@gated_by` bodies and the other runner methods, finds three more intended flag sets: the router's reachable arms (two sets) and D-pipe propagation. A row is a file, a scope and a flag set.
+
+| Flags | Where | Why |
+|---|---|---|
+| `gpipe` + `l2b_graph` | runner `_process_incident`; G-pipe `should_run_gpipe` | The G-pipe needs a graph |
+| `coe_narrative` + `l2c_llm` | runner `_process_incident`, `_trigger_for` (refusal of a provisional narrator prompt), `_parameter_hashes` (narrator prompt hash) | Narrative on/off; LLM or template narrator |
+| `cbr_routing` + `mahc_hierarchical` | runner `_process_incident` | Both need the signal type |
+| `cbr_routing` + `gpipe` + `l2b_graph` | runner `_process_incident` | **New.** The router decides on the G arm only when the G-pipe can run (reachable arm set, S3.1 R-c) |
+| `cbr_routing` + `l2c_llm` | runner `_process_incident` | **New.** The escalation decision knows whether the L-pipe is on (`llm_on`, R-c) |
+| `dpipe` + `dpipe_propagation` | D-pipe `run_dpipe` (a `@gated_by(VCLFlag.DPIPE)` body) | **New.** Propagation is a stage inside the D-pipe |
+
+What this means for reading results: noRouter and the arm-removing variants (noLLM, G, D) already differ in the router's reachable set, as S3.1 R-c records. No variant turns off `dpipe` alone while keeping `dpipe_propagation`. The done-when count in §5 is therefore nine declared rows rather than three, and these are the rows the D-g entry will list.
