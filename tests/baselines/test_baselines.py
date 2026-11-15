@@ -29,7 +29,13 @@ from helios.baselines.executor import (
     services_from_ranks,
     source_name,
 )
-from helios.baselines.export import export_window, is_error_log, is_error_span
+from helios.baselines.export import (
+    LOG_COLUMNS,
+    TRACE_COLUMNS,
+    export_window,
+    is_error_log,
+    is_error_span,
+)
 from helios.evaluation.cost import PriceBook
 from helios.evaluation.run_metrics import BASELINE_STATE, score_run_metrics
 from helios.evaluation.scoring import Corpus, GroundTruth, score_store
@@ -116,9 +122,19 @@ def test_export_of_a_metrics_only_window(tmp_path: Path) -> None:
     window = window_of(inc).model_copy(
         update={"p2_traces_path": None, "p3_logs_path": None}
     )
-    counts = export_window(window, tmp_path, tmp_path / "out")
-    assert counts["logs.csv"] == 0 and "tracets_err.csv" not in counts
-    assert list(_csv(tmp_path / "out" / "logts.csv")[0]) == ["time"]
+    out = tmp_path / "out"
+    counts = export_window(window, tmp_path, out)
+    assert counts["logs.csv"] == 0 and counts["traces.csv"] == 0
+    # S5.3 Q-a (rcaeval-export-v2): an absent modality is a header-only file
+    # or a time-only series, never a file with no columns, which every
+    # container fails to parse (RCAEval build has no traces).
+    assert (out / "logs.csv").read_text().strip() == ",".join(LOG_COLUMNS)
+    assert (out / "traces.csv").read_text().strip() == ",".join(TRACE_COLUMNS)
+    for name in ("logts.csv", "tracets_err.csv", "tracets_lat.csv"):
+        rows = _csv(out / name)
+        assert list(rows[0]) == ["time"] and counts[name] == len(rows) > 0
+    for name in counts:
+        assert pd.read_csv(out / name).columns[0] == "time"
 
 
 # ── mapping (B-c) ────────────────────────────────────────────────────────────

@@ -111,3 +111,8 @@ The pre-push gate runs after the baseline phases, so it does not disturb their t
   - only if Q-a needs it: the modality table in `helios/baselines/`.
 - **Deviation entry:** none for the header fix, the join or the report. One only if Q-a needs the modality table, with your approval of the text first.
 - **Effort:** 2 days plus about 5 h of compute, as planned.
+
+## 7. Changes in execution (2026-11-15)
+
+- **Q-a needs a deviation entry after all.** Entry 88, item (1), fixes the Family B input as `rcaeval-export-v1`, so the export change to v2 changes a recorded rule, even though it only adds header-only files for absent modalities. The design said the header fix alone needed no entry; that was wrong. The entry text goes to the owner for approval before the PR merges, and the baseline phase runs only after approval.
+- **Container check on two RCAEval build windows** (trigger time, one with logs, one without). Under v2, Multi-source BARO, BARO, PDiagnose and Multi-source RCD all return rankings, in 1–17 s. TraceRCA returns an empty ranking: RCAEval build has no traces at all (logs in 120 of 495 cases). Under entry 88 item (3), an empty ranking scores as a miss, so how TraceRCA is treated on a case without traces is an owner decision (the modality table of Q-a).
