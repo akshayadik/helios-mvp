@@ -1,0 +1,195 @@
+{
+ "completion": {
+  "events": {
+   "passed": 819
+  },
+  "excluded_by_error": {},
+  "gate_exclusions": {},
+  "gated_component_inactive": 0,
+  "missing": [],
+  "missing_count": 0,
+  "open_runs": [],
+  "result": "pass",
+  "scheduled": 819,
+  "unledgered": []
+ },
+ "corpus": "otel_build_v3",
+ "digests": {
+  "campaign_log.jsonl": "85a4c16ec21eb091ee6e90ad2b1823edaaf0586601292f70f6115535bd2eb4eb",
+  "exclusion_ledger.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "schedule.json": "61ce7ca2dd45318dc3fbe7894836e8e409005ac72d314a6ea3e2c079379f62e5"
+ },
+ "exercised": {
+  "dpipe_propagation": {
+   "possible": 576,
+   "result": "reported",
+   "seen": 245
+  },
+  "l2c_llm_ranked": {
+   "possible": 630,
+   "result": "pass",
+   "seen": 582
+  },
+  "ueg_structural_features": {
+   "possible": 582,
+   "result": "pass",
+   "seen": 582
+  }
+ },
+ "flag_marks": {
+  "HELIOS-D": {
+   "problems": {},
+   "runs": 63
+  },
+  "HELIOS-Full": {
+   "problems": {},
+   "runs": 63
+  },
+  "HELIOS-G": {
+   "problems": {},
+   "runs": 63
+  },
+  "HELIOS-LLM-only": {
+   "problems": {},
+   "runs": 63
+  },
+  "HELIOS-noACP": {
+   "problems": {},
+   "runs": 63
+  },
+  "HELIOS-noConsensus": {
+   "problems": {},
+   "runs": 63
+  },
+  "HELIOS-noExpl": {
+   "problems": {},
+   "runs": 63
+  },
+  "HELIOS-noFGSV": {
+   "problems": {},
+   "runs": 63
+  },
+  "HELIOS-noIOL": {
+   "problems": {},
+   "runs": 63
+  },
+  "HELIOS-noLLM": {
+   "problems": {},
+   "runs": 63
+  },
+  "HELIOS-noReconcile": {
+   "problems": {},
+   "runs": 63
+  },
+  "HELIOS-noRouter": {
+   "problems": {},
+   "runs": 63
+  },
+  "HELIOS-noStructural": {
+   "problems": {},
+   "runs": 63
+  }
+ },
+ "ledgers": {
+  "returncode": 0,
+  "tail": [
+   "\u2705 data/campaigns/s5_1/otel_build_v3/reconciliation/results.HELIOS-noReconcile.jsonl: Chain verified.",
+   "\u2705 data/campaigns/s5_1/otel_build_v3/reconciliation/results.HELIOS-noRouter.jsonl: Chain verified.",
+   "\u2705 data/campaigns/s5_1/otel_build_v3/reconciliation/results.HELIOS-noStructural.jsonl: Chain verified."
+  ]
+ },
+ "parameter_problems": [],
+ "phases": [
+  "confirmatory",
+  "exploratory"
+ ],
+ "refusal": {
+  "expected": {
+   "HELIOS-HIS3": [
+    "his_tier"
+   ],
+   "HELIOS-noCogni": [
+    "p4_cognitive"
+   ]
+  },
+  "refused": {
+   "HELIOS-HIS3": "no reader of his_tier outside helios/vcl",
+   "HELIOS-noCogni": "no reader of p4_cognitive outside helios/vcl"
+  },
+  "result": "pass"
+ },
+ "result": "pass",
+ "schedule_digest": "7c45822bc14583543f5a923e6000491b1474807ad50ec9cc505d1faf497d0230",
+ "top1_differs_from_full": {
+  "HELIOS-D": {
+   "cases": 63,
+   "differ": 25
+  },
+  "HELIOS-G": {
+   "cases": 63,
+   "differ": 21
+  },
+  "HELIOS-LLM-only": {
+   "cases": 63,
+   "differ": 17
+  },
+  "HELIOS-noACP": {
+   "cases": 63,
+   "differ": 0
+  },
+  "HELIOS-noConsensus": {
+   "cases": 63,
+   "differ": 4
+  },
+  "HELIOS-noExpl": {
+   "cases": 63,
+   "differ": 0
+  },
+  "HELIOS-noFGSV": {
+   "cases": 63,
+   "differ": 0
+  },
+  "HELIOS-noIOL": {
+   "cases": 63,
+   "differ": 0
+  },
+  "HELIOS-noLLM": {
+   "cases": 63,
+   "differ": 19
+  },
+  "HELIOS-noReconcile": {
+   "cases": 63,
+   "differ": 0
+  },
+  "HELIOS-noRouter": {
+   "cases": 63,
+   "differ": 0
+  },
+  "HELIOS-noStructural": {
+   "cases": 63,
+   "differ": 7
+  }
+ },
+ "unchanged_verdicts": {
+  "HELIOS-noACP": {
+   "cases": 63,
+   "differ": []
+  },
+  "HELIOS-noExpl": {
+   "cases": 63,
+   "differ": []
+  },
+  "HELIOS-noFGSV": {
+   "cases": 63,
+   "differ": []
+  },
+  "HELIOS-noIOL": {
+   "cases": 63,
+   "differ": []
+  },
+  "HELIOS-noReconcile": {
+   "cases": 63,
+   "differ": []
+  }
+ }
+}
