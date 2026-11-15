@@ -145,7 +145,7 @@ def test_flag_scan_on_a_synthetic_tree(tmp_path: Path) -> None:
     (tmp_path / "helios" / "vcl" / "c.py").write_text("z = m.fgsv_ks_gate\n")
     readers = flag_readers(tmp_path)
     assert readers["p4_cognitive"] == ["helios/a.py"]
-    assert readers["his_tier"] == ["bin/b.py"]
+    assert readers["his_tier"] == []  # build tools never run in an incident (S5.2)
     assert readers["fgsv_ks_gate"] == []  # helios/vcl is the flag system itself
     refused = unconsumed_variants(["HELIOS-noCogni", "HELIOS-noFGSV"], readers)
     assert list(refused) == ["HELIOS-noFGSV"]

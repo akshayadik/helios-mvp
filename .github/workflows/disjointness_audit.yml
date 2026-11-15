@@ -13,11 +13,13 @@ jobs:
           python-version: "3.11"
       - run: pipx install poetry
       - run: poetry install
+      # S5.2 certification (docs/sprints/s5-integration-freeze/s5_2_disjointness_design.md):
+      # readers per flag, declared interactions and no-consumer flags; fails on
+      # an undeclared combination, a stale declaration or an uncovered flag.
       - name: Static disjointness audit
         run: poetry run python -m helios.vcl.disjointness
 
-      - name: Dynamic disjointness audit (coverage.py contexts)
-        run: |
-          poetry run coverage run --context=HELIOS-Full -m pytest tests/ -q
-          poetry run coverage run --append --context=HELIOS-noGraph -m pytest tests/ -q
-          poetry run coverage report --contexts="HELIOS-Full|HELIOS-noGraph" --include="helios/pipelines/*"
+      - name: Certification tests
+        run: poetry run pytest tests/test_disjointness.py -q --no-cov
+      # The per-variant dynamic check (one observable output per OFF flag) is
+      # part of the S5.1 system test (design D-e) and runs in the main test job.
