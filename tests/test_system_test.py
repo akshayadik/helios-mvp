@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from helios.evaluation import system_test as st
+from bin import system_test_checks as st
 from helios.vcl import (
     CONFIRMATORY_VARIANTS,
     EXPLORATORY_VARIANTS,

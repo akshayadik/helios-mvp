@@ -106,7 +106,7 @@ Order: OTel v3 first, because it is quickest and exercises every flag. Then the 
 
 - **Done when:** all three corpora are complete; every S-c check passes (or a defect is fixed and its corpus rerun); the report is written; the S-d test is in the main suite; the full gate is green.
 - **Files:**
-  - new: `helios/evaluation/system_test.py`, `bin/system_test.py`, `tests/test_system_test.py`, the report and its JSON;
+  - new: `bin/system_test_checks.py` (first `helios/evaluation/system_test.py`, see §6), `bin/system_test.py`, `tests/test_system_test.py`, the report and its JSON;
   - updated: the S5.2 audit-log row (dynamic result).
 - **Deviation entry:** none expected; one only if a defect fix needs it (S-e).
 - **Effort:** about 2 days of work, plus overnight compute, within the plan's 2.
@@ -115,3 +115,4 @@ Order: OTel v3 first, because it is quickest and exercises every flag. Then the 
 
 - **May captures dropped (owner decision 2026-11-15).** `bin/helios_campaign.py plan` reads each case's benchmark system from a signed ground-truth file, and the May file `data/ground_truth.json` was never signed. It is OSF deposit 1 data, so it stays untouched, and the tool is not changed for it. OTel v3 and RCAEval build already exercise every flag mark. S5.1 therefore runs two corpora, not three.
 - **RCAEval build split into three campaigns of 165 cases.** The seed register (`helios/research/seeds.py`, 7,200 run slots) is sized for the 240-case pool, and a 495-case schedule runs past it. The split keeps every case, in manifest order, with no code change. Each part gets its own campaign directory, and its manifest (`rcaeval_build_{1,2,3}_manifest.json`, cases 1–165, 166–330, 331–495) sits beside it. Seeds repeat across the three parts, which is harmless on build data, where nothing is tested. The finding goes into the S5.3 pilot, because a phase E campaign larger than the pool would hit the same limit.
+- **Checker moved to `bin/system_test_checks.py` (checker defect, fixed under S-e).** As first committed in `helios/evaluation/`, the checker reads manifest flags to verify run outputs, and the S5.2 scanner (entry 90: every runtime location in `helios/`) counted it as a runtime consumer. It reported two undeclared combinations, and it would have kept a flag "covered" even if the flag lost its real consumer. Under S5.2 D-b, `bin/` tools are reported separately and are never runtime readers, so the checker now lives there. The scanner and the certificate are unchanged (13 covered, 3 no-consumer, 9 declared rows, 0 violations), and so are the runs: the schedule's refusal does not depend on these reads. The moved checker reproduces the committed OTel v3 report byte for byte.

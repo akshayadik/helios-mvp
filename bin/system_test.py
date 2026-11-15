@@ -4,7 +4,7 @@
     poetry run python bin/system_test.py --dir data/campaigns/s5_1/otel_build_v3 \
         --out docs/sprints/s5-integration-freeze/system_test/otel_build_v3.json
 
-Runs the S-c checks (helios.evaluation.system_test) and the campaign ledger
+Runs the S-c checks (bin/system_test_checks.py) and the campaign ledger
 check (bin/verify_ledgers.py --campaign). Exit 1 if any check fails. Reads no
 ground truth.
 """
@@ -18,10 +18,14 @@ import subprocess
 import sys
 from pathlib import Path
 
-from helios.evaluation.system_test import HELIOS_ENABLE_SYSTEM_TEST, system_report
-from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO_ROOT))
+
+from bin.system_test_checks import (  # noqa: E402
+    HELIOS_ENABLE_SYSTEM_TEST,
+    system_report,
+)
+from helios.vcl import VCLFlag  # noqa: E402, F401 — flag-guard compliance
 
 
 def _digest(path: Path) -> str | None:

@@ -6,7 +6,7 @@
 
 ## 1. What ran
 
-- **Code:** `s5/system-test` at 8a8648f.
+- **Code:** `s5/system-test` at 8a8648f. The checker has since moved to `bin/` (§5); no runtime code changed.
 - **Model:** `llama3.1:8b`, the entry 58 digest, live, with the response cache in front of it.
 - **Protocol (S-b):** `bin/helios_campaign.py plan`, then `run --phase confirmatory` and `run --phase exploratory`. Baselines, reruns and the perturbed E-H4/E-H6 variants were not run here; they belong to S5.3 and S5.5.
 
@@ -81,7 +81,8 @@ Every `exclusion_ledger.jsonl` is empty (e3b0c44298fc). The full SHA-256 values 
 
 ## 5. Findings and hand-over
 
-- **Defects:** none. No check failed, so nothing was fixed or rerun, and no deviation entry is needed (S-e).
+- **Defects:** none in the system. No check failed on any run, so no corpus was rerun, and no deviation entry is needed (S-e).
+- **Checker defect (fixed):** the checker was first committed in `helios/evaluation/`, where the S5.2 scanner counted its flag reads as runtime code. It now lives in `bin/system_test_checks.py` (design §6). The certificate is unchanged, and the moved checker reproduces the OTel v3 report byte for byte.
 - **Seed register (for S5.3):** 7,200 slots cover the 240-case pool schedule but not a larger one. A phase E campaign over more than the pool's cases would stop at `plan`. The pilot report records this and proposes whether to widen the register before the freeze, which would need a deviation entry.
 - **S5.2 dynamic result:** the per-variant output checks (design D-e) pass. The audit-log row is updated to cite this report.
 - **S5.3 (S-f):** the four directories are the pilot's runs. The pilot adds the baseline phase, scores the stores, joins `determinism.json` from S5.5 and reports cost and timing.
