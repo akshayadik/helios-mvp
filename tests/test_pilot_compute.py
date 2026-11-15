@@ -66,5 +66,6 @@ def test_report_projects_to_the_pool() -> None:
     assert report["helios_s_per_case"]["median"] == 36
     assert report["pool_projection_h"]["helios_e1_e3"]["median"] == 2.4  # 240 x 36 s
     assert report["pool_projection_h"]["baselines_e2"]["median"] == 1.2
+    assert report["pool_projection_h"]["helios_e1_e3"]["mean"] == 2.4
     empty = pc.compute_report({})
     assert empty["pool_projection_h"]["helios_e1_e3"]["median"] is None

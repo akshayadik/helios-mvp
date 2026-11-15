@@ -1,0 +1,27 @@
+{
+ "baselines_s_per_case": {
+  "mean": 36.5,
+  "median": 33.8,
+  "p90": 68.1
+ },
+ "campaign": "rcaeval_build_2",
+ "cases": 16,
+ "helios_s_per_case": {
+  "mean": 33.0,
+  "median": 31.9,
+  "p90": 49.1
+ },
+ "pool_projection_h": {
+  "baselines_e2": {
+   "mean": 2.43,
+   "median": 2.25,
+   "p90": 4.54
+  },
+  "cases": 240,
+  "helios_e1_e3": {
+   "mean": 2.2,
+   "median": 2.13,
+   "p90": 3.27
+  }
+ }
+}

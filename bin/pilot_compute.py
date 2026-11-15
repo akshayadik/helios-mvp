@@ -130,18 +130,26 @@ def compute_report(costs: Mapping[str, Mapping[str, float]]) -> dict[str, Any]:
         "baselines_s_per_case": b,
         "pool_projection_h": {
             "cases": POOL_CASES,
+            # mean x cases is the expected total; median and p90 bracket it
             "helios_e1_e3": {
+                "mean": hours(h["mean"]),
                 "median": hours(h["median"]),
                 "p90": hours(h["p90"]),
             },
-            "baselines_e2": {"median": hours(b["median"]), "p90": hours(b["p90"])},
+            "baselines_e2": {
+                "mean": hours(b["mean"]),
+                "median": hours(b["median"]),
+                "p90": hours(b["p90"]),
+            },
         },
     }
 
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
-    ap.add_argument("--dir", type=Path, required=True)
+    ap.add_argument(
+        "--dir", type=Path, nargs="+", required=True, help="several dirs: pooled"
+    )
     ap.add_argument("--out", type=Path)
     args = ap.parse_args(argv)
     if not HELIOS_ENABLE_PILOT_COMPUTE:
@@ -149,26 +157,31 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     from helios.store.result_store import ResultStore
 
-    log = [
-        json.loads(line)
-        for line in (args.dir / "campaign_log.jsonl").read_text().splitlines()
-        if line.strip()
-    ]
-    rerun = ResultStore(args.dir / "rerun.duckdb")
-    try:
-        costs = cold_case_costs(
-            run_walls(log), lambda r: rerun.fetch_evidence(r, "lpipe")
-        )
-    finally:
-        rerun.close()
-    report = compute_report(costs) | {"campaign": args.dir.name}
+    costs: dict[str, dict[str, float]] = {}
+    for d in args.dir:
+        log = [
+            json.loads(line)
+            for line in (d / "campaign_log.jsonl").read_text().splitlines()
+            if line.strip()
+        ]
+        rerun = ResultStore(d / "rerun.duckdb")
+        try:
+            found = cold_case_costs(
+                run_walls(log),
+                lambda r: rerun.fetch_evidence(r, "lpipe"),  # noqa: B023 — called here
+            )
+        finally:
+            rerun.close()
+        costs |= {f"{d.name}/{case}": c for case, c in found.items()}
+    name = "+".join(d.name for d in args.dir)
+    report = compute_report(costs) | {"campaign": name}
     text = json.dumps(report, indent=1, sort_keys=True) + "\n"
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(text, encoding="utf-8")
     p = report["pool_projection_h"]
     print(
-        f"{args.dir.name}: {report['cases']} cases; HELIOS "
+        f"{name}: {report['cases']} cases; HELIOS "
         f"{report['helios_s_per_case']['median']} s/case median, baselines "
         f"{report['baselines_s_per_case']['median']} s/case; pool E1+E3 "
         f"{p['helios_e1_e3']['median']} h, E2 {p['baselines_e2']['median']} h"
