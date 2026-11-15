@@ -71,3 +71,8 @@ Order: OTel v3 first, then the three RCAEval parts, with `compare` and the repor
   - updated: tracker row S2-M10-EVAL05.
 - **Deviation entry:** none expected. One only if P-e finds a change to a covariate or the protocol, with your approval of the text first.
 - **Effort:** half a day plus about 3 h of compute, within the plan's ½.
+
+## 6. Changes in execution (2026-11-15)
+
+- **Prompt identity (P-c 1).** `prompt_shas` hashes only the persona template, which is the same for every case. The reader therefore treats two calls as having the same prompt when the template hash, the candidate list and the worker's digest are all equal, because those three make up the rendered prompt (`personas.render_prompt`), and the response cache keys on them too. The first version of the reader compared the template hash alone. It was fixed before any number was reported, and a test covers it.
+- **Baseline reruns on RCAEval** all failed on a baseline-export defect (report §5). They are a record in the ledgers, and the fix belongs to S5.3's design.

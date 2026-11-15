@@ -1,0 +1,139 @@
+{
+ "calls": {
+  "HELIOS-Full": {
+   "calls_compared": 17,
+   "equal": 17,
+   "one_sided": 0,
+   "prompt_differs": 0,
+   "token_equality_rate": 1.0,
+   "unequal": 0
+  },
+  "HELIOS-LLM-only": {
+   "calls_compared": 17,
+   "equal": 17,
+   "one_sided": 0,
+   "prompt_differs": 0,
+   "token_equality_rate": 1.0,
+   "unequal": 0
+  },
+  "HELIOS-noACP": {
+   "calls_compared": 17,
+   "equal": 17,
+   "one_sided": 0,
+   "prompt_differs": 0,
+   "token_equality_rate": 1.0,
+   "unequal": 0
+  },
+  "HELIOS-noConsensus": {
+   "calls_compared": 17,
+   "equal": 17,
+   "one_sided": 0,
+   "prompt_differs": 0,
+   "token_equality_rate": 1.0,
+   "unequal": 0
+  },
+  "HELIOS-noExpl": {
+   "calls_compared": 17,
+   "equal": 17,
+   "one_sided": 0,
+   "prompt_differs": 0,
+   "token_equality_rate": 1.0,
+   "unequal": 0
+  },
+  "HELIOS-noFGSV": {
+   "calls_compared": 17,
+   "equal": 17,
+   "one_sided": 0,
+   "prompt_differs": 0,
+   "token_equality_rate": 1.0,
+   "unequal": 0
+  },
+  "HELIOS-noIOL": {
+   "calls_compared": 17,
+   "equal": 17,
+   "one_sided": 0,
+   "prompt_differs": 0,
+   "token_equality_rate": 1.0,
+   "unequal": 0
+  },
+  "HELIOS-noReconcile": {
+   "calls_compared": 17,
+   "equal": 17,
+   "one_sided": 0,
+   "prompt_differs": 0,
+   "token_equality_rate": 1.0,
+   "unequal": 0
+  },
+  "HELIOS-noRouter": {
+   "calls_compared": 17,
+   "equal": 17,
+   "one_sided": 0,
+   "prompt_differs": 0,
+   "token_equality_rate": 1.0,
+   "unequal": 0
+  },
+  "HELIOS-noStructural": {
+   "calls_compared": 17,
+   "equal": 17,
+   "one_sided": 0,
+   "prompt_differs": 0,
+   "token_equality_rate": 1.0,
+   "unequal": 0
+  },
+  "all": {
+   "calls_compared": 170,
+   "equal": 170,
+   "one_sided": 0,
+   "prompt_differs": 0,
+   "token_equality_rate": 1.0,
+   "unequal": 0
+  }
+ },
+ "calls_not_equal": [],
+ "campaign": "otel_build_v3",
+ "runs": {
+  "HELIOS-Full": {
+   "nondeterministic": 0,
+   "pairs": 6
+  },
+  "HELIOS-LLM-only": {
+   "nondeterministic": 0,
+   "pairs": 6
+  },
+  "HELIOS-noACP": {
+   "nondeterministic": 0,
+   "pairs": 6
+  },
+  "HELIOS-noConsensus": {
+   "nondeterministic": 0,
+   "pairs": 6
+  },
+  "HELIOS-noExpl": {
+   "nondeterministic": 0,
+   "pairs": 6
+  },
+  "HELIOS-noFGSV": {
+   "nondeterministic": 0,
+   "pairs": 6
+  },
+  "HELIOS-noIOL": {
+   "nondeterministic": 0,
+   "pairs": 6
+  },
+  "HELIOS-noReconcile": {
+   "nondeterministic": 0,
+   "pairs": 6
+  },
+  "HELIOS-noRouter": {
+   "nondeterministic": 0,
+   "pairs": 6
+  },
+  "HELIOS-noStructural": {
+   "nondeterministic": 0,
+   "pairs": 6
+  },
+  "all": {
+   "pairs": 60
+  }
+ }
+}

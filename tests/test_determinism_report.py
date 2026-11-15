@@ -44,6 +44,24 @@ def test_planted_differences_are_classified() -> None:
     assert dr.compare_calls(None, None) == {}
 
 
+def test_a_different_digest_or_candidate_list_is_a_different_prompt() -> None:
+    # prompt_shas hashes only the persona template; the rendered prompt also
+    # holds the candidate list and the worker's digest.
+    first = copy.deepcopy(BASE) | {
+        "candidates": ["svc-a"],
+        "digests": {"metric": {"cut": 3, "lines": [["x"]]}},
+    }
+    again = copy.deepcopy(first)
+    again["digests"]["metric"]["lines"] = [["y"]]
+    again["candidates"] = ["svc-a"]
+    assert dr.compare_calls(first, again)["prompt_differs"] == ["metric"]
+    again = copy.deepcopy(first) | {"candidates": ["svc-b"]}
+    assert set(dr.compare_calls(first, again)["prompt_differs"]) == {
+        "metric",
+        "trace",
+    }
+
+
 def _rows() -> list[dict[str, Any]]:
     return [
         {

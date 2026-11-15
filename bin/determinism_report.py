@@ -33,6 +33,17 @@ HELIOS_ENABLE_DETERMINISM_REPORT: bool = True
 WORKERS: tuple[str, ...] = ("log", "metric", "trace")
 
 
+def _prompt(evidence: Mapping[str, Any], worker: str) -> tuple[Any, ...]:
+    """What the worker's rendered prompt is made of (personas.render_prompt):
+    the persona template hash, the candidate list and the worker's digest.
+    ``prompt_shas`` alone hashes only the template, the same for every case."""
+    return (
+        (evidence.get("prompt_shas") or {}).get(worker),
+        evidence.get("candidates"),
+        (evidence.get("digests") or {}).get(worker),
+    )
+
+
 def compare_calls(
     first: Mapping[str, Any] | None, again: Mapping[str, Any] | None
 ) -> dict[str, list[str]]:
@@ -47,7 +58,7 @@ def compare_calls(
             continue
         if raw_a is None or raw_b is None:
             out["one_sided"].append(w)
-        elif (a.get("prompt_shas") or {}).get(w) != (b.get("prompt_shas") or {}).get(w):
+        elif _prompt(a, w) != _prompt(b, w):
             out["prompt_differs"].append(w)
         elif raw_a == raw_b:
             out["equal"].append(w)

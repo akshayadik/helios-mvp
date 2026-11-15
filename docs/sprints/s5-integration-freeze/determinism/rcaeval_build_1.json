@@ -1,0 +1,299 @@
+{
+ "calls": {
+  "HELIOS-Full": {
+   "calls_compared": 8,
+   "equal": 6,
+   "one_sided": 0,
+   "prompt_differs": 0,
+   "token_equality_rate": 0.75,
+   "unequal": 2
+  },
+  "HELIOS-LLM-only": {
+   "calls_compared": 21,
+   "equal": 18,
+   "one_sided": 0,
+   "prompt_differs": 0,
+   "token_equality_rate": 0.857143,
+   "unequal": 3
+  },
+  "HELIOS-noACP": {
+   "calls_compared": 8,
+   "equal": 6,
+   "one_sided": 0,
+   "prompt_differs": 0,
+   "token_equality_rate": 0.75,
+   "unequal": 2
+  },
+  "HELIOS-noConsensus": {
+   "calls_compared": 8,
+   "equal": 6,
+   "one_sided": 0,
+   "prompt_differs": 0,
+   "token_equality_rate": 0.75,
+   "unequal": 2
+  },
+  "HELIOS-noExpl": {
+   "calls_compared": 8,
+   "equal": 6,
+   "one_sided": 0,
+   "prompt_differs": 0,
+   "token_equality_rate": 0.75,
+   "unequal": 2
+  },
+  "HELIOS-noFGSV": {
+   "calls_compared": 8,
+   "equal": 6,
+   "one_sided": 0,
+   "prompt_differs": 0,
+   "token_equality_rate": 0.75,
+   "unequal": 2
+  },
+  "HELIOS-noIOL": {
+   "calls_compared": 8,
+   "equal": 6,
+   "one_sided": 0,
+   "prompt_differs": 0,
+   "token_equality_rate": 0.75,
+   "unequal": 2
+  },
+  "HELIOS-noReconcile": {
+   "calls_compared": 8,
+   "equal": 6,
+   "one_sided": 0,
+   "prompt_differs": 0,
+   "token_equality_rate": 0.75,
+   "unequal": 2
+  },
+  "HELIOS-noRouter": {
+   "calls_compared": 21,
+   "equal": 19,
+   "one_sided": 0,
+   "prompt_differs": 0,
+   "token_equality_rate": 0.904762,
+   "unequal": 2
+  },
+  "HELIOS-noStructural": {
+   "calls_compared": 8,
+   "equal": 6,
+   "one_sided": 0,
+   "prompt_differs": 0,
+   "token_equality_rate": 0.75,
+   "unequal": 2
+  },
+  "all": {
+   "calls_compared": 106,
+   "equal": 85,
+   "one_sided": 0,
+   "prompt_differs": 0,
+   "token_equality_rate": 0.801887,
+   "unequal": 21
+  }
+ },
+ "calls_not_equal": [
+  {
+   "run_id": "6a7f6c7312207eb60a30059898d0cef7",
+   "system": "HELIOS-noRouter",
+   "unequal": [
+    "metric"
+   ]
+  },
+  {
+   "run_id": "dfb23c9605bedaecccf5453d525776a1",
+   "system": "HELIOS-LLM-only",
+   "unequal": [
+    "metric"
+   ]
+  },
+  {
+   "run_id": "8cf18630dce4adc9d21512a9a7c15e8d",
+   "system": "HELIOS-Full",
+   "unequal": [
+    "metric"
+   ]
+  },
+  {
+   "run_id": "92ebcc42f3bae83a0551ead82049ded3",
+   "system": "HELIOS-LLM-only",
+   "unequal": [
+    "metric"
+   ]
+  },
+  {
+   "run_id": "76579ce922d67592165de3017e3d0588",
+   "system": "HELIOS-noConsensus",
+   "unequal": [
+    "metric"
+   ]
+  },
+  {
+   "run_id": "cdd1ab6f07841be70a5708c82840311e",
+   "system": "HELIOS-noStructural",
+   "unequal": [
+    "metric"
+   ]
+  },
+  {
+   "run_id": "8676e59c6ba14cba8f51a412ed423243",
+   "system": "HELIOS-noACP",
+   "unequal": [
+    "metric"
+   ]
+  },
+  {
+   "run_id": "9114bcabbe489ff38813fb17692471af",
+   "system": "HELIOS-noReconcile",
+   "unequal": [
+    "metric"
+   ]
+  },
+  {
+   "run_id": "b44951978a54900440ac262df9038fb7",
+   "system": "HELIOS-noFGSV",
+   "unequal": [
+    "metric"
+   ]
+  },
+  {
+   "run_id": "622ee70d594d3a706e07746489a5869a",
+   "system": "HELIOS-noIOL",
+   "unequal": [
+    "metric"
+   ]
+  },
+  {
+   "run_id": "0b44692c799d4cf5ae15cb155ac9fb38",
+   "system": "HELIOS-noExpl",
+   "unequal": [
+    "metric"
+   ]
+  },
+  {
+   "run_id": "aad4c848b68af570e9540f48ccefc0db",
+   "system": "HELIOS-noRouter",
+   "unequal": [
+    "metric"
+   ]
+  },
+  {
+   "run_id": "0776c83dcd71f8d8064a0a6f2e3d0c0e",
+   "system": "HELIOS-Full",
+   "unequal": [
+    "metric"
+   ]
+  },
+  {
+   "run_id": "a89ef6d44c2ada4e6e61f71b6bf476d2",
+   "system": "HELIOS-LLM-only",
+   "unequal": [
+    "metric"
+   ]
+  },
+  {
+   "run_id": "a052b5edda2dd709db078657aa9e100e",
+   "system": "HELIOS-noConsensus",
+   "unequal": [
+    "metric"
+   ]
+  },
+  {
+   "run_id": "0d3c7418b79129e893c96d0e6d368f0d",
+   "system": "HELIOS-noStructural",
+   "unequal": [
+    "metric"
+   ]
+  },
+  {
+   "run_id": "1f01268dd13141f9d824577854b10f5d",
+   "system": "HELIOS-noACP",
+   "unequal": [
+    "metric"
+   ]
+  },
+  {
+   "run_id": "64fe542062925bdc9b06dcbc4e92f8a3",
+   "system": "HELIOS-noReconcile",
+   "unequal": [
+    "metric"
+   ]
+  },
+  {
+   "run_id": "171fe7418893077aa00400cc9fc1fced",
+   "system": "HELIOS-noFGSV",
+   "unequal": [
+    "metric"
+   ]
+  },
+  {
+   "run_id": "abd9cb142811167d7406e4585158130c",
+   "system": "HELIOS-noIOL",
+   "unequal": [
+    "metric"
+   ]
+  },
+  {
+   "run_id": "5ffeeea98b75b1fcf445040a745ba546",
+   "system": "HELIOS-noExpl",
+   "unequal": [
+    "metric"
+   ]
+  }
+ ],
+ "campaign": "rcaeval_build_1",
+ "runs": {
+  "HELIOS-Full": {
+   "differs_lpipe": 2,
+   "nondeterministic": 2,
+   "pairs": 15
+  },
+  "HELIOS-LLM-only": {
+   "differs_lpipe": 3,
+   "nondeterministic": 3,
+   "pairs": 15
+  },
+  "HELIOS-noACP": {
+   "differs_lpipe": 2,
+   "nondeterministic": 2,
+   "pairs": 15
+  },
+  "HELIOS-noConsensus": {
+   "differs_lpipe": 2,
+   "nondeterministic": 2,
+   "pairs": 15
+  },
+  "HELIOS-noExpl": {
+   "differs_lpipe": 2,
+   "nondeterministic": 2,
+   "pairs": 15
+  },
+  "HELIOS-noFGSV": {
+   "differs_lpipe": 2,
+   "nondeterministic": 2,
+   "pairs": 15
+  },
+  "HELIOS-noIOL": {
+   "differs_lpipe": 2,
+   "nondeterministic": 2,
+   "pairs": 15
+  },
+  "HELIOS-noReconcile": {
+   "differs_lpipe": 2,
+   "nondeterministic": 2,
+   "pairs": 15
+  },
+  "HELIOS-noRouter": {
+   "differs_lpipe": 2,
+   "nondeterministic": 2,
+   "pairs": 15
+  },
+  "HELIOS-noStructural": {
+   "differs_lpipe": 2,
+   "nondeterministic": 2,
+   "pairs": 15
+  },
+  "all": {
+   "differs_lpipe": 21,
+   "nondeterministic": 21,
+   "pairs": 150
+  }
+ }
+}
