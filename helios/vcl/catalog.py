@@ -7,7 +7,6 @@ one that leaves every variant_config_hash unchanged, fails the freeze check.
 
 from __future__ import annotations
 
-import ast
 from typing import TYPE_CHECKING
 
 from .registry import VCLFlag
@@ -24,36 +23,21 @@ def get_all_variants() -> dict[str, VCLManifest]:
     return dict(CONFIRMATORY_VARIANTS)
 
 
-# ── Flag consumers (S4.10 O-h; also the S5.2 disjointness scan) ──────────────
-
-_SCAN_ROOTS: tuple[str, ...] = ("helios", "bin")
-_SCAN_SKIP: tuple[str, ...] = ("helios/vcl/",)
+# ── Flag consumers (S4.10 O-h; S5.2 disjointness scanner) ───────────────────
 
 
 def flag_readers(repo_root: Path) -> dict[str, list[str]]:
-    """Map each boolean flag to the files outside ``helios/vcl/`` that read it.
+    """Map each boolean flag to the runtime files (``helios/`` outside
+    ``helios/vcl/``) that read it.
 
-    A read is ``<anything>.<flag>`` (a manifest attribute) or ``VCLFlag.<NAME>``
-    (which covers ``@gated_by``). Files are parsed, never imported.
+    Delegates to the S5.2 disjointness scanner: a read is ``VCLFlag.<NAME>``
+    (which covers ``@gated_by``) or an attribute read on a manifest
+    (``manifest.x``, ``self._manifest.x``). Build tools in ``bin/`` do not
+    count: they never run in an incident. Files are parsed, never imported.
     """
-    flags = {f.value: f.name for f in VCLFlag.bool_flags()}
-    by_name = {name: value for value, name in flags.items()}
-    readers: dict[str, set[str]] = {value: set() for value in flags}
-    for root in _SCAN_ROOTS:
-        for path in sorted((repo_root / root).rglob("*.py")):
-            rel = path.relative_to(repo_root).as_posix()
-            if rel.startswith(_SCAN_SKIP):
-                continue
-            tree = ast.parse(path.read_text(encoding="utf-8"), filename=rel)
-            for node in ast.walk(tree):
-                if not isinstance(node, ast.Attribute):
-                    continue
-                if isinstance(node.value, ast.Name) and node.value.id == "VCLFlag":
-                    if node.attr in by_name:
-                        readers[by_name[node.attr]].add(rel)
-                elif node.attr in readers:
-                    readers[node.attr].add(rel)
-    return {flag: sorted(files) for flag, files in readers.items()}
+    from .disjointness import runtime_readers
+
+    return runtime_readers(repo_root)
 
 
 def flags_off_versus_full(name: str) -> list[str]:
