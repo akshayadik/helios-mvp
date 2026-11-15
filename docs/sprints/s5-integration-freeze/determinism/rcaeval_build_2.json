@@ -1,0 +1,231 @@
+{
+ "calls": {
+  "HELIOS-Full": {
+   "calls_compared": 2,
+   "equal": 1,
+   "one_sided": 0,
+   "prompt_differs": 0,
+   "token_equality_rate": 0.5,
+   "unequal": 1
+  },
+  "HELIOS-LLM-only": {
+   "calls_compared": 20,
+   "equal": 18,
+   "one_sided": 0,
+   "prompt_differs": 0,
+   "token_equality_rate": 0.9,
+   "unequal": 2
+  },
+  "HELIOS-noACP": {
+   "calls_compared": 2,
+   "equal": 1,
+   "one_sided": 0,
+   "prompt_differs": 0,
+   "token_equality_rate": 0.5,
+   "unequal": 1
+  },
+  "HELIOS-noConsensus": {
+   "calls_compared": 2,
+   "equal": 1,
+   "one_sided": 0,
+   "prompt_differs": 0,
+   "token_equality_rate": 0.5,
+   "unequal": 1
+  },
+  "HELIOS-noExpl": {
+   "calls_compared": 2,
+   "equal": 1,
+   "one_sided": 0,
+   "prompt_differs": 0,
+   "token_equality_rate": 0.5,
+   "unequal": 1
+  },
+  "HELIOS-noFGSV": {
+   "calls_compared": 2,
+   "equal": 1,
+   "one_sided": 0,
+   "prompt_differs": 0,
+   "token_equality_rate": 0.5,
+   "unequal": 1
+  },
+  "HELIOS-noIOL": {
+   "calls_compared": 2,
+   "equal": 1,
+   "one_sided": 0,
+   "prompt_differs": 0,
+   "token_equality_rate": 0.5,
+   "unequal": 1
+  },
+  "HELIOS-noReconcile": {
+   "calls_compared": 2,
+   "equal": 1,
+   "one_sided": 0,
+   "prompt_differs": 0,
+   "token_equality_rate": 0.5,
+   "unequal": 1
+  },
+  "HELIOS-noRouter": {
+   "calls_compared": 20,
+   "equal": 19,
+   "one_sided": 0,
+   "prompt_differs": 0,
+   "token_equality_rate": 0.95,
+   "unequal": 1
+  },
+  "HELIOS-noStructural": {
+   "calls_compared": 2,
+   "equal": 1,
+   "one_sided": 0,
+   "prompt_differs": 0,
+   "token_equality_rate": 0.5,
+   "unequal": 1
+  },
+  "all": {
+   "calls_compared": 56,
+   "equal": 45,
+   "one_sided": 0,
+   "prompt_differs": 0,
+   "token_equality_rate": 0.803571,
+   "unequal": 11
+  }
+ },
+ "calls_not_equal": [
+  {
+   "run_id": "c3f8dc3d1b333d46ffd8b6b9f5ee36f0",
+   "system": "HELIOS-noRouter",
+   "unequal": [
+    "metric"
+   ]
+  },
+  {
+   "run_id": "fa2e9300084d7c6abea21aae0c5da8d3",
+   "system": "HELIOS-Full",
+   "unequal": [
+    "metric"
+   ]
+  },
+  {
+   "run_id": "1ef6cc8462ecbea7f961589eed7f8c2a",
+   "system": "HELIOS-LLM-only",
+   "unequal": [
+    "metric"
+   ]
+  },
+  {
+   "run_id": "5bb9b36a9311af812eb20a1f4e8880d8",
+   "system": "HELIOS-noConsensus",
+   "unequal": [
+    "metric"
+   ]
+  },
+  {
+   "run_id": "4f5312835130b5f6a4ee02274ddd21f6",
+   "system": "HELIOS-noStructural",
+   "unequal": [
+    "metric"
+   ]
+  },
+  {
+   "run_id": "f3acc50f580287bdd464a7d5346cf3b6",
+   "system": "HELIOS-noACP",
+   "unequal": [
+    "metric"
+   ]
+  },
+  {
+   "run_id": "d58d449121e0c2487946873c4421b991",
+   "system": "HELIOS-noReconcile",
+   "unequal": [
+    "metric"
+   ]
+  },
+  {
+   "run_id": "89f1e1cded208d322fdb573ed2ed5fe3",
+   "system": "HELIOS-noFGSV",
+   "unequal": [
+    "metric"
+   ]
+  },
+  {
+   "run_id": "e0111dd68b85c50daf8aa3600c49ca97",
+   "system": "HELIOS-noIOL",
+   "unequal": [
+    "metric"
+   ]
+  },
+  {
+   "run_id": "4ca5a1148b76470a913f983b2e00871a",
+   "system": "HELIOS-noExpl",
+   "unequal": [
+    "metric"
+   ]
+  },
+  {
+   "run_id": "5343def81f6d232900646a2902c4c2b8",
+   "system": "HELIOS-LLM-only",
+   "unequal": [
+    "metric"
+   ]
+  }
+ ],
+ "campaign": "rcaeval_build_2",
+ "runs": {
+  "HELIOS-Full": {
+   "differs_lpipe": 1,
+   "nondeterministic": 1,
+   "pairs": 16
+  },
+  "HELIOS-LLM-only": {
+   "differs_lpipe": 2,
+   "nondeterministic": 2,
+   "pairs": 16
+  },
+  "HELIOS-noACP": {
+   "differs_lpipe": 1,
+   "nondeterministic": 1,
+   "pairs": 16
+  },
+  "HELIOS-noConsensus": {
+   "differs_lpipe": 1,
+   "nondeterministic": 1,
+   "pairs": 16
+  },
+  "HELIOS-noExpl": {
+   "differs_lpipe": 1,
+   "nondeterministic": 1,
+   "pairs": 16
+  },
+  "HELIOS-noFGSV": {
+   "differs_lpipe": 1,
+   "nondeterministic": 1,
+   "pairs": 16
+  },
+  "HELIOS-noIOL": {
+   "differs_lpipe": 1,
+   "nondeterministic": 1,
+   "pairs": 16
+  },
+  "HELIOS-noReconcile": {
+   "differs_lpipe": 1,
+   "nondeterministic": 1,
+   "pairs": 16
+  },
+  "HELIOS-noRouter": {
+   "differs_lpipe": 1,
+   "differs_narrative": 1,
+   "nondeterministic": 2,
+   "pairs": 16
+  },
+  "HELIOS-noStructural": {
+   "differs_lpipe": 1,
+   "nondeterministic": 1,
+   "pairs": 16
+  },
+  "all": {
+   "differs_lpipe": 11,
+   "differs_narrative": 1,
+   "nondeterministic": 12,
+   "pairs": 160
+  }
+ }
+}
