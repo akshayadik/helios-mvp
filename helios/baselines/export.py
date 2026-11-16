@@ -23,6 +23,10 @@ Files written (RCAEval's names and columns, ``main.py`` at 2fca61b):
   (``<service>_<operation>``) and mean span duration in ms per bucket (empty
   where a bucket has no span; the methods forward-fill).
 
+A modality the capture does not have (RCAEval build has no traces or logs) is
+written as a header-only ``logs.csv`` / ``traces.csv`` and time-only series,
+never as a file with no columns (rcaeval-export-v2, S5.3 Q-a).
+
 A span is an error when its status is ``ERROR`` / ``STATUS_CODE_ERROR`` or an
 HTTP code of at least 400. A log line is an error when its severity is ERROR,
 FATAL or CRITICAL or its body matches ``error|fail`` (any case).
@@ -48,16 +52,39 @@ if TYPE_CHECKING:
 __all__ = [
     "BUCKET_S",
     "EXPORT_VERSION",
+    "LOG_COLUMNS",
+    "TRACE_COLUMNS",
     "export_window",
     "is_error_log",
     "is_error_span",
 ]
 
-EXPORT_VERSION = "rcaeval-export-v1"
+EXPORT_VERSION = (
+    "rcaeval-export-v2"  # v2: header-only files for absent modalities (S5.3 Q-a)
+)
 BUCKET_S = 15
 _NS_PER_S = 1_000_000_000
 _US_PER_MS = 1000
 _HTTP_ERROR = 400
+LOG_COLUMNS: tuple[str, ...] = (
+    "time",
+    "timestamp",
+    "container_name",
+    "message",
+    "level",
+)
+TRACE_COLUMNS: tuple[str, ...] = (
+    "time",
+    "traceID",
+    "spanID",
+    "parentSpanID",
+    "serviceName",
+    "methodName",
+    "operationName",
+    "startTime",
+    "duration",
+    "statusCode",
+)
 _ERROR_STATUS = frozenset({"ERROR", "STATUS_CODE_ERROR"})
 _ERROR_SEVERITY = frozenset({"ERROR", "FATAL", "CRITICAL"})
 _ERROR_WORDS = r"(?i)error|fail"
@@ -115,7 +142,7 @@ def _metrics(df: pd.DataFrame | None) -> pd.DataFrame:
 
 def _logs(df: pd.DataFrame | None) -> tuple[pd.DataFrame, pd.DataFrame | None]:
     if df is None or df.empty:
-        return pd.DataFrame(), None
+        return pd.DataFrame(columns=list(LOG_COLUMNS)), None
     stamps = df["timestamp"].map(_epoch)
     logs = pd.DataFrame(
         {
@@ -141,7 +168,7 @@ def _logs(df: pd.DataFrame | None) -> tuple[pd.DataFrame, pd.DataFrame | None]:
 
 def _traces(df: pd.DataFrame | None) -> tuple[pd.DataFrame, pd.DataFrame | None]:
     if df is None or df.empty:
-        return pd.DataFrame(), None
+        return pd.DataFrame(columns=list(TRACE_COLUMNS)), None
     start_s = df["start_time_us"].astype("int64") / 1_000_000
     traces = pd.DataFrame(
         {
@@ -211,6 +238,9 @@ def export_window(window: TelemetryWindow, root: Path, out_dir: Path) -> dict[st
             grid, span_rows.astype({"error": "int64"}), "column", "error", "sum"
         )
         files["tracets_lat.csv"] = _series(grid, span_rows, "column", "ms", "mean")
+    else:
+        files["tracets_err.csv"] = pd.DataFrame({"time": grid})
+        files["tracets_lat.csv"] = pd.DataFrame({"time": grid})
     out_dir.mkdir(parents=True, exist_ok=True)
     counts: dict[str, int] = {}
     for name, frame in files.items():

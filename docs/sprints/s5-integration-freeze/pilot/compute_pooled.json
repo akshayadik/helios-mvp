@@ -1,0 +1,27 @@
+{
+ "baselines_s_per_case": {
+  "mean": 37.7,
+  "median": 30.5,
+  "p90": 68.1
+ },
+ "campaign": "otel_build_v3+rcaeval_build_1+rcaeval_build_2+rcaeval_build_3",
+ "cases": 52,
+ "helios_s_per_case": {
+  "mean": 38.0,
+  "median": 33.0,
+  "p90": 58.6
+ },
+ "pool_projection_h": {
+  "baselines_e2": {
+   "mean": 2.51,
+   "median": 2.03,
+   "p90": 4.54
+  },
+  "cases": 240,
+  "helios_e1_e3": {
+   "mean": 2.53,
+   "median": 2.2,
+   "p90": 3.91
+  }
+ }
+}

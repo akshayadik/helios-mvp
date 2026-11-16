@@ -63,6 +63,7 @@ __all__ = [
     "ANOMALY_SOURCES",
     "DATASET_ARG",
     "METHODS",
+    "REQUIRED_MODALITIES",
     "TRIGGER_SUFFIX",
     "BaselineExecutor",
     "BaselineMethod",
@@ -89,6 +90,14 @@ METHODS: dict[str, BaselineMethod] = {
     BASELINE_ALTERNATES[0]: BaselineMethod("circa", "default"),
     BASELINE_ALTERNATES[1]: BaselineMethod("causalrca", "default"),
 }
+# Modalities a method cannot run without (S5.3 Q-a, owner decision
+# 2026-11-15). On a capture that lacks one, the run is excluded before the
+# container starts (gate check ``modality_absent``) instead of scoring an empty
+# ranking as a miss; the existing sensitivity row "excluded baseline cases as
+# misses" (entry 88 item 9) still reports the miss reading. The multi-source
+# methods and PDiagnose run on whatever modalities a capture has.
+REQUIRED_MODALITIES: dict[str, tuple[str, ...]] = {BASELINES[1]: ("traces",)}
+_MODALITY_PATH = {"traces": "p2_traces_path", "logs": "p3_logs_path"}
 # RCAEval's dataset argument per benchmark system. Only two things read it:
 # whether mmbaro uses traces (any RE2/RE3 OB or TT name) and preprocess (any
 # name but causalrca-sock-shop). "re2-" for every case never tells a method
@@ -176,6 +185,7 @@ class BaselineExecutor:
             "anomaly": self.anomaly,
             "adapters": adapter_digest(),
             "export": EXPORT_VERSION,
+            "requires": list(REQUIRED_MODALITIES.get(self.baseline, ())),
             "length_min": METRIC_LENGTH_MIN,
             "cpus": self._limits.cpus,
             "memory": self._limits.memory,
@@ -195,6 +205,15 @@ class BaselineExecutor:
         return self._store.delete_run(run_id)
 
     # ── one incident ────────────────────────────────────────────────────
+
+    def _missing_modalities(self, window: Any) -> list[str]:
+        """Required modalities (``REQUIRED_MODALITIES``) the capture lacks."""
+        missing = []
+        for modality in REQUIRED_MODALITIES.get(self.baseline, ()):
+            rel = getattr(window, _MODALITY_PATH[modality])
+            if rel is None or not (self._root / rel).is_file():
+                missing.append(modality)
+        return missing
 
     def _anomaly_time(self, incident_id: str, window: Any) -> int:
         if self.anomaly == "inject":
@@ -269,6 +288,16 @@ class BaselineExecutor:
             )
         window = verification.window
         snapshot = window.compute_window_hash()
+        missing = self._missing_modalities(window)
+        if missing:
+            return self._exclude(
+                run_id,
+                incident_id,
+                context,
+                gate_check="modality_absent",
+                reason="modality_absent:" + ",".join(missing),
+                snapshot_hash=snapshot,
+            )
         t = self._anomaly_time(incident_id, window)
         seed = int(context.get("seed", "0"))
         tmp = Path(tempfile.mkdtemp(prefix="baseline-", dir=self._work))

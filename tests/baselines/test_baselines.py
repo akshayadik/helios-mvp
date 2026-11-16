@@ -24,12 +24,19 @@ from helios.baselines.container import (
 )
 from helios.baselines.executor import (
     METHODS,
+    REQUIRED_MODALITIES,
     TRIGGER_SUFFIX,
     BaselineExecutor,
     services_from_ranks,
     source_name,
 )
-from helios.baselines.export import export_window, is_error_log, is_error_span
+from helios.baselines.export import (
+    LOG_COLUMNS,
+    TRACE_COLUMNS,
+    export_window,
+    is_error_log,
+    is_error_span,
+)
 from helios.evaluation.cost import PriceBook
 from helios.evaluation.run_metrics import BASELINE_STATE, score_run_metrics
 from helios.evaluation.scoring import Corpus, GroundTruth, score_store
@@ -116,9 +123,19 @@ def test_export_of_a_metrics_only_window(tmp_path: Path) -> None:
     window = window_of(inc).model_copy(
         update={"p2_traces_path": None, "p3_logs_path": None}
     )
-    counts = export_window(window, tmp_path, tmp_path / "out")
-    assert counts["logs.csv"] == 0 and "tracets_err.csv" not in counts
-    assert list(_csv(tmp_path / "out" / "logts.csv")[0]) == ["time"]
+    out = tmp_path / "out"
+    counts = export_window(window, tmp_path, out)
+    assert counts["logs.csv"] == 0 and counts["traces.csv"] == 0
+    # S5.3 Q-a (rcaeval-export-v2): an absent modality is a header-only file
+    # or a time-only series, never a file with no columns, which every
+    # container fails to parse (RCAEval build has no traces).
+    assert (out / "logs.csv").read_text().strip() == ",".join(LOG_COLUMNS)
+    assert (out / "traces.csv").read_text().strip() == ",".join(TRACE_COLUMNS)
+    for name in ("logts.csv", "tracets_err.csv", "tracets_lat.csv"):
+        rows = _csv(out / name)
+        assert list(rows[0]) == ["time"] and counts[name] == len(rows) > 0
+    for name in counts:
+        assert pd.read_csv(out / name).columns[0] == "time"
 
 
 # ── mapping (B-c) ────────────────────────────────────────────────────────────
@@ -645,3 +662,28 @@ def test_tracerca_keeps_only_operations_with_a_reference(
         "Serve",
     ]
     assert rm.reference_spans_only(spans.iloc[0:0], 10 * US).shape[0] == 0
+
+
+def test_a_method_without_its_required_modality_is_excluded_before_the_container(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # S5.3 Q-a (owner decision 2026-11-15): TraceRCA needs traces.
+    assert REQUIRED_MODALITIES == {BASELINES[1]: ("traces",)}
+    inc = capture(tmp_path / "caps", "inc-1")
+    window = window_of(inc)
+    runner = StubRunner({"ranks": [], "wall_ms": 1, "cpu_ms": 1})
+    trace_rca, ledger = _executor(tmp_path, runner, baseline=BASELINES[1])
+    baro, _ = _executor(tmp_path / "b", runner)
+    no_traces = window.model_copy(update={"p2_traces_path": None})
+    assert trace_rca._missing_modalities(no_traces) == ["traces"]
+    assert baro._missing_modalities(no_traces) == []
+    gone = window.model_copy(update={"p2_traces_path": "nowhere/p2.parquet"})
+    assert trace_rca._missing_modalities(gone) == ["traces"]
+    monkeypatch.setattr(trace_rca, "_missing_modalities", lambda w: ["traces"])
+    out = trace_rca.run_incident("inc-1", "run-1", {"seed": "1"})
+    assert (out.outcome, out.gate_check) == ("excluded", "modality_absent")
+    assert runner.jobs == []  # the container never started
+    (entry,) = _entries(ledger)
+    assert entry["reason"] == "modality_absent:traces"
+    assert entry["snapshot_hash"] != "UNKNOWN"
+    assert trace_rca.config_hash != baro.config_hash

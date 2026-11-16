@@ -20,6 +20,7 @@ tag build-freeze exists.
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -115,7 +116,25 @@ def run_metrics(
     return 0
 
 
-def score(db: Path, corpus: str, captures: Path | None = None) -> int:
+def join_determinism(store: ResultStore, path: Path) -> int:
+    """S5.3 Q-d: mark eval_run.nondeterministic from a campaign's
+    determinism.json (D11 section 4 covariate); other runs stay NULL."""
+    pairs = json.loads(path.read_text(encoding="utf-8"))
+    flags = {str(p["run_id"]): bool(p["nondeterministic"]) for p in pairs}
+    updated = store.mark_nondeterministic(flags)
+    print(
+        f"[metrics] determinism: {len(flags)} rerun pairs, "
+        f"{sum(flags.values())} not equal; {updated} eval_run rows marked"
+    )
+    return updated
+
+
+def score(
+    db: Path,
+    corpus: str,
+    captures: Path | None = None,
+    determinism: Path | None = None,
+) -> int:
     key = None if corpus == Corpus.CAPTURES else load_key()
     try:
         gt = load_ground_truth(corpus, root=REPO_ROOT, key=key)
@@ -142,6 +161,8 @@ def score(db: Path, corpus: str, captures: Path | None = None) -> int:
     if captures is not None:
         try:
             run_metrics(store, gt, captures, key)
+            if determinism is not None:
+                join_determinism(store, determinism)
         except PoolLockedError as exc:
             print(f"[metrics] refused: {exc}")
             store.close()
@@ -160,6 +181,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--captures", type=Path, help="capture directory of the corpus (--metrics)"
     )
+    parser.add_argument(
+        "--determinism",
+        type=Path,
+        help="campaign determinism.json to join into eval_run (--metrics; S5.3 Q-d)",
+    )
     args = parser.parse_args(argv)
     if not args.db.is_file():
         print(f"[score] no results database at {args.db}")
@@ -167,7 +193,15 @@ def main(argv: list[str] | None = None) -> int:
     if args.metrics and args.captures is None:
         print("[score] --metrics needs --captures (recorded bytes for CpR storage)")
         return 2
-    return score(args.db, args.corpus, args.captures if args.metrics else None)
+    if args.determinism is not None and not args.metrics:
+        print("[score] --determinism needs --metrics (it marks eval_run rows)")
+        return 2
+    return score(
+        args.db,
+        args.corpus,
+        args.captures if args.metrics else None,
+        args.determinism,
+    )
 
 
 if __name__ == "__main__":
