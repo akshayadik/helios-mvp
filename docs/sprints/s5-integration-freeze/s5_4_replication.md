@@ -6,7 +6,7 @@
 
 **HELIOS reproduces exactly on a fresh clone.** Every snapshot hash, every per-pipeline ranking and decision hash, and every fused ranking of all 7,254 HELIOS runs is identical to the S5.1 reference. Every run outcome is identical. Every analysis field outside the timing-derived list is identical. So the design's pass condition (R-e) is met.
 
-One difference remains, in a baseline: **Multi-source RCD (`BASELINE-5`) reorders its list on 3 of 495 RCAEval cases** (6 of 5,580 baseline runs), with identical input, seed, image and config. It changes no HR@1 or HR@3 value, and no field of the analysis. §4 diagnoses it; it is proposed as an accepted difference, for the owner to confirm (§7).
+One difference remains, in a baseline: **Multi-source RCD (`BASELINE-5`) reorders its list on 3 of 495 RCAEval cases** (6 of 5,580 baseline runs), with identical input, seed, image and config. It changes no HR@1 or HR@3 value, and no field of the analysis. §4 diagnoses it; the owner accepted it as an environment difference on 2026-11-18 (§7).
 
 | Directory | Runs compared | Identical | Differ | Schedule digest | Analysis (outside timing) |
 |---|---|---|---|---|---|
@@ -57,7 +57,7 @@ Per-spec detail: `replication/compare_<dir>.json`; analysis diffs: `replication/
 - **Effect on scores.** HR@1 and HR@3 are unchanged in all six runs (misses in reference and clone alike). Avg@5 and MRR change on `1ae703fe` and `de61bceb`. No analysis field changes: the B-H5 test (Full against Multi-source RCD) reads HR@3.
 - **Diagnosis.** The method is nondeterministic beyond its seed, inside the baseline container. The likely source is its causal-discovery search running across the container's 8 CPUs, but this was not isolated. HELIOS code and data are not involved, and the copied cache plays no part, since baselines call no model.
 - **S5.5 did not see it.** The S5.5 rerun subset covers HELIOS variants only, so this is new information.
-- **Proposed treatment.** Accept as an environment difference in a baseline, with this reason, and carry it as backlog item CR-23 (component review backlog in this folder). In phase E, B-H5's HR@3 reading is unaffected on build data, but Multi-source RCD's lower ranks, and so its Avg@5 and MRR, can move between reruns. The alternative, pinning RCD to one thread or fixing its search order, is a baseline code change. It would need a deviation entry and a rerun of the RCD phases before the freeze, like the R-g question.
+- **Treatment (owner, 2026-11-18).** Accepted as an environment difference in a baseline, with this reason, and carried as backlog item CR-23 (component review backlog in this folder). In phase E, B-H5's HR@3 reading is unaffected on build data, but Multi-source RCD's lower ranks, and so its Avg@5 and MRR, can move between reruns. The alternative, pinning RCD to one thread or fixing its search order, is a baseline code change. It would need a deviation entry and a rerun of the RCD phases before the freeze, like the R-g question.
 
 ## 5. Analysis end to end (R-e step 5)
 
@@ -86,6 +86,6 @@ Per-spec detail: `replication/compare_<dir>.json`; analysis diffs: `replication/
 
 ## 7. Owner decision
 
-**Multi-source RCD difference (§4).** Accept it as a baseline environment difference with the reason above, and carry it as CR-23 (recommended); or fix it before the freeze, which needs a baseline change, a deviation entry and a rerun of the RCD phases.
+**Multi-source RCD difference (§4). Decided 2026-11-18:** accepted as a baseline environment difference with the reason above, carried as CR-23. Phase E states that Multi-source RCD's lower ranks, and so its Avg@5 and MRR, can move between reruns. Not fixed before the freeze.
 
 **Rerun on the frozen SHA (R-a).** If any change to rankings lands before `build-freeze`, for example CR-01 or CR-02 from the component review, the HELIOS part of S5.4 is rerun on the frozen SHA in S5.6. That takes about 2 h with the cache: HELIOS phases took 14 to 41 min per directory here.
