@@ -1,0 +1,26 @@
+{
+ "campaign": "rcaeval_build_1",
+ "clone_runs_with_live_calls": 0,
+ "compared": 3795,
+ "counts": {
+  "differs_cache_hit": 2,
+  "differs_live_call": 0,
+  "extra_in_clone": 0,
+  "missing_in_clone": 0,
+  "outcome_differs": 0
+ },
+ "equal_by_phase": {
+  "baseline": 824,
+  "baseline_trigger": 824,
+  "confirmatory": 1320,
+  "exploratory": 825
+ },
+ "keys": {
+  "differs_cache_hit": [
+   "baseline/1ae703fe0896e71873b48b7c6aa5c66c/BASELINE-5",
+   "baseline_trigger/1ae703fe0896e71873b48b7c6aa5c66c/BASELINE-5"
+  ]
+ },
+ "passes": false,
+ "schedule_digest_equal": true
+}

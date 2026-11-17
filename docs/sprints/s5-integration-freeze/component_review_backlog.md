@@ -35,6 +35,7 @@
 | CR-20 | EVAL | P3 | Seed register | 7,200 slots cap campaign size | None now | OPEN |
 | CR-21 | DOC | P1 | S5.4 design | Wrong claim that `raw/checksums_build.json` is tracked | None | OPEN (fix in S5.4 report) |
 | CR-22 | DOC | P1 | Provisioning | Part manifests must be regenerated in a fresh clone | None | OPEN (fix in S5.4 report) |
+| CR-23 | BUG | P2 | Baselines (Multi-source RCD) | Ranked list varies between runs with identical input, seed and image | Baseline change if fixed | OPEN (owner: accept or fix, S5.4 §4) |
 | CR-00 | BUG | — | Campaign `cells` | Trigger-time runs keyed under the binding-time name | None | DONE (`54becfb`) |
 
 ## Items
@@ -203,6 +204,13 @@
 - **Kind / priority:** DOC, P1.
 - **Evidence.** The RCAEval part manifests (`rcaeval_build_{1,2,3}_manifest.json`) are regenerated, byte-identical, from the tracked manifest; a fresh clone needs this step.
 - **Done when.** Documented as a provisioning step in the S5.4 report.
+
+### CR-23 · Multi-source RCD is nondeterministic beyond its seed
+
+- **Kind / priority:** BUG, P2. **Raised:** 2026-11-18, S5.4 replication.
+- **Evidence.** On 3 of 495 RCAEval build cases, 6 of 5,580 baseline runs, Multi-source RCD returned a different ranked list (order and length) in the clean clone. Snapshot hash, run seed, image digest and config hash were identical. HR@1 and HR@3 are unchanged in all six runs; Avg@5 and MRR change on two cases; no analysis field changes. The S5.5 rerun subset covers HELIOS only, so this was not seen before.
+- **Proposed approach.** Either accept it and say in phase E that RCD's lower ranks can move between reruns, or pin the RCD container to one thread or a fixed search order. A fix is a baseline change: deviation entry and RCD rerun before the freeze.
+- **Done when.** Owner decision recorded; if fixed, a rerun of the six runs matches itself.
 
 ### CR-00 · `cells` keyed trigger-time runs under the binding-time name (closed)
 
