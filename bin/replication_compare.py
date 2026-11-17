@@ -14,8 +14,9 @@ A HELIOS run whose clone made a live L-pipe call (cache miss) is classed
 apart: a difference there is model nondeterminism (S5.5), not the build.
 
 analysis (R-e 5): leaf-by-leaf diff of two analysis JSONs. Leaves under a
-node whose metric is timing-derived (CpR, TTCD, TTT) are reported apart;
-every other leaf must be equal.
+node whose metric is timing-derived (CpR, TTCD, TTT) are reported apart,
+including correction-table and sensitivity entries that name a timing
+hypothesis only by id; every other leaf must be equal.
 
 Reads the stores read-only; reads no ground truth; changes nothing.
 """
@@ -80,8 +81,12 @@ def helios_signature(
 
 
 def live_calls(evidence: dict[str, Any] | None) -> int:
+    """Workers that called the model (no cache hit); a dropped worker (for
+    example no_digest) never reached the model and is not counted."""
     workers = (evidence or {}).get("workers") or {}
-    return sum(1 for w in workers.values() if not w.get("cache_hit"))
+    return sum(
+        1 for w in workers.values() if not w.get("cache_hit") and not w.get("dropped")
+    )
 
 
 def compare_runs(
@@ -183,31 +188,54 @@ def load_campaign(
     return digest, runs, live
 
 
+def hypothesis_metrics(node: Any) -> dict[str, str]:
+    """hypothesis id -> metric, from every node that carries both. Correction
+    tables (Holm, BH) and sensitivity readings name only the id, so their
+    leaves are classed by the metric of the hypothesis they belong to."""
+    out: dict[str, str] = {}
+    if isinstance(node, dict):
+        if isinstance(node.get("id"), str) and isinstance(node.get("metric"), str):
+            out[node["id"]] = node["metric"]
+        for v in node.values():
+            out |= hypothesis_metrics(v)
+    elif isinstance(node, list):
+        for v in node:
+            out |= hypothesis_metrics(v)
+    return out
+
+
 def leaf_diff(
-    a: Any, b: Any, path: str = "", metric: str | None = None
+    a: Any,
+    b: Any,
+    path: str = "",
+    metric: str | None = None,
+    by_id: dict[str, str] | None = None,
 ) -> list[tuple[str, str | None]]:
-    """(path, enclosing metric) of every leaf that differs."""
+    """(path, enclosing metric) of every leaf that differs; a node without a
+    metric of its own takes its hypothesis' metric from by_id."""
+    by_id = by_id or {}
     if isinstance(a, dict) and isinstance(b, dict):
-        here = a.get("metric") if isinstance(a.get("metric"), str) else metric
+        own = a.get("metric")
+        here = own if isinstance(own, str) else by_id.get(str(a.get("id")), metric)
         out: list[tuple[str, str | None]] = []
         for k in sorted(a.keys() | b.keys(), key=str):
             if k not in a or k not in b:
                 out.append((f"{path}/{k}", here))
             else:
-                out += leaf_diff(a[k], b[k], f"{path}/{k}", here)
+                out += leaf_diff(a[k], b[k], f"{path}/{k}", here, by_id)
         return out
     if isinstance(a, list) and isinstance(b, list):
         if len(a) != len(b):
             return [(f"{path}[len]", metric)]
         out = []
         for i, (x, y) in enumerate(zip(a, b, strict=True)):
-            out += leaf_diff(x, y, f"{path}[{i}]", metric)
+            out += leaf_diff(x, y, f"{path}[{i}]", metric, by_id)
         return out
     return [] if a == b else [(path, metric)]
 
 
 def compare_analysis(ref: Any, clone: Any) -> dict[str, Any]:
-    diffs = leaf_diff(ref, clone)
+    diffs = leaf_diff(ref, clone, by_id=hypothesis_metrics(ref))
     timing = [p for p, m in diffs if m in TIMING_METRICS]
     exact = [p for p, m in diffs if m not in TIMING_METRICS]
     return {

@@ -32,6 +32,8 @@ def test_helios_signature_and_live_calls() -> None:
     ev = {"workers": {"log": {"cache_hit": True}, "metric": {"cache_hit": False}}}
     assert rc.live_calls(ev) == 1
     assert rc.live_calls(None) == 0
+    dropped = {"workers": {"trace": {"cache_hit": False, "dropped": "no_digest"}}}
+    assert rc.live_calls(dropped) == 0
 
 
 def test_compare_runs_classes() -> None:
@@ -95,3 +97,22 @@ def test_analysis_diff_separates_timing_metrics() -> None:
     assert not report["passes"]
     assert report["other"]["paths"] == ["/extra", "/label"]
     assert rc.leaf_diff([1, 2], [1]) == [("[len]", None)]
+
+
+def test_correction_table_entries_take_their_hypothesis_metric() -> None:
+    ref = {
+        "hypotheses": [
+            {"id": "A-H5", "metric": "log-CpR", "p_value": 2},
+            {"id": "A-H1", "metric": "HR@3", "p_value": 3},
+        ],
+        "holm": [{"id": "A-H5", "adjusted_p": 2}, {"id": "A-H1", "adjusted_p": 3}],
+    }
+    assert rc.hypothesis_metrics(ref) == {"A-H5": "log-CpR", "A-H1": "HR@3"}
+    timing = {**ref, "holm": [{"id": "A-H5", "adjusted_p": 4}, ref["holm"][1]]}
+    report = rc.compare_analysis(ref, timing)
+    assert report["passes"]
+    assert report["timing_derived"]["paths"] == ["/holm[0]/adjusted_p"]
+    accuracy = {**ref, "holm": [ref["holm"][0], {"id": "A-H1", "adjusted_p": 4}]}
+    report = rc.compare_analysis(ref, accuracy)
+    assert not report["passes"]
+    assert report["other"]["paths"] == ["/holm[1]/adjusted_p"]
