@@ -97,6 +97,8 @@ Signal-type classification (S2-BL-09: 54% of OTel cases unclassified) is a refit
 
 ## OSF addendum (drafted in S3, deposited before `build-freeze`)
 
+> **Moved 2026-11-18 (S2-M10-RES01):** the addendum draft now lives in `docs/tracking/osf_addendum_draft.md`, which carries these bullets in full and adds entries 84–91, the frozen files and the S5 items. The bullets below are kept as the S3 record.
+
 S3 adds the router's entries to what the addendum must cover, so the draft starts here rather than in S5:
 
 - entries 46–68 and the S3 entries (router initialisation and thresholds, the G-pipe gate decision);

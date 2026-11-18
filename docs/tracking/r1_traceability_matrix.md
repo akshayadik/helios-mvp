@@ -4,6 +4,17 @@
 **Prepared:** 2026-10-22, against `main` @ `b25c287` (after integrity-audit steps A–D).
 **Owner:** AA.
 
+**Status note, 2026-11-18 (S2-M10-RES01).** The tables below are the approved snapshot of 2026-10-22 and are kept as written. Statements about what the code lacks are out of date where later work built the mechanism:
+
+| Matrix statement | Now | Record |
+|---|---|---|
+| FGSV not implemented; E-H4 "no flag, no FGSV" (§1 item 4, §4) | FGSV **lite** built behind `fgsv_ks_gate`: one proposal per run for the fused top-1, Ch3's KS gate (alpha_ks 0.05, Holm across pillars) on twin and production halves of the normal period, ASRE structural replay only; HELIOS-noFGSV records the proposal as UNVALIDATED. E-H4 is exploratory and reported as a test of the lite mechanism | S4.6; entry 89; `data/frozen/fgsv_params.json` |
+| IOL not implemented; E-H6 "no flag, no IOL" (§1 item 4, §4) | IOL **lite** built behind `iol_self_telemetry`: control-plane self-telemetry as a `tenant=self` partition read by the frozen trigger rule; the pipelines rank on the production graph only. E-H6 uses a severity ladder (×2, ×3, ×5, ×8) | S4.7; entry 89; `data/frozen/iol_injection.json` |
+| ORAR, ACP, MAHC proper not implemented; six flags gate nothing (§1 items 3–4) | Flags renamed to the Ch3 registry (D2, entry 31). ORAR built and frozen (entries 69, 70); MAHC built and frozen (entries 60–63); ACP built, recorded but not read by the frozen router, so E-H8 moves to Stage B (entries 82, 83) | S2, S3 designs |
+| Cognitive nodes and HIS tiers | Not built in Stage A: `p4_cognitive` and `his_tier` declared without a consumer; noCogni and HIS3 refused by the schedule (Stage B) | entry 90 (S5.2 certificate) |
+
+The changes to pre-registered tests that followed from R1 and R2 are collected in the OSF addendum draft (`docs/tracking/osf_addendum_draft.md`).
+
 **How to use this matrix (owner direction, 2026-10-23):** Chapter 3 is the baseline, not the final verdict. "ALIGN" here means "the default unless a better, more production-grade or more innovative method is chosen". Departing from Ch3 is allowed and encouraged where it improves the product; what is required is that any change to a pre-registered test is recorded before confirmatory data is collected.
 
 **Sources**
