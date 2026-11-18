@@ -1,8 +1,8 @@
 # HELIOS Ablation Architecture — Living ADR
 
-**Document Version:** v0.12
-**Date:** 2026-10-26
-**Status:** §1 frozen at Stage 0; flag and variant names synced to the D2 registry (2026-10-23, deviation entry 31). §2 schemas frozen at Stage 0; §2.6 UEG-C Builder implemented and frozen at Milestone 2. §3.0 frozen at Stage 0 (registry + stubs). §3.1 D-pipe implemented and frozen at Milestone 2. §3.2 G-pipe implemented and frozen at Milestone 3. §3.3 L-pipe implemented and frozen at Milestone 3. §4 frozen at Milestone 1. §5 Consensus design frozen at Milestone 4. §6–§7 stubs. UEG-C (§2.1–§2.3, §2.6) at schema-draft-v0.2 since S1.5; pruner replaced by Algorithm 5 in S1.7 (§2.6). §2.4 PipelineVerdict at schema-draft-v0.5 since S1.8 (verdict contract).
+**Document Version:** v0.14
+**Date:** 2026-11-18
+**Status:** §1 frozen at Stage 0; flag and variant names synced to the D2 registry (2026-10-23, deviation entry 31). §2 schemas frozen at Stage 0; §2.6 UEG-C Builder implemented and frozen at Milestone 2. §3.0 frozen at Stage 0 (registry + stubs). §3.1 D-pipe implemented and frozen at Milestone 2. §3.2 G-pipe implemented and frozen at Milestone 3. §3.3 L-pipe implemented and frozen at Milestone 3. §4 frozen at Milestone 1. §5 Consensus design frozen at Milestone 4; §5.1 routing frozen in S3 (entry 70). §6 evaluation plane built in S4 (pointers); §7 disjointness certified in S5.2 (pointers). §8 Chain of Evidence and product shell built in S4 (`rb-s4-exit`). §3 and §5 describe the Milestone designs; the S1–S3 sprint designs and deviation entries 46–83 that changed them are listed in §8.1 and the OSF addendum draft (`docs/tracking/osf_addendum_draft.md`). UEG-C (§2.1–§2.3, §2.6) at schema-draft-v0.2 since S1.5; pruner replaced by Algorithm 5 in S1.7 (§2.6). §2.4 PipelineVerdict at schema-draft-v0.5 since S1.8 (verdict contract).
 **Canonical Reference:** `docs/memos/spine_freeze_memo_v0.md`
 **Update Cadence:** After every pipeline-stage change.
 
@@ -566,7 +566,9 @@ AIOpsLab is a Tier 2 recording spike (S1.3), not the confirmatory corpus.
 
 ---
 
-### 5.1 Routing (S3.1, cbr_routing)   [BUILT — provisional parameters until the S3.1 freeze]
+### 5.1 Routing (S3.1, cbr_routing)   [FROZEN — S3, deviation entry 70]
+
+Parameters frozen in `data/frozen/router_params.json` (entry 70; the OTel fix of entries 76–81 was not adopted, so the S3.1 freeze stands). The ACP (S3.2, `acp_stateful`) is recorded in the CoE but not read by the frozen router (entries 82, 83).
 
 Design: `docs/sprints/s3-routing/s3_1_router_design.md` (owner decisions R-a to R-e, 2026-11-06).
 
@@ -579,19 +581,56 @@ Design: `docs/sprints/s3-routing/s3_1_router_design.md` (owner decisions R-a to 
 
 ---
 
-## 6. Snapshot Gating, Metric Integrity Gate & Evaluation Plane   [STUB — Stage 1 & 6]
+## 6. Snapshot Gating, Metric Integrity Gate & Evaluation Plane   [BUILT — S4, `rb-s4-exit`]
 
-> **Not yet implemented.** Snapshot gating scaffolding is targeted for Stage 1; full evaluation plane at Stage 6.
-> No implementation claims may be added before the respective gate passes.
-> Cross-reference: `spine_freeze_memo_v0.md §3` (Research Progress Tracking).
+Pointers only; the designs and entries are authoritative.
+
+| Part | Where | Record |
+|---|---|---|
+| Integrity gate and capture seals | `RunOrchestrator` refuses a capture whose content seal is missing or mismatched (`capture_seal_invalid`); an exclusion is a signed exclusion-ledger entry | root `CLAUDE.md` § Capture content seal; entry 87 item 3 |
+| Metrics (TTT, TTCD, operational TTCD, CpR, H_struct, H_fact, strata) | `helios/evaluation/`, `bin/score_runs.py --metrics` → `eval_run` | S4.9 design; entries 84, 85 |
+| Run orchestrator (schedule, campaigns, outcomes, cell rule, MCAR and IPW, determinism rerun) | `helios/orchestrator/schedule.py`, `campaign.py`, `bin/helios_campaign.py` | S4.10 design; entry 87 |
+| Analysis suite (Holm in data order, Wilcoxon, sign test, McNemar exact mid-p, BCa for Family E) | `helios/analysis/`, `bin/analyse.py` | S4.11 design; entry 86 |
+| Family B baselines (five RCAEval methods, pinned images, `--network none`, export from the sealed window) | `helios/baselines/`, `baselines/rcaeval/` | S4.8 design; entries 88, 91 |
 
 ---
 
-## 7. Schema Evolution, Disjointness Audit & C1 Evidence   [STUB — Stage 7]
+## 7. Schema Evolution, Disjointness Audit & C1 Evidence   [DISJOINTNESS CERTIFIED — S5.2]
 
-> **Not yet implemented.** This section will be written and frozen at the Stage 7 gate, consolidating the full C1 audit trail.
-> No implementation claims may be added before that gate passes.
-> Cross-reference: `spine_freeze_memo_v0.md` (canonical) + `deviation_log.jsonl` (HMAC chain).
+The S5.2 certificate replaces the May rule (one decorated function per flag) with gated regions found by a static scanner (`helios/vcl/disjointness.py`): 13 flags covered, 3 declared without a consumer in Stage A (`p4_cognitive`, `his_tier`, `sampling_regime_tag`), 9 declared interaction rows over 6 flag sets, no violation. Record: `docs/tracking/disjointness_audit_log.md`; design `docs/sprints/s5-integration-freeze/s5_2_disjointness_design.md`; entry 90. The consolidated C1 evidence (freeze record, parameter hashes, schema versions) is written at `build-freeze` (S5.6).
+
+---
+
+## 8. Chain of Evidence and Product Shell   [BUILT — S2.7, S2.8, S4; `rb-s4-exit`]
+
+### 8.1 Chain-of-Evidence entry (S2.7; steps N, A, S added in S2.8 and S4)
+
+Every stored run appends one signed entry to its orchestrator run's CoE file (`<db stem>.coe/<UTC start>-<8 hex>.coe.jsonl`; HMAC chain, Ed25519 for confirmatory runs; entry 64). The entry carries the run and incident ids, variant config hash, snapshot hash, evaluation phase and `parameter_hashes` (every frozen parameter file the run used), then its steps in this order:
+
+| Step | Written | Content | Record |
+|---|---|---|---|
+| `T` | always | Shared detection trigger: source, trigger time, `known_at_s`, detection delay, suspects, signal, detector hash, window bounds | entries 46, 52, 71 |
+| `R` | always | Routing mode, router inputs, and for routed runs the estimates, τ_acc, stage-1 and terminal arms, escalation reason, `llm_unavailable` | §5.1; entries 69, 70, 73 |
+| `P:dpipe`, `P:gpipe`, `P:lpipe` | always | One step per pipeline: status, ranked list, evidence (L-pipe workers with cache flags), H_struct | entries 53–59 |
+| `F` | always | Fused list, scores, calibrated confidence, state, first and terminal lists and times, disagreeing pipelines | entries 60–63, 84 |
+| `G` | always | Integrity-gate outcome | §4 |
+| `N` | `coe_narrative` ON | Narrative: claims picked and ordered by the narrator, sentences written by code, citations into the entry | entries 66–68 |
+| `A` | always | Remediation proposal for the fused top-1 (restart, scale-out, or to a person for stateful services). With `fgsv_ks_gate` ON it is validated by FGSV lite (KS gate on twin vs production halves, ASRE structural replay: PASS, FAIL or STALE); OFF (HELIOS-noFGSV) it is recorded as UNVALIDATED. Written after the ranking, narrative and publication time are fixed, so it changes none of them | S4.6 design; entry 89 |
+| `S` | `iol_self_telemetry` ON | Self partition of earlier runs (pipe wall times, model compute and failures, narrator fallbacks, non-convergence) composed onto this incident's graph as `tenant=self` and read by the frozen trigger rule; all under `measured`. The pipelines rank on the production graph only | S4.7 design; entry 89 |
+
+The ACP block (S3.2) sits in the `R` step under `acp` in every run: with `acp_stateful` ON its features, class probabilities and blast tier, OFF (HELIOS-noACP) Ch3's uniform prior. The frozen router does not read it (entry 82).
+
+### 8.2 API (S4.1; api-v1.2)
+
+FastAPI service (`helios/api/`), read-mostly over the results store and CoE files. Routes: `GET /health`; `GET /v1/incidents`, `GET /v1/incidents/{incident_id}`; `GET /v1/verdicts/{run_id}`, `GET /v1/verdicts/{run_id}/coe`; `POST /v1/verdicts/{run_id}/views` (view token, the start of RQ4 timing); `GET` and `POST /v1/verdicts/{run_id}/decisions` (human-in-the-loop decisions); `GET /v1/queue`. API keys are stored as SHA-256 digests only. Decisions go to their own signed ledger. The API never holds a deviation-ledger secret, so the product shell cannot write the evidence ledgers. v1.1 (S4.2) added the console's needs; v1.2 (S4.5–S4.7) added the action step, `control_plane_degraded` and shadow mode, all additive. Design: `docs/sprints/s4-product-eval-tooling/s4_1_api_design.md`.
+
+### 8.3 Approval console (S4.2; RQ4 instrument)
+
+Build-free static console (`console/`: `index.html`, `app.js`, `api.js`, `model.js`, `timing.js`, `console.css`) served by nginx with a strict content security policy, behind `HELIOS_ENABLE_CONSOLE`. A case is revealed only after its view token is issued; client time, hidden-tab time and server time to decision are recorded side by side; participant keys are blind (no response carries a variant name); a simulated HITL reviewer exercises the decision path. Tests: `node --test tests/console/` (CI job `console`). Design: `docs/sprints/s4-product-eval-tooling/s4_2_console_design.md`.
+
+### 8.4 Compose deployment (S4.3)
+
+`deploy/compose.yaml` (and `compose.host-model.yaml` for a model server on the host). Services: `api`; `model-init`, `model` (Ollama, pinned by digest) and `model-check`, which refuses to finish unless the served model digest equals entry 58's; `runner` (profile `run`, mounts a campaign); `admin` (profile `admin`, key issue); `console` (nginx, pinned by digest). Every pulled image is pinned by digest. A fresh clone reaches the model check in about 159 s, and its rankings equal the host's. Product settings outside the VCL manifest: `HELIOS_PII_REDACTION` (S4.4) and `HELIOS_ACTION_MODE` (S4.5: shadow or recommendation), off or without effect in evidence runs (owner decision 2026-11-11). Design: `docs/sprints/s4-product-eval-tooling/s4_3_compose_design.md`; operator notes `deploy/README.md`.
 
 ---
 
@@ -608,3 +647,4 @@ Design: `docs/sprints/s3-routing/s3_1_router_design.md` (owner decisions R-a to 
 - v0.10 (2026-10-25, S2-M6-ENG04): §2.6 structural bundle (S1.6): ueg_structural OFF = one untyped edge kind, full-graph training scope, reasoning steps as flat text; gated typed_view; applied by the orchestrator before pruning.
 - v0.12 (2026-10-26, S2-M6-ENG06): §2.4 PipelineVerdict schema-draft-v0.5 (S1.8 verdict contract): status, candidate scores, mu, sigma, cost, decision hash; scores leave the verdict for the S1.9 scoring path; S1.8 notes in §3.1–§3.3.
 - v0.13 (2026-11-06, S2-M8-ENG01): §5.1 routing (S3.1): routed two-stage cheap-first policy vs uniform routing, which variants route, CoE routing record, R-e, the G-pipe threshold kept for reference only.
+- v0.14 (2026-11-18, S2-M10-RES01): §5.1 marked frozen (entry 70; ACP recorded, not read). §6 and §7 no longer stubs: pointers to the S4 evaluation plane and the S5.2 disjointness certificate. New §8: CoE entry and its steps (T, R, P:*, F, G, N, A, S; steps A and S from S4.6 and S4.7, entry 89), API api-v1.2, approval console, compose deployment and the two product settings (register row 1).
