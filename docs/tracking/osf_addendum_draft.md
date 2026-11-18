@@ -1,6 +1,6 @@
 # OSF addendum · draft
 
-**Status:** DRAFT for the owner, to be deposited on OSF before tag `build-freeze` (S2-BL-05). The freeze record and the frozen rating rubric follow later, in deposit 2 (S5.7). · **Prepared:** 2026-11-18, row S2-M10-RES01, against `main` at `2e81330`; updated the same day for entries 92–96 (S5 reporting rules, row S2-M10-ENG01) · **Covers:** deviation entries 46–96 and the frozen parameter files · **Supersedes:** the addendum bullets in `docs/sprints/s3-routing/plan.md` § OSF addendum, carried in here in full.
+**Status:** DRAFT for the owner, to be deposited on OSF before tag `build-freeze` (S2-BL-05). The freeze record and the frozen rating rubric follow later, in deposit 2 (S5.7). · **Prepared:** 2026-11-18, row S2-M10-RES01, against `main` at `2e81330`; updated the same day for entries 92–97 (S5 reporting rules, rows S2-M10-ENG01 and S2-M10-ENG02) · **Covers:** deviation entries 46–97 and the frozen parameter files · **Supersedes:** the addendum bullets in `docs/sprints/s3-routing/plan.md` § OSF addendum, carried in here in full.
 
 ## 0. How to read this addendum
 
@@ -18,7 +18,7 @@
 | A-H1 | Full vs noLLM · HR@3 | The L-pipe is three single-modality workers with a deterministic merge (at most two on the pool). Full routes cheap-first while noLLM records the would-be escalation, so the two differ only on escalated runs: reported split by escalation | 57, 58, 69, 86 |
 | A-H2 | Full vs LLM-only · HR@3 | As A-H1 for the L-pipe; LLM-only uses uniform routing | 57, 58, 69 |
 | A-H6 | Full vs G · HR@3, narrative-heavy stratum | Stratum rule and τ_N frozen (median novel-template share on the RCAEval build cases with logs, τ_N 0.000164). Under uniform routing G runs on every incident with a graph. G-pipe frozen as the learned linear ranker. Untestable on a system none of whose captures carries traces (no incident graph), tested on the others | 54, 56, 69, 85, 93 |
-| A-H5 | noRouter vs Full · log-CpR at matched HR@3 | Routing modes and frozen router. CpR definition (graph build in the clock, publication sequence, human time only for PROVISIONAL and NON_CONVERGED, price-book-v2 AWS primary). Primary test on cases with the same HR@3 outcome, all cases as sensitivity. Reported split by the Full run's stage (stopped, escalated): the difference comes mainly from earlier first publication, not from skipped LLM calls | 69, 70, 84, 86 |
+| A-H5 | noRouter vs Full · log-CpR at matched HR@3 | Routing modes and frozen router. CpR definition (graph build in the clock, publication sequence, human time only for PROVISIONAL and NON_CONVERGED, price-book-v3 AWS primary). Primary test on cases with the same HR@3 outcome, all cases as sensitivity. Reported split by the Full run's stage (stopped, escalated): the difference comes mainly from earlier first publication, not from skipped LLM calls | 69, 70, 84, 86, 97 |
 | A-H4 | Full vs noConsensus · HR@3, ambiguous stratum | MAHC weights pipelines and calibrates its confidence; noConsensus is vote-only Borda on the same per-pipeline lists. The router never reads a fusion output, so both route a case identically | 60–63, 69 |
 | A-H8 | Full vs noStructural · HR@3 | The structural bundle now includes the G-pipe trace features built on typed structure; E-H10 attributes the difference. Untestable on a system without traces, as A-H6 | 54, 56, 93 |
 | B-H1–B-H5 | Full vs each baseline · HR@3 · McNemar exact mid-p | Baselines read an export of the sealed HELIOS window, never RCAEval's raw folders. Binding runs receive the injection time (RCAEval protocol), with a trigger-time sensitivity phase. A root cause a method never ranks is a miss. TraceRCA requires traces and is excluded with a reason where they are missing. Beside B-H5, the determinism rerun of Multi-source RCD, whose lower ranks can move between reruns | 88, 91, 96 |
@@ -65,7 +65,7 @@ The metric contract is signed into deposit 1 and is not edited (entry 72), so th
 
 - **Clock** (entries 46, 84). TTT and TTCD start when a system is handed the shared trigger record; the contract's "invocation" wording is superseded. Building the incident graph is inside the clock (about 0.4 s per run on OTel build data; none without traces).
 - **Publication sequence** (entry 84). A run publishes its first list and, when different, its terminal list (routed: the cheap list, then the escalated one). A non-converged run's in-time list counts as published at 90 s. TTT = graph build + first publication. TTCD = graph build + the earliest publication whose top-1 is the root cause, censored at 1,800 s. The narrator runs after publication; its time is reported as time to narrative and is never part of TTT or TTCD.
-- **CpR human time** (entry 84). Review time is charged when the published state is PROVISIONAL or NON_CONVERGED, never for CONFIRMED. Primary price profile: price-book-v2, AWS; GCP and Azure as sensitivity columns.
+- **CpR human time** (entry 84). Review time is charged when the published state is PROVISIONAL or NON_CONVERGED, never for CONFIRMED. Primary price profile: price-book-v3 (entry 97), AWS; GCP us-central1 and Azure eastus as sensitivity columns, every price verified against the provider. The three reference GPUs differ (A10G, L4, T4), so the GPU columns are not like-for-like; Azure storage is listed per GB and recorded per GiB (about 7% in that component). Both are stated with the sensitivity columns.
 - **H_fact** (entries 65, 84). An atomic claim is supported only if it cites an existing item of the run's evidence; agreement with the ground truth is no longer part of the rule. Unlabelled claims leave the case's H_fact empty and are counted, never imputed.
 - **Detection delay** (entries 71, 72). Recorded seconds from the trigger's anchor (`trigger_time_s`) to the earliest instant a live detector could have issued it (`known_at_s`). For a threshold trigger that is the end of the last persistence bucket; for the fallback, the end of the scored window; external triggers have none. It is identical for every system on an incident, and descriptive.
 - **Operational TTCD** (entries 71, 84). Detection delay + TTCD, censored at 1,800 s. Exploratory; reported beside TTCD, never replacing it in B-H6, CpR or A-H5.
@@ -164,7 +164,7 @@ Adopted by the owner on 2026-11-18 from the S5.3 pilot, the S5.4 replication and
 
 ## 3. Frozen parameter files
 
-The parameter hashes the runs record (`parameter_hashes` in each CoE entry), the model and image digests, and the freeze commit go into the freeze record (S5.6) and deposit 2. Listed here: each file's SHA-256 at this draft (`main` `2e81330`) and its last commit.
+The parameter hashes the runs record (`parameter_hashes` in each CoE entry), the model and image digests, and the freeze commit go into the freeze record (S5.6) and deposit 2. Listed here: each file's SHA-256 at this draft (`main` `2e81330`; the router at `e3e4758`, entry 97) and its last commit.
 
 | File | What | Entry | Last commit | SHA-256 |
 |---|---|---|---|---|
@@ -173,13 +173,13 @@ The parameter hashes the runs record (`parameter_hashes` in each CoE entry), the
 | `data/frozen/gpipe_params.json` | G-pipe learned ranker | 56 | `6944cb2` | `3d96133c45888dc738991918812d7f0ff400bb72c43c9e3db8d8d4173f143e4c` |
 | `data/frozen/mahc_params.json` | MAHC priors and calibrator | 63 | `304019d` | `da515633aede45a8b5e871383f6deed53358afd19cbf87898ac09c19a31d3634` |
 | `data/frozen/narrator_params.json` | Narrator (pick and order) | 67, 68 | `232f529` | `f735153cc70f13f5e0aa6f3c7cd510a00b578fa0f4c66ebdbe8761e0430dcf7c` |
-| `data/frozen/router_params.json` | Router (cbr_routing) | 70 | `31e0cb5` | `f087515cc76a8fb5ed5484c078f9379feadcd8a206a923e2b1452a9ec35fb50c` |
+| `data/frozen/router_params.json` | Router (cbr_routing); price-book digest re-stamped, no routing parameter changed | 70, 97 | `e3e4758` | `b05217fd2ba231604b68abff9fd5fef62f40434d8f423e346155d8bcd7fa7749` |
 | `data/frozen/acp_params.json` | ACP (exploratory) | 83 | `9d1cd3b` | `b0282ded64099959eeb42a32f04e09f9e92b3e36691a76c94985db8c5872d50f` |
 | `data/frozen/narrative_tau.json` | τ_N, narrative-heavy stratum | 85 | `d748fe5` | `887c2746934b0a252fbba18320e243e0d38aa0fc4fd0611ea90567ce37ace546` |
 | `data/frozen/fgsv_params.json` | FGSV lite | 89 | `66c1fe2` | `2f71ac08424d4fdccb370b7d4d3143805c8a173871df966597a6c17ae34725fc` |
 | `data/frozen/iol_injection.json` | IOL lite E-H6 ladder | 89 | `66c1fe2` | `c6cd5b319a76e517e51b0bbfabdb1355ff529e5091eeb7d3a33c10654eebb47a` |
 
-The L-pipe worker prompt SHAs and the model digest are frozen in code (`lpipe_config.WORKER_PROMPT_SHAS`, entry 58) and are checked by the compose `model-check` service. The price book is price-book-v2 (AWS primary); its GCP and Azure profiles are open (§5).
+The L-pipe worker prompt SHAs and the model digest are frozen in code (`lpipe_config.WORKER_PROMPT_SHAS`, entry 58) and are checked by the compose `model-check` service. The price book is price-book-v3 (`docs/tracking/price_book.md`, entry 97; AWS primary, GCP and Azure sensitivity profiles verified). Its SHA-256 is recorded in the frozen router (`price_book_digest`) and checked by a test, so the two cannot drift apart.
 
 ## 4. Additions from S5
 
@@ -187,10 +187,9 @@ The four reporting rules proposed in the first version of this draft (backlog CR
 
 ## 5. Open before deposit (owner)
 
-Decided 2026-11-18: the E-H5 form (entry 92) and the S5 reporting rules (entries 93–96).
+Decided 2026-11-18: the E-H5 form (entry 92), the S5 reporting rules (entries 93–96) and the GCP and Azure price-book profiles (entry 97, price-book-v3).
 
 | Item | Why it matters here | Record |
 |---|---|---|
-| GCP and Azure price-book profiles | CpR sensitivity columns (§2.4). The owner checked the GCP and Azure prices on 2026-11-18; the Azure CPU machine (D2s v5 or v7), its Linux pricing and region, and the Blob storage redundancy and region are still to confirm. Entry 97 (price-book-v3) is drafted. Any edit to the price book changes the digest that the frozen router records, so the router's stamp is updated in the same entry | S4 exit §4 |
-| Chair call (end of November) | Topics: CpR and A-H5, cell rule narrowing, baselines' injection time, the §4 items | S4 exit §5 |
+| Chair call (end of November) | Topics: CpR and A-H5, cell rule narrowing, baselines' injection time, the S5 reporting rules (§2.15) | S4 exit §5 |
 | Router and structural changes (CR-01, CR-02), if pursued | Would change frozen parameters: new freeze entries, and this draft is updated | Component review backlog |
