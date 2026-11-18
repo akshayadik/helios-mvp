@@ -1,7 +1,7 @@
 ---
-version: price-book-v2
+version: price-book-v3
 currency: USD
-as_of: "2026-10-26"
+as_of: "2026-11-18"
 primary_provider: aws
 token_prompt_per_million: 0
 token_completion_per_million: 0
@@ -42,23 +42,23 @@ providers:
       machine_type: n2-standard-2
       vcpus: 2
       terms: on-demand, Linux, no committed-use or sustained-use discount
-      price_per_hour: 0.0971
-      verified: false
-      source: third-party trackers (Holori, DevZero), retrieved 2026-10-26; SpendArk lists 0.0777
+      price_per_hour: 0.097118
+      verified: true
+      source: Google general-purpose machine pricing page (n2-standard-2, Iowa us-central1, on-demand), checked by the owner 2026-11-18
     gpu:
       service: Google Compute Engine
       machine_type: g2-standard-4
       accelerator: 1x NVIDIA L4 24 GB
       terms: on-demand, Linux
-      price_per_hour: 0.7068
-      verified: false
-      source: Google accelerator-optimized pricing page (region not shown) and Holori, retrieved 2026-10-26
+      price_per_hour: 0.706832276
+      verified: true
+      source: Google accelerator-optimized pricing page (g2-standard-4, Iowa us-central1, on-demand), checked by the owner 2026-11-18
     storage:
       service: Google Cloud Storage
       tier: Standard storage, single region us-central1
       price_per_gib_month: 0.020
-      verified: false
-      source: Google Cloud Storage pricing page (per GiB-hour rate x 730 h), retrieved 2026-10-26
+      verified: true
+      source: Google Cloud Storage pricing page (Standard storage, regional, per GiB-month), checked by the owner 2026-11-18
   azure:
     region: eastus (East US)
     cpu:
@@ -67,30 +67,30 @@ providers:
       vcpus: 2
       terms: pay-as-you-go, Linux
       price_per_hour: 0.096
-      verified: false
-      source: Azurespeed (Azure Retail Prices API) and Holori, retrieved 2026-10-26
+      verified: true
+      source: Azure Retail Prices API (prices.azure.com, eastus, Consumption, Virtual Machines Dsv5 Series, Linux), queried 2026-11-18
     gpu:
       service: Azure Virtual Machines
       machine_type: Standard_NC4as_T4_v3
       accelerator: 1x NVIDIA T4 16 GB
       terms: pay-as-you-go, Linux
       price_per_hour: 0.526
-      verified: false
-      source: CloudOptimo, retrieved 2026-10-26; the only single-A10 alternative is Standard_NV36ads_A10_v5 at 3.20 (36 vCPU)
+      verified: true
+      source: Azure Retail Prices API (prices.azure.com, eastus, Consumption, Virtual Machines NCasT4 v3 Series, Linux), queried 2026-11-18; owner's pricing-page check 383.98 per month (730 h); the only single-A10 alternative is Standard_NV36ads_A10_v5 at 3.20 (36 vCPU)
     storage:
       service: Azure Blob Storage
       tier: Hot tier, LRS, first 50 TB per month
       price_per_gib_month: 0.0208
-      verified: false
-      source: Lucidity (Azure Retail Prices API, June 2026), retrieved 2026-10-26; other guides list 0.018
+      verified: true
+      source: Azure Retail Prices API (prices.azure.com, eastus, Blob Storage, Hot LRS Data Stored, first tier, per GB-month, recorded here per GiB-month), queried 2026-11-18; 0.0184 is the East US 2, West US 2 and Central US price
 ---
 
 # Price Book
 
 **Purpose:** the coefficients that turn recorded usage into Cost per Resolution (CpR), the five-component cost defined in `docs/tracking/metric_contract.md` §3. The YAML block above is the single source: `helios/evaluation/cost.py` reads it and records its SHA-256 with every cost.
 
-**Status:** price-book-v2 (S1.10, 2026-10-26; deviation entries 42 and 43). **Primary provider: AWS**; GCP and Azure are sensitivity profiles. **Frozen at tag `build-freeze`** (S5.3); any change before then is a new deviation entry, none after.
-**Owner:** researcher. Entries with `verified: false` are to be checked against the provider's own price list (see *How to verify*); coefficients marked *assumption* are owner decisions to confirm before build-freeze.
+**Status:** price-book-v3 (2026-11-18, deviation entry 97; v2 was S1.10, entries 42 and 43). Every cloud price is verified against the provider's own prices. **Primary provider: AWS**; GCP and Azure are sensitivity profiles. **Frozen at tag `build-freeze`** (S5.6); any change before then is a new deviation entry, none after. The frozen router records this file's SHA-256 (`data/frozen/router_params.json`, `price_book_digest`), so any edit also re-stamps it, in the same entry.
+**Owner:** researcher. Coefficients marked *assumption* are owner decisions to confirm before build-freeze.
 
 ---
 
@@ -103,14 +103,16 @@ Each profile names the exact service, machine type, region and pricing terms, so
 | **AWS** (us-east-1) — primary | CPU | Amazon EC2 | `m5.large` (2 vCPU, 8 GiB) | on-demand, Linux | 0.096 / h | 0.048 per vCPU-hour | ✅ AWS price data, 2026-10-23 |
 | | GPU | Amazon EC2 | `g5.xlarge` (1× NVIDIA A10G 24 GB, 4 vCPU) | on-demand, Linux | 1.006 / h | 1.006 per GPU-hour | ✅ AWS price data, 2026-10-23 |
 | | Storage | Amazon S3 | S3 Standard, first 50 TB | — | 0.023 / GiB-month | | ✅ AWS price list, 2026-10-15 |
-| **GCP** (us-central1) | CPU | Compute Engine | `n2-standard-2` (2 vCPU, 8 GiB) | on-demand, no CUD/SUD | 0.0971 / h | 0.04855 per vCPU-hour | ❌ trackers disagree (0.0971 vs 0.0777) |
-| | GPU | Compute Engine | `g2-standard-4` (1× NVIDIA L4 24 GB, 4 vCPU) | on-demand | 0.7068 / h | | ❌ Google page, region not shown |
-| | Storage | Cloud Storage | Standard, single region | — | 0.020 / GiB-month | | ❌ |
-| **Azure** (eastus) | CPU | Virtual Machines | `Standard_D2s_v5` (2 vCPU, 8 GiB) | pay-as-you-go, Linux | 0.096 / h | 0.048 per vCPU-hour | ❌ |
-| | GPU | Virtual Machines | `Standard_NC4as_T4_v3` (1× NVIDIA T4 16 GB, 4 vCPU) | pay-as-you-go, Linux | 0.526 / h | | ❌ |
-| | Storage | Blob Storage | Hot, LRS, first 50 TB | — | 0.0208 / GiB-month | | ❌ guides list 0.018–0.0208 |
+| **GCP** (us-central1) | CPU | Compute Engine | `n2-standard-2` (2 vCPU, 8 GiB) | on-demand, no CUD/SUD | 0.097118 / h | 0.048559 per vCPU-hour | ✅ Google pricing page, owner 2026-11-18 |
+| | GPU | Compute Engine | `g2-standard-4` (1× NVIDIA L4 24 GB, 4 vCPU) | on-demand | 0.706832276 / h | | ✅ Google pricing page, owner 2026-11-18 |
+| | Storage | Cloud Storage | Standard, single region | — | 0.020 / GiB-month | | ✅ Google pricing page, owner 2026-11-18 |
+| **Azure** (eastus) | CPU | Virtual Machines | `Standard_D2s_v5` (2 vCPU, 8 GiB) | pay-as-you-go, Linux | 0.096 / h | 0.048 per vCPU-hour | ✅ Azure Retail Prices API, 2026-11-18 |
+| | GPU | Virtual Machines | `Standard_NC4as_T4_v3` (1× NVIDIA T4 16 GB, 4 vCPU) | pay-as-you-go, Linux | 0.526 / h | | ✅ Azure Retail Prices API, 2026-11-18 |
+| | Storage | Blob Storage | Hot, LRS, first 50 TB | — | 0.0208 / GB-month | | ✅ Azure Retail Prices API, 2026-11-18 (East US 2, West US 2, Central US: 0.0184) |
 
-**The GPUs differ** (A10G, L4, T4 run an 8B model at different speeds), so per-hour GPU prices are not like-for-like across providers. Pricing per token (GPU price ÷ measured tokens per hour on that GPU) would remove the difference; it needs a throughput benchmark on each reference GPU (open point).
+**The GPUs differ** (A10G, L4, T4 run an 8B model at different speeds), so per-hour GPU prices are not like-for-like across providers. Pricing per token (GPU price ÷ measured tokens per hour on that GPU) would remove the difference; it needs a throughput benchmark on each reference GPU (Stage B, entry 97).
+
+**Azure storage unit.** Azure lists Blob storage per GB-month; the book records the number in its per-GiB-month field, as v2 did. The two units differ by about 7% in that one component, which is stated with the Azure sensitivity column.
 
 ## Shared coefficients (all profiles)
 

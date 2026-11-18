@@ -143,7 +143,7 @@ REAL_USAGE = IncidentUsage(
 def test_frozen_price_book_and_a_hand_computed_incident() -> None:
     real = load_price_book()
     assert (real.version, real.currency, real.provider) == (
-        "price-book-v2",
+        "price-book-v3",
         "USD",
         "aws",
     )
@@ -164,7 +164,7 @@ def test_frozen_price_book_and_a_hand_computed_incident() -> None:
 @pytest.mark.parametrize(
     ("provider", "cpu", "gpu", "storage", "machines"),
     [
-        ("gcp", 0.0971 / 2, 0.7068, 0.020, ("n2-standard-2", "g2-standard-4")),
+        ("gcp", 0.097118 / 2, 0.706832276, 0.020, ("n2-standard-2", "g2-standard-4")),
         (
             "azure",
             0.096 / 2,
@@ -182,6 +182,7 @@ def test_sensitivity_profiles_of_the_frozen_book(
     machines: tuple[str, str],
 ) -> None:
     book = load_price_books()[provider]
+    assert book.unverified == ()  # price-book-v3: every price checked (entry 97)
     assert book.cpu_machine.endswith(machines[0])
     assert book.gpu_machine.endswith(machines[1])
     c = cpr(REAL_USAGE, requests_human=False, ttcd_s=240, book=book)

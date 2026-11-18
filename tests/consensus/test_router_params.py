@@ -130,3 +130,12 @@ def test_committed_file_loads() -> None:
     assert params.feature_names == FEATURE_NAMES
     assert set(params.arms) == set(SELECTABLE)
     assert math.isfinite(params.alpha)
+
+
+def test_frozen_router_records_the_current_price_book() -> None:
+    # Entry 97: the router pins the whole price book file; an edit to the book
+    # without re-stamping would make every confirmatory routed run refuse it.
+    from helios.evaluation.cost import load_price_book
+
+    params = load_router_params(ROUTER_PARAMS_PATH)
+    assert params.price_book_digest == load_price_book().digest
