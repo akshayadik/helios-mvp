@@ -226,12 +226,20 @@ def test_confirmatory_label_uses_rejected_wording() -> None:
         _rows("HELIOS-Full", [1] * N, corpus="pool"),
         _rows("HELIOS-D", [0] * N, corpus="pool"),
     )
-    out = analyse(
-        scores, runs, apps=APPS, groups={}, n_services={}, frozen=lambda: True
-    )
+    kwargs: dict[str, Any] = {
+        "apps": APPS,
+        "groups": {},
+        "n_services": {},
+        "frozen": lambda: True,
+    }
+    out = analyse(scores, runs, traced=dict.fromkeys(CASES, True), **kwargs)
     assert out["label"] == "confirmatory"
     holm = {r["id"]: r for r in out["family_a"]["holm_binding"]}
     assert holm["A-H3"]["rejected"] is True
+    # Entry 93: without the captures' trace presence it cannot be confirmatory.
+    blind = analyse(scores, runs, **kwargs)
+    assert blind["label"] == "exploratory"
+    assert any("entry 93" in r for r in blind["guard_reasons"])
 
 
 def test_sanity_floors() -> None:
