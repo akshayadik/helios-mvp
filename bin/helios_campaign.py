@@ -52,6 +52,7 @@ from helios.orchestrator.schedule import (
     Schedule,
     build_schedule,
     scheduled_by_system,
+    spec_system_name,
     system_name,
 )
 from helios.pipelines.l_pipe.cache import ResponseCache
@@ -320,6 +321,22 @@ def cmd_status(args: argparse.Namespace, key: bytes) -> int:
     return 0
 
 
+def passed_runs(
+    body: dict[str, Any], final: dict[str, dict[str, Any]]
+) -> dict[tuple[str, str], str]:
+    """(analysis system name, case) -> run_id of every passed first run.
+
+    Trigger-time baselines keep their suffixed name, so a baseline's binding-
+    and trigger-time runs on one case are separate keys (S5.4, c80ff7d1)."""
+    return {
+        (spec_system_name(s), str(s["case"])): final[k]["run_id"]
+        for s in body["specs"]
+        if s["phase"] != Phase.RERUN
+        and (k := f"{s['phase']}/{s['case']}/{s['system']}") in final
+        and final[k]["event"] == "passed"
+    }
+
+
 def cmd_cells(args: argparse.Namespace, key: bytes) -> int:
     """Score-time check (O-c) and the cell table (O-e)."""
     config = json.loads((args.dir / CONFIG).read_text())
@@ -332,14 +349,7 @@ def cmd_cells(args: argparse.Namespace, key: bytes) -> int:
         print("[campaign] refused: score the campaign first (score_runs --metrics)")
         return 2
     table = build_case_table(scores, runs, variant_names())
-    final = _final(args.dir)
-    passed = {
-        (system_name(str(s["system"])), str(s["case"])): final[k]["run_id"]
-        for s in body["specs"]
-        if s["phase"] != Phase.RERUN
-        and (k := f"{s['phase']}/{s['case']}/{s['system']}") in final
-        and final[k]["event"] == "passed"
-    }
+    passed = passed_runs(body, _final(args.dir))
     already = {
         (r["run_id"], r["metric"])
         for r in read_log(args.dir / "campaign_log.jsonl")

@@ -51,6 +51,7 @@ __all__ = [
     "build_schedule",
     "confirmatory_order",
     "scheduled_by_system",
+    "spec_system_name",
     "stride_subset",
     "system_name",
 ]
@@ -268,8 +269,16 @@ def scheduled_by_system(body: Mapping[str, Any]) -> dict[str, list[str]]:
     for spec in body["specs"]:
         if spec["phase"] == Phase.RERUN:
             continue
-        name = system_name(str(spec["system"]))
-        if spec["phase"] == Phase.BASELINE_TRIGGER:
-            name += TRIGGER_SUFFIX
-        out.setdefault(name, []).append(str(spec["case"]))
+        out.setdefault(spec_system_name(spec), []).append(str(spec["case"]))
     return out
+
+
+def spec_system_name(spec: Mapping[str, Any]) -> str:
+    """The analysis name of one ``schedule.json`` spec: ``system_name`` plus
+    the trigger-time suffix for a baseline_trigger run. Anything that keys
+    runs by system (cells, scores) must use this, or a baseline's binding-
+    and trigger-time runs on one case collide (S5.4, case c80ff7d1)."""
+    name = system_name(str(spec["system"]))
+    if spec["phase"] == Phase.BASELINE_TRIGGER:
+        name += TRIGGER_SUFFIX
+    return name
