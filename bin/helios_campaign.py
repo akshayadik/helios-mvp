@@ -58,7 +58,12 @@ from helios.orchestrator.schedule import (
 from helios.pipelines.l_pipe.cache import ResponseCache
 from helios.pipelines.l_pipe.lpipe_config import MODEL_NAME, OLLAMA_BASE_URL
 from helios.store.result_store import ResultStore
-from helios.telemetry.pool_lock import BUILD_FREEZE_TAG, PoolLockedError, build_frozen
+from helios.telemetry.pool_lock import (
+    BUILD_FREEZE_TAG,
+    PoolLockedError,
+    build_frozen,
+    lock_reasons,
+)
 from helios.telemetry.self_telemetry import (
     SelfTelemetry,
     check_protocol,
@@ -67,6 +72,7 @@ from helios.telemetry.self_telemetry import (
 from helios.vcl import get_variant
 from helios.vcl.catalog import flag_readers, unconsumed_variants
 from helios.vcl.config import VCLManifest  # noqa: F401  # flag-guard compliance
+from helios.vcl.freeze import RECORD_PATH
 from helios.vcl.variants import EXPLORATORY_VARIANTS
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -84,9 +90,17 @@ CONFIG = "campaign.json"
 
 def _check_pool(gt_corpus: str) -> None:
     if gt_corpus == Corpus.POOL and not build_frozen():
+        reasons = "; ".join(lock_reasons()[:5])
         raise PoolLockedError(
-            f"a pool campaign is refused until tag {BUILD_FREEZE_TAG!r} exists (D11)"
+            f"a pool campaign is refused until this checkout is the frozen build "
+            f"of tag {BUILD_FREEZE_TAG!r} (D11, S5.6): {reasons}"
         )
+
+
+def frozen_digest() -> str:
+    """The frozen-paths digest of the freeze record (S5.6 F-b)."""
+    record = json.loads((REPO_ROOT / RECORD_PATH).read_text())
+    return str(record["frozen_paths"]["digest"])
 
 
 def case_apps(gt_corpus: str, order: list[str], key: bytes) -> dict[str, str]:
@@ -142,6 +156,10 @@ def cmd_plan(args: argparse.Namespace, key: bytes) -> int:
     ):
         print("[campaign] refused: perturbation and injection are exploratory only")
         return 2
+    if args.gt_corpus == Corpus.POOL:
+        # S5.6 F-b: a pool campaign names the frozen build it ran on.
+        _check_pool(args.gt_corpus)
+        config["build_freeze_digest"] = frozen_digest()
     path = args.dir / CONFIG
     if path.is_file() and json.loads(path.read_text()) != config:
         print(f"[campaign] refused: {args.dir} was planned with another config")
@@ -261,6 +279,12 @@ def baseline_executors(
 def cmd_run(args: argparse.Namespace, key: bytes) -> int:
     config = json.loads((args.dir / CONFIG).read_text())
     schedule = schedule_for(config, key)
+    if (
+        config["gt_corpus"] == Corpus.POOL
+        and config.get("build_freeze_digest") != frozen_digest()
+    ):
+        print("[campaign] refused: planned on another build than the frozen one")
+        return 2
     ledger = exclusion_ledger(args.dir, config, key)
     phases = args.phase or [p.value for p in Phase]
     for phase in phases:

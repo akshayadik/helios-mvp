@@ -41,7 +41,7 @@ A new module `helios/vcl/freeze.py` (helpers outside `variants.py`, which stays 
 Where it is called:
 
 - **Pool campaigns** (`bin/helios_campaign.py`) and **pool scoring and analysis** (`score_runs`, `analyse`, `confirmatory_guard`) refuse to start on any mismatch and name the changed files.
-- **Run records** gain `build_freeze_digest`; `confirmatory_guard` adds "a run's build digest is not the frozen one".
+- **Pool campaigns** record `build_freeze_digest` (the record's frozen-paths digest) in `campaign.json` at plan time, and `run` refuses when it differs from the current record. Implementation note: the design first put the digest on every run record; the campaign config holds it instead, because the gate already blocks any run from a diverging checkout and the result-store schema stays unchanged. `confirmatory_guard` reads the same full check through `build_frozen()`.
 - **Build and exploratory corpora** are not affected: Stage B keeps working on `main`.
 
 Consequence: phase E runs from a checkout of the tag (`git worktree add ../helios-evidence build-freeze`), never from `main`. A Stage B commit that touches a frozen path makes `main` fail the check for pool runs, which is the intended block.
