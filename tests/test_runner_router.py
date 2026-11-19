@@ -123,8 +123,8 @@ def _run(
     # A graph exists (its content is irrelevant: G-pipe is faked).
     monkeypatch.setattr(
         runner_module,
-        "incident_graph",
-        lambda *_a: (object() if graph else None, []),
+        "incident_graph_with_calls",
+        lambda *_a: (object() if graph else None, [], []),
     )
     captures = tmp_path / "captures"
     if not captures.exists():

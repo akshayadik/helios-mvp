@@ -1,0 +1,21 @@
+{
+ "campaign": "rcaeval_build_2",
+ "clone_runs_with_live_calls": 0,
+ "compared": 3795,
+ "counts": {
+  "differs_cache_hit": 0,
+  "differs_live_call": 0,
+  "extra_in_clone": 0,
+  "missing_in_clone": 0,
+  "outcome_differs": 0
+ },
+ "equal_by_phase": {
+  "baseline": 825,
+  "baseline_trigger": 825,
+  "confirmatory": 1320,
+  "exploratory": 825
+ },
+ "keys": {},
+ "passes": true,
+ "schedule_digest_equal": true
+}

@@ -22,8 +22,10 @@ from helios.vcl import VCLFlag, gated_by, get_current_manifest
 __all__ = ["run_dpipe"]
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from helios.schemas.telemetry import EvaluationPhase, TelemetryWindow
-    from helios.schemas.ueg_c import UEGCSnapshot
+    from helios.schemas.ueg_c import UEGCEdge, UEGCSnapshot
     from helios.telemetry.trigger import TriggerRecord
 
 
@@ -44,6 +46,7 @@ def run_dpipe(
     w_memory: float | None = None,
     rho_threshold: float = RHO_THRESHOLD_DEFAULT,
     topology_boost_factor: float = TOPOLOGY_BOOST_DEFAULT,
+    call_edges: Sequence[UEGCEdge] | None = None,
 ) -> dict[str, Any]:
     """Run D-pipe Stages A-D and return a verdict dict.
 
@@ -94,15 +97,18 @@ def run_dpipe(
         # or reasoning-step nodes). Under ueg_structural OFF the graph is
         # untyped, so every edge between two candidates counts.
         candidates = set(ueg_c.candidate_ids())
-        call_edges = [
+        # CR-02: the runner passes the call edges from before Algorithm 5's
+        # correlation cut (propagation_edges); without them, the pruned graph's.
+        source_edges = ueg_c.edges if call_edges is None else call_edges
+        prop_edges = [
             e
-            for e in ueg_c.edges
+            for e in source_edges
             if e.edge_type in (EdgeType.CALL, EdgeType.UNTYPED)
             and e.source in candidates
             and e.target in candidates
         ]
         score_final = engine.propagate(
-            scores, parsed.error_deltas, call_edges, p1_services=parsed.p1_services
+            scores, parsed.error_deltas, prop_edges, p1_services=parsed.p1_services
         )
     else:
         score_final = dict(scores)

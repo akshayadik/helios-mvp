@@ -13,6 +13,8 @@ from helios.consensus.priors import fit_priors
 from helios.consensus.router_features import FEATURE_NAMES
 from helios.consensus.router_params import SELECTABLE, Arm
 from helios.evaluation.router_calibration import (
+    RD_MEASURES,
+    REWARD,
     RouterCase,
     arm_outcomes,
     choose_tau,
@@ -209,3 +211,42 @@ def test_confirm_refit_raises_tau_when_the_refit_stops_too_much() -> None:
     assert confirm_refit(cases, held, good, outcomes, MAHC, tau) == tau
     raised = confirm_refit(cases, held, loose, outcomes, MAHC, tau)
     assert raised is None or raised > tau
+
+
+# ── CR-01: top-1 reward, R-d on top-1 and top-3 ─────────────────────────────
+
+
+def test_reward_is_top1_and_rd_reads_top1_and_top3() -> None:
+    assert REWARD == "hr_at_1"
+    assert RD_MEASURES == ("hr_at_1", "hr_at_3")
+
+
+def _second(i: int, *, corpus: str, ind: float) -> RouterCase:
+    """D-pipe puts the root second when ind = 0 (a top-3 hit, a top-1 miss)."""
+    base = _case(i, corpus=corpus, d_right=True, ind=ind)
+    if ind:
+        return base
+    d = ("svc-x", base.root, "svc-y")
+    return RouterCase(
+        **{**base.__dict__, "votes": {**base.votes, "dpipe": Vote("dpipe", d, 0.3)}}
+    )
+
+
+def test_arm_outcome_is_a_top1_hit() -> None:
+    case = _second(1, corpus="c", ind=0)
+    assert arm_outcomes(case, MAHC)[Arm.D] == 0
+    assert arm_outcomes(case, MAHC)[Arm.D_L] == 1
+
+
+def test_rd_escalates_cases_whose_top1_is_wrong_even_if_top3_holds() -> None:
+    cases = [_second(i, corpus="a", ind=1 - i % 2) for i in range(40)]
+    outcomes = [arm_outcomes(c, MAHC) for c in cases]
+    held = cross_fit(cases, outcomes, lam=1, alpha=0.05, medians=MEDIANS)
+    tau = choose_tau(cases, held, outcomes, MAHC)
+    assert tau is not None
+    entry = evaluate(cases, held, outcomes, MAHC, tau)["by_corpus"]["a"]
+    assert entry["routed_hr1"] >= entry["uniform_hr1"] - 0.01
+    assert entry["routed_hr3"] >= entry["uniform_hr3"] - 0.01
+    # The reliable half stops on D; the second-place half escalates.
+    assert 0 < entry["terminal_arms"]["D"] < len(cases)
+    assert entry["arm_hr1"]["D"] < entry["arm_hr3"]["D"]

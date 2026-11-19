@@ -48,6 +48,9 @@ from helios.evaluation.trigger_calibration import (
     load_cases,
 )
 from helios.orchestrator.runner import incident_graph as incident_graph
+from helios.orchestrator.runner import (
+    incident_graph_with_calls as incident_graph_with_calls,
+)
 from helios.pipelines.d_pipe.params import (
     DPipeParams,
     dpipe_params_hash,
@@ -106,7 +109,9 @@ def _case_hits(case: CalibrationCase, memory: bool = False) -> tuple[bool, list[
         if value is not None and not Path(value).is_absolute():
             window = window.model_copy(update={attr: str(REPO_ROOT / value)})
     trigger = detect(window, detector, root=REPO_ROOT)
-    graph, _seeds = incident_graph(window, manifest, config_hash, trigger)
+    graph, _seeds, calls = incident_graph_with_calls(
+        window, manifest, config_hash, trigger
+    )
     cache: dict[tuple[float, ...], int] = {}
     hits: list[int] = []
     for p in dpipe_grid(memory=memory):
@@ -131,6 +136,7 @@ def _case_hits(case: CalibrationCase, memory: bool = False) -> tuple[bool, list[
                 w_memory=p.w_memory,
                 rho_threshold=p.rho_threshold,
                 topology_boost_factor=p.topology_boost_factor,
+                call_edges=calls,
             )
             ranked = list(out.get("ranked_candidates") or [])
             cache[key] = score_ranking(ranked, case.root_cause).hr_at_3

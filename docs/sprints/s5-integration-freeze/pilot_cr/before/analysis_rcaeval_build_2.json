@@ -1,0 +1,7256 @@
+{
+  "version": "analysis-v2",
+  "label": "exploratory",
+  "guard_reasons": [
+    "corpus is ['build'], not the pool",
+    "tag build-freeze does not exist",
+    "a run's variant hash is not a confirmatory variant"
+  ],
+  "systems": {
+    "BARO (metrics only)": 164,
+    "BARO (metrics only) [trigger time]": 164,
+    "HELIOS-D": 165,
+    "HELIOS-Full": 165,
+    "HELIOS-G": 165,
+    "HELIOS-LLM-only": 165,
+    "HELIOS-noACP": 165,
+    "HELIOS-noConsensus": 165,
+    "HELIOS-noExpl": 165,
+    "HELIOS-noFGSV": 165,
+    "HELIOS-noIOL": 165,
+    "HELIOS-noLLM": 165,
+    "HELIOS-noReconcile": 165,
+    "HELIOS-noRouter": 165,
+    "HELIOS-noStructural": 165,
+    "Multi-source BARO": 164,
+    "Multi-source BARO [trigger time]": 164,
+    "Multi-source RCD": 164,
+    "Multi-source RCD [trigger time]": 164,
+    "PDiagnose": 165,
+    "PDiagnose [trigger time]": 165
+  },
+  "cases": 495,
+  "cells": [
+    {
+      "system": "BARO (metrics only)",
+      "app": "ob",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 41,
+      "share": 0.9761904761904762,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only)",
+      "app": "ob",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 41,
+      "share": 0.9761904761904762,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only)",
+      "app": "ob",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 41,
+      "share": 0.9761904761904762,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only)",
+      "app": "ob",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 41,
+      "share": 0.9761904761904762,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only)",
+      "app": "ob",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 41,
+      "share": 0.9761904761904762,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only)",
+      "app": "ob",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "BARO (metrics only)",
+      "app": "ob",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 41,
+      "share": 0.9761904761904762,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only)",
+      "app": "ss",
+      "metric": "hr_at_3",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only)",
+      "app": "ss",
+      "metric": "avg_at_5",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only)",
+      "app": "ss",
+      "metric": "log_cpr",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only)",
+      "app": "ss",
+      "metric": "log_ttcd",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only)",
+      "app": "ss",
+      "metric": "ttt_ms",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only)",
+      "app": "ss",
+      "metric": "h_fact",
+      "scheduled": 81,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "BARO (metrics only)",
+      "app": "ss",
+      "metric": "h_struct",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only)",
+      "app": "tt",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only)",
+      "app": "tt",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only)",
+      "app": "tt",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only)",
+      "app": "tt",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only)",
+      "app": "tt",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only)",
+      "app": "tt",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "BARO (metrics only)",
+      "app": "tt",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only) [trigger time]",
+      "app": "ob",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 41,
+      "share": 0.9761904761904762,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only) [trigger time]",
+      "app": "ob",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 41,
+      "share": 0.9761904761904762,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only) [trigger time]",
+      "app": "ob",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 41,
+      "share": 0.9761904761904762,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only) [trigger time]",
+      "app": "ob",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 41,
+      "share": 0.9761904761904762,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only) [trigger time]",
+      "app": "ob",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 41,
+      "share": 0.9761904761904762,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only) [trigger time]",
+      "app": "ob",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "BARO (metrics only) [trigger time]",
+      "app": "ob",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 41,
+      "share": 0.9761904761904762,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only) [trigger time]",
+      "app": "ss",
+      "metric": "hr_at_3",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only) [trigger time]",
+      "app": "ss",
+      "metric": "avg_at_5",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only) [trigger time]",
+      "app": "ss",
+      "metric": "log_cpr",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only) [trigger time]",
+      "app": "ss",
+      "metric": "log_ttcd",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only) [trigger time]",
+      "app": "ss",
+      "metric": "ttt_ms",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only) [trigger time]",
+      "app": "ss",
+      "metric": "h_fact",
+      "scheduled": 81,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "BARO (metrics only) [trigger time]",
+      "app": "ss",
+      "metric": "h_struct",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only) [trigger time]",
+      "app": "tt",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only) [trigger time]",
+      "app": "tt",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only) [trigger time]",
+      "app": "tt",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only) [trigger time]",
+      "app": "tt",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only) [trigger time]",
+      "app": "tt",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only) [trigger time]",
+      "app": "tt",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "BARO (metrics only) [trigger time]",
+      "app": "tt",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-D",
+      "app": "ob",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-D",
+      "app": "ob",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-D",
+      "app": "ob",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-D",
+      "app": "ob",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-D",
+      "app": "ob",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-D",
+      "app": "ob",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-D",
+      "app": "ob",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-D",
+      "app": "ss",
+      "metric": "hr_at_3",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-D",
+      "app": "ss",
+      "metric": "avg_at_5",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-D",
+      "app": "ss",
+      "metric": "log_cpr",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-D",
+      "app": "ss",
+      "metric": "log_ttcd",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-D",
+      "app": "ss",
+      "metric": "ttt_ms",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-D",
+      "app": "ss",
+      "metric": "h_fact",
+      "scheduled": 81,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-D",
+      "app": "ss",
+      "metric": "h_struct",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-D",
+      "app": "tt",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-D",
+      "app": "tt",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-D",
+      "app": "tt",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-D",
+      "app": "tt",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-D",
+      "app": "tt",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-D",
+      "app": "tt",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-D",
+      "app": "tt",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-Full",
+      "app": "ob",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-Full",
+      "app": "ob",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-Full",
+      "app": "ob",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-Full",
+      "app": "ob",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-Full",
+      "app": "ob",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-Full",
+      "app": "ob",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-Full",
+      "app": "ob",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-Full",
+      "app": "ss",
+      "metric": "hr_at_3",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-Full",
+      "app": "ss",
+      "metric": "avg_at_5",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-Full",
+      "app": "ss",
+      "metric": "log_cpr",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-Full",
+      "app": "ss",
+      "metric": "log_ttcd",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-Full",
+      "app": "ss",
+      "metric": "ttt_ms",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-Full",
+      "app": "ss",
+      "metric": "h_fact",
+      "scheduled": 81,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-Full",
+      "app": "ss",
+      "metric": "h_struct",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-Full",
+      "app": "tt",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-Full",
+      "app": "tt",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-Full",
+      "app": "tt",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-Full",
+      "app": "tt",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-Full",
+      "app": "tt",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-Full",
+      "app": "tt",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-Full",
+      "app": "tt",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-G",
+      "app": "ob",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-G",
+      "app": "ob",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-G",
+      "app": "ob",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-G",
+      "app": "ob",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-G",
+      "app": "ob",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-G",
+      "app": "ob",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-G",
+      "app": "ob",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-G",
+      "app": "ss",
+      "metric": "hr_at_3",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-G",
+      "app": "ss",
+      "metric": "avg_at_5",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-G",
+      "app": "ss",
+      "metric": "log_cpr",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-G",
+      "app": "ss",
+      "metric": "log_ttcd",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-G",
+      "app": "ss",
+      "metric": "ttt_ms",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-G",
+      "app": "ss",
+      "metric": "h_fact",
+      "scheduled": 81,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-G",
+      "app": "ss",
+      "metric": "h_struct",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-G",
+      "app": "tt",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-G",
+      "app": "tt",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-G",
+      "app": "tt",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-G",
+      "app": "tt",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-G",
+      "app": "tt",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-G",
+      "app": "tt",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-G",
+      "app": "tt",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-LLM-only",
+      "app": "ob",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-LLM-only",
+      "app": "ob",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-LLM-only",
+      "app": "ob",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-LLM-only",
+      "app": "ob",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-LLM-only",
+      "app": "ob",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-LLM-only",
+      "app": "ob",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 1,
+      "share": 0.023809523809523808,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-LLM-only",
+      "app": "ob",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-LLM-only",
+      "app": "ss",
+      "metric": "hr_at_3",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-LLM-only",
+      "app": "ss",
+      "metric": "avg_at_5",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-LLM-only",
+      "app": "ss",
+      "metric": "log_cpr",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-LLM-only",
+      "app": "ss",
+      "metric": "log_ttcd",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-LLM-only",
+      "app": "ss",
+      "metric": "ttt_ms",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-LLM-only",
+      "app": "ss",
+      "metric": "h_fact",
+      "scheduled": 81,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-LLM-only",
+      "app": "ss",
+      "metric": "h_struct",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-LLM-only",
+      "app": "tt",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-LLM-only",
+      "app": "tt",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-LLM-only",
+      "app": "tt",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-LLM-only",
+      "app": "tt",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-LLM-only",
+      "app": "tt",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-LLM-only",
+      "app": "tt",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-LLM-only",
+      "app": "tt",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noACP",
+      "app": "ob",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noACP",
+      "app": "ob",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noACP",
+      "app": "ob",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noACP",
+      "app": "ob",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noACP",
+      "app": "ob",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noACP",
+      "app": "ob",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-noACP",
+      "app": "ob",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noACP",
+      "app": "ss",
+      "metric": "hr_at_3",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noACP",
+      "app": "ss",
+      "metric": "avg_at_5",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noACP",
+      "app": "ss",
+      "metric": "log_cpr",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noACP",
+      "app": "ss",
+      "metric": "log_ttcd",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noACP",
+      "app": "ss",
+      "metric": "ttt_ms",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noACP",
+      "app": "ss",
+      "metric": "h_fact",
+      "scheduled": 81,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-noACP",
+      "app": "ss",
+      "metric": "h_struct",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noACP",
+      "app": "tt",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noACP",
+      "app": "tt",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noACP",
+      "app": "tt",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noACP",
+      "app": "tt",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noACP",
+      "app": "tt",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noACP",
+      "app": "tt",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-noACP",
+      "app": "tt",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noConsensus",
+      "app": "ob",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noConsensus",
+      "app": "ob",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noConsensus",
+      "app": "ob",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noConsensus",
+      "app": "ob",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noConsensus",
+      "app": "ob",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noConsensus",
+      "app": "ob",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-noConsensus",
+      "app": "ob",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noConsensus",
+      "app": "ss",
+      "metric": "hr_at_3",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noConsensus",
+      "app": "ss",
+      "metric": "avg_at_5",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noConsensus",
+      "app": "ss",
+      "metric": "log_cpr",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noConsensus",
+      "app": "ss",
+      "metric": "log_ttcd",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noConsensus",
+      "app": "ss",
+      "metric": "ttt_ms",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noConsensus",
+      "app": "ss",
+      "metric": "h_fact",
+      "scheduled": 81,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-noConsensus",
+      "app": "ss",
+      "metric": "h_struct",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noConsensus",
+      "app": "tt",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noConsensus",
+      "app": "tt",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noConsensus",
+      "app": "tt",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noConsensus",
+      "app": "tt",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noConsensus",
+      "app": "tt",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noConsensus",
+      "app": "tt",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-noConsensus",
+      "app": "tt",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noExpl",
+      "app": "ob",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noExpl",
+      "app": "ob",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noExpl",
+      "app": "ob",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noExpl",
+      "app": "ob",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noExpl",
+      "app": "ob",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noExpl",
+      "app": "ob",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-noExpl",
+      "app": "ob",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noExpl",
+      "app": "ss",
+      "metric": "hr_at_3",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noExpl",
+      "app": "ss",
+      "metric": "avg_at_5",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noExpl",
+      "app": "ss",
+      "metric": "log_cpr",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noExpl",
+      "app": "ss",
+      "metric": "log_ttcd",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noExpl",
+      "app": "ss",
+      "metric": "ttt_ms",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noExpl",
+      "app": "ss",
+      "metric": "h_fact",
+      "scheduled": 81,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-noExpl",
+      "app": "ss",
+      "metric": "h_struct",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noExpl",
+      "app": "tt",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noExpl",
+      "app": "tt",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noExpl",
+      "app": "tt",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noExpl",
+      "app": "tt",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noExpl",
+      "app": "tt",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noExpl",
+      "app": "tt",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-noExpl",
+      "app": "tt",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noFGSV",
+      "app": "ob",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noFGSV",
+      "app": "ob",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noFGSV",
+      "app": "ob",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noFGSV",
+      "app": "ob",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noFGSV",
+      "app": "ob",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noFGSV",
+      "app": "ob",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-noFGSV",
+      "app": "ob",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noFGSV",
+      "app": "ss",
+      "metric": "hr_at_3",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noFGSV",
+      "app": "ss",
+      "metric": "avg_at_5",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noFGSV",
+      "app": "ss",
+      "metric": "log_cpr",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noFGSV",
+      "app": "ss",
+      "metric": "log_ttcd",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noFGSV",
+      "app": "ss",
+      "metric": "ttt_ms",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noFGSV",
+      "app": "ss",
+      "metric": "h_fact",
+      "scheduled": 81,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-noFGSV",
+      "app": "ss",
+      "metric": "h_struct",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noFGSV",
+      "app": "tt",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noFGSV",
+      "app": "tt",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noFGSV",
+      "app": "tt",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noFGSV",
+      "app": "tt",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noFGSV",
+      "app": "tt",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noFGSV",
+      "app": "tt",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-noFGSV",
+      "app": "tt",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noIOL",
+      "app": "ob",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noIOL",
+      "app": "ob",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noIOL",
+      "app": "ob",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noIOL",
+      "app": "ob",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noIOL",
+      "app": "ob",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noIOL",
+      "app": "ob",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-noIOL",
+      "app": "ob",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noIOL",
+      "app": "ss",
+      "metric": "hr_at_3",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noIOL",
+      "app": "ss",
+      "metric": "avg_at_5",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noIOL",
+      "app": "ss",
+      "metric": "log_cpr",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noIOL",
+      "app": "ss",
+      "metric": "log_ttcd",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noIOL",
+      "app": "ss",
+      "metric": "ttt_ms",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noIOL",
+      "app": "ss",
+      "metric": "h_fact",
+      "scheduled": 81,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-noIOL",
+      "app": "ss",
+      "metric": "h_struct",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noIOL",
+      "app": "tt",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noIOL",
+      "app": "tt",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noIOL",
+      "app": "tt",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noIOL",
+      "app": "tt",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noIOL",
+      "app": "tt",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noIOL",
+      "app": "tt",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-noIOL",
+      "app": "tt",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noLLM",
+      "app": "ob",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noLLM",
+      "app": "ob",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noLLM",
+      "app": "ob",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noLLM",
+      "app": "ob",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noLLM",
+      "app": "ob",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noLLM",
+      "app": "ob",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-noLLM",
+      "app": "ob",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noLLM",
+      "app": "ss",
+      "metric": "hr_at_3",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noLLM",
+      "app": "ss",
+      "metric": "avg_at_5",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noLLM",
+      "app": "ss",
+      "metric": "log_cpr",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noLLM",
+      "app": "ss",
+      "metric": "log_ttcd",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noLLM",
+      "app": "ss",
+      "metric": "ttt_ms",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noLLM",
+      "app": "ss",
+      "metric": "h_fact",
+      "scheduled": 81,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-noLLM",
+      "app": "ss",
+      "metric": "h_struct",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noLLM",
+      "app": "tt",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noLLM",
+      "app": "tt",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noLLM",
+      "app": "tt",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noLLM",
+      "app": "tt",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noLLM",
+      "app": "tt",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noLLM",
+      "app": "tt",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-noLLM",
+      "app": "tt",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noReconcile",
+      "app": "ob",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noReconcile",
+      "app": "ob",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noReconcile",
+      "app": "ob",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noReconcile",
+      "app": "ob",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noReconcile",
+      "app": "ob",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noReconcile",
+      "app": "ob",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-noReconcile",
+      "app": "ob",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noReconcile",
+      "app": "ss",
+      "metric": "hr_at_3",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noReconcile",
+      "app": "ss",
+      "metric": "avg_at_5",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noReconcile",
+      "app": "ss",
+      "metric": "log_cpr",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noReconcile",
+      "app": "ss",
+      "metric": "log_ttcd",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noReconcile",
+      "app": "ss",
+      "metric": "ttt_ms",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noReconcile",
+      "app": "ss",
+      "metric": "h_fact",
+      "scheduled": 81,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-noReconcile",
+      "app": "ss",
+      "metric": "h_struct",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noReconcile",
+      "app": "tt",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noReconcile",
+      "app": "tt",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noReconcile",
+      "app": "tt",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noReconcile",
+      "app": "tt",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noReconcile",
+      "app": "tt",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noReconcile",
+      "app": "tt",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-noReconcile",
+      "app": "tt",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noRouter",
+      "app": "ob",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noRouter",
+      "app": "ob",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noRouter",
+      "app": "ob",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noRouter",
+      "app": "ob",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noRouter",
+      "app": "ob",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noRouter",
+      "app": "ob",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-noRouter",
+      "app": "ob",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noRouter",
+      "app": "ss",
+      "metric": "hr_at_3",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noRouter",
+      "app": "ss",
+      "metric": "avg_at_5",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noRouter",
+      "app": "ss",
+      "metric": "log_cpr",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noRouter",
+      "app": "ss",
+      "metric": "log_ttcd",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noRouter",
+      "app": "ss",
+      "metric": "ttt_ms",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noRouter",
+      "app": "ss",
+      "metric": "h_fact",
+      "scheduled": 81,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-noRouter",
+      "app": "ss",
+      "metric": "h_struct",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noRouter",
+      "app": "tt",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noRouter",
+      "app": "tt",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noRouter",
+      "app": "tt",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noRouter",
+      "app": "tt",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noRouter",
+      "app": "tt",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noRouter",
+      "app": "tt",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-noRouter",
+      "app": "tt",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noStructural",
+      "app": "ob",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noStructural",
+      "app": "ob",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noStructural",
+      "app": "ob",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noStructural",
+      "app": "ob",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noStructural",
+      "app": "ob",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noStructural",
+      "app": "ob",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-noStructural",
+      "app": "ob",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noStructural",
+      "app": "ss",
+      "metric": "hr_at_3",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noStructural",
+      "app": "ss",
+      "metric": "avg_at_5",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noStructural",
+      "app": "ss",
+      "metric": "log_cpr",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noStructural",
+      "app": "ss",
+      "metric": "log_ttcd",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noStructural",
+      "app": "ss",
+      "metric": "ttt_ms",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noStructural",
+      "app": "ss",
+      "metric": "h_fact",
+      "scheduled": 81,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-noStructural",
+      "app": "ss",
+      "metric": "h_struct",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noStructural",
+      "app": "tt",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noStructural",
+      "app": "tt",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noStructural",
+      "app": "tt",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noStructural",
+      "app": "tt",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noStructural",
+      "app": "tt",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noStructural",
+      "app": "tt",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-noStructural",
+      "app": "tt",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO",
+      "app": "ob",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 41,
+      "share": 0.9761904761904762,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO",
+      "app": "ob",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 41,
+      "share": 0.9761904761904762,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO",
+      "app": "ob",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 41,
+      "share": 0.9761904761904762,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO",
+      "app": "ob",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 41,
+      "share": 0.9761904761904762,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO",
+      "app": "ob",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 41,
+      "share": 0.9761904761904762,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO",
+      "app": "ob",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "Multi-source BARO",
+      "app": "ob",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 41,
+      "share": 0.9761904761904762,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO",
+      "app": "ss",
+      "metric": "hr_at_3",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO",
+      "app": "ss",
+      "metric": "avg_at_5",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO",
+      "app": "ss",
+      "metric": "log_cpr",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO",
+      "app": "ss",
+      "metric": "log_ttcd",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO",
+      "app": "ss",
+      "metric": "ttt_ms",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO",
+      "app": "ss",
+      "metric": "h_fact",
+      "scheduled": 81,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "Multi-source BARO",
+      "app": "ss",
+      "metric": "h_struct",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO",
+      "app": "tt",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO",
+      "app": "tt",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO",
+      "app": "tt",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO",
+      "app": "tt",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO",
+      "app": "tt",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO",
+      "app": "tt",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "Multi-source BARO",
+      "app": "tt",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO [trigger time]",
+      "app": "ob",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 41,
+      "share": 0.9761904761904762,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO [trigger time]",
+      "app": "ob",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 41,
+      "share": 0.9761904761904762,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO [trigger time]",
+      "app": "ob",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 41,
+      "share": 0.9761904761904762,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO [trigger time]",
+      "app": "ob",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 41,
+      "share": 0.9761904761904762,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO [trigger time]",
+      "app": "ob",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 41,
+      "share": 0.9761904761904762,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO [trigger time]",
+      "app": "ob",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "Multi-source BARO [trigger time]",
+      "app": "ob",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 41,
+      "share": 0.9761904761904762,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO [trigger time]",
+      "app": "ss",
+      "metric": "hr_at_3",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO [trigger time]",
+      "app": "ss",
+      "metric": "avg_at_5",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO [trigger time]",
+      "app": "ss",
+      "metric": "log_cpr",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO [trigger time]",
+      "app": "ss",
+      "metric": "log_ttcd",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO [trigger time]",
+      "app": "ss",
+      "metric": "ttt_ms",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO [trigger time]",
+      "app": "ss",
+      "metric": "h_fact",
+      "scheduled": 81,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "Multi-source BARO [trigger time]",
+      "app": "ss",
+      "metric": "h_struct",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO [trigger time]",
+      "app": "tt",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO [trigger time]",
+      "app": "tt",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO [trigger time]",
+      "app": "tt",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO [trigger time]",
+      "app": "tt",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO [trigger time]",
+      "app": "tt",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO [trigger time]",
+      "app": "tt",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "Multi-source BARO [trigger time]",
+      "app": "tt",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD",
+      "app": "ob",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 41,
+      "share": 0.9761904761904762,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD",
+      "app": "ob",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 41,
+      "share": 0.9761904761904762,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD",
+      "app": "ob",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 41,
+      "share": 0.9761904761904762,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD",
+      "app": "ob",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 41,
+      "share": 0.9761904761904762,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD",
+      "app": "ob",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 41,
+      "share": 0.9761904761904762,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD",
+      "app": "ob",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "Multi-source RCD",
+      "app": "ob",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 41,
+      "share": 0.9761904761904762,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD",
+      "app": "ss",
+      "metric": "hr_at_3",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD",
+      "app": "ss",
+      "metric": "avg_at_5",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD",
+      "app": "ss",
+      "metric": "log_cpr",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD",
+      "app": "ss",
+      "metric": "log_ttcd",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD",
+      "app": "ss",
+      "metric": "ttt_ms",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD",
+      "app": "ss",
+      "metric": "h_fact",
+      "scheduled": 81,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "Multi-source RCD",
+      "app": "ss",
+      "metric": "h_struct",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD",
+      "app": "tt",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD",
+      "app": "tt",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD",
+      "app": "tt",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD",
+      "app": "tt",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD",
+      "app": "tt",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD",
+      "app": "tt",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "Multi-source RCD",
+      "app": "tt",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD [trigger time]",
+      "app": "ob",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 41,
+      "share": 0.9761904761904762,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD [trigger time]",
+      "app": "ob",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 41,
+      "share": 0.9761904761904762,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD [trigger time]",
+      "app": "ob",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 41,
+      "share": 0.9761904761904762,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD [trigger time]",
+      "app": "ob",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 41,
+      "share": 0.9761904761904762,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD [trigger time]",
+      "app": "ob",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 41,
+      "share": 0.9761904761904762,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD [trigger time]",
+      "app": "ob",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "Multi-source RCD [trigger time]",
+      "app": "ob",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 41,
+      "share": 0.9761904761904762,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD [trigger time]",
+      "app": "ss",
+      "metric": "hr_at_3",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD [trigger time]",
+      "app": "ss",
+      "metric": "avg_at_5",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD [trigger time]",
+      "app": "ss",
+      "metric": "log_cpr",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD [trigger time]",
+      "app": "ss",
+      "metric": "log_ttcd",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD [trigger time]",
+      "app": "ss",
+      "metric": "ttt_ms",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD [trigger time]",
+      "app": "ss",
+      "metric": "h_fact",
+      "scheduled": 81,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "Multi-source RCD [trigger time]",
+      "app": "ss",
+      "metric": "h_struct",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD [trigger time]",
+      "app": "tt",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD [trigger time]",
+      "app": "tt",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD [trigger time]",
+      "app": "tt",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD [trigger time]",
+      "app": "tt",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD [trigger time]",
+      "app": "tt",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD [trigger time]",
+      "app": "tt",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "Multi-source RCD [trigger time]",
+      "app": "tt",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose",
+      "app": "ob",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose",
+      "app": "ob",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose",
+      "app": "ob",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose",
+      "app": "ob",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose",
+      "app": "ob",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose",
+      "app": "ob",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "PDiagnose",
+      "app": "ob",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose",
+      "app": "ss",
+      "metric": "hr_at_3",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose",
+      "app": "ss",
+      "metric": "avg_at_5",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose",
+      "app": "ss",
+      "metric": "log_cpr",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose",
+      "app": "ss",
+      "metric": "log_ttcd",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose",
+      "app": "ss",
+      "metric": "ttt_ms",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose",
+      "app": "ss",
+      "metric": "h_fact",
+      "scheduled": 81,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "PDiagnose",
+      "app": "ss",
+      "metric": "h_struct",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose",
+      "app": "tt",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose",
+      "app": "tt",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose",
+      "app": "tt",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose",
+      "app": "tt",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose",
+      "app": "tt",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose",
+      "app": "tt",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "PDiagnose",
+      "app": "tt",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose [trigger time]",
+      "app": "ob",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose [trigger time]",
+      "app": "ob",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose [trigger time]",
+      "app": "ob",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose [trigger time]",
+      "app": "ob",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose [trigger time]",
+      "app": "ob",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose [trigger time]",
+      "app": "ob",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "PDiagnose [trigger time]",
+      "app": "ob",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose [trigger time]",
+      "app": "ss",
+      "metric": "hr_at_3",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose [trigger time]",
+      "app": "ss",
+      "metric": "avg_at_5",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose [trigger time]",
+      "app": "ss",
+      "metric": "log_cpr",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose [trigger time]",
+      "app": "ss",
+      "metric": "log_ttcd",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose [trigger time]",
+      "app": "ss",
+      "metric": "ttt_ms",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose [trigger time]",
+      "app": "ss",
+      "metric": "h_fact",
+      "scheduled": 81,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "PDiagnose [trigger time]",
+      "app": "ss",
+      "metric": "h_struct",
+      "scheduled": 81,
+      "included": 81,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose [trigger time]",
+      "app": "tt",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose [trigger time]",
+      "app": "tt",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose [trigger time]",
+      "app": "tt",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose [trigger time]",
+      "app": "tt",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose [trigger time]",
+      "app": "tt",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose [trigger time]",
+      "app": "tt",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "PDiagnose [trigger time]",
+      "app": "tt",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 42,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "TraceRCA",
+      "app": "ob",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA",
+      "app": "ob",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA",
+      "app": "ob",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA",
+      "app": "ob",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA",
+      "app": "ob",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA",
+      "app": "ob",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA",
+      "app": "ob",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA",
+      "app": "ss",
+      "metric": "hr_at_3",
+      "scheduled": 81,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA",
+      "app": "ss",
+      "metric": "avg_at_5",
+      "scheduled": 81,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA",
+      "app": "ss",
+      "metric": "log_cpr",
+      "scheduled": 81,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA",
+      "app": "ss",
+      "metric": "log_ttcd",
+      "scheduled": 81,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA",
+      "app": "ss",
+      "metric": "ttt_ms",
+      "scheduled": 81,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA",
+      "app": "ss",
+      "metric": "h_fact",
+      "scheduled": 81,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA",
+      "app": "ss",
+      "metric": "h_struct",
+      "scheduled": 81,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA",
+      "app": "tt",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA",
+      "app": "tt",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA",
+      "app": "tt",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA",
+      "app": "tt",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA",
+      "app": "tt",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA",
+      "app": "tt",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA",
+      "app": "tt",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA [trigger time]",
+      "app": "ob",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA [trigger time]",
+      "app": "ob",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA [trigger time]",
+      "app": "ob",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA [trigger time]",
+      "app": "ob",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA [trigger time]",
+      "app": "ob",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA [trigger time]",
+      "app": "ob",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA [trigger time]",
+      "app": "ob",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA [trigger time]",
+      "app": "ss",
+      "metric": "hr_at_3",
+      "scheduled": 81,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA [trigger time]",
+      "app": "ss",
+      "metric": "avg_at_5",
+      "scheduled": 81,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA [trigger time]",
+      "app": "ss",
+      "metric": "log_cpr",
+      "scheduled": 81,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA [trigger time]",
+      "app": "ss",
+      "metric": "log_ttcd",
+      "scheduled": 81,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA [trigger time]",
+      "app": "ss",
+      "metric": "ttt_ms",
+      "scheduled": 81,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA [trigger time]",
+      "app": "ss",
+      "metric": "h_fact",
+      "scheduled": 81,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA [trigger time]",
+      "app": "ss",
+      "metric": "h_struct",
+      "scheduled": 81,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA [trigger time]",
+      "app": "tt",
+      "metric": "hr_at_3",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA [trigger time]",
+      "app": "tt",
+      "metric": "avg_at_5",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA [trigger time]",
+      "app": "tt",
+      "metric": "log_cpr",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA [trigger time]",
+      "app": "tt",
+      "metric": "log_ttcd",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA [trigger time]",
+      "app": "tt",
+      "metric": "ttt_ms",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA [trigger time]",
+      "app": "tt",
+      "metric": "h_fact",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA [trigger time]",
+      "app": "tt",
+      "metric": "h_struct",
+      "scheduled": 42,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    }
+  ],
+  "trace_coverage": {
+    "ob": {
+      "cases": 125,
+      "with_traces": 0,
+      "capture_missing": 0
+    },
+    "ss": {
+      "cases": 245,
+      "with_traces": 0,
+      "capture_missing": 0
+    },
+    "tt": {
+      "cases": 125,
+      "with_traces": 0,
+      "capture_missing": 0
+    }
+  },
+  "family_a": {
+    "holm_reading": "data_order",
+    "hypotheses": [
+      {
+        "id": "A-H3",
+        "rank": 1,
+        "comparison": "HELIOS-Full vs HELIOS-D",
+        "metric": "HR@3",
+        "test": "wilcoxon_signed_rank",
+        "stratum": null,
+        "asymmetric_rule": false,
+        "a": "HELIOS-Full",
+        "b": "HELIOS-D",
+        "apps_tested": {
+          "hr_at_3": [
+            "ob",
+            "ss",
+            "tt"
+          ]
+        },
+        "n_pairs": 165,
+        "p_value": 0.5,
+        "by_measure": {
+          "hr_at_3": {
+            "statistic": 9.0,
+            "p_value": 0.5,
+            "n_pairs": 165,
+            "n_informative": 5,
+            "mean_a": 0.9696969696969697,
+            "mean_b": 0.9636363636363636,
+            "mean_difference": 0.006060606060606061,
+            "bca_low": -0.01818181818181818,
+            "bca_high": 0.03636363636363636,
+            "bca_note": null,
+            "bca_seed": 10007328,
+            "hodges_lehmann": 0.0,
+            "cliffs_delta": 0.006060606060606061,
+            "cohens_h": 0.03379703164000514
+          }
+        },
+        "note": "0/1 outcome: with zeros dropped the signed-rank test equals the exact sign test on discordant pairs (design T-b)",
+        "below_threshold_descriptive": false,
+        "sensitivity": {
+          "group_level_wilcoxon": {
+            "p_value": 0.5,
+            "n_groups": 76
+          },
+          "rank_mixed_model": {
+            "coefficient": 1.0000000000000442,
+            "p_value": 0.372952428094909,
+            "icc": 0.11120445928034697,
+            "n_groups": 76,
+            "converged": true
+          },
+          "missing_data": {
+            "metric": "hr_at_3",
+            "mcar": {
+              "n_pairs_scheduled": 165,
+              "n_missing": 0,
+              "status": "complete; MCAR not applicable"
+            },
+            "ipw": {
+              "n_complete": 165,
+              "n_missing": 0,
+              "status": "complete; no weighting needed"
+            }
+          }
+        },
+        "splits": {},
+        "exploratory_hr": {
+          "status": "exploratory, descriptive (entry 95)",
+          "hr_at_3_discordant_pairs": 5,
+          "hr_at_1": {
+            "n": 165,
+            "mean_a": 0.8303030303030303,
+            "mean_b": 0.7454545454545455,
+            "by_system": {
+              "ob": {
+                "n": 42,
+                "mean_a": 0.8571428571428571,
+                "mean_b": 0.6666666666666666
+              },
+              "ss": {
+                "n": 81,
+                "mean_a": 0.8271604938271605,
+                "mean_b": 0.8271604938271605
+              },
+              "tt": {
+                "n": 42,
+                "mean_a": 0.8095238095238095,
+                "mean_b": 0.6666666666666666
+              }
+            },
+            "mean_difference": 0.08484848484848485,
+            "bca_low": 0.042424242424242434,
+            "bca_high": 0.1393939393939394,
+            "bca_seed": 10007328
+          },
+          "mrr": {
+            "n": 165,
+            "mean_a": 0.9032782369146005,
+            "mean_b": 0.8519651056014692,
+            "by_system": {
+              "ob": {
+                "n": 42,
+                "mean_a": 0.900974025974026,
+                "mean_b": 0.7807359307359308
+              },
+              "ss": {
+                "n": 81,
+                "mean_a": 0.9104938271604939,
+                "mean_b": 0.9094650205761315
+              },
+              "tt": {
+                "n": 42,
+                "mean_a": 0.8916666666666667,
+                "mean_b": 0.8123015873015873
+              }
+            },
+            "mean_difference": 0.051313131313131324,
+            "bca_low": 0.024242424242424242,
+            "bca_high": 0.08458821730712174,
+            "bca_seed": 10007328
+          }
+        }
+      },
+      {
+        "id": "A-H7",
+        "rank": 2,
+        "comparison": "HELIOS-Full vs HELIOS-noLLM",
+        "metric": "H_fact, H_struct",
+        "test": "sign_test",
+        "stratum": null,
+        "asymmetric_rule": false,
+        "a": "HELIOS-Full",
+        "b": "HELIOS-noLLM",
+        "apps_tested": {
+          "h_fact": [],
+          "h_struct": [
+            "ob",
+            "ss",
+            "tt"
+          ]
+        },
+        "n_pairs": 0,
+        "p_value": null,
+        "untestable": "no values for h_fact (not scored yet)",
+        "below_threshold_descriptive": false,
+        "sensitivity": {
+          "missing_data": {}
+        },
+        "splits": {}
+      },
+      {
+        "id": "A-H1",
+        "rank": 3,
+        "comparison": "HELIOS-Full vs HELIOS-noLLM",
+        "metric": "HR@3",
+        "test": "wilcoxon_signed_rank",
+        "stratum": null,
+        "asymmetric_rule": false,
+        "a": "HELIOS-Full",
+        "b": "HELIOS-noLLM",
+        "apps_tested": {
+          "hr_at_3": [
+            "ob",
+            "ss",
+            "tt"
+          ]
+        },
+        "n_pairs": 165,
+        "p_value": 0.5,
+        "by_measure": {
+          "hr_at_3": {
+            "statistic": 9.0,
+            "p_value": 0.5,
+            "n_pairs": 165,
+            "n_informative": 5,
+            "mean_a": 0.9696969696969697,
+            "mean_b": 0.9636363636363636,
+            "mean_difference": 0.006060606060606061,
+            "bca_low": -0.01818181818181818,
+            "bca_high": 0.03636363636363636,
+            "bca_note": null,
+            "bca_seed": 10007330,
+            "hodges_lehmann": 0.0,
+            "cliffs_delta": 0.006060606060606061,
+            "cohens_h": 0.03379703164000514
+          }
+        },
+        "note": "0/1 outcome: with zeros dropped the signed-rank test equals the exact sign test on discordant pairs (design T-b)",
+        "below_threshold_descriptive": false,
+        "sensitivity": {
+          "group_level_wilcoxon": {
+            "p_value": 0.5,
+            "n_groups": 76
+          },
+          "rank_mixed_model": {
+            "coefficient": 1.0000000000000442,
+            "p_value": 0.372952428094909,
+            "icc": 0.11120445928034697,
+            "n_groups": 76,
+            "converged": true
+          },
+          "missing_data": {
+            "metric": "hr_at_3",
+            "mcar": {
+              "n_pairs_scheduled": 165,
+              "n_missing": 0,
+              "status": "complete; MCAR not applicable"
+            },
+            "ipw": {
+              "n_complete": 165,
+              "n_missing": 0,
+              "status": "complete; no weighting needed"
+            }
+          }
+        },
+        "splits": {
+          "by_escalation": {
+            "escalated": {
+              "n": 36,
+              "mean_difference": 0.027777777777777776,
+              "bca_low": -0.08333333333333333,
+              "bca_high": 0.1388888888888889
+            },
+            "stopped": {
+              "n": 129,
+              "mean_difference": 0.0,
+              "bca_low": null,
+              "bca_high": null
+            }
+          }
+        },
+        "exploratory_hr": {
+          "status": "exploratory, descriptive (entry 95)",
+          "hr_at_3_discordant_pairs": 5,
+          "hr_at_1": {
+            "n": 165,
+            "mean_a": 0.8303030303030303,
+            "mean_b": 0.7454545454545455,
+            "by_system": {
+              "ob": {
+                "n": 42,
+                "mean_a": 0.8571428571428571,
+                "mean_b": 0.6666666666666666
+              },
+              "ss": {
+                "n": 81,
+                "mean_a": 0.8271604938271605,
+                "mean_b": 0.8271604938271605
+              },
+              "tt": {
+                "n": 42,
+                "mean_a": 0.8095238095238095,
+                "mean_b": 0.6666666666666666
+              }
+            },
+            "mean_difference": 0.08484848484848485,
+            "bca_low": 0.04242424242424243,
+            "bca_high": 0.1393939393939394,
+            "bca_seed": 10007330
+          },
+          "mrr": {
+            "n": 165,
+            "mean_a": 0.9032782369146005,
+            "mean_b": 0.8519651056014692,
+            "by_system": {
+              "ob": {
+                "n": 42,
+                "mean_a": 0.900974025974026,
+                "mean_b": 0.7807359307359308
+              },
+              "ss": {
+                "n": 81,
+                "mean_a": 0.9104938271604939,
+                "mean_b": 0.9094650205761315
+              },
+              "tt": {
+                "n": 42,
+                "mean_a": 0.8916666666666667,
+                "mean_b": 0.8123015873015873
+              }
+            },
+            "mean_difference": 0.051313131313131324,
+            "bca_low": 0.02474747474747475,
+            "bca_high": 0.08500269830352888,
+            "bca_seed": 10007330
+          }
+        }
+      },
+      {
+        "id": "A-H2",
+        "rank": 4,
+        "comparison": "HELIOS-Full vs HELIOS-LLM-only",
+        "metric": "HR@3",
+        "test": "wilcoxon_signed_rank",
+        "stratum": null,
+        "asymmetric_rule": false,
+        "a": "HELIOS-Full",
+        "b": "HELIOS-LLM-only",
+        "apps_tested": {
+          "hr_at_3": [
+            "ob",
+            "ss",
+            "tt"
+          ]
+        },
+        "n_pairs": 165,
+        "p_value": 1.0,
+        "by_measure": {
+          "hr_at_3": {
+            "statistic": 0.0,
+            "p_value": 1.0,
+            "n_pairs": 165,
+            "n_informative": 2,
+            "mean_a": 0.9696969696969697,
+            "mean_b": 0.9818181818181818,
+            "mean_difference": -0.012121212121212121,
+            "bca_low": -0.04242424242424242,
+            "bca_high": 0.0,
+            "bca_note": null,
+            "bca_seed": 10007331,
+            "hodges_lehmann": 0.0,
+            "cliffs_delta": -0.012121212121212121,
+            "cohens_h": -0.07943417484206661
+          }
+        },
+        "note": "0/1 outcome: with zeros dropped the signed-rank test equals the exact sign test on discordant pairs (design T-b)",
+        "below_threshold_descriptive": false,
+        "sensitivity": {
+          "group_level_wilcoxon": {
+            "p_value": 1.0,
+            "n_groups": 76
+          },
+          "rank_mixed_model": {
+            "coefficient": -2.0000000000000013,
+            "p_value": 0.7975148885286931,
+            "icc": 0.30514541409359686,
+            "n_groups": 76,
+            "converged": true
+          },
+          "missing_data": {
+            "metric": "hr_at_3",
+            "mcar": {
+              "n_pairs_scheduled": 165,
+              "n_missing": 0,
+              "status": "complete; MCAR not applicable"
+            },
+            "ipw": {
+              "n_complete": 165,
+              "n_missing": 0,
+              "status": "complete; no weighting needed"
+            }
+          }
+        },
+        "splits": {},
+        "exploratory_hr": {
+          "status": "exploratory, descriptive (entry 95)",
+          "hr_at_3_discordant_pairs": 2,
+          "hr_at_1": {
+            "n": 165,
+            "mean_a": 0.8303030303030303,
+            "mean_b": 0.8787878787878788,
+            "by_system": {
+              "ob": {
+                "n": 42,
+                "mean_a": 0.8571428571428571,
+                "mean_b": 0.9761904761904762
+              },
+              "ss": {
+                "n": 81,
+                "mean_a": 0.8271604938271605,
+                "mean_b": 0.7901234567901234
+              },
+              "tt": {
+                "n": 42,
+                "mean_a": 0.8095238095238095,
+                "mean_b": 0.9523809523809523
+              }
+            },
+            "mean_difference": -0.048484848484848485,
+            "bca_low": -0.11515151515151516,
+            "bca_high": 0.01818181818181818,
+            "bca_seed": 10007331
+          },
+          "mrr": {
+            "n": 165,
+            "mean_a": 0.9032782369146005,
+            "mean_b": 0.9272727272727272,
+            "by_system": {
+              "ob": {
+                "n": 42,
+                "mean_a": 0.900974025974026,
+                "mean_b": 0.9761904761904762
+              },
+              "ss": {
+                "n": 81,
+                "mean_a": 0.9104938271604939,
+                "mean_b": 0.8796296296296294
+              },
+              "tt": {
+                "n": 42,
+                "mean_a": 0.8916666666666667,
+                "mean_b": 0.9702380952380952
+              }
+            },
+            "mean_difference": -0.02399449035812672,
+            "bca_low": -0.06134158666435599,
+            "bca_high": 0.012323232323232326,
+            "bca_seed": 10007331
+          }
+        }
+      },
+      {
+        "id": "A-H6",
+        "rank": 5,
+        "comparison": "HELIOS-Full vs HELIOS-G",
+        "metric": "HR@3",
+        "test": "wilcoxon_signed_rank",
+        "stratum": "narrative_heavy",
+        "asymmetric_rule": false,
+        "a": "HELIOS-Full",
+        "b": "HELIOS-G",
+        "apps_untestable_no_traces": [
+          "ob",
+          "ss",
+          "tt"
+        ],
+        "apps_tested": {
+          "hr_at_3": []
+        },
+        "n_pairs": 0,
+        "p_value": null,
+        "untestable": "no traces, no incident graph (entry 93)",
+        "below_threshold_descriptive": false,
+        "sensitivity": {
+          "missing_data": {}
+        },
+        "splits": {}
+      },
+      {
+        "id": "A-H5",
+        "rank": 6,
+        "comparison": "HELIOS-noRouter vs HELIOS-Full",
+        "metric": "log-CpR at matched HR@3",
+        "test": "wilcoxon_signed_rank",
+        "stratum": null,
+        "asymmetric_rule": false,
+        "a": "HELIOS-noRouter",
+        "b": "HELIOS-Full",
+        "apps_tested": {
+          "log_cpr": [
+            "ob",
+            "ss",
+            "tt"
+          ]
+        },
+        "n_pairs": 165,
+        "matched_share": 0.9878787878787879,
+        "n_matched": 163,
+        "p_value": 1.6729078647774513e-13,
+        "by_measure": {
+          "log_cpr": {
+            "statistic": 10867.0,
+            "p_value": 1.6729078647774513e-13,
+            "n_pairs": 163,
+            "n_informative": 163,
+            "mean_a": 7.178056690167464,
+            "mean_b": 5.105160614028265,
+            "mean_difference": 2.072896076139199,
+            "bca_low": 1.6256156348786894,
+            "bca_high": 2.4470220138403875,
+            "bca_note": null,
+            "bca_seed": 10007333,
+            "hodges_lehmann": 2.846076238492575,
+            "cliffs_delta": 0.6110504723550002
+          }
+        },
+        "below_threshold_descriptive": true,
+        "sensitivity": {
+          "group_level_wilcoxon": {
+            "p_value": 5.827513009875555e-10,
+            "n_groups": 76
+          },
+          "rank_mixed_model": {
+            "coefficient": 99.6012269938649,
+            "p_value": 1.9246906555345094e-36,
+            "icc": 0.2094897595406037,
+            "n_groups": 76,
+            "converged": true
+          },
+          "all_cases": {
+            "p_value": 8.658427271622903e-13,
+            "n_pairs": 165
+          },
+          "missing_data": {
+            "metric": "log_cpr",
+            "mcar": {
+              "n_pairs_scheduled": 165,
+              "n_missing": 0,
+              "status": "complete; MCAR not applicable"
+            },
+            "ipw": {
+              "n_complete": 165,
+              "n_missing": 0,
+              "status": "complete; no weighting needed"
+            }
+          }
+        },
+        "splits": {
+          "by_stage": {
+            "escalated": {
+              "n": 36,
+              "mean_difference": 1.8551105197857645,
+              "bca_low": 1.1897644682476871,
+              "bca_high": 2.733641602678701
+            },
+            "stopped": {
+              "n": 127,
+              "mean_difference": 2.134630564554346,
+              "bca_low": 1.597955403269144,
+              "bca_high": 2.565195004868975
+            }
+          }
+        },
+        "timing": {
+          "censored_share": {
+            "a": {
+              "n": 163,
+              "share": 0.07975460122699386,
+              "by_system": {
+                "ob": 0.04878048780487805,
+                "ss": 0.1111111111111111,
+                "tt": 0.04878048780487805
+              }
+            },
+            "b": {
+              "n": 163,
+              "share": 0.147239263803681,
+              "by_system": {
+                "ob": 0.12195121951219512,
+                "ss": 0.16049382716049382,
+                "tt": 0.14634146341463414
+              }
+            }
+          },
+          "reruns": {
+            "n_substituted": 16
+          },
+          "p_with_reruns": 7.930964351324319e-14,
+          "rerun_p_movement": 8.798114296450194e-14,
+          "build_p_movement": 0.061,
+          "threshold": 0.00625,
+          "sensitive_to_timing_noise": true,
+          "crosses_threshold_with_reruns": false,
+          "statement": "Timing-derived results carry run-to-run noise: in the S5.4 replication (identical code, data and seeds) every accuracy result was identical while timing-derived p-values moved by up to about 0.06 (OTel B-H7, about 0.038 to about 0.099). The censored share is the fraction of runs whose TTCD hit the 1,800 s cap."
+        }
+      },
+      {
+        "id": "A-H4",
+        "rank": 7,
+        "comparison": "HELIOS-Full vs HELIOS-noConsensus",
+        "metric": "HR@3",
+        "test": "wilcoxon_signed_rank",
+        "stratum": "ambiguous",
+        "asymmetric_rule": true,
+        "a": "HELIOS-Full",
+        "b": "HELIOS-noConsensus",
+        "apps_tested": {
+          "hr_at_3": [
+            "ob",
+            "ss",
+            "tt"
+          ]
+        },
+        "n_pairs": 19,
+        "p_value": 1,
+        "by_measure": {
+          "hr_at_3": {
+            "statistic": 0,
+            "p_value": 1,
+            "n_pairs": 19,
+            "n_informative": 0,
+            "mean_a": 0.8947368421052632,
+            "mean_b": 0.8947368421052632,
+            "mean_difference": 0.0,
+            "bca_low": null,
+            "bca_high": null,
+            "bca_note": "degenerate: all differences equal",
+            "bca_seed": 10007334,
+            "hodges_lehmann": 0.0,
+            "cliffs_delta": 0.0,
+            "cohens_h": 0.0
+          }
+        },
+        "note": "0/1 outcome: with zeros dropped the signed-rank test equals the exact sign test on discordant pairs (design T-b)",
+        "below_threshold_descriptive": false,
+        "reading": "inconclusive at delivered power (asymmetric rule)",
+        "sensitivity": {
+          "group_level_wilcoxon": {
+            "p_value": 1,
+            "n_groups": 16
+          },
+          "rank_mixed_model": {
+            "coefficient": 0.0,
+            "p_value": 0.5,
+            "icc": 0.9999999997444518,
+            "n_groups": 16,
+            "converged": true
+          },
+          "missing_data": {
+            "metric": "hr_at_3",
+            "mcar": {
+              "n_pairs_scheduled": 19,
+              "n_missing": 0,
+              "status": "complete; MCAR not applicable"
+            },
+            "ipw": {
+              "n_complete": 19,
+              "n_missing": 0,
+              "status": "complete; no weighting needed"
+            }
+          }
+        },
+        "splits": {},
+        "exploratory_hr": {
+          "status": "exploratory, descriptive (entry 95)",
+          "hr_at_3_discordant_pairs": 0,
+          "hr_at_1": {
+            "n": 19,
+            "mean_a": 0.8421052631578947,
+            "mean_b": 0.8421052631578947,
+            "by_system": {
+              "ob": {
+                "n": 8,
+                "mean_a": 1.0,
+                "mean_b": 1.0
+              },
+              "ss": {
+                "n": 3,
+                "mean_a": 0.3333333333333333,
+                "mean_b": 0.3333333333333333
+              },
+              "tt": {
+                "n": 8,
+                "mean_a": 0.875,
+                "mean_b": 0.875
+              }
+            },
+            "mean_difference": 0.0,
+            "bca_low": null,
+            "bca_high": null,
+            "bca_seed": 10007334
+          },
+          "mrr": {
+            "n": 19,
+            "mean_a": 0.8947368421052632,
+            "mean_b": 0.8947368421052632,
+            "by_system": {
+              "ob": {
+                "n": 8,
+                "mean_a": 1.0,
+                "mean_b": 1.0
+              },
+              "ss": {
+                "n": 3,
+                "mean_a": 0.5833333333333334,
+                "mean_b": 0.5833333333333334
+              },
+              "tt": {
+                "n": 8,
+                "mean_a": 0.90625,
+                "mean_b": 0.90625
+              }
+            },
+            "mean_difference": 0.0,
+            "bca_low": null,
+            "bca_high": null,
+            "bca_seed": 10007334
+          }
+        }
+      },
+      {
+        "id": "A-H8",
+        "rank": 8,
+        "comparison": "HELIOS-Full vs HELIOS-noStructural",
+        "metric": "HR@3",
+        "test": "wilcoxon_signed_rank",
+        "stratum": null,
+        "asymmetric_rule": true,
+        "a": "HELIOS-Full",
+        "b": "HELIOS-noStructural",
+        "apps_untestable_no_traces": [
+          "ob",
+          "ss",
+          "tt"
+        ],
+        "apps_tested": {
+          "hr_at_3": []
+        },
+        "n_pairs": 0,
+        "p_value": null,
+        "untestable": "no traces, no incident graph (entry 93)",
+        "below_threshold_descriptive": false,
+        "reading": "inconclusive at delivered power (asymmetric rule)",
+        "sensitivity": {
+          "missing_data": {}
+        },
+        "splits": {}
+      }
+    ],
+    "holm_binding": [
+      {
+        "id": "A-H3",
+        "rank": 1,
+        "p_value": 0.5,
+        "threshold": 0.0071428571428571435,
+        "adjusted_p": 1.0,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "A-H7",
+        "rank": 2,
+        "p_value": null,
+        "threshold": null,
+        "adjusted_p": null,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "A-H1",
+        "rank": 3,
+        "p_value": 0.5,
+        "threshold": 0.008333333333333333,
+        "adjusted_p": 1.0,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "A-H2",
+        "rank": 4,
+        "p_value": 1.0,
+        "threshold": 0.01,
+        "adjusted_p": 1.0,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "A-H6",
+        "rank": 5,
+        "p_value": null,
+        "threshold": null,
+        "adjusted_p": null,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "A-H5",
+        "rank": 6,
+        "p_value": 1.6729078647774513e-13,
+        "threshold": 0.00625,
+        "adjusted_p": 1.338326291821961e-12,
+        "below_threshold_descriptive": true
+      },
+      {
+        "id": "A-H4",
+        "rank": 7,
+        "p_value": 1,
+        "threshold": 0.0125,
+        "adjusted_p": 1.0,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "A-H8",
+        "rank": 8,
+        "p_value": null,
+        "threshold": null,
+        "adjusted_p": null,
+        "below_threshold_descriptive": false
+      }
+    ],
+    "holm_other_reading": [
+      {
+        "id": "A-H3",
+        "rank": 1,
+        "p_value": 0.5,
+        "threshold": 0.00625,
+        "adjusted_p": null,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "A-H7",
+        "rank": 2,
+        "p_value": null,
+        "threshold": 0.0071428571428571435,
+        "adjusted_p": null,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "A-H1",
+        "rank": 3,
+        "p_value": 0.5,
+        "threshold": 0.008333333333333333,
+        "adjusted_p": null,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "A-H2",
+        "rank": 4,
+        "p_value": 1.0,
+        "threshold": 0.01,
+        "adjusted_p": null,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "A-H6",
+        "rank": 5,
+        "p_value": null,
+        "threshold": 0.0125,
+        "adjusted_p": null,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "A-H5",
+        "rank": 6,
+        "p_value": 1.6729078647774513e-13,
+        "threshold": 0.016666666666666666,
+        "adjusted_p": null,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "A-H4",
+        "rank": 7,
+        "p_value": 1,
+        "threshold": 0.025,
+        "adjusted_p": null,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "A-H8",
+        "rank": 8,
+        "p_value": null,
+        "threshold": 0.05,
+        "adjusted_p": null,
+        "below_threshold_descriptive": false
+      }
+    ],
+    "benjamini_hochberg": [
+      {
+        "id": "A-H3",
+        "rank": 1,
+        "p_value": 0.5,
+        "threshold": 0.0125,
+        "adjusted_p": 1.0,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "A-H7",
+        "rank": 2,
+        "p_value": null,
+        "threshold": 0.025,
+        "adjusted_p": 1.0,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "A-H1",
+        "rank": 3,
+        "p_value": 0.5,
+        "threshold": 0.018750000000000003,
+        "adjusted_p": 1.0,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "A-H2",
+        "rank": 4,
+        "p_value": 1.0,
+        "threshold": 0.03125,
+        "adjusted_p": 1.0,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "A-H6",
+        "rank": 5,
+        "p_value": null,
+        "threshold": 0.037500000000000006,
+        "adjusted_p": 1.0,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "A-H5",
+        "rank": 6,
+        "p_value": 1.6729078647774513e-13,
+        "threshold": 0.00625,
+        "adjusted_p": 1.338326291821961e-12,
+        "below_threshold_descriptive": true
+      },
+      {
+        "id": "A-H4",
+        "rank": 7,
+        "p_value": 1,
+        "threshold": 0.043750000000000004,
+        "adjusted_p": 1.0,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "A-H8",
+        "rank": 8,
+        "p_value": null,
+        "threshold": 0.05,
+        "adjusted_p": 1.0,
+        "below_threshold_descriptive": false
+      }
+    ]
+  },
+  "family_b": {
+    "holm_reading": "data_order",
+    "hypotheses": [
+      {
+        "id": "B-H1",
+        "rank": 1,
+        "comparison": "HELIOS-Full vs BASELINE-1",
+        "metric": "HR@3 (paired binary)",
+        "test": "mcnemar_exact_mid_p",
+        "stratum": null,
+        "asymmetric_rule": true,
+        "a": "HELIOS-Full",
+        "b": "Multi-source BARO",
+        "apps_tested": {
+          "hr_at_3": [
+            "ob",
+            "ss",
+            "tt"
+          ]
+        },
+        "n_pairs": 164,
+        "p_value": 0.0546875,
+        "by_measure": {
+          "hr_at_3": {
+            "statistic": 7,
+            "p_value": 0.0546875,
+            "n_pairs": 164,
+            "n_informative": 9,
+            "mean_a": 0.975609756097561,
+            "mean_b": 0.9451219512195121,
+            "mean_difference": 0.03048780487804878,
+            "bca_low": 0.0,
+            "bca_high": 0.07317073170731707,
+            "bca_note": null,
+            "bca_seed": 10007336,
+            "hodges_lehmann": 0.0,
+            "cliffs_delta": 0.03048780487804878,
+            "cohens_h": 0.15928458692735115
+          }
+        },
+        "below_threshold_descriptive": false,
+        "reading": "inconclusive at delivered power (asymmetric rule)",
+        "sensitivity": {
+          "group_level_wilcoxon": {
+            "p_value": 0.2890625,
+            "n_groups": 76
+          },
+          "rank_mixed_model": {
+            "coefficient": 5.000000000000001,
+            "p_value": 0.0527157726176665,
+            "icc": 0.22592612774733176,
+            "n_groups": 76,
+            "converged": true
+          },
+          "missing_data": {
+            "metric": "hr_at_3",
+            "mcar": {
+              "n_pairs_scheduled": 165,
+              "n_missing": 1,
+              "status": "descriptive (fewer than 10 missing or complete pairs)",
+              "covariates": {
+                "app": {
+                  "kind": "categorical",
+                  "counts": {
+                    "ob": {
+                      "missing": 1,
+                      "total": 42
+                    },
+                    "ss": {
+                      "missing": 0,
+                      "total": 81
+                    },
+                    "tt": {
+                      "missing": 0,
+                      "total": 42
+                    }
+                  }
+                },
+                "fault": {
+                  "kind": "categorical",
+                  "counts": {
+                    "cpu": {
+                      "missing": 1,
+                      "total": 34
+                    },
+                    "delay": {
+                      "missing": 0,
+                      "total": 34
+                    },
+                    "disk": {
+                      "missing": 0,
+                      "total": 27
+                    },
+                    "f1": {
+                      "missing": 0,
+                      "total": 1
+                    },
+                    "f2": {
+                      "missing": 0,
+                      "total": 1
+                    },
+                    "f3": {
+                      "missing": 0,
+                      "total": 2
+                    },
+                    "f4": {
+                      "missing": 0,
+                      "total": 3
+                    },
+                    "loss": {
+                      "missing": 0,
+                      "total": 29
+                    },
+                    "mem": {
+                      "missing": 0,
+                      "total": 27
+                    },
+                    "socket": {
+                      "missing": 0,
+                      "total": 7
+                    }
+                  }
+                },
+                "window_bytes": {
+                  "kind": "continuous",
+                  "rank_sum_p": 0.012121212121212121,
+                  "method": "exact"
+                }
+              }
+            },
+            "ipw": {
+              "n_complete": 164,
+              "n_missing": 1,
+              "status": "propensity model not estimable"
+            }
+          }
+        },
+        "splits": {},
+        "exploratory_hr": {
+          "status": "exploratory, descriptive (entry 95)",
+          "hr_at_3_discordant_pairs": 9,
+          "hr_at_1": {
+            "n": 164,
+            "mean_a": 0.8353658536585366,
+            "mean_b": 0.5487804878048781,
+            "by_system": {
+              "ob": {
+                "n": 41,
+                "mean_a": 0.8780487804878049,
+                "mean_b": 0.7317073170731707
+              },
+              "ss": {
+                "n": 81,
+                "mean_a": 0.8271604938271605,
+                "mean_b": 0.43209876543209874
+              },
+              "tt": {
+                "n": 42,
+                "mean_a": 0.8095238095238095,
+                "mean_b": 0.5952380952380952
+              }
+            },
+            "mean_difference": 0.2865853658536585,
+            "bca_low": 0.2073170731707317,
+            "bca_high": 0.36585365853658536,
+            "bca_seed": 10007336
+          },
+          "mrr": {
+            "n": 164,
+            "mean_a": 0.9082317073170731,
+            "mean_b": 0.7380865435021404,
+            "by_system": {
+              "ob": {
+                "n": 41,
+                "mean_a": 0.9207317073170732,
+                "mean_b": 0.8577235772357723
+              },
+              "ss": {
+                "n": 81,
+                "mean_a": 0.9104938271604939,
+                "mean_b": 0.6890064667842446
+              },
+              "tt": {
+                "n": 42,
+                "mean_a": 0.8916666666666667,
+                "mean_b": 0.715952444241918
+              }
+            },
+            "mean_difference": 0.17014516381493275,
+            "bca_low": 0.12402757357930437,
+            "bca_high": 0.2180807479564077,
+            "bca_seed": 10007336
+          }
+        }
+      },
+      {
+        "id": "B-H2",
+        "rank": 2,
+        "comparison": "HELIOS-Full vs BASELINE-2",
+        "metric": "HR@3 (paired binary)",
+        "test": "mcnemar_exact_mid_p",
+        "stratum": null,
+        "asymmetric_rule": true,
+        "a": "HELIOS-Full",
+        "b": null,
+        "p_value": null,
+        "untestable": "a compared system has no runs",
+        "below_threshold_descriptive": false,
+        "reading": "inconclusive at delivered power (asymmetric rule)",
+        "sensitivity": {
+          "missing_data": {}
+        },
+        "splits": {}
+      },
+      {
+        "id": "B-H3",
+        "rank": 3,
+        "comparison": "HELIOS-Full vs BASELINE-3",
+        "metric": "HR@3 (paired binary)",
+        "test": "mcnemar_exact_mid_p",
+        "stratum": null,
+        "asymmetric_rule": true,
+        "a": "HELIOS-Full",
+        "b": "BARO (metrics only)",
+        "apps_tested": {
+          "hr_at_3": [
+            "ob",
+            "ss",
+            "tt"
+          ]
+        },
+        "n_pairs": 164,
+        "p_value": 0.019287109375,
+        "by_measure": {
+          "hr_at_3": {
+            "statistic": 9,
+            "p_value": 0.019287109375,
+            "n_pairs": 164,
+            "n_informative": 11,
+            "mean_a": 0.975609756097561,
+            "mean_b": 0.9329268292682927,
+            "mean_difference": 0.042682926829268296,
+            "bca_low": 0.006097560975609756,
+            "bca_high": 0.08536585365853659,
+            "bca_note": null,
+            "bca_seed": 10007338,
+            "hodges_lehmann": 0.0,
+            "cliffs_delta": 0.042682926829268296,
+            "cohens_h": 0.21031079329406266
+          }
+        },
+        "below_threshold_descriptive": false,
+        "reading": "inconclusive at delivered power (asymmetric rule)",
+        "sensitivity": {
+          "group_level_wilcoxon": {
+            "p_value": 0.15625,
+            "n_groups": 76
+          },
+          "rank_mixed_model": {
+            "coefficient": 6.999999999999995,
+            "p_value": 0.019186332687713647,
+            "icc": 0.1908552481137137,
+            "n_groups": 76,
+            "converged": true
+          },
+          "missing_data": {
+            "metric": "hr_at_3",
+            "mcar": {
+              "n_pairs_scheduled": 165,
+              "n_missing": 1,
+              "status": "descriptive (fewer than 10 missing or complete pairs)",
+              "covariates": {
+                "app": {
+                  "kind": "categorical",
+                  "counts": {
+                    "ob": {
+                      "missing": 1,
+                      "total": 42
+                    },
+                    "ss": {
+                      "missing": 0,
+                      "total": 81
+                    },
+                    "tt": {
+                      "missing": 0,
+                      "total": 42
+                    }
+                  }
+                },
+                "fault": {
+                  "kind": "categorical",
+                  "counts": {
+                    "cpu": {
+                      "missing": 1,
+                      "total": 34
+                    },
+                    "delay": {
+                      "missing": 0,
+                      "total": 34
+                    },
+                    "disk": {
+                      "missing": 0,
+                      "total": 27
+                    },
+                    "f1": {
+                      "missing": 0,
+                      "total": 1
+                    },
+                    "f2": {
+                      "missing": 0,
+                      "total": 1
+                    },
+                    "f3": {
+                      "missing": 0,
+                      "total": 2
+                    },
+                    "f4": {
+                      "missing": 0,
+                      "total": 3
+                    },
+                    "loss": {
+                      "missing": 0,
+                      "total": 29
+                    },
+                    "mem": {
+                      "missing": 0,
+                      "total": 27
+                    },
+                    "socket": {
+                      "missing": 0,
+                      "total": 7
+                    }
+                  }
+                },
+                "window_bytes": {
+                  "kind": "continuous",
+                  "rank_sum_p": 0.012121212121212121,
+                  "method": "exact"
+                }
+              }
+            },
+            "ipw": {
+              "n_complete": 164,
+              "n_missing": 1,
+              "status": "propensity model not estimable"
+            }
+          }
+        },
+        "splits": {},
+        "exploratory_hr": {
+          "status": "exploratory, descriptive (entry 95)",
+          "hr_at_3_discordant_pairs": 11,
+          "hr_at_1": {
+            "n": 164,
+            "mean_a": 0.8353658536585366,
+            "mean_b": 0.5609756097560976,
+            "by_system": {
+              "ob": {
+                "n": 41,
+                "mean_a": 0.8780487804878049,
+                "mean_b": 0.7804878048780488
+              },
+              "ss": {
+                "n": 81,
+                "mean_a": 0.8271604938271605,
+                "mean_b": 0.41975308641975306
+              },
+              "tt": {
+                "n": 42,
+                "mean_a": 0.8095238095238095,
+                "mean_b": 0.6190476190476191
+              }
+            },
+            "mean_difference": 0.27439024390243905,
+            "bca_low": 0.1951219512195122,
+            "bca_high": 0.35365853658536583,
+            "bca_seed": 10007338
+          },
+          "mrr": {
+            "n": 164,
+            "mean_a": 0.9082317073170731,
+            "mean_b": 0.74401889563154,
+            "by_system": {
+              "ob": {
+                "n": 41,
+                "mean_a": 0.9207317073170732,
+                "mean_b": 0.8821138211382114
+              },
+              "ss": {
+                "n": 81,
+                "mean_a": 0.9104938271604939,
+                "mean_b": 0.684156378600823
+              },
+              "tt": {
+                "n": 42,
+                "mean_a": 0.8916666666666667,
+                "mean_b": 0.7246610845295055
+              }
+            },
+            "mean_difference": 0.16421281168553312,
+            "bca_low": 0.11887150494352888,
+            "bca_high": 0.2130377579598719,
+            "bca_seed": 10007338
+          }
+        }
+      },
+      {
+        "id": "B-H4",
+        "rank": 4,
+        "comparison": "HELIOS-Full vs BASELINE-4",
+        "metric": "HR@3 (paired binary)",
+        "test": "mcnemar_exact_mid_p",
+        "stratum": null,
+        "asymmetric_rule": true,
+        "a": "HELIOS-Full",
+        "b": "PDiagnose",
+        "apps_tested": {
+          "hr_at_3": [
+            "ob",
+            "ss",
+            "tt"
+          ]
+        },
+        "n_pairs": 165,
+        "p_value": 7.450580596923828e-09,
+        "by_measure": {
+          "hr_at_3": {
+            "statistic": 26,
+            "p_value": 7.450580596923828e-09,
+            "n_pairs": 165,
+            "n_informative": 26,
+            "mean_a": 0.9696969696969697,
+            "mean_b": 0.8121212121212121,
+            "mean_difference": 0.15757575757575756,
+            "bca_low": 0.10909090909090909,
+            "bca_high": 0.21818181818181817,
+            "bca_note": null,
+            "bca_seed": 10007339,
+            "hodges_lehmann": 0.0,
+            "cliffs_delta": 0.15757575757575756,
+            "cohens_h": 0.5466967996012562
+          }
+        },
+        "below_threshold_descriptive": true,
+        "sensitivity": {
+          "group_level_wilcoxon": {
+            "p_value": 2.384185791015625e-07,
+            "n_groups": 76
+          },
+          "rank_mixed_model": {
+            "coefficient": 26.000000000000043,
+            "p_value": 6.869752505500789e-08,
+            "icc": 0.20986979512773438,
+            "n_groups": 76,
+            "converged": true
+          },
+          "missing_data": {
+            "metric": "hr_at_3",
+            "mcar": {
+              "n_pairs_scheduled": 165,
+              "n_missing": 0,
+              "status": "complete; MCAR not applicable"
+            },
+            "ipw": {
+              "n_complete": 165,
+              "n_missing": 0,
+              "status": "complete; no weighting needed"
+            }
+          }
+        },
+        "splits": {},
+        "exploratory_hr": {
+          "status": "exploratory, descriptive (entry 95)",
+          "hr_at_3_discordant_pairs": 26,
+          "hr_at_1": {
+            "n": 165,
+            "mean_a": 0.8303030303030303,
+            "mean_b": 0.6666666666666666,
+            "by_system": {
+              "ob": {
+                "n": 42,
+                "mean_a": 0.8571428571428571,
+                "mean_b": 0.5476190476190477
+              },
+              "ss": {
+                "n": 81,
+                "mean_a": 0.8271604938271605,
+                "mean_b": 0.7654320987654321
+              },
+              "tt": {
+                "n": 42,
+                "mean_a": 0.8095238095238095,
+                "mean_b": 0.5952380952380952
+              }
+            },
+            "mean_difference": 0.16363636363636364,
+            "bca_low": 0.07878787878787878,
+            "bca_high": 0.24848484848484848,
+            "bca_seed": 10007339
+          },
+          "mrr": {
+            "n": 165,
+            "mean_a": 0.9032782369146005,
+            "mean_b": 0.7596861471861471,
+            "by_system": {
+              "ob": {
+                "n": 42,
+                "mean_a": 0.900974025974026,
+                "mean_b": 0.6787556689342404
+              },
+              "ss": {
+                "n": 81,
+                "mean_a": 0.9104938271604939,
+                "mean_b": 0.8217225161669605
+              },
+              "tt": {
+                "n": 42,
+                "mean_a": 0.8916666666666667,
+                "mean_b": 0.7209750566893424
+              }
+            },
+            "mean_difference": 0.14359208972845336,
+            "bca_low": 0.08826631199513736,
+            "bca_high": 0.2029828003754105,
+            "bca_seed": 10007339
+          }
+        }
+      },
+      {
+        "id": "B-H5",
+        "rank": 5,
+        "comparison": "HELIOS-Full vs BASELINE-5",
+        "metric": "HR@3 (paired binary)",
+        "test": "mcnemar_exact_mid_p",
+        "stratum": null,
+        "asymmetric_rule": true,
+        "a": "HELIOS-Full",
+        "b": "Multi-source RCD",
+        "apps_tested": {
+          "hr_at_3": [
+            "ob",
+            "ss",
+            "tt"
+          ]
+        },
+        "n_pairs": 164,
+        "p_value": 2.223047896236262e-24,
+        "by_measure": {
+          "hr_at_3": {
+            "statistic": 83,
+            "p_value": 2.223047896236262e-24,
+            "n_pairs": 164,
+            "n_informative": 84,
+            "mean_a": 0.975609756097561,
+            "mean_b": 0.47560975609756095,
+            "mean_difference": 0.5,
+            "bca_low": 0.42073170731707316,
+            "bca_high": 0.5792682926829268,
+            "bca_note": null,
+            "bca_seed": 10007340,
+            "hodges_lehmann": 0.5,
+            "cliffs_delta": 0.5,
+            "cohens_h": 1.3059648104767574
+          }
+        },
+        "below_threshold_descriptive": true,
+        "sensitivity": {
+          "group_level_wilcoxon": {
+            "p_value": 1.7763568394002505e-15,
+            "n_groups": 76
+          },
+          "rank_mixed_model": {
+            "coefficient": 81.99999999999974,
+            "p_value": 5.935157533878294e-40,
+            "icc": 0.14201073470456604,
+            "n_groups": 76,
+            "converged": true
+          },
+          "missing_data": {
+            "metric": "hr_at_3",
+            "mcar": {
+              "n_pairs_scheduled": 165,
+              "n_missing": 1,
+              "status": "descriptive (fewer than 10 missing or complete pairs)",
+              "covariates": {
+                "app": {
+                  "kind": "categorical",
+                  "counts": {
+                    "ob": {
+                      "missing": 1,
+                      "total": 42
+                    },
+                    "ss": {
+                      "missing": 0,
+                      "total": 81
+                    },
+                    "tt": {
+                      "missing": 0,
+                      "total": 42
+                    }
+                  }
+                },
+                "fault": {
+                  "kind": "categorical",
+                  "counts": {
+                    "cpu": {
+                      "missing": 1,
+                      "total": 34
+                    },
+                    "delay": {
+                      "missing": 0,
+                      "total": 34
+                    },
+                    "disk": {
+                      "missing": 0,
+                      "total": 27
+                    },
+                    "f1": {
+                      "missing": 0,
+                      "total": 1
+                    },
+                    "f2": {
+                      "missing": 0,
+                      "total": 1
+                    },
+                    "f3": {
+                      "missing": 0,
+                      "total": 2
+                    },
+                    "f4": {
+                      "missing": 0,
+                      "total": 3
+                    },
+                    "loss": {
+                      "missing": 0,
+                      "total": 29
+                    },
+                    "mem": {
+                      "missing": 0,
+                      "total": 27
+                    },
+                    "socket": {
+                      "missing": 0,
+                      "total": 7
+                    }
+                  }
+                },
+                "window_bytes": {
+                  "kind": "continuous",
+                  "rank_sum_p": 0.012121212121212121,
+                  "method": "exact"
+                }
+              }
+            },
+            "ipw": {
+              "n_complete": 164,
+              "n_missing": 1,
+              "status": "propensity model not estimable"
+            }
+          }
+        },
+        "splits": {},
+        "rerun_determinism": {
+          "pairs": 0
+        },
+        "exploratory_hr": {
+          "status": "exploratory, descriptive (entry 95)",
+          "hr_at_3_discordant_pairs": 84,
+          "hr_at_1": {
+            "n": 164,
+            "mean_a": 0.8353658536585366,
+            "mean_b": 0.3780487804878049,
+            "by_system": {
+              "ob": {
+                "n": 41,
+                "mean_a": 0.8780487804878049,
+                "mean_b": 0.6097560975609756
+              },
+              "ss": {
+                "n": 81,
+                "mean_a": 0.8271604938271605,
+                "mean_b": 0.4074074074074074
+              },
+              "tt": {
+                "n": 42,
+                "mean_a": 0.8095238095238095,
+                "mean_b": 0.09523809523809523
+              }
+            },
+            "mean_difference": 0.4573170731707317,
+            "bca_low": 0.3719512195121951,
+            "bca_high": 0.5426829268292683,
+            "bca_seed": 10007340
+          },
+          "mrr": {
+            "n": 164,
+            "mean_a": 0.9082317073170731,
+            "mean_b": 0.44907810685249716,
+            "by_system": {
+              "ob": {
+                "n": 41,
+                "mean_a": 0.9207317073170732,
+                "mean_b": 0.6742160278745645
+              },
+              "ss": {
+                "n": 81,
+                "mean_a": 0.9104938271604939,
+                "mean_b": 0.4953262786596121
+              },
+              "tt": {
+                "n": 42,
+                "mean_a": 0.8916666666666667,
+                "mean_b": 0.14010770975056688
+              }
+            },
+            "mean_difference": 0.45915360046457604,
+            "bca_low": 0.3862685737045548,
+            "bca_high": 0.5306959309407218,
+            "bca_seed": 10007340
+          }
+        }
+      },
+      {
+        "id": "B-H7",
+        "rank": 6,
+        "comparison": "BEST-BASELINE vs HELIOS-Full",
+        "metric": "log-CpR",
+        "test": "wilcoxon_signed_rank",
+        "stratum": null,
+        "asymmetric_rule": false,
+        "a": "Multi-source BARO",
+        "b": "HELIOS-Full",
+        "apps_tested": {
+          "log_cpr": [
+            "ob",
+            "ss",
+            "tt"
+          ]
+        },
+        "n_pairs": 164,
+        "p_value": 4.0117701741241185e-21,
+        "by_measure": {
+          "log_cpr": {
+            "statistic": 11995.0,
+            "p_value": 4.0117701741241185e-21,
+            "n_pairs": 164,
+            "n_informative": 164,
+            "mean_a": 8.005160827572787,
+            "mean_b": 5.147396308225204,
+            "mean_difference": 2.8577645193475836,
+            "bca_low": 2.2459021263507797,
+            "bca_high": 3.4875732530082573,
+            "bca_note": null,
+            "bca_seed": 10007341,
+            "hodges_lehmann": 3.0037367061778486,
+            "cliffs_delta": 0.7021118381915527
+          }
+        },
+        "below_threshold_descriptive": true,
+        "sensitivity": {
+          "group_level_wilcoxon": {
+            "p_value": 1.5000687357049606e-11,
+            "n_groups": 76
+          },
+          "rank_mixed_model": {
+            "coefficient": 115.14634146341457,
+            "p_value": 5.298689719243714e-52,
+            "icc": 0.17121132051823895,
+            "n_groups": 76,
+            "converged": true
+          },
+          "paired_t": {
+            "p_value": 3.716734159897267e-16,
+            "scale": "log"
+          },
+          "missing_data": {
+            "metric": "log_cpr",
+            "mcar": {
+              "n_pairs_scheduled": 165,
+              "n_missing": 1,
+              "status": "descriptive (fewer than 10 missing or complete pairs)",
+              "covariates": {
+                "app": {
+                  "kind": "categorical",
+                  "counts": {
+                    "ob": {
+                      "missing": 1,
+                      "total": 42
+                    },
+                    "ss": {
+                      "missing": 0,
+                      "total": 81
+                    },
+                    "tt": {
+                      "missing": 0,
+                      "total": 42
+                    }
+                  }
+                },
+                "fault": {
+                  "kind": "categorical",
+                  "counts": {
+                    "cpu": {
+                      "missing": 1,
+                      "total": 34
+                    },
+                    "delay": {
+                      "missing": 0,
+                      "total": 34
+                    },
+                    "disk": {
+                      "missing": 0,
+                      "total": 27
+                    },
+                    "f1": {
+                      "missing": 0,
+                      "total": 1
+                    },
+                    "f2": {
+                      "missing": 0,
+                      "total": 1
+                    },
+                    "f3": {
+                      "missing": 0,
+                      "total": 2
+                    },
+                    "f4": {
+                      "missing": 0,
+                      "total": 3
+                    },
+                    "loss": {
+                      "missing": 0,
+                      "total": 29
+                    },
+                    "mem": {
+                      "missing": 0,
+                      "total": 27
+                    },
+                    "socket": {
+                      "missing": 0,
+                      "total": 7
+                    }
+                  }
+                },
+                "window_bytes": {
+                  "kind": "continuous",
+                  "rank_sum_p": 0.012121212121212121,
+                  "method": "exact"
+                }
+              }
+            },
+            "ipw": {
+              "n_complete": 164,
+              "n_missing": 1,
+              "status": "propensity model not estimable"
+            }
+          }
+        },
+        "splits": {},
+        "timing": {
+          "censored_share": {
+            "a": {
+              "n": 164,
+              "share": 0.45121951219512196,
+              "by_system": {
+                "ob": 0.2682926829268293,
+                "ss": 0.5679012345679012,
+                "tt": 0.40476190476190477
+              }
+            },
+            "b": {
+              "n": 164,
+              "share": 0.1524390243902439,
+              "by_system": {
+                "ob": 0.12195121951219512,
+                "ss": 0.16049382716049382,
+                "tt": 0.16666666666666666
+              }
+            }
+          },
+          "reruns": {
+            "n_substituted": 16
+          },
+          "p_with_reruns": 4.011770174124118e-21,
+          "rerun_p_movement": 7.52316384526264e-37,
+          "build_p_movement": 0.061,
+          "threshold": 0.008333333333333333,
+          "sensitive_to_timing_noise": true,
+          "crosses_threshold_with_reruns": false,
+          "statement": "Timing-derived results carry run-to-run noise: in the S5.4 replication (identical code, data and seeds) every accuracy result was identical while timing-derived p-values moved by up to about 0.06 (OTel B-H7, about 0.038 to about 0.099). The censored share is the fraction of runs whose TTCD hit the 1,800 s cap."
+        }
+      },
+      {
+        "id": "B-H6",
+        "rank": 7,
+        "comparison": "BEST-BASELINE vs HELIOS-Full",
+        "metric": "log time to correct diagnosis",
+        "test": "wilcoxon_signed_rank",
+        "stratum": null,
+        "asymmetric_rule": false,
+        "a": "Multi-source BARO",
+        "b": "HELIOS-Full",
+        "apps_tested": {
+          "log_ttcd": [
+            "ob",
+            "ss",
+            "tt"
+          ]
+        },
+        "n_pairs": 164,
+        "p_value": 3.69840334457364e-22,
+        "by_measure": {
+          "log_ttcd": {
+            "statistic": 9552.0,
+            "p_value": 3.69840334457364e-22,
+            "n_pairs": 164,
+            "n_informative": 144,
+            "mean_a": 3.3820396902547443,
+            "mean_b": 0.12412023670845468,
+            "mean_difference": 3.2579194535462896,
+            "bca_low": 2.6155674909160824,
+            "bca_high": 3.911263581264417,
+            "bca_note": null,
+            "bca_seed": 10007342,
+            "hodges_lehmann": 3.047011808426152,
+            "cliffs_delta": 0.6568262938726949
+          }
+        },
+        "below_threshold_descriptive": true,
+        "sensitivity": {
+          "group_level_wilcoxon": {
+            "p_value": 9.958971048647052e-12,
+            "n_groups": 76
+          },
+          "rank_mixed_model": {
+            "coefficient": 107.71951219512198,
+            "p_value": 2.1326014471398057e-46,
+            "icc": 0.20529782653656986,
+            "n_groups": 76,
+            "converged": true
+          },
+          "paired_t": {
+            "p_value": 3.1771985365238577e-18,
+            "scale": "log"
+          },
+          "missing_data": {
+            "metric": "log_ttcd",
+            "mcar": {
+              "n_pairs_scheduled": 165,
+              "n_missing": 1,
+              "status": "descriptive (fewer than 10 missing or complete pairs)",
+              "covariates": {
+                "app": {
+                  "kind": "categorical",
+                  "counts": {
+                    "ob": {
+                      "missing": 1,
+                      "total": 42
+                    },
+                    "ss": {
+                      "missing": 0,
+                      "total": 81
+                    },
+                    "tt": {
+                      "missing": 0,
+                      "total": 42
+                    }
+                  }
+                },
+                "fault": {
+                  "kind": "categorical",
+                  "counts": {
+                    "cpu": {
+                      "missing": 1,
+                      "total": 34
+                    },
+                    "delay": {
+                      "missing": 0,
+                      "total": 34
+                    },
+                    "disk": {
+                      "missing": 0,
+                      "total": 27
+                    },
+                    "f1": {
+                      "missing": 0,
+                      "total": 1
+                    },
+                    "f2": {
+                      "missing": 0,
+                      "total": 1
+                    },
+                    "f3": {
+                      "missing": 0,
+                      "total": 2
+                    },
+                    "f4": {
+                      "missing": 0,
+                      "total": 3
+                    },
+                    "loss": {
+                      "missing": 0,
+                      "total": 29
+                    },
+                    "mem": {
+                      "missing": 0,
+                      "total": 27
+                    },
+                    "socket": {
+                      "missing": 0,
+                      "total": 7
+                    }
+                  }
+                },
+                "window_bytes": {
+                  "kind": "continuous",
+                  "rank_sum_p": 0.012121212121212121,
+                  "method": "exact"
+                }
+              }
+            },
+            "ipw": {
+              "n_complete": 164,
+              "n_missing": 1,
+              "status": "propensity model not estimable"
+            }
+          }
+        },
+        "splits": {},
+        "timing": {
+          "censored_share": {
+            "a": {
+              "n": 164,
+              "share": 0.45121951219512196,
+              "by_system": {
+                "ob": 0.2682926829268293,
+                "ss": 0.5679012345679012,
+                "tt": 0.40476190476190477
+              }
+            },
+            "b": {
+              "n": 164,
+              "share": 0.1524390243902439,
+              "by_system": {
+                "ob": 0.12195121951219512,
+                "ss": 0.16049382716049382,
+                "tt": 0.16666666666666666
+              }
+            }
+          },
+          "reruns": {
+            "n_substituted": 16
+          },
+          "p_with_reruns": 4.396752571253345e-22,
+          "rerun_p_movement": 6.983492266797044e-23,
+          "build_p_movement": 0.061,
+          "threshold": 0.0071428571428571435,
+          "sensitive_to_timing_noise": true,
+          "crosses_threshold_with_reruns": false,
+          "statement": "Timing-derived results carry run-to-run noise: in the S5.4 replication (identical code, data and seeds) every accuracy result was identical while timing-derived p-values moved by up to about 0.06 (OTel B-H7, about 0.038 to about 0.099). The censored share is the fraction of runs whose TTCD hit the 1,800 s cap."
+        }
+      },
+      {
+        "id": "B-H8",
+        "rank": 8,
+        "comparison": "HELIOS-Full vs BEST-BASELINE",
+        "metric": "Avg@5",
+        "test": "wilcoxon_signed_rank",
+        "stratum": null,
+        "asymmetric_rule": false,
+        "a": "HELIOS-Full",
+        "b": "Multi-source BARO",
+        "apps_tested": {
+          "avg_at_5": [
+            "ob",
+            "ss",
+            "tt"
+          ]
+        },
+        "n_pairs": 164,
+        "p_value": 2.263296512689363e-09,
+        "by_measure": {
+          "avg_at_5": {
+            "statistic": 1878.5,
+            "p_value": 2.263296512689363e-09,
+            "n_pairs": 164,
+            "n_informative": 65,
+            "mean_a": 0.9524390243902439,
+            "mean_b": 0.8499999999999999,
+            "mean_difference": 0.10243902439024391,
+            "bca_low": 0.07195121951219513,
+            "bca_high": 0.1402439024390244,
+            "bca_note": null,
+            "bca_seed": 10007343,
+            "hodges_lehmann": 0.09999999999999998,
+            "cliffs_delta": 0.29134443783462227
+          }
+        },
+        "below_threshold_descriptive": true,
+        "sensitivity": {
+          "group_level_wilcoxon": {
+            "p_value": 1.0130471252978168e-06,
+            "n_groups": 76
+          },
+          "rank_mixed_model": {
+            "coefficient": 47.7804878048781,
+            "p_value": 2.495979854413735e-11,
+            "icc": 0.19888225553466202,
+            "n_groups": 76,
+            "converged": true
+          },
+          "paired_t": {
+            "p_value": 9.848377217522027e-09,
+            "scale": "raw"
+          },
+          "missing_data": {
+            "metric": "avg_at_5",
+            "mcar": {
+              "n_pairs_scheduled": 165,
+              "n_missing": 1,
+              "status": "descriptive (fewer than 10 missing or complete pairs)",
+              "covariates": {
+                "app": {
+                  "kind": "categorical",
+                  "counts": {
+                    "ob": {
+                      "missing": 1,
+                      "total": 42
+                    },
+                    "ss": {
+                      "missing": 0,
+                      "total": 81
+                    },
+                    "tt": {
+                      "missing": 0,
+                      "total": 42
+                    }
+                  }
+                },
+                "fault": {
+                  "kind": "categorical",
+                  "counts": {
+                    "cpu": {
+                      "missing": 1,
+                      "total": 34
+                    },
+                    "delay": {
+                      "missing": 0,
+                      "total": 34
+                    },
+                    "disk": {
+                      "missing": 0,
+                      "total": 27
+                    },
+                    "f1": {
+                      "missing": 0,
+                      "total": 1
+                    },
+                    "f2": {
+                      "missing": 0,
+                      "total": 1
+                    },
+                    "f3": {
+                      "missing": 0,
+                      "total": 2
+                    },
+                    "f4": {
+                      "missing": 0,
+                      "total": 3
+                    },
+                    "loss": {
+                      "missing": 0,
+                      "total": 29
+                    },
+                    "mem": {
+                      "missing": 0,
+                      "total": 27
+                    },
+                    "socket": {
+                      "missing": 0,
+                      "total": 7
+                    }
+                  }
+                },
+                "window_bytes": {
+                  "kind": "continuous",
+                  "rank_sum_p": 0.012121212121212121,
+                  "method": "exact"
+                }
+              }
+            },
+            "ipw": {
+              "n_complete": 164,
+              "n_missing": 1,
+              "status": "propensity model not estimable"
+            }
+          }
+        },
+        "splits": {}
+      }
+    ],
+    "holm_binding": [
+      {
+        "id": "B-H1",
+        "rank": 1,
+        "p_value": 0.0546875,
+        "threshold": 0.025,
+        "adjusted_p": 0.109375,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "B-H2",
+        "rank": 2,
+        "p_value": null,
+        "threshold": null,
+        "adjusted_p": null,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "B-H3",
+        "rank": 3,
+        "p_value": 0.019287109375,
+        "threshold": 0.016666666666666666,
+        "adjusted_p": 0.057861328125,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "B-H4",
+        "rank": 4,
+        "p_value": 7.450580596923828e-09,
+        "threshold": 0.0125,
+        "adjusted_p": 2.9802322387695312e-08,
+        "below_threshold_descriptive": true
+      },
+      {
+        "id": "B-H5",
+        "rank": 5,
+        "p_value": 2.223047896236262e-24,
+        "threshold": 0.00625,
+        "adjusted_p": 1.7784383169890095e-23,
+        "below_threshold_descriptive": true
+      },
+      {
+        "id": "B-H7",
+        "rank": 6,
+        "p_value": 4.0117701741241185e-21,
+        "threshold": 0.008333333333333333,
+        "adjusted_p": 2.4070621044744712e-20,
+        "below_threshold_descriptive": true
+      },
+      {
+        "id": "B-H6",
+        "rank": 7,
+        "p_value": 3.69840334457364e-22,
+        "threshold": 0.0071428571428571435,
+        "adjusted_p": 2.588882341201548e-21,
+        "below_threshold_descriptive": true
+      },
+      {
+        "id": "B-H8",
+        "rank": 8,
+        "p_value": 2.263296512689363e-09,
+        "threshold": 0.01,
+        "adjusted_p": 1.1316482563446814e-08,
+        "below_threshold_descriptive": true
+      }
+    ],
+    "holm_other_reading": [
+      {
+        "id": "B-H1",
+        "rank": 1,
+        "p_value": 0.0546875,
+        "threshold": 0.00625,
+        "adjusted_p": null,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "B-H2",
+        "rank": 2,
+        "p_value": null,
+        "threshold": 0.0071428571428571435,
+        "adjusted_p": null,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "B-H3",
+        "rank": 3,
+        "p_value": 0.019287109375,
+        "threshold": 0.008333333333333333,
+        "adjusted_p": null,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "B-H4",
+        "rank": 4,
+        "p_value": 7.450580596923828e-09,
+        "threshold": 0.01,
+        "adjusted_p": null,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "B-H5",
+        "rank": 5,
+        "p_value": 2.223047896236262e-24,
+        "threshold": 0.0125,
+        "adjusted_p": null,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "B-H7",
+        "rank": 6,
+        "p_value": 4.0117701741241185e-21,
+        "threshold": 0.016666666666666666,
+        "adjusted_p": null,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "B-H6",
+        "rank": 7,
+        "p_value": 3.69840334457364e-22,
+        "threshold": 0.025,
+        "adjusted_p": null,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "B-H8",
+        "rank": 8,
+        "p_value": 2.263296512689363e-09,
+        "threshold": 0.05,
+        "adjusted_p": null,
+        "below_threshold_descriptive": false
+      }
+    ],
+    "benjamini_hochberg": [
+      {
+        "id": "B-H1",
+        "rank": 1,
+        "p_value": 0.0546875,
+        "threshold": 0.043750000000000004,
+        "adjusted_p": 0.0625,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "B-H2",
+        "rank": 2,
+        "p_value": null,
+        "threshold": 0.05,
+        "adjusted_p": 1.0,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "B-H3",
+        "rank": 3,
+        "p_value": 0.019287109375,
+        "threshold": 0.037500000000000006,
+        "adjusted_p": 0.025716145833333332,
+        "below_threshold_descriptive": true
+      },
+      {
+        "id": "B-H4",
+        "rank": 4,
+        "p_value": 7.450580596923828e-09,
+        "threshold": 0.03125,
+        "adjusted_p": 1.1920928955078126e-08,
+        "below_threshold_descriptive": true
+      },
+      {
+        "id": "B-H5",
+        "rank": 5,
+        "p_value": 2.223047896236262e-24,
+        "threshold": 0.00625,
+        "adjusted_p": 1.7784383169890095e-23,
+        "below_threshold_descriptive": true
+      },
+      {
+        "id": "B-H7",
+        "rank": 6,
+        "p_value": 4.0117701741241185e-21,
+        "threshold": 0.018750000000000003,
+        "adjusted_p": 1.0698053797664315e-20,
+        "below_threshold_descriptive": true
+      },
+      {
+        "id": "B-H6",
+        "rank": 7,
+        "p_value": 3.69840334457364e-22,
+        "threshold": 0.0125,
+        "adjusted_p": 1.479361337829456e-21,
+        "below_threshold_descriptive": true
+      },
+      {
+        "id": "B-H8",
+        "rank": 8,
+        "p_value": 2.263296512689363e-09,
+        "threshold": 0.025,
+        "adjusted_p": 4.526593025378726e-09,
+        "below_threshold_descriptive": true
+      }
+    ]
+  },
+  "family_b_sensitivity": {
+    "chase_anchor": {
+      "hr_at_3": 0.6,
+      "sensitivity_band": 0.61,
+      "baselines_hr_at_3": {
+        "Multi-source BARO": 0.9451219512195121,
+        "BARO (metrics only)": 0.9329268292682927,
+        "PDiagnose": 0.8121212121212121,
+        "Multi-source RCD": 0.47560975609756095
+      }
+    },
+    "trigger_time": [
+      {
+        "id": "B-H1",
+        "a": "HELIOS-Full",
+        "b": "Multi-source BARO",
+        "n_pairs": 164,
+        "p_value": 0.019287109375,
+        "below_threshold_descriptive": true
+      },
+      {
+        "id": "B-H2",
+        "a": "HELIOS-Full",
+        "b": null,
+        "n_pairs": null,
+        "p_value": null,
+        "below_threshold_descriptive": false,
+        "untestable": "a compared system has no runs"
+      },
+      {
+        "id": "B-H3",
+        "a": "HELIOS-Full",
+        "b": "BARO (metrics only)",
+        "n_pairs": 164,
+        "p_value": 0.0064697265625,
+        "below_threshold_descriptive": true
+      },
+      {
+        "id": "B-H4",
+        "a": "HELIOS-Full",
+        "b": "PDiagnose",
+        "n_pairs": 165,
+        "p_value": 2.3283064365386963e-10,
+        "below_threshold_descriptive": true
+      },
+      {
+        "id": "B-H5",
+        "a": "HELIOS-Full",
+        "b": "Multi-source RCD",
+        "n_pairs": 164,
+        "p_value": 1.2924697071141057e-26,
+        "below_threshold_descriptive": true
+      },
+      {
+        "id": "B-H7",
+        "a": "Multi-source BARO",
+        "b": "HELIOS-Full",
+        "n_pairs": 164,
+        "p_value": 4.0117701741241185e-21,
+        "below_threshold_descriptive": true
+      },
+      {
+        "id": "B-H6",
+        "a": "Multi-source BARO",
+        "b": "HELIOS-Full",
+        "n_pairs": 164,
+        "p_value": 1.4621592484898295e-19,
+        "below_threshold_descriptive": true
+      },
+      {
+        "id": "B-H8",
+        "a": "HELIOS-Full",
+        "b": "Multi-source BARO",
+        "n_pairs": 164,
+        "p_value": 4.657548911162542e-10,
+        "below_threshold_descriptive": true
+      }
+    ],
+    "no_human_time": [
+      {
+        "id": "B-H7",
+        "a": "Multi-source BARO",
+        "b": "HELIOS-Full",
+        "n_pairs": 164,
+        "p_value": 3.66248182004967e-24,
+        "below_threshold_descriptive": true
+      }
+    ],
+    "failures_as_misses": {
+      "filled": 3,
+      "hypotheses": [
+        {
+          "id": "B-H1",
+          "a": "HELIOS-Full",
+          "b": "Multi-source BARO",
+          "n_pairs": 165,
+          "p_value": 0.0546875,
+          "below_threshold_descriptive": false
+        },
+        {
+          "id": "B-H2",
+          "a": "HELIOS-Full",
+          "b": null,
+          "n_pairs": null,
+          "p_value": null,
+          "below_threshold_descriptive": false,
+          "untestable": "a compared system has no runs"
+        },
+        {
+          "id": "B-H3",
+          "a": "HELIOS-Full",
+          "b": "BARO (metrics only)",
+          "n_pairs": 165,
+          "p_value": 0.019287109375,
+          "below_threshold_descriptive": false
+        },
+        {
+          "id": "B-H4",
+          "a": "HELIOS-Full",
+          "b": "PDiagnose",
+          "n_pairs": 165,
+          "p_value": 7.450580596923828e-09,
+          "below_threshold_descriptive": true
+        },
+        {
+          "id": "B-H5",
+          "a": "HELIOS-Full",
+          "b": "Multi-source RCD",
+          "n_pairs": 165,
+          "p_value": 2.223047896236262e-24,
+          "below_threshold_descriptive": true
+        },
+        {
+          "id": "B-H6",
+          "a": "Multi-source BARO",
+          "b": "HELIOS-Full",
+          "n_pairs": 165,
+          "p_value": 3.69840334457364e-22,
+          "below_threshold_descriptive": true
+        },
+        {
+          "id": "B-H8",
+          "a": "HELIOS-Full",
+          "b": "Multi-source BARO",
+          "n_pairs": 165,
+          "p_value": 2.263296512689363e-09,
+          "below_threshold_descriptive": true
+        }
+      ]
+    }
+  },
+  "family_e": [
+    {
+      "id": "E-H1",
+      "comparison": "HELIOS-Full vs HELIOS-noCogni",
+      "metric": "HR@3 on Tier-4 cognitive faults",
+      "status": "exploratory",
+      "stage": "B",
+      "available": false
+    },
+    {
+      "id": "E-H2",
+      "comparison": "HELIOS-noRouter vs HELIOS-Full",
+      "metric": "time to triage",
+      "status": "exploratory",
+      "stage": "A",
+      "available": true,
+      "n_pairs": 165,
+      "mean_a": 9763.383454963156,
+      "mean_b": 303.202045485589,
+      "mean_difference": 9460.181409477567,
+      "bca_low": 9060.029108724128,
+      "bca_high": 9903.77719229419,
+      "bca_note": null,
+      "bca_seed": 10007345,
+      "hodges_lehmann": 9249.978134408593,
+      "cliffs_delta": 0.9879522497704316,
+      "timing": {
+        "censored_share": {
+          "a": {
+            "n": 165,
+            "share": 0.08484848484848485,
+            "by_system": {
+              "ob": 0.07142857142857142,
+              "ss": 0.1111111111111111,
+              "tt": 0.047619047619047616
+            }
+          },
+          "b": {
+            "n": 165,
+            "share": 0.15757575757575756,
+            "by_system": {
+              "ob": 0.14285714285714285,
+              "ss": 0.16049382716049382,
+              "tt": 0.16666666666666666
+            }
+          }
+        },
+        "statement": "Timing-derived results carry run-to-run noise: in the S5.4 replication (identical code, data and seeds) every accuracy result was identical while timing-derived p-values moved by up to about 0.06 (OTel B-H7, about 0.038 to about 0.099). The censored share is the fraction of runs whose TTCD hit the 1,800 s cap.",
+        "reruns": {
+          "n_substituted": 16
+        },
+        "mean_difference_with_reruns": 9392.315745225289
+      }
+    },
+    {
+      "id": "E-H3",
+      "comparison": "HELIOS-Full vs HELIOS-noACP",
+      "metric": "latency-constraint satisfaction",
+      "status": "retired",
+      "stage": null,
+      "available": false
+    },
+    {
+      "id": "E-H4",
+      "comparison": "HELIOS-noFGSV vs HELIOS-Full",
+      "metric": "false-accept rate under fidelity-break perturbation",
+      "status": "exploratory",
+      "stage": "A (lite, if built) / B (full twin)",
+      "available": false
+    },
+    {
+      "id": "E-H5",
+      "comparison": "HELIOS-noReconcile vs HELIOS-Full",
+      "metric": "reward reconciliation error on the delayed-label subset",
+      "status": "exploratory",
+      "stage": "A",
+      "available": false
+    },
+    {
+      "id": "E-H6",
+      "comparison": "HELIOS-noIOL vs HELIOS-Full",
+      "metric": "detection latency under injected control-plane degradation",
+      "status": "exploratory",
+      "stage": "A (lite, if built) / B (full)",
+      "available": false
+    },
+    {
+      "id": "E-H7",
+      "comparison": "HELIOS-Full vs HELIOS-noExpl",
+      "metric": "correct interpretation; time to decision; trust (RQ4 user study)",
+      "status": "exploratory",
+      "stage": "A (if IRB approved)",
+      "available": false
+    },
+    {
+      "id": "E-H8",
+      "comparison": "HELIOS-Full vs HELIOS-noACP",
+      "metric": "latency-constraint satisfaction",
+      "status": "exploratory",
+      "stage": "A",
+      "available": false
+    },
+    {
+      "id": "E-H9",
+      "comparison": "HELIOS-HIS3 vs HELIOS-Full",
+      "metric": "per-incident latency by isolation tier",
+      "status": "exploratory",
+      "stage": "B",
+      "available": false
+    },
+    {
+      "id": "E-H10",
+      "comparison": "HELIOS-Full vs HELIOS-noStructural",
+      "metric": "delta HR@3 attributed across the structural sub-mechanisms",
+      "status": "exploratory",
+      "stage": "A",
+      "apps_untestable_no_traces": [
+        "ob",
+        "ss",
+        "tt"
+      ],
+      "untestable": "no traces, no incident graph (entry 93)",
+      "available": false
+    }
+  ],
+  "rerun_determinism": {
+    "HELIOS-Full": {
+      "pairs": 16,
+      "compared": 16,
+      "identical_share": 0.9375,
+      "hr_at_1": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "hr_at_3": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "avg_at_5": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "mrr": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      }
+    },
+    "HELIOS-LLM-only": {
+      "pairs": 16,
+      "compared": 16,
+      "identical_share": 0.875,
+      "hr_at_1": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "hr_at_3": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "avg_at_5": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "mrr": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      }
+    },
+    "HELIOS-noACP": {
+      "pairs": 16,
+      "compared": 16,
+      "identical_share": 0.9375,
+      "hr_at_1": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "hr_at_3": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "avg_at_5": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "mrr": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      }
+    },
+    "HELIOS-noConsensus": {
+      "pairs": 16,
+      "compared": 16,
+      "identical_share": 0.9375,
+      "hr_at_1": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "hr_at_3": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "avg_at_5": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "mrr": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      }
+    },
+    "HELIOS-noExpl": {
+      "pairs": 16,
+      "compared": 16,
+      "identical_share": 0.9375,
+      "hr_at_1": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "hr_at_3": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "avg_at_5": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "mrr": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      }
+    },
+    "HELIOS-noFGSV": {
+      "pairs": 16,
+      "compared": 16,
+      "identical_share": 0.9375,
+      "hr_at_1": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "hr_at_3": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "avg_at_5": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "mrr": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      }
+    },
+    "HELIOS-noIOL": {
+      "pairs": 16,
+      "compared": 16,
+      "identical_share": 0.9375,
+      "hr_at_1": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "hr_at_3": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "avg_at_5": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "mrr": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      }
+    },
+    "HELIOS-noReconcile": {
+      "pairs": 16,
+      "compared": 16,
+      "identical_share": 0.9375,
+      "hr_at_1": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "hr_at_3": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "avg_at_5": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "mrr": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      }
+    },
+    "HELIOS-noRouter": {
+      "pairs": 16,
+      "compared": 16,
+      "identical_share": 0.875,
+      "hr_at_1": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "hr_at_3": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "avg_at_5": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "mrr": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      }
+    },
+    "HELIOS-noStructural": {
+      "pairs": 16,
+      "compared": 16,
+      "identical_share": 0.9375,
+      "hr_at_1": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "hr_at_3": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "avg_at_5": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "mrr": {
+        "n": 16,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      }
+    }
+  },
+  "timing_noise_statement": "Timing-derived results carry run-to-run noise: in the S5.4 replication (identical code, data and seeds) every accuracy result was identical while timing-derived p-values moved by up to about 0.06 (OTel B-H7, about 0.038 to about 0.099). The censored share is the fraction of runs whose TTCD hit the 1,800 s cap.",
+  "sanity_floors": {
+    "HR@1": {
+      "random_all_services": 0.05568105262184209,
+      "prior_only": 0.2,
+      "helios_d": 0.7454545454545455
+    },
+    "HR@3": {
+      "random_all_services": 0.1670431578655263,
+      "prior_only": 0.6,
+      "helios_d": 0.9636363636363636
+    },
+    "HR@10": {
+      "random_all_services": 0.556810526218421,
+      "prior_only": 1.0,
+      "helios_d": 0.9939393939393939
+    }
+  }
+}

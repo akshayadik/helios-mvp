@@ -42,7 +42,7 @@ def runs(tmp_path_factory: pytest.TempPathFactory) -> dict[str, dict[str, Any]]:
     out: dict[str, dict[str, Any]] = {}
     for name in RUNNABLE:
         base = tmp_path_factory.mktemp(name)
-        orch = _orch(base, name, coe_path=base / "coe.jsonl")
+        orch = _orch(base, name, coe_path=base / "coe.jsonl", frozen_router=True)
         orch.run(base / "captures")
         (entry,) = _entries(base / "coe.jsonl")
         out[name] = entry

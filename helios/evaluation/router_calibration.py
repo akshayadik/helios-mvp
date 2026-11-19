@@ -2,15 +2,17 @@
 
 Full information: the build run is HELIOS-noRouter (every pipeline, G-pipe
 ungated), so each case gives the outcome of every selectable arm, not one
-sampled arm. An arm's outcome is the HR@3 hit of the frozen MAHC's fusion of
-that arm's lists. Per-arm ridge models (LinUCB's A, b) are cross-fitted on
+sampled arm. An arm's outcome (the reward) is the top-1 hit (HR@1) of the frozen
+MAHC's fusion of that arm's lists (CR-01; the S3 router used HR@3). Per-arm ridge models (LinUCB's A, b) are cross-fitted on
 MAHC's folds; the held-out policy is simulated with the runtime decision
 functions themselves (``decide_g``, ``decide_escalation``), so the build
 figures and the runs use one policy.
 
 τ_acc (R-d): the lowest held-out lower bound at which the routed policy's
-held-out HR@3 is within the tolerance of uniform routing in every corpus and
-at least one case stops before the L-pipe. A τ under which every case
+held-out HR@1 and HR@3 are each within the tolerance of uniform routing in
+every corpus and at least one case stops before the L-pipe (CR-01: the S3
+rule read HR@3 only, which sits near its ceiling on RCAEval, so the router
+stopped on cases whose first candidate was wrong). A τ under which every case
 escalates meets the tolerance trivially and does not qualify: no qualifying
 value means the router cannot stop any case safely, and the build tool stops
 for the owner. The frozen refit is trained on every build case, so its bounds
@@ -63,7 +65,11 @@ __all__ = [
 
 HELIOS_ENABLE_ROUTER_CALIBRATION: bool = True
 
-TOLERANCE = 0.01  # R-d: one percentage point of HR@3, per corpus
+TOLERANCE = 0.01  # R-d: one percentage point of each measure, per corpus
+#: CR-01: the reward each arm's model is fitted to.
+REWARD = "hr_at_1"
+#: CR-01: the measures R-d holds within the tolerance of uniform routing.
+RD_MEASURES: tuple[str, ...] = ("hr_at_1", "hr_at_3")
 _DIGITS = 4
 
 
@@ -99,20 +105,33 @@ class Simulated:
     first_ms: float
 
 
-def _hit(ranked: Sequence[str], root: str) -> int:
-    return score_ranking(list(ranked), root).hr_at_3 if ranked else 0
+Measures = dict[str, int]
+
+
+def _measures(ranked: Sequence[str], root: str) -> Measures:
+    if not ranked:
+        return {"hr_at_1": 0, "hr_at_3": 0}
+    s = score_ranking(list(ranked), root)
+    return {"hr_at_1": s.hr_at_1, "hr_at_3": s.hr_at_3}
+
+
+def _fused_measures(
+    case: RouterCase, pipelines: Sequence[str], mahc: MAHCParams
+) -> Measures:
+    votes = [case.votes[p] for p in pipelines if p in case.votes]
+    if not votes:
+        return _measures([], case.root)
+    priors = {v.pipeline: mahc.priors.lookup(v.pipeline, case.signal)[0] for v in votes}
+    return _measures(fuse(votes, priors).ranked, case.root)
 
 
 def _fused_hit(case: RouterCase, pipelines: Sequence[str], mahc: MAHCParams) -> int:
-    votes = [case.votes[p] for p in pipelines if p in case.votes]
-    if not votes:
-        return 0
-    priors = {v.pipeline: mahc.priors.lookup(v.pipeline, case.signal)[0] for v in votes}
-    return _hit(fuse(votes, priors).ranked, case.root)
+    """The reward (``REWARD``) of the fusion of ``pipelines``' lists."""
+    return _fused_measures(case, pipelines, mahc)[REWARD]
 
 
 def arm_outcomes(case: RouterCase, mahc: MAHCParams) -> dict[Arm, int]:
-    """HR@3 hit of each selectable arm whose pipelines all produced a list."""
+    """Reward of each selectable arm whose pipelines all produced a list."""
     out = {}
     for arm in SELECTABLE:
         names = ARM_PIPELINES[arm]
@@ -122,8 +141,27 @@ def arm_outcomes(case: RouterCase, mahc: MAHCParams) -> dict[Arm, int]:
 
 
 def uniform_hit(case: RouterCase, mahc: MAHCParams) -> int:
-    """noRouter's outcome: the fusion of every list the case has."""
+    """noRouter's reward: the fusion of every list the case has."""
     return _fused_hit(case, sorted(case.votes), mahc)
+
+
+@dataclass(frozen=True)
+class _MeasureRow:
+    """One case's R-d measures: every selectable arm (an arm with a missing
+    list fuses what there is, as ``simulate`` scores it) and uniform routing."""
+
+    arms: dict[Arm, Measures]
+    uniform: Measures
+
+
+def _measure_table(cases: Sequence[RouterCase], mahc: MAHCParams) -> list[_MeasureRow]:
+    return [
+        _MeasureRow(
+            arms={a: _fused_measures(c, ARM_PIPELINES[a], mahc) for a in SELECTABLE},
+            uniform=_fused_measures(c, sorted(c.votes), mahc),
+        )
+        for c in cases
+    ]
 
 
 def _x(case: RouterCase, arm: Arm) -> tuple[float, ...] | None:
@@ -281,8 +319,10 @@ def _meets(
     mahc: MAHCParams,
     tau: float,
     tolerance: float,
+    table: Sequence[_MeasureRow],
 ) -> bool:
-    """R-d at τ: within the tolerance of uniform in every corpus, one stop at least."""
+    """R-d at τ: every RD_MEASURES measure within the tolerance of uniform in
+    every corpus, one stop at least."""
     sims = [
         simulate(c, _with_tau(params_of[i], tau), outcomes[i], mahc)
         for i, c in enumerate(cases)
@@ -291,12 +331,12 @@ def _meets(
     # under another name: it meets the tolerance trivially and is skipped.
     if not any("lpipe" not in ARM_PIPELINES[s.terminal_arm] for s in sims):
         return False
-    uniform = [uniform_hit(c, mahc) for c in cases]
     for k in sorted({c.corpus for c in cases}):
         idx = [i for i, c in enumerate(cases) if c.corpus == k]
-        routed = _hr([sims[i].hit for i in idx])
-        if routed < _hr([uniform[i] for i in idx]) - tolerance:
-            return False
+        for m in RD_MEASURES:
+            routed = _hr([table[i].arms[sims[i].terminal_arm][m] for i in idx])
+            if routed < _hr([table[i].uniform[m] for i in idx]) - tolerance:
+                return False
     return True
 
 
@@ -309,8 +349,9 @@ def choose_tau(
     tolerance: float = TOLERANCE,
 ) -> float | None:
     """The lowest held-out lower bound meeting the R-d rule in every corpus."""
+    table = _measure_table(cases, mahc)
     for tau in sorted(_lcbs(cases, held_out)):
-        if _meets(cases, held_out, outcomes, mahc, tau, tolerance):
+        if _meets(cases, held_out, outcomes, mahc, tau, tolerance, table):
             return tau
     return None
 
@@ -335,10 +376,11 @@ def confirm_refit(
     refit's extra stops, not against overfitting.
     """
     whole = dict.fromkeys(range(len(cases)), refit)
+    table = _measure_table(cases, mahc)
     candidates = {t for t in _lcbs(cases, whole) | _lcbs(cases, held_out) if t > tau}
     for t in [tau, *sorted(candidates)]:
-        if _meets(cases, whole, outcomes, mahc, t, tolerance) and _meets(
-            cases, held_out, outcomes, mahc, t, tolerance
+        if _meets(cases, whole, outcomes, mahc, t, tolerance, table) and _meets(
+            cases, held_out, outcomes, mahc, t, tolerance, table
         ):
             return t
     return None
@@ -394,7 +436,14 @@ def evaluate(
     tau: float | None,
 ) -> dict[str, Any]:
     """Held-out routed vs uniform per corpus (aggregates only, no incident ID)."""
-    report: dict[str, Any] = {"tau_acc": tau, "tolerance": TOLERANCE, "by_corpus": {}}
+    report: dict[str, Any] = {
+        "tau_acc": tau,
+        "tolerance": TOLERANCE,
+        "reward": REWARD,
+        "rd_measures": list(RD_MEASURES),
+        "by_corpus": {},
+    }
+    table = _measure_table(cases, mahc)
     sims = (
         [
             simulate(c, _with_tau(held_out[i], tau), outcomes[i], mahc)
@@ -405,19 +454,19 @@ def evaluate(
     )
     for corpus in sorted({c.corpus for c in cases}):
         idx = [i for i, c in enumerate(cases) if c.corpus == corpus]
-        uniform = [uniform_hit(cases[i], mahc) for i in idx]
-        entry: dict[str, Any] = {
-            "cases": len(idx),
-            "uniform_hr3": round(_hr(uniform), _DIGITS),
+        entry: dict[str, Any] = {"cases": len(idx)}
+        for m, tag in (("hr_at_1", "hr1"), ("hr_at_3", "hr3")):
+            entry[f"uniform_{tag}"] = round(
+                _hr([table[i].uniform[m] for i in idx]), _DIGITS
+            )
             # None: the arm never had all its lists (no traces, no G arm).
-            "arm_hr3": {
+            entry[f"arm_{tag}"] = {
                 a.value: _rate(
-                    sum(outcomes[i][a] for i in idx if a in outcomes[i]),
+                    sum(table[i].arms[a][m] for i in idx if a in outcomes[i]),
                     sum(1 for i in idx if a in outcomes[i]),
                 )
                 for a in SELECTABLE
-            },
-        }
+            }
         if sims:
             s = [sims[i] for i in idx]
             escalated = [x for x in s if x.terminal_arm != x.stage1_arm]
@@ -435,7 +484,24 @@ def evaluate(
             ]
             entry.update(
                 {
-                    "routed_hr3": round(_hr([x.hit for x in s]), _DIGITS),
+                    "routed_hr1": round(
+                        _hr(
+                            [
+                                table[i].arms[sims[i].terminal_arm]["hr_at_1"]
+                                for i in idx
+                            ]
+                        ),
+                        _DIGITS,
+                    ),
+                    "routed_hr3": round(
+                        _hr(
+                            [
+                                table[i].arms[sims[i].terminal_arm]["hr_at_3"]
+                                for i in idx
+                            ]
+                        ),
+                        _DIGITS,
+                    ),
                     "escalated_share": _rate(len(escalated), len(s)),
                     "terminal_arms": {
                         a.value: sum(1 for x in s if x.terminal_arm == a)

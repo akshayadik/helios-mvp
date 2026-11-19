@@ -13,6 +13,7 @@ from helios.graph.khop_pruner import (
     PEARSON_MIN_R,
     SeedSource,
     khop_prune,
+    propagation_edges,
     seed_nodes,
 )
 from helios.graph.structural_bundle import flatten
@@ -254,3 +255,51 @@ def test_given_out_of_scope_seeds_are_dropped() -> None:
     snap = _snap([_service("prometheus", 9), _service("cart", 3)], [])
     _, result = khop_prune(snap, seeds=["prometheus", "cart"], exclude={"prometheus"})
     assert result.seeds == ("cart",)
+
+
+# ── CR-02: the D-pipe's propagation edges ───────────────────────────────────
+
+
+def test_propagation_edges_keep_the_weak_call_edges_the_cut_removes() -> None:
+    nodes = [_service(n) for n in CHAIN]
+    strong = _edge("a", "b", EdgeType.CALL, r=0.9)
+    weak = _edge("b", "c", EdgeType.CALL, r=0.1)
+    edges = [
+        strong,
+        weak,
+        _edge("c", "d", EdgeType.STRUCTURAL),
+        _edge("d", "e", EdgeType.ANOMALY_LEADS, r=0.9),
+    ]
+    full = _snap(nodes, edges)
+    pruned, result = khop_prune(full, seeds=["a"])
+    assert weak not in pruned.edges
+    assert result.edges_below_r == 1
+    assert propagation_edges(full, pruned) == [strong, weak]
+
+
+def test_propagation_edges_stay_between_kept_candidates() -> None:
+    full = _chain()
+    kept = _snap([_service(n) for n in ("a", "b", "c")], [])
+    out = propagation_edges(full, kept)
+    assert [(e.source, e.target) for e in out] == [("a", "b"), ("b", "c")]
+
+
+def test_propagation_edges_are_the_untyped_edges_under_no_structural() -> None:
+    full = flatten(
+        _snap(
+            [_service(n) for n in CHAIN],
+            [
+                _edge("a", "b", EdgeType.CALL, r=0.1),
+                _edge("b", "c", EdgeType.STRUCTURAL),
+            ],
+        )
+    ).snapshot
+    pruned, _ = khop_prune(full, seeds=["a"])
+    out = propagation_edges(full, pruned)
+    assert {(e.source, e.target) for e in out} == {("a", "b"), ("b", "c")}
+    assert {e.edge_type for e in out} == {EdgeType.UNTYPED}
+    # Untyped edges carry no correlation, so the pruned graph already had them.
+    assert sorted((e.source, e.target) for e in pruned.edges) == [
+        ("a", "b"),
+        ("b", "c"),
+    ]
