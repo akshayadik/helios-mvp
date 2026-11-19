@@ -244,6 +244,7 @@ def test_lpipe_prompts_carry_no_label_or_identity(
 ) -> None:
     """S2.3: what the model sees — no incident ID, path, fault name, time or real name."""
     from helios.adapters.otel_campaign import FAULTS
+    from helios.consensus.router_params import provisional_router_params
     from helios.store.result_store import ResultStore
     from tests.pipelines.l_pipe.test_pipeline import FakeClient
     from tests.test_runner_lpipe import KEY, stage_capture
@@ -281,6 +282,11 @@ def test_lpipe_prompts_carry_no_label_or_identity(
         exclusion_ledger=MagicMock(spec=AppendOnlyLedger),
         hmac_key=KEY,
         lpipe_client=client,  # type: ignore[arg-type]
+        # Unfitted router: every run reaches the L-pipe, whatever the frozen
+        # router would stop on (this test reads prompts, not routing).
+        router_params=provisional_router_params(
+            stage_median_ms={"dpipe": 200, "gpipe": 900, "lpipe": 15_000}
+        ),
     ).run(captures)
 
     assert opened == []

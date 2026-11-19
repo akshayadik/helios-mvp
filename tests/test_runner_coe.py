@@ -8,6 +8,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from helios.consensus.router_params import provisional_router_params
 from helios.integrity_gate import AppendOnlyLedger
 from helios.orchestrator.coe import CoELedger, fusion_record, row_ref
 from helios.orchestrator.runner import MissingSigningKeyError, RunOrchestrator
@@ -16,7 +17,7 @@ from helios.vcl import VCLFlag, get_variant, set_current_manifest  # noqa: F401
 from helios.vcl.ed25519 import generate_private_key
 from helios.vcl.hmac_chain import TamperDetectedError, verify_public
 from tests.pipelines.l_pipe.test_pipeline import OTEL, FakeClient
-from tests.test_runner_lpipe import KEY, stage_capture
+from tests.test_runner_lpipe import KEY, STAGE_MEDIANS, stage_capture
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -48,6 +49,8 @@ def _orch(
         lpipe_client=FakeClient(),  # type: ignore[arg-type]
         coe_signer=signer,
         coe_path=coe_path,
+        # Provisional router: D alone is infeasible, so routed runs escalate.
+        router_params=provisional_router_params(stage_median_ms=STAGE_MEDIANS),
     )
 
 

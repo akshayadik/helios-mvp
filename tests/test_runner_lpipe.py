@@ -10,6 +10,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from helios.consensus.router_params import provisional_router_params
 from helios.integrity_gate import AppendOnlyLedger
 from helios.orchestrator.runner import RunOrchestrator
 from helios.pipelines.l_pipe.cache import ResponseCache
@@ -42,6 +43,9 @@ def stage_capture(captures: Path, manifest: Path = OTEL) -> str:
     return window.incident_id
 
 
+STAGE_MEDIANS = {"dpipe": 200.0, "gpipe": 900.0, "lpipe": 15_000.0}
+
+
 def run_variant(
     tmp_path: Path,
     variant: str,
@@ -65,6 +69,9 @@ def run_variant(
         hmac_key=KEY,
         lpipe_client=client,  # type: ignore[arg-type]
         lpipe_cache=cache,
+        # Unfitted router: every routed run reaches the L-pipe (these tests
+        # read L-pipe output; routing is tested in test_runner_router).
+        router_params=provisional_router_params(stage_median_ms=STAGE_MEDIANS),
     ).run(captures)
     return ResultStore(db)
 

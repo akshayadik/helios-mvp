@@ -172,16 +172,21 @@ def _write(name: str, report: dict[str, Any]) -> Path:
 
 def _print(report: dict[str, Any]) -> None:
     for name, g in report["by_corpus"].items():
-        line = f"[router] {name}: {g['cases']} cases, uniform HR@3 {g['uniform_hr3']}"
+        line = (
+            f"[router] {name}: {g['cases']} cases, uniform HR@1 {g['uniform_hr1']}"
+            f" HR@3 {g['uniform_hr3']}"
+        )
         if "routed_hr3" in g:
             line += (
-                f", routed {g['routed_hr3']}, escalated {g['escalated_share']}, "
+                f", routed HR@1 {g['routed_hr1']} HR@3 {g['routed_hr3']},"
+                f" escalated {g['escalated_share']}, "
                 f"L-pipe calls saved {g['lpipe_calls_saved']}"
             )
         print(line)
     for name, g in report.get("refit_in_sample", {}).items():
         print(
-            f"[router] {name} refit in sample: routed {g['routed_hr3']}, "
+            f"[router] {name} refit in sample: routed HR@1 {g['routed_hr1']}"
+            f" HR@3 {g['routed_hr3']}, "
             f"escalated {g['escalated_share']}, L-pipe calls saved "
             f"{g['lpipe_calls_saved']}"
         )
