@@ -116,3 +116,105 @@ def test_correction_table_entries_take_their_hypothesis_metric() -> None:
     report = rc.compare_analysis(ref, accuracy)
     assert not report["passes"]
     assert report["other"]["paths"] == ["/holm[1]/adjusted_p"]
+
+
+# ── moved by timing (S5.4 rerun report §4, owner 2026-11-19) ────────────────
+
+_HYPS = [
+    {"id": "B-H5", "metric": "HR@3", "p_value": 2e-24},
+    {"id": "B-H6", "metric": "log time to correct diagnosis", "p_value": 2e-21},
+    {"id": "B-H1", "metric": "HR@3", "p_value": 0.05},
+]
+
+
+def _row(hid: str, rank: int, p: float, threshold: float, adj: float) -> dict[str, Any]:
+    return {
+        "id": hid,
+        "rank": rank,
+        "p_value": p,
+        "threshold": threshold,
+        "adjusted_p": adj,
+        "below_threshold_descriptive": p < threshold,
+    }
+
+
+def _analysis(b_h6_p: float, rows: list[dict[str, Any]]) -> dict[str, Any]:
+    hyps = [{**h, "p_value": b_h6_p} if h["id"] == "B-H6" else h for h in _HYPS]
+    return {"family_b": {"hypotheses": hyps, "holm_binding": rows}}
+
+
+def test_a_row_moved_past_by_a_timing_hypothesis_is_moved_by_timing() -> None:
+    # Reference order B-H5, B-H6, B-H1; in the clone B-H6 moves ahead of B-H5.
+    ref = _analysis(
+        2e-21,
+        [
+            _row("B-H1", 1, 0.05, 0.05, 0.05),
+            _row("B-H5", 5, 2e-24, 0.0167, 6e-24),
+            _row("B-H6", 6, 2e-21, 0.025, 4e-21),
+        ],
+    )
+    clone = _analysis(
+        6e-25,
+        [
+            _row("B-H1", 1, 0.05, 0.05, 0.05),
+            _row("B-H5", 5, 2e-24, 0.025, 4e-24),
+            _row("B-H6", 6, 6e-25, 0.0167, 1.8e-24),
+        ],
+    )
+    report = rc.compare_analysis(ref, clone)
+    assert report["passes"]
+    assert report["other"]["count"] == 0
+    assert report["moved_by_timing"]["count"] == 2
+    leaf = report["moved_by_timing"]["leaves"][0]
+    assert leaf["id"] == "B-H5"
+    assert (leaf["position_ref"], leaf["position_clone"]) == (1, 2)
+    assert leaf["swapped_with"] == ["B-H6"]
+    # B-H6's own row is timing-derived, as before.
+    assert report["timing_derived"]["count"] > 0
+
+
+def test_a_row_whose_own_p_value_changed_is_not_moved_by_timing() -> None:
+    ref = _analysis(2e-21, [_row("B-H5", 5, 2e-24, 0.0167, 6e-24)])
+    clone = _analysis(2e-21, [_row("B-H5", 5, 3e-24, 0.0167, 9e-24)])
+    report = rc.compare_analysis(ref, clone)
+    assert not report["passes"]
+    assert report["moved_by_timing"]["count"] == 0
+
+
+def test_a_row_moved_past_by_an_accuracy_hypothesis_is_not_moved_by_timing() -> None:
+    ref = _analysis(
+        2e-21,
+        [
+            _row("B-H1", 1, 1e-30, 0.0167, 3e-30),
+            _row("B-H5", 5, 2e-24, 0.025, 4e-24),
+        ],
+    )
+    clone = _analysis(
+        2e-21,
+        [
+            _row("B-H1", 1, 1e-20, 0.025, 2e-20),
+            _row("B-H5", 5, 2e-24, 0.0167, 6e-24),
+        ],
+    )
+    report = rc.compare_analysis(ref, clone)
+    assert not report["passes"]
+    assert "/family_b/holm_binding[1]/threshold" in report["other"]["paths"]
+    assert report["moved_by_timing"]["count"] == 0
+
+
+def test_a_decision_change_is_never_moved_by_timing() -> None:
+    ref = _analysis(
+        2e-21,
+        [
+            _row("B-H5", 5, 0.02, 0.0167, 0.04),
+            _row("B-H6", 6, 2e-21, 0.025, 4e-21),
+        ],
+    )
+    flipped = _row("B-H5", 5, 0.02, 0.025, 0.02)
+    clone = _analysis(0.03, [flipped, _row("B-H6", 6, 0.03, 0.0167, 0.04)])
+    report = rc.compare_analysis(ref, clone)
+    assert not report["passes"]
+    assert report["other"]["paths"] == [
+        "/family_b/holm_binding[0]/below_threshold_descriptive"
+    ]
+    assert report["moved_by_timing"]["count"] == 2

@@ -16,7 +16,11 @@ apart: a difference there is model nondeterminism (S5.5), not the build.
 analysis (R-e 5): leaf-by-leaf diff of two analysis JSONs. Leaves under a
 node whose metric is timing-derived (CpR, TTCD, TTT) are reported apart,
 including correction-table and sensitivity entries that name a timing
-hypothesis only by id; every other leaf must be equal.
+hypothesis only by id. A correction-table row of a non-timing hypothesis
+whose own p-value is equal and whose step position moved only because a
+timing hypothesis changed rank is reported as "moved by timing", counted
+and listed (threshold and adjusted p-value only; a decision never is).
+Every other leaf must be equal.
 
 Reads the stores read-only; reads no ground truth; changes nothing.
 """
@@ -25,6 +29,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from collections import Counter
 from pathlib import Path
@@ -234,13 +239,107 @@ def leaf_diff(
     return [] if a == b else [(path, metric)]
 
 
+#: Correction-table fields set by a row's place in the step-down order.
+POSITION_FIELDS = frozenset({"threshold", "adjusted_p"})
+_ROW_LEAF = re.compile(r"^(?P<table>.*)\[(?P<index>\d+)\]/(?P<field>[^/\[\]]+)$")
+_TOKEN = re.compile(r"/([^/\[\]]+)|\[(\d+)\]")
+
+
+def _resolve(node: Any, path: str) -> Any:
+    for key, index in _TOKEN.findall(path):
+        if key:
+            if not isinstance(node, dict) or key not in node:
+                return None
+            node = node[key]
+        else:
+            if not isinstance(node, list) or int(index) >= len(node):
+                return None
+            node = node[int(index)]
+    return node
+
+
+def _is_table(rows: Any) -> bool:
+    return isinstance(rows, list) and all(
+        isinstance(r, dict) and "id" in r and "p_value" in r for r in rows
+    )
+
+
+def _step_order(rows: list[dict[str, Any]]) -> list[str]:
+    """Hypothesis ids in step-down order: observed p-value, untestable last,
+    registered rank breaking ties (analysis design T-a)."""
+
+    def key(r: dict[str, Any]) -> tuple[bool, float, int]:
+        p = r.get("p_value")
+        return (p is None, float(p) if p is not None else 0, int(r.get("rank") or 0))
+
+    return [str(r["id"]) for r in sorted(rows, key=key)]
+
+
+def moved_by_timing(
+    path: str, ref: Any, clone: Any, metrics: dict[str, str]
+) -> dict[str, Any] | None:
+    """Why a non-timing correction-table leaf differs, when the only cause is
+    a timing hypothesis changing rank; None otherwise.
+
+    All of: the leaf is a position field (threshold, adjusted p-value, never a
+    decision) of a row in a correction table; the row names the same
+    hypothesis on both sides with an identical p-value; its place in the step
+    order differs; and every hypothesis that swapped order with it is
+    timing-derived.
+    """
+    m = _ROW_LEAF.match(path)
+    if m is None or m["field"] not in POSITION_FIELDS:
+        return None
+    t_ref, t_clone = _resolve(ref, m["table"]), _resolve(clone, m["table"])
+    if not (_is_table(t_ref) and _is_table(t_clone)) or len(t_ref) != len(t_clone):
+        return None
+    i = int(m["index"])
+    row_ref, row_clone = t_ref[i], t_clone[i]
+    hid = str(row_ref["id"])
+    if str(row_clone["id"]) != hid or row_ref["p_value"] != row_clone["p_value"]:
+        return None
+    o_ref, o_clone = _step_order(t_ref), _step_order(t_clone)
+    if set(o_ref) != set(o_clone) or o_ref.index(hid) == o_clone.index(hid):
+        return None
+
+    def before(order: list[str], other: str) -> bool:
+        return order.index(other) < order.index(hid)
+
+    swapped = sorted(
+        h for h in o_ref if h != hid and before(o_ref, h) != before(o_clone, h)
+    )
+    if not swapped or any(metrics.get(h) not in TIMING_METRICS for h in swapped):
+        return None
+    return {
+        "path": path,
+        "table": m["table"],
+        "id": hid,
+        "position_ref": o_ref.index(hid) + 1,
+        "position_clone": o_clone.index(hid) + 1,
+        "swapped_with": swapped,
+    }
+
+
 def compare_analysis(ref: Any, clone: Any) -> dict[str, Any]:
-    diffs = leaf_diff(ref, clone, by_id=hypothesis_metrics(ref))
+    metrics = hypothesis_metrics(ref)
+    diffs = leaf_diff(ref, clone, by_id=metrics)
     timing = [p for p, m in diffs if m in TIMING_METRICS]
-    exact = [p for p, m in diffs if m not in TIMING_METRICS]
+    moved: list[dict[str, Any]] = []
+    exact: list[str] = []
+    for p, m in diffs:
+        if m in TIMING_METRICS:
+            continue
+        why = moved_by_timing(p, ref, clone, metrics)
+        if why is None:
+            exact.append(p)
+        else:
+            moved.append(why)
     return {
         "differing_leaves": len(diffs),
         "timing_derived": {"count": len(timing), "paths": timing[:LISTED]},
+        # Shown and counted, never folded into "timing_derived": a non-timing
+        # row whose step position moved because a timing hypothesis did.
+        "moved_by_timing": {"count": len(moved), "leaves": moved[:LISTED]},
         "other": {"count": len(exact), "paths": exact[:LISTED]},
         "passes": not exact,
     }
@@ -273,7 +372,8 @@ def main(argv: list[str] | None = None) -> int:
         _write(report, args.out)
         print(
             f"analysis {args.ref.name}: {report['other']['count']} differing leaves, "
-            f"{report['timing_derived']['count']} timing-derived; "
+            f"{report['timing_derived']['count']} timing-derived, "
+            f"{report['moved_by_timing']['count']} moved by timing; "
             f"{'PASS' if report['passes'] else 'FAIL'}"
         )
         return 0 if report["passes"] else 4

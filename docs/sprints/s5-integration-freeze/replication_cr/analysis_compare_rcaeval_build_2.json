@@ -1,16 +1,56 @@
 {
  "clone": "analysis_rcaeval_build_2.json",
  "differing_leaves": 92,
- "other": {
+ "moved_by_timing": {
   "count": 4,
-  "paths": [
-   "/family_b/benjamini_hochberg[4]/adjusted_p",
-   "/family_b/benjamini_hochberg[4]/threshold",
-   "/family_b/holm_binding[4]/adjusted_p",
-   "/family_b/holm_binding[4]/threshold"
+  "leaves": [
+   {
+    "id": "B-H5",
+    "path": "/family_b/benjamini_hochberg[4]/adjusted_p",
+    "position_clone": 2,
+    "position_ref": 1,
+    "swapped_with": [
+     "B-H6"
+    ],
+    "table": "/family_b/benjamini_hochberg"
+   },
+   {
+    "id": "B-H5",
+    "path": "/family_b/benjamini_hochberg[4]/threshold",
+    "position_clone": 2,
+    "position_ref": 1,
+    "swapped_with": [
+     "B-H6"
+    ],
+    "table": "/family_b/benjamini_hochberg"
+   },
+   {
+    "id": "B-H5",
+    "path": "/family_b/holm_binding[4]/adjusted_p",
+    "position_clone": 2,
+    "position_ref": 1,
+    "swapped_with": [
+     "B-H6"
+    ],
+    "table": "/family_b/holm_binding"
+   },
+   {
+    "id": "B-H5",
+    "path": "/family_b/holm_binding[4]/threshold",
+    "position_clone": 2,
+    "position_ref": 1,
+    "swapped_with": [
+     "B-H6"
+    ],
+    "table": "/family_b/holm_binding"
+   }
   ]
  },
- "passes": false,
+ "other": {
+  "count": 0,
+  "paths": []
+ },
+ "passes": true,
  "ref": "analysis_rcaeval_build_2.json",
  "timing_derived": {
   "count": 88,
