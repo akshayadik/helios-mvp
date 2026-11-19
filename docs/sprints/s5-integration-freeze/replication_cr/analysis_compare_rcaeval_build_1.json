@@ -1,6 +1,10 @@
 {
  "clone": "analysis_rcaeval_build_1.json",
  "differing_leaves": 78,
+ "moved_by_timing": {
+  "count": 0,
+  "leaves": []
+ },
  "other": {
   "count": 0,
   "paths": []

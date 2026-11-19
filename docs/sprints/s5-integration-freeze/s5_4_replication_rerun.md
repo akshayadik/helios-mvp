@@ -6,13 +6,13 @@
 
 **HELIOS reproduces exactly on a fresh clone.** Every outcome, snapshot hash, per-pipeline ranking and decision hash, and fused ranking of all 7,254 HELIOS runs equals the reference, and no run in the clone called the model live. Every schedule digest is equal.
 
-**The analyses are identical outside the timing-derived fields, with one exception the comparison tool does not count as timing (§4):** on RCAEval part 2, B-H5's adjusted p-value and step threshold in the family B Holm and Benjamini–Hochberg tables differ (4 leaves). B-H5's own p-value is identical. A timing-derived p-value (B-H6) moved past it in the step-down order. No decision changes.
+**The analyses are identical outside the timing-derived fields.** On RCAEval part 2, four leaves are reported as moved by timing (§4): B-H5's adjusted p-value and step threshold in the family B Holm and Benjamini–Hochberg tables differ (4 leaves). B-H5's own p-value is identical. A timing-derived p-value (B-H6) moved past it in the step-down order. No decision changes.
 
 | Directory | Runs compared | Identical | Schedule digest | Analysis outside timing | Timing-derived leaves |
 |---|---|---|---|---|---|
 | `otel_build_v3` | 1,449 | 1,449 | equal | identical | 73 |
 | `rcaeval_build_1` | 3,795 | 3,795 | equal | identical | 78 |
-| `rcaeval_build_2` | 3,795 | 3,795 | equal | 4 leaves, B-H5's correction-table row (§4) | 88 |
+| `rcaeval_build_2` | 3,795 | 3,795 | equal | identical; 4 leaves moved by timing, B-H5's correction-table row (§4) | 88 |
 | `rcaeval_build_3` | 3,795 | 3,795 | equal | identical | 72 |
 
 Per-spec detail: `replication_cr/compare_<dir>.json`; analysis diffs: `replication_cr/analysis_compare_<dir>.json`.
@@ -43,8 +43,8 @@ Per-spec detail: `replication_cr/compare_<dir>.json`; analysis diffs: `replicati
 - **Where.** `family_b/holm_binding[4]` and `family_b/benjamini_hochberg[4]`, fields `adjusted_p` and `threshold`: the row of B-H5 (Full against Multi-source RCD, HR@3).
 - **What is the same.** B-H5's p-value (2.2e-24), its decision, and every other non-timing leaf.
 - **Why it differs.** Holm and Benjamini–Hochberg step through the family in the order of the observed p-values. B-H6 (log TTCD) is timing-derived; its p-value moved from 2.1e-21 to 5.7e-25 between reference and clone, below B-H5's, so B-H5 moved one step. Its step threshold and its adjusted p-value move with its position: threshold 0.00625 to about 0.0071, adjusted p 1.78e-23 to 1.56e-23.
-- **Why the tool reports it.** `replication_compare.py` sorts a correction-table entry by the metric of the hypothesis it names (S5.4 §6 correction 1). B-H5 reads HR@3, so its row counts as non-timing, although its position depends on timing p-values. The analysis-diff pass condition is therefore not met by the letter, and it is reported here rather than relabelled after the fact.
-- **Proposed follow-up (not done).** Treat a correction-table entry as timing-propagated when its own p-value is equal and the entries whose order changed include a timing hypothesis. This is a change to a verification tool, so it waits for the owner.
+- **How the tool first reported it.** `replication_compare.py` sorted a correction-table entry by the metric of the hypothesis it names (S5.4 §6 correction 1). B-H5 reads HR@3, so its row counted as non-timing, although its position depends on timing p-values, and the first comparison reported FAIL with these 4 leaves.
+- **Tool change (owner, 2026-11-19).** A correction-table leaf is now reported in its own bucket, "moved by timing", counted and listed with the hypothesis, its step positions and the hypotheses it swapped with, when all of these hold: the leaf is a position field (threshold or adjusted p-value; a decision field never is); the row names the same hypothesis on both sides with an identical p-value; its place in the step order differs; and every hypothesis that swapped order with it is timing-derived. It is never folded into the timing-derived count. With the change, the four comparisons were regenerated: RCAEval part 2 reports 0 differing, 88 timing-derived and 4 moved by timing (B-H5, step 1 to 2, swapped with B-H6), and passes; the other three directories are unchanged. The first S5.4 comparisons had no non-timing difference, so the rule cannot change them.
 
 ## 5. What this means for the freeze
 
