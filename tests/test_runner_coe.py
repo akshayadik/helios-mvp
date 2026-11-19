@@ -32,6 +32,7 @@ def _orch(
     *,
     signer: Any = SIGNER,
     coe_path: Path | None = None,
+    frozen_router: bool = False,
 ) -> RunOrchestrator:
     captures = tmp_path / "captures"
     if not captures.exists():
@@ -49,8 +50,13 @@ def _orch(
         lpipe_client=FakeClient(),  # type: ignore[arg-type]
         coe_signer=signer,
         coe_path=coe_path,
-        # Provisional router: D alone is infeasible, so routed runs escalate.
-        router_params=provisional_router_params(stage_median_ms=STAGE_MEDIANS),
+        # Provisional router by default: D alone is infeasible, so routed runs
+        # escalate. frozen_router=True runs the frozen file (the S5.1 checks).
+        router_params=(
+            None
+            if frozen_router
+            else provisional_router_params(stage_median_ms=STAGE_MEDIANS)
+        ),
     )
 
 
