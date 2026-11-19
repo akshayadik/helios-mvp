@@ -1,6 +1,6 @@
-# OSF addendum · draft
+# OSF addendum 1
 
-**Status:** DRAFT for the owner, to be deposited on OSF before tag `build-freeze` (S2-BL-05). The freeze record and the frozen rating rubric follow later, in deposit 2 (S5.7). · **Prepared:** 2026-11-18, row S2-M10-RES01, against `main` at `2e81330`; updated the same day for entries 92–97 (S5 reporting rules, rows S2-M10-ENG01 and S2-M10-ENG02), and on 2026-11-19 for entries 98–99 (CR-02, CR-01) · **Covers:** deviation entries 46–99 and the frozen parameter files · **Supersedes:** the addendum bullets in `docs/sprints/s3-routing/plan.md` § OSF addendum, carried in here in full.
+**Status:** Addendum 1 to OSF registration KMR3D (DOI 10.17605/OSF.IO/KMR3D), deposited on OSF before tag `build-freeze` (S2-BL-05) as `osf_addendum_1.zip`; its contents are listed in `docs/sprints/s5-integration-freeze/osf_addendum_1_contents.md`, and the addendum's own DOI is recorded in the deviation log after registration. The freeze record and the frozen rating rubric follow later, in deposit 2 (S5.7). · **Prepared:** 2026-11-18, row S2-M10-RES01, against `main` at `2e81330`; updated the same day for entries 92–97 (S5 reporting rules, rows S2-M10-ENG01 and S2-M10-ENG02), and on 2026-11-19 for entries 98–99 (CR-02, CR-01) · **Covers:** deviation entries 46–99 and the frozen parameter files · **Supersedes:** the addendum bullets in `docs/sprints/s3-routing/plan.md` § OSF addendum, carried in here in full.
 
 ## 0. How to read this addendum
 
