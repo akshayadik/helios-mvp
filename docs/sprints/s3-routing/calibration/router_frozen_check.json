@@ -1,0 +1,97 @@
+{
+  "by_corpus": {
+    "otel_build_v3": {
+      "arm_hr1": {
+        "D": 0.4762,
+        "D+G": 0.619,
+        "D+L": 0.5397,
+        "Full": 0.5397
+      },
+      "arm_hr3": {
+        "D": 0.8095,
+        "D+G": 0.8095,
+        "D+L": 0.7143,
+        "Full": 0.8254
+      },
+      "cases": 63,
+      "escalated_share": 0.7937,
+      "escalated_share_by_signal": {
+        "error": 1.0,
+        "latency": 0.0,
+        "resource": 0.7273,
+        "unclassified": 0.9706
+      },
+      "first_publication_median_ms": 845.1,
+      "gpipe_runs": 50,
+      "lpipe_calls_saved": 13,
+      "lpipe_seconds_saved": 185.4,
+      "reasons": {
+        "constraint_empty": 33,
+        "disagreement": 17,
+        "none": 13
+      },
+      "routed_hr1": 0.5397,
+      "routed_hr3": 0.8254,
+      "terminal_arms": {
+        "D": 13,
+        "D+G": 0,
+        "D+L": 0,
+        "Full": 50
+      },
+      "uniform_hr1": 0.5397,
+      "uniform_hr3": 0.8254
+    },
+    "rcaeval_build": {
+      "arm_hr1": {
+        "D": 0.7394,
+        "D+G": null,
+        "D+L": 0.8947,
+        "Full": null
+      },
+      "arm_hr3": {
+        "D": 0.9455,
+        "D+G": null,
+        "D+L": 0.9757,
+        "Full": null
+      },
+      "cases": 495,
+      "escalated_share": 0.4646,
+      "escalated_share_by_signal": {
+        "error": 1.0,
+        "latency": 0.352,
+        "resource": 0.5283,
+        "unclassified": 0.9032
+      },
+      "first_publication_median_ms": 218.5,
+      "gpipe_runs": 0,
+      "lpipe_calls_saved": 265,
+      "lpipe_seconds_saved": 2495.6,
+      "reasons": {
+        "constraint_empty": 62,
+        "low_confidence": 168,
+        "none": 265
+      },
+      "routed_hr1": 0.8848,
+      "routed_hr3": 0.9677,
+      "terminal_arms": {
+        "D": 265,
+        "D+G": 0,
+        "D+L": 168,
+        "Full": 62
+      },
+      "uniform_hr1": 0.8929,
+      "uniform_hr3": 0.9737
+    }
+  },
+  "cases": 558,
+  "excluded": 0,
+  "frozen_hash": "95512168289748b8611a8cb963ff8c7fa90d0ef5f9f3aeb923fc1b2fcb3350ed",
+  "rd_measures": [
+    "hr_at_1",
+    "hr_at_3"
+  ],
+  "reward": "hr_at_1",
+  "tau_acc": 0.684821,
+  "tolerance": 0.01,
+  "unfeatured": 0
+}
