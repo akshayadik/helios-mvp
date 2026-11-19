@@ -19,6 +19,19 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 from helios.analysis.missing import ipw_effect, mcar_test
+from helios.analysis.reporting import (
+    GRAPH_HYPOTHESES,
+    NO_TRACES_REASON,
+    TIMING_KEYS,
+    TIMING_NOISE_STATEMENT,
+    apps_without_traces,
+    censored_share,
+    hr_exploratory_columns,
+    noise_reading,
+    rerun_determinism,
+    substitute_reruns,
+    trace_coverage,
+)
 from helios.analysis.sensitivity import group_differences, rank_mixed_model
 from helios.analysis.stats import (
     MultiplicityRow,
@@ -75,7 +88,7 @@ __all__ = [
 
 HELIOS_ENABLE_ANALYSIS_RUN: bool = True
 
-ANALYSIS_VERSION = "analysis-v1"
+ANALYSIS_VERSION = "analysis-v2"  # v2: S5 reporting rules (entries 93-96)
 HOLM_READINGS = ("data_order", "fixed_sequence")  # T-a (a), (b)
 A_H7_MODES = ("intersection_union", "h_fact_only", "sum")  # T-c (a), (b), (c)
 PRIOR_SERVICES = 5  # prior-only floor: the 5 injected services (contract §8)
@@ -262,6 +275,7 @@ def _confirmatory_hypothesis(
     cells: CellTable,
     apps: Mapping[str, str],
     a_h7_mode: str,
+    no_trace_apps: set[str] | None = None,
 ) -> _Outcome:
     hid = str(h["id"])
     a_side, b_side = _sides(str(h["comparison"]))
@@ -292,6 +306,23 @@ def _confirmatory_hypothesis(
         per_key[k] = (a_vals, b_vals, cases)
     # S4.10 O-e (a): only cases of the apps where both compared cells pass.
     ok_apps = {k: passing_apps(cells, a_name, b_name, k) for k in keys}
+    no_traces_only: list[str] = []
+    if hid in GRAPH_HYPOTHESES:
+        # Entry 93: no incident graph on a system without traces.
+        if no_trace_apps is None:
+            base["trace_rule"] = "not applied: trace presence not supplied (entry 93)"
+        else:
+            base["apps_untestable_no_traces"] = sorted(
+                no_trace_apps & set(apps.values())
+            )
+            no_traces_only = [
+                k
+                for k, v in ok_apps.items()
+                if v and all(a in no_trace_apps for a in v)
+            ]
+            ok_apps = {
+                k: [a for a in v if a not in no_trace_apps] for k, v in ok_apps.items()
+            }
     base["apps_tested"] = dict(ok_apps)
     for k, (a_vals, b_vals, cases) in per_key.items():
         per_key[k] = (a_vals, b_vals, [c for c in cases if apps.get(c) in ok_apps[k]])
@@ -318,6 +349,8 @@ def _confirmatory_hypothesis(
     if missing:
         return _untestable(base, f"no values for {', '.join(missing)} (not scored yet)")
     failed = [k for k in keys if not ok_apps[k]]
+    if failed and all(k in no_traces_only for k in failed):
+        return _untestable(base, NO_TRACES_REASON)
     if failed:
         return _untestable(
             base,
@@ -475,6 +508,60 @@ def _splits(
     return out
 
 
+def _reporting(
+    h: Mapping[str, Any],
+    outcome: _Outcome,
+    table: CaseTable,
+    apps: Mapping[str, str],
+    reruns: CaseTable | None,
+    threshold: float | None,
+    rerun_det: Mapping[str, Mapping[str, Any]] | None,
+) -> dict[str, Any]:
+    """S5 reporting rules beside one result (entries 94-96); never a decision."""
+    out: dict[str, Any] = {}
+    hid = str(h["id"])
+    rcd = _resolve("BASELINE-5", table)
+    if rcd is not None and (
+        hid == "B-H5" or (hid == "B-H8" and outcome.result.get("b") == rcd)
+    ):
+        out["rerun_determinism"] = (
+            "not supplied"
+            if rerun_det is None
+            else dict(rerun_det.get(rcd, {"pairs": 0}))
+        )
+    if outcome.p_value is None or not outcome.pairs:
+        return out
+    key, (a_vals, b_vals, cases) = next(iter(outcome.pairs.items()))
+    a_name, b_name = outcome.result["a"], outcome.result["b"]
+    if key in TIMING_KEYS:
+        p_re, n_sub = None, 0
+        if reruns is not None:
+            a2, b2, n_sub = substitute_reruns(
+                key,
+                a_vals,
+                b_vals,
+                cases,
+                reruns.get(a_name, {}),
+                reruns.get(b_name, {}),
+            )
+            if n_sub:
+                p_re = _test(str(outcome.result["test"]), a2, b2, cases).p_value
+        out["timing"] = {
+            "censored_share": {
+                "a": censored_share(table[a_name], cases, apps),
+                "b": censored_share(table[b_name], cases, apps),
+            },
+            "reruns": "not supplied" if reruns is None else {"n_substituted": n_sub},
+            **noise_reading(outcome.p_value, threshold, p_re),
+            "statement": TIMING_NOISE_STATEMENT,
+        }
+    if key == "hr_at_3":
+        out["exploratory_hr"] = hr_exploratory_columns(
+            hid, table[a_name], table[b_name], cases, apps
+        )
+    return out
+
+
 def _family(
     hypotheses: Sequence[Mapping[str, Any]],
     table: CaseTable,
@@ -487,9 +574,14 @@ def _family(
     confirmatory: bool,
     scheduled: Mapping[str, Collection[str]],
     covariates: Mapping[str, Mapping[str, Any]] | None,
+    no_trace_apps: set[str] | None = None,
+    reruns: CaseTable | None = None,
+    rerun_det: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     outcomes = {
-        str(h["id"]): _confirmatory_hypothesis(h, table, cells, apps, a_h7_mode)
+        str(h["id"]): _confirmatory_hypothesis(
+            h, table, cells, apps, a_h7_mode, no_trace_apps
+        )
         for h in hypotheses
     }
     ranks = {str(h["id"]): int(h["rank"]) for h in hypotheses}
@@ -518,6 +610,7 @@ def _family(
 
     results = []
     decisions = {r.hypothesis_id: r.rejected for r in binding}
+    thresholds = {r.hypothesis_id: r.threshold for r in binding}
     for h in hypotheses:
         hid = str(h["id"])
         o = outcomes[hid]
@@ -531,6 +624,9 @@ def _family(
                 h, o, table, scheduled, covariates
             )
         res["splits"] = _splits(h, o, table)
+        res.update(
+            _reporting(h, o, table, apps, reruns, thresholds.get(hid), rerun_det)
+        )
         results.append(res)
     return {
         "holm_reading": holm,
@@ -543,7 +639,13 @@ def _family(
     }
 
 
-def _family_e(table: CaseTable) -> list[dict[str, Any]]:
+def _family_e(
+    table: CaseTable,
+    apps: Mapping[str, str] | None = None,
+    no_trace_apps: set[str] | None = None,
+    reruns: CaseTable | None = None,
+) -> list[dict[str, Any]]:
+    apps = apps or {}
     out: list[dict[str, Any]] = []
     for h in FAMILY_E_HYPOTHESES:
         hid = str(h["id"])
@@ -567,10 +669,63 @@ def _family_e(table: CaseTable) -> list[dict[str, Any]]:
             continue
         a_vals, b_vals = _values(table[a_side], key), _values(table[b_side], key)
         cases = sorted(a_vals.keys() & b_vals.keys())
+        if hid in GRAPH_HYPOTHESES:
+            # Entry 93: no incident graph on a system without traces.
+            if no_trace_apps is None:
+                row["trace_rule"] = (
+                    "not applied: trace presence not supplied (entry 93)"
+                )
+            else:
+                row["apps_untestable_no_traces"] = sorted(
+                    no_trace_apps & set(apps.values())
+                )
+                kept = [c for c in cases if apps.get(c) not in no_trace_apps]
+                if cases and not kept:
+                    row["untestable"] = NO_TRACES_REASON
+                cases = kept
         row["available"] = bool(cases)
         if cases:
             row.update({"n_pairs": len(cases), **_effects(hid, a_vals, b_vals, cases)})
+            if key in TIMING_KEYS:
+                row["timing"] = _family_e_timing(
+                    hid, key, a_side, b_side, a_vals, b_vals, cases, table, apps, reruns
+                )
         out.append(row)
+    return out
+
+
+def _family_e_timing(
+    hid: str,
+    key: str,
+    a_side: str,
+    b_side: str,
+    a_vals: Mapping[str, float],
+    b_vals: Mapping[str, float],
+    cases: list[str],
+    table: CaseTable,
+    apps: Mapping[str, str],
+    reruns: CaseTable | None,
+) -> dict[str, Any]:
+    """Entry 94 beside a Family E timing result (BCa only, so the rerun
+    movement is that of the mean difference, not of a p-value)."""
+    out: dict[str, Any] = {
+        "censored_share": {
+            "a": censored_share(table[a_side], cases, apps),
+            "b": censored_share(table[b_side], cases, apps),
+        },
+        "statement": TIMING_NOISE_STATEMENT,
+    }
+    if reruns is None:
+        out["reruns"] = "not supplied"
+        return out
+    a2, b2, n_sub = substitute_reruns(
+        key, a_vals, b_vals, cases, reruns.get(a_side, {}), reruns.get(b_side, {})
+    )
+    out["reruns"] = {"n_substituted": n_sub}
+    if n_sub:
+        out["mean_difference_with_reruns"] = bca_mean(
+            [a2[c] - b2[c] for c in cases], bca_seed(hid)
+        ).estimate
     return out
 
 
@@ -752,6 +907,8 @@ def analyse(
     frozen: Callable[[], bool] = build_frozen,
     scheduled: Mapping[str, Collection[str]] | None = None,
     covariates: Mapping[str, Mapping[str, Any]] | None = None,
+    traced: Mapping[str, bool] | None = None,
+    reruns: tuple[list[dict[str, Any]], list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any]:
     """The full analysis as one JSON-ready dict (no case IDs in it).
 
@@ -760,23 +917,48 @@ def analyse(
     denominator; without a campaign every system is taken as scheduled on
     every case of ``apps``. ``covariates`` (case -> app, fault, window
     bytes, ...) turn on the MCAR test and IPW of S4.10 O-f; they must include
-    ``app``.
+    ``app``. ``traced`` (case -> whether its sealed capture carries traces)
+    turns on the entry 93 rule; without it the run cannot be confirmatory.
+    ``reruns`` (the scored determinism-rerun store: eval_score, eval_run
+    rows) adds the entry 94 and 96 rerun figures.
     """
     if holm not in HOLM_READINGS:
         raise ValueError(f"holm must be one of {HOLM_READINGS}")
     if a_h7_mode not in A_H7_MODES:
         raise ValueError(f"a_h7_mode must be one of {A_H7_MODES}")
     guard = confirmatory_guard(scores, runs, frozen=frozen)
-    table = build_case_table(scores, runs, variant_names())
+    if traced is None:
+        guard = Guard(
+            False,
+            (*guard.reasons, "trace presence of the captures not supplied (entry 93)"),
+        )
+    names = variant_names()
+    table = build_case_table(scores, runs, names)
+    rerun_table = None if reruns is None else build_case_table(*reruns, names)
+    coverage = None if traced is None else trace_coverage(apps, traced)
+    unread = sum(r["capture_missing"] for r in (coverage or {}).values())
+    if unread:
+        guard = Guard(
+            False,
+            (
+                *guard.reasons,
+                f"{unread} captures not read for trace presence (entry 93)",
+            ),
+        )
+    rerun_det = None if rerun_table is None else rerun_determinism(table, rerun_table)
     if scheduled is None:
         scheduled = {name: list(apps) for name in table}
     cells = cell_table(table, apps, scheduled)
+    no_trace_apps = None if coverage is None else apps_without_traces(coverage)
     kwargs: dict[str, Any] = {
         "scheduled": scheduled,
         "covariates": covariates,
         "a_h7_mode": a_h7_mode,
         "holm": holm,
         "confirmatory": guard.confirmatory,
+        "no_trace_apps": no_trace_apps,
+        "reruns": rerun_table,
+        "rerun_det": rerun_det,
     }
     return {
         "version": ANALYSIS_VERSION,
@@ -785,9 +967,12 @@ def analyse(
         "systems": {name: len(rows) for name, rows in sorted(table.items())},
         "cases": len(apps),
         "cells": [c.as_dict() for c in cells.values()],
+        "trace_coverage": coverage,
         "family_a": _family(FAMILY_A_HYPOTHESES, table, cells, apps, groups, **kwargs),
         "family_b": _family(FAMILY_B_HYPOTHESES, table, cells, apps, groups, **kwargs),
         "family_b_sensitivity": family_b_sensitivity(table, apps, groups, **kwargs),
-        "family_e": _family_e(table),
+        "family_e": _family_e(table, apps, no_trace_apps, rerun_table),
+        "rerun_determinism": rerun_det,
+        "timing_noise_statement": TIMING_NOISE_STATEMENT,
         "sanity_floors": sanity_floors(table, n_services),
     }

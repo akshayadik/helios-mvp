@@ -6,11 +6,16 @@ Usage (from repo root; the signed ground truth needs the ledger key):
     poetry run python bin/analyse.py --db results.duckdb --corpus build \
         --output analysis.json [--holm data_order|fixed_sequence] \
         [--a-h7 intersection_union|h_fact_only|sum] \
-        [--campaign DIR] [--captures DIR]
+        [--campaign DIR] [--captures DIR] [--reruns DB]
 
 ``--campaign`` reads the campaign's schedule.json for the cell denominators
 (S4.10 O-e); without it every system counts as scheduled on every case.
-``--captures`` adds window bytes to the MCAR/IPW covariates (O-f).
+``--captures`` adds window bytes to the MCAR/IPW covariates (O-f) and
+reads, from each sealed capture, whether it carries traces (entry 93: graph
+comparisons are untestable on a system without traces). Without it the run
+cannot be confirmatory. ``--reruns`` is the campaign's determinism-rerun store
+(``rerun.duckdb``), scored with ``bin/score_runs.py`` like the main store; it
+adds the rerun figures of entries 94 and 96.
 
 Reads the harness-written eval tables only (eval_score, eval_run). Case groups
 (system x root-cause service x fault) and service counts for the random floor
@@ -26,7 +31,10 @@ import json
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterable
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -37,6 +45,7 @@ from helios.evaluation.scoring import GROUND_TRUTH_FILES, Corpus
 from helios.orchestrator.schedule import scheduled_by_system
 from helios.store.result_store import ResultStore
 from helios.telemetry.pool_lock import BUILD_FREEZE_TAG, PoolLockedError, build_frozen
+from helios.telemetry.reader import CaptureReader
 from helios.vcl.config import VCLManifest  # noqa: F401  # flag-guard compliance
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -85,8 +94,41 @@ def covariates(info: CaseInfo, captures: Path | None) -> dict[str, dict[str, Any
     return out
 
 
+def trace_presence(
+    captures: Path,
+    cases: Iterable[str],
+    key: bytes,
+    reader_factory: Callable[[Path, bytes], Any] = CaptureReader,
+) -> dict[str, bool]:
+    """Entry 93: whether each case's sealed capture carries traces (a trace
+    stream declared and non-empty). Cases with no capture are left out; a
+    capture that fails its window hash or content seal is refused."""
+    reader = reader_factory(captures, key)
+    out: dict[str, bool] = {}
+    broken = 0
+    for case in cases:
+        if not (captures / case / "manifest.json").exists():
+            continue
+        v = reader.read(case)
+        if not v.intact:
+            broken += 1
+            continue
+        out[case] = (
+            v.window.p2_traces_path is not None
+            and v.stream_row_counts.get("p2_traces", 0) > 0
+        )
+    if broken:
+        raise ValueError(f"{broken} capture(s) fail their window hash or seal")
+    return out
+
+
 def _summary(out: dict[str, Any]) -> None:
     print(f"[analyse] {out['label']} ({out['version']}); systems {out['systems']}")
+    for app, row in (out.get("trace_coverage") or {}).items():
+        print(
+            f"[analyse]   {app}: {row['with_traces']}/{row['cases']} captures "
+            f"with traces, {row['capture_missing']} not read"
+        )
     for reason in out["guard_reasons"]:
         print(f"[analyse]   not confirmatory: {reason}")
     for family in ("family_a", "family_b"):
@@ -112,7 +154,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--a-h7", choices=A_H7_MODES, default="intersection_union")
     parser.add_argument("--campaign", type=Path)
     parser.add_argument("--captures", type=Path)
+    parser.add_argument("--reruns", type=Path)
     args = parser.parse_args(argv)
+    reruns = None
     try:
         key = load_key()
         info = case_info(args.corpus, key)
@@ -120,12 +164,25 @@ def main(argv: list[str] | None = None) -> int:
         scores = store.fetch_scores()
         runs = store.fetch_run_metrics()
         store.close()
+        if args.reruns is not None:
+            again = ResultStore(args.reruns)
+            reruns = (again.fetch_scores(), again.fetch_run_metrics())
+            again.close()
+            if not reruns[0]:
+                print("[analyse] rerun store has no scored rows: run score_runs on it")
     except PoolLockedError as exc:
         print(f"[analyse] refused: {exc}")
         return 3
     apps = info.apps or dict.fromkeys(
         sorted({str(s["incident_id"]) for s in scores}), args.corpus
     )
+    traced = None
+    if args.captures is not None:
+        try:
+            traced = trace_presence(args.captures, apps, key)
+        except ValueError as exc:
+            print(f"[analyse] refused: {exc}")
+            return 2
     scheduled = None
     if args.campaign is not None:
         body = json.loads((args.campaign / "schedule.json").read_text())
@@ -140,6 +197,8 @@ def main(argv: list[str] | None = None) -> int:
         a_h7_mode=args.a_h7,
         scheduled=scheduled,
         covariates=covariates(info, args.captures) if info.apps else None,
+        traced=traced,
+        reruns=reruns,
     )
     args.output.write_text(
         json.dumps(out, indent=2, default=str) + "\n", encoding="utf-8"

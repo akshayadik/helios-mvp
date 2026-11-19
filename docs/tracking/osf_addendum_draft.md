@@ -1,6 +1,6 @@
 # OSF addendum · draft
 
-**Status:** DRAFT for the owner, to be deposited on OSF before tag `build-freeze` (S2-BL-05). The freeze record and the frozen rating rubric follow later, in deposit 2 (S5.7). · **Prepared:** 2026-11-18, row S2-M10-RES01, against `main` at `2e81330` · **Covers:** deviation entries 46–91 and the frozen parameter files · **Supersedes:** the addendum bullets in `docs/sprints/s3-routing/plan.md` § OSF addendum, carried in here in full.
+**Status:** DRAFT for the owner, to be deposited on OSF before tag `build-freeze` (S2-BL-05). The freeze record and the frozen rating rubric follow later, in deposit 2 (S5.7). · **Prepared:** 2026-11-18, row S2-M10-RES01, against `main` at `2e81330`; updated the same day for entries 92–97 (S5 reporting rules, rows S2-M10-ENG01 and S2-M10-ENG02) · **Covers:** deviation entries 46–97 and the frozen parameter files · **Supersedes:** the addendum bullets in `docs/sprints/s3-routing/plan.md` § OSF addendum, carried in here in full.
 
 ## 0. How to read this addendum
 
@@ -17,21 +17,24 @@
 | A-H7 | Full vs noLLM · H_fact and H_struct · sign test | H_struct counts invented services and evidence ids as well as malformed answers; noLLM is a structural zero. H_fact no longer uses the ground truth: a claim is supported only if it cites an existing item of the run's own evidence. The LLM narrator picks and orders claims; code writes every sentence. A displayed narrative with no claims has H_fact zero. A-H7 is rejected only when both sign tests reject (intersection-union). Both variants are expected near zero, so A-H7 is likely not rejected | 59, 65, 66, 67, 68, 84, 86 |
 | A-H1 | Full vs noLLM · HR@3 | The L-pipe is three single-modality workers with a deterministic merge (at most two on the pool). Full routes cheap-first while noLLM records the would-be escalation, so the two differ only on escalated runs: reported split by escalation | 57, 58, 69, 86 |
 | A-H2 | Full vs LLM-only · HR@3 | As A-H1 for the L-pipe; LLM-only uses uniform routing | 57, 58, 69 |
-| A-H6 | Full vs G · HR@3, narrative-heavy stratum | Stratum rule and τ_N frozen (median novel-template share on the RCAEval build cases with logs, τ_N 0.000164). Under uniform routing G runs on every incident with a graph. G-pipe frozen as the learned linear ranker | 54, 56, 69, 85 |
-| A-H5 | noRouter vs Full · log-CpR at matched HR@3 | Routing modes and frozen router. CpR definition (graph build in the clock, publication sequence, human time only for PROVISIONAL and NON_CONVERGED, price-book-v2 AWS primary). Primary test on cases with the same HR@3 outcome, all cases as sensitivity. Reported split by the Full run's stage (stopped, escalated): the difference comes mainly from earlier first publication, not from skipped LLM calls | 69, 70, 84, 86 |
+| A-H6 | Full vs G · HR@3, narrative-heavy stratum | Stratum rule and τ_N frozen (median novel-template share on the RCAEval build cases with logs, τ_N 0.000164). Under uniform routing G runs on every incident with a graph. G-pipe frozen as the learned linear ranker. Untestable on a system none of whose captures carries traces (no incident graph), tested on the others | 54, 56, 69, 85, 93 |
+| A-H5 | noRouter vs Full · log-CpR at matched HR@3 | Routing modes and frozen router. CpR definition (graph build in the clock, publication sequence, human time only for PROVISIONAL and NON_CONVERGED, price-book-v3 AWS primary). Primary test on cases with the same HR@3 outcome, all cases as sensitivity. Reported split by the Full run's stage (stopped, escalated): the difference comes mainly from earlier first publication, not from skipped LLM calls | 69, 70, 84, 86, 97 |
 | A-H4 | Full vs noConsensus · HR@3, ambiguous stratum | MAHC weights pipelines and calibrates its confidence; noConsensus is vote-only Borda on the same per-pipeline lists. The router never reads a fusion output, so both route a case identically | 60–63, 69 |
-| A-H8 | Full vs noStructural · HR@3 | The structural bundle now includes the G-pipe trace features built on typed structure; E-H10 attributes the difference | 54, 56 |
-| B-H1–B-H5 | Full vs each baseline · HR@3 · McNemar exact mid-p | Baselines read an export of the sealed HELIOS window, never RCAEval's raw folders. Binding runs receive the injection time (RCAEval protocol), with a trigger-time sensitivity phase. A root cause a method never ranks is a miss. TraceRCA requires traces and is excluded with a reason where they are missing | 88, 91 |
+| A-H8 | Full vs noStructural · HR@3 | The structural bundle now includes the G-pipe trace features built on typed structure; E-H10 attributes the difference. Untestable on a system without traces, as A-H6 | 54, 56, 93 |
+| B-H1–B-H5 | Full vs each baseline · HR@3 · McNemar exact mid-p | Baselines read an export of the sealed HELIOS window, never RCAEval's raw folders. Binding runs receive the injection time (RCAEval protocol), with a trigger-time sensitivity phase. A root cause a method never ranks is a miss. TraceRCA requires traces and is excluded with a reason where they are missing. Beside B-H5, the determinism rerun of Multi-source RCD, whose lower ranks can move between reruns | 88, 91, 96 |
 | B-H7 | best baseline vs Full · log-CpR | CpR as in A-H5; baselines timed the same way (wall and CPU time inside the container) | 84, 88 |
 | B-H6 | best baseline vs Full · log TTCD | TTCD is measured from the shared trigger handover, with graph build inside the clock; censored at 1,800 s | 46, 84, 88 |
-| B-H8 | Full vs best baseline · Avg@5 | Input and failure rules as B-H1–B-H5 | 88, 91 |
+| B-H8 | Full vs best baseline · Avg@5 | Input and failure rules as B-H1–B-H5. When Multi-source RCD is the best baseline, its determinism rerun is reported beside the result | 88, 91, 96 |
+| Every HR@3 test | A-H1–A-H4, A-H6, A-H8, B-H1–B-H5 | HR@1 and MRR beside each, as exploratory columns (paired BCa, no p-value, no Holm), with the HR@3 discordant pairs. HR@3 stays the binding metric | 95 |
+| Every timing-derived test | A-H5, B-H6, B-H7 (and E-H2) | Beside each: the share of runs censored at the 1,800 s TTCD cap, the run-to-run timing noise measured in the S5.4 replication, the p-value with the determinism-rerun values substituted, and whether the p-value lies within that movement of its threshold. The decision is unchanged | 94 |
 | Holm, both families | | Step-down Holm in the order of the observed p-values; registered rank breaks ties and sets the report order. An untestable hypothesis stays in the family, unrejected. The fixed-sequence reading is reported beside it | 86 |
 | All tests | | Run campaign rules: frozen schedule, outcome classes, retries, cell rule, MCAR and IPW as sensitivity. Covariates: `llm_unavailable`, trigger source, determinism rerun | 73, 87 |
 
 Family E (exploratory, BCa, no Holm):
-- **E-H2 (TTT).** TTT is measured from the trigger handover to the first publication, whatever its state (entries 46, 84).
+- **E-H2 (TTT).** TTT is measured from the trigger handover to the first publication, whatever its state (entries 46, 84). The timing rule of entry 94 applies.
 - **E-H4 and E-H6.** Tests of the lite FGSV and IOL mechanisms (entry 89).
-- **E-H5.** Offline replay with a two-stage reward (entries 74, 75); the selection of its pool subset is fixed in §2.7. Which form of E-H5 is binding is still an owner decision (§5).
+- **E-H5.** Offline replay with a two-stage reward (entries 74, 75); the selection of its pool subset is fixed in §2.7. Read in the same-case form (entry 92, §2.7).
+- **E-H10.** Untestable on a system without traces, as A-H6 (entry 93).
 - **E-H8.** Moves to Stage B, because the frozen router does not read the ACP (entries 82, 83).
 - **E-H1 and E-H9.** Untestable in Stage A: no consumer for `p4_cognitive` or `his_tier` (entry 90).
 
@@ -62,7 +65,7 @@ The metric contract is signed into deposit 1 and is not edited (entry 72), so th
 
 - **Clock** (entries 46, 84). TTT and TTCD start when a system is handed the shared trigger record; the contract's "invocation" wording is superseded. Building the incident graph is inside the clock (about 0.4 s per run on OTel build data; none without traces).
 - **Publication sequence** (entry 84). A run publishes its first list and, when different, its terminal list (routed: the cheap list, then the escalated one). A non-converged run's in-time list counts as published at 90 s. TTT = graph build + first publication. TTCD = graph build + the earliest publication whose top-1 is the root cause, censored at 1,800 s. The narrator runs after publication; its time is reported as time to narrative and is never part of TTT or TTCD.
-- **CpR human time** (entry 84). Review time is charged when the published state is PROVISIONAL or NON_CONVERGED, never for CONFIRMED. Primary price profile: price-book-v2, AWS; GCP and Azure as sensitivity columns.
+- **CpR human time** (entry 84). Review time is charged when the published state is PROVISIONAL or NON_CONVERGED, never for CONFIRMED. Primary price profile: price-book-v3 (entry 97), AWS; GCP us-central1 and Azure eastus as sensitivity columns, every price verified against the provider. The three reference GPUs differ (A10G, L4, T4), so the GPU columns are not like-for-like; Azure storage is listed per GB and recorded per GiB (about 7% in that component). Both are stated with the sensitivity columns.
 - **H_fact** (entries 65, 84). An atomic claim is supported only if it cites an existing item of the run's evidence; agreement with the ground truth is no longer part of the rule. Unlabelled claims leave the case's H_fact empty and are counted, never imputed.
 - **Detection delay** (entries 71, 72). Recorded seconds from the trigger's anchor (`trigger_time_s`) to the earliest instant a live detector could have issued it (`known_at_s`). For a threshold trigger that is the end of the last persistence bucket; for the fallback, the end of the scored window; external triggers have none. It is identical for every system on an incident, and descriptive.
 - **Operational TTCD** (entries 71, 84). Detection delay + TTCD, censored at 1,800 s. Exploratory; reported beside TTCD, never replacing it in B-H6, CpR or A-H5.
@@ -88,6 +91,7 @@ The metric contract is signed into deposit 1 and is not edited (entry 72), so th
 - **Two-stage reward.** Offline replay only, through a thawed copy of the router. Departures from Chapter 3: the corpora (D11), r1 without HITL acceptance or CpR, single-pipeline stops excluded from RRE, and the stream seed taken from the existing `orar_prewarm_order` slot. A terminal reward that arrives before its provisional reward applies whole (entry 75).
 - **Pool subset.** The pool replay runs after the confirmatory runs are scored, on a seeded 25% of each pool corpus. The selection rule (seed and stratification) is fixed here before `build-freeze`.
 - **Reporting.** RRE and learning curves with BCa intervals, outside the Holm family.
+- **E-H5 reading** (entry 92, owner decision 2026-11-18). RRE exists only on escalated runs, and Full and noReconcile escalate different cases (build: 32.3% against 52.7%). Read as Chapter 3 words it, E-H5 would compare RRE over different case sets: on build, Full 15.0% against noReconcile 8.4%, a difference that came mostly from that selection. E-H5 is therefore read in the same-case form: the paired per-case RRE difference (noReconcile minus Full) over the delayed-label cases where both variants have a provisional reward, with a BCa interval (frozen `bca_seed("E-H5")`). The worded form is reported beside it with both case counts and the overlap, labelled as confounded by escalation selection. With no shared case, only the worded form is shown, with that statement.
 
 ### 2.8 OTel fix attempt and held-out v4 (entries 76–81)
 
@@ -148,9 +152,19 @@ The metric contract is signed into deposit 1 and is not edited (entry 72), so th
 - **Certificate.** 13 flags covered; 3 declared without a consumer in Stage A (`p4_cognitive`, `his_tier`, `sampling_regime_tag`); 9 declared interaction rows over 6 flag sets; no violation (`docs/tracking/disjointness_audit_log.md`).
 - **Reporting.** With `l2b_graph` OFF the G-pipe cannot run, so a comparison involving that flag also removes the G-pipe.
 
+### 2.15 S5 reporting rules (entries 92–96)
+
+Adopted by the owner on 2026-11-18 from the S5.3 pilot, the S5.4 replication and the component review (backlog CR-09, CR-10, CR-11, CR-16, CR-23). None changes a hypothesis, a test or a Holm decision. Entries 93–96 are computed by the analysis (`helios/analysis/reporting.py`, analysis-v2, row S2-M10-ENG01).
+
+- **E-H5 reading** (entry 92). Same-case form, as in §2.7.
+- **Graph comparisons without traces** (entry 93). The incident graph is built from traces; without traces the G-pipe does not run and the structural bundle has nothing to act on. A-H6, A-H8 and E-H10 are reported as untestable on a system none of whose captures carries traces ("no traces, no incident graph"), never as a non-rejection, and are tested as registered on the others. Trace presence is read from the sealed capture manifests by the analysis, after scoring; for the pool, not before `build-freeze`. An unread capture leaves trace presence unknown and keeps the run from being labelled confirmatory. In the Holm step-down an untestable hypothesis is not rejected. On RCAEval build (no traces) A-H6 and A-H8 gave p = 1 with every pair tied, by construction.
+- **Timing noise and censoring** (entry 94). Beside every TTT, TTCD, time-to-triage and CpR result: the share of runs censored at the 1,800 s TTCD cap (CpR's opportunity term is priced on TTCD), per variant and system; the statement that timing-derived results carry run-to-run noise, with the size measured in the S5.4 replication (identical code, data and seeds; OTel B-H7 p about 0.038, then about 0.099); the p-value with the confirmatory determinism-rerun values substituted (every 10th case); and whether the p-value lies within the observed movement of its threshold, in which case the reading is stated as sensitive to timing noise.
+- **HR@1 and MRR columns** (entry 95). HR@3 is near ceiling on RCAEval build (Full 96–98%), so the top-3 tests have few discordant pairs. Beside each HR@3 test: HR@1 and MRR per side and system, the paired difference with a BCa interval, and the number of HR@3 discordant pairs. No p-value; outside every Holm family.
+- **Multi-source RCD nondeterminism** (entry 96). With identical input, seed, image and config, Multi-source RCD returned a different ranked list on 3 of 495 RCAEval build cases in the S5.4 replication (HR@1 and HR@3 unchanged; Avg@5 and MRR changed on 2). Beside B-H5, and beside B-H8 when it is the best baseline: the share of its determinism reruns with an identical output and the change in HR@1, HR@3, Avg@5 and MRR. The first run is the one scored; RCD itself is not changed.
+
 ## 3. Frozen parameter files
 
-The parameter hashes the runs record (`parameter_hashes` in each CoE entry), the model and image digests, and the freeze commit go into the freeze record (S5.6) and deposit 2. Listed here: each file's SHA-256 at this draft (`main` `2e81330`) and its last commit.
+The parameter hashes the runs record (`parameter_hashes` in each CoE entry), the model and image digests, and the freeze commit go into the freeze record (S5.6) and deposit 2. Listed here: each file's SHA-256 at this draft (`main` `2e81330`; the router at `e3e4758`, entry 97) and its last commit.
 
 | File | What | Entry | Last commit | SHA-256 |
 |---|---|---|---|---|
@@ -159,29 +173,23 @@ The parameter hashes the runs record (`parameter_hashes` in each CoE entry), the
 | `data/frozen/gpipe_params.json` | G-pipe learned ranker | 56 | `6944cb2` | `3d96133c45888dc738991918812d7f0ff400bb72c43c9e3db8d8d4173f143e4c` |
 | `data/frozen/mahc_params.json` | MAHC priors and calibrator | 63 | `304019d` | `da515633aede45a8b5e871383f6deed53358afd19cbf87898ac09c19a31d3634` |
 | `data/frozen/narrator_params.json` | Narrator (pick and order) | 67, 68 | `232f529` | `f735153cc70f13f5e0aa6f3c7cd510a00b578fa0f4c66ebdbe8761e0430dcf7c` |
-| `data/frozen/router_params.json` | Router (cbr_routing) | 70 | `31e0cb5` | `f087515cc76a8fb5ed5484c078f9379feadcd8a206a923e2b1452a9ec35fb50c` |
+| `data/frozen/router_params.json` | Router (cbr_routing); price-book digest re-stamped, no routing parameter changed | 70, 97 | `e3e4758` | `b05217fd2ba231604b68abff9fd5fef62f40434d8f423e346155d8bcd7fa7749` |
 | `data/frozen/acp_params.json` | ACP (exploratory) | 83 | `9d1cd3b` | `b0282ded64099959eeb42a32f04e09f9e92b3e36691a76c94985db8c5872d50f` |
 | `data/frozen/narrative_tau.json` | τ_N, narrative-heavy stratum | 85 | `d748fe5` | `887c2746934b0a252fbba18320e243e0d38aa0fc4fd0611ea90567ce37ace546` |
 | `data/frozen/fgsv_params.json` | FGSV lite | 89 | `66c1fe2` | `2f71ac08424d4fdccb370b7d4d3143805c8a173871df966597a6c17ae34725fc` |
 | `data/frozen/iol_injection.json` | IOL lite E-H6 ladder | 89 | `66c1fe2` | `c6cd5b319a76e517e51b0bbfabdb1355ff529e5091eeb7d3a33c10654eebb47a` |
 
-The L-pipe worker prompt SHAs and the model digest are frozen in code (`lpipe_config.WORKER_PROMPT_SHAS`, entry 58) and are checked by the compose `model-check` service. The price book is price-book-v2 (AWS primary); its GCP and Azure profiles are open (§5).
+The L-pipe worker prompt SHAs and the model digest are frozen in code (`lpipe_config.WORKER_PROMPT_SHAS`, entry 58) and are checked by the compose `model-check` service. The price book is price-book-v3 (`docs/tracking/price_book.md`, entry 97; AWS primary, GCP and Azure sensitivity profiles verified). Its SHA-256 is recorded in the frozen router (`price_book_digest`) and checked by a test, so the two cannot drift apart.
 
-## 4. Proposed additions from S5, not yet entries
+## 4. Additions from S5
 
-These come from the S5.3 pilot, the S5.4 replication and the component review (`docs/sprints/s5-integration-freeze/`, backlog CR-items). None changes a hypothesis or test. Each is a reporting rule the owner may add before deposit; any that the owner adopts gets its own deviation entry first.
-
-1. **Graph comparisons on systems without traces** (CR-09). On captures without traces the G-pipe has no graph: HELIOS-G then ranks as HELIOS-D does (on RCAEval build, HELIOS-G, HELIOS-D and noLLM give identical rankings). *Proposed rule:* on a pool system without traces, A-H6 and other comparisons that need the G-pipe are reported as untestable on that system, not as a non-rejection. Whether pool captures carry traces is not read before `build-freeze` (entry 91).
-2. **Timing noise in CpR and TTCD readings** (CR-10). The S5.4 replication reran the build campaigns on identical code and data. Every accuracy result was identical, while timing-derived p-values moved, for example OTel B-H7 from about 0.038 to about 0.099, flipping a descriptive reading. The median log-CpR also sits at the censoring cap for many systems. *Proposed rule:* report the censored share beside every CpR and TTCD result, and state that timing-derived results carry run-to-run noise of this size.
-3. **HR@3 near ceiling** (CR-11). Full reaches 96–98% HR@3 on RCAEval build, so the Family A top-3 tests have few discordant pairs. *Proposed rule:* report HR@1 and MRR beside each HR@3 test as exploratory columns.
-4. **Multi-source RCD nondeterminism** (CR-23, owner decision 2026-11-18). With identical input, seed and image, Multi-source RCD returned a different ranked list on 3 of 495 RCAEval build cases. HR@1 and HR@3 were unchanged; Avg@5 and MRR changed on two cases. *Proposed rule:* state that Multi-source RCD's lower ranks can move between reruns, and report the baseline determinism rerun beside B-H5 and, if it is the best baseline, B-H8 (Avg@5).
+The four reporting rules proposed in the first version of this draft (backlog CR-09, CR-10, CR-11, CR-23) were all adopted by the owner on 2026-11-18, together with the E-H5 reading. They are entries 92–96, summarised in §2.15 and in the §1 table.
 
 ## 5. Open before deposit (owner)
 
+Decided 2026-11-18: the E-H5 form (entry 92), the S5 reporting rules (entries 93–96) and the GCP and Azure price-book profiles (entry 97, price-book-v3).
+
 | Item | Why it matters here | Record |
 |---|---|---|
-| E-H5 form: RRE selection between Full and noReconcile | Decides which E-H5 reading the addendum registers; both are built | S3.3 design §6 item 3; S4 exit §6 |
-| GCP and Azure price-book profiles | CpR sensitivity columns (§2.4) | S4 exit §4 |
-| §4 proposals adopted or declined | Each adopted rule needs its entry before deposit | §4 |
-| Chair call (end of November) | Topics: CpR and A-H5, cell rule narrowing, baselines' injection time, the §4 items | S4 exit §5 |
+| Chair call (end of November) | Topics: CpR and A-H5, cell rule narrowing, baselines' injection time, the S5 reporting rules (§2.15) | S4 exit §5 |
 | Router and structural changes (CR-01, CR-02), if pursued | Would change frozen parameters: new freeze entries, and this draft is updated | Component review backlog |

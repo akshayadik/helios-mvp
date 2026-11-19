@@ -21,21 +21,21 @@
 | CR-06 | IMP | P2 | L-pipe (`l2c_llm`) | Little gain on OTel; prompts may lack topology context | Ranking change | OPEN |
 | CR-07 | IMP | P2 | D-pipe / G-pipe | D weak on OTel; fusing D and G does not beat G alone | Ranking change | OPEN |
 | CR-08 | EVAL | P2 | All pipelines | Error analysis of the OTel hard core (32 of 63 wrong for Full and noRouter) | None (analysis only) | OPEN |
-| CR-09 | EVAL | P1 | G-pipe / A-H6 | G never runs on RCAEval; graph comparisons are empty there | Possible addendum note | OPEN |
-| CR-10 | EVAL | P2 | Metrics (CpR, A-H5) | Median log-CpR sits at the censoring ceiling for many systems | Addendum only (contract is OSF-signed) | OPEN |
-| CR-11 | EVAL | P2 | Metrics (HR@3) | HR@3 at ceiling on RCAEval; top-3 tests have low power | Addendum only | OPEN |
+| CR-09 | EVAL | P1 | G-pipe / A-H6 | G never runs on RCAEval; graph comparisons are empty there | Addendum rule | DONE (entry 93, `eef31c8`) |
+| CR-10 | EVAL | P2 | Metrics (CpR, A-H5) | Median log-CpR sits at the censoring ceiling for many systems | Addendum only (contract is OSF-signed) | DONE (entry 94, `eef31c8`) |
+| CR-11 | EVAL | P2 | Metrics (HR@3) | HR@3 at ceiling on RCAEval; top-3 tests have low power | Addendum only | DONE (entry 95, `eef31c8`) |
 | CR-12 | IMP | P3 | FGSV (`fgsv_ks_gate`) | Gate marks 52% of clean OTel targets STALE | None (no ranking role) | OPEN |
 | CR-13 | BUG | P3 | FGSV (`fgsv_ks_gate`) | Replay does not separate HELIOS's wrong answers from right ones | None | OPEN |
 | CR-14 | IMP | P3 | ACP (`acp_stateful`) | Code-level faults predicted poorly (10 of 30) | None (recorded, not routed) | DEFERRED (Stage B, E-H8) |
 | CR-15 | IMP | P3 | IOL (`iol_self_telemetry`) | Detects only ×5 and ×8 slowdowns, never ×2 or ×3 | None | OPEN |
-| CR-16 | IMP | P3 | Reconcile (`reconcile_terminal`) | Inert in rankings; role depends on E-H5 | Depends on E-H5 | OPEN (owner decision) |
+| CR-16 | IMP | P3 | Reconcile (`reconcile_terminal`) | Inert in rankings; role depends on E-H5 | Depends on E-H5 | DONE (entry 92, E-H5 decided 2026-11-18) |
 | CR-17 | IMP | P3 | Cogni (`p4_cognitive`), HIS3 (`his_tier`) | No consumer of their output | None | DEFERRED (Stage B) |
 | CR-18 | BUG | — | Baselines (Multi-source BARO) | Late-trigger IndexError; 13 OTel exclusions | Baseline change | WONT_FIX before freeze (owner, R-g) |
 | CR-19 | EVAL | P3 | Baselines (TraceRCA) | TraceRCA cannot run on RCAEval (no traces) | None | OPEN (record in report) |
 | CR-20 | EVAL | P3 | Seed register | 7,200 slots cap campaign size | None now | OPEN |
 | CR-21 | DOC | P1 | S5.4 design | Wrong claim that `raw/checksums_build.json` is tracked | None | OPEN (fix in S5.4 report) |
 | CR-22 | DOC | P1 | Provisioning | Part manifests must be regenerated in a fresh clone | None | OPEN (fix in S5.4 report) |
-| CR-23 | BUG | P2 | Baselines (Multi-source RCD) | Ranked list varies between runs with identical input, seed and image | Baseline change if fixed | WONT_FIX before freeze (owner accepted 2026-11-18, S5.4 §7) |
+| CR-23 | BUG | P2 | Baselines (Multi-source RCD) | Ranked list varies between runs with identical input, seed and image | Baseline change if fixed | WONT_FIX before freeze (owner accepted 2026-11-18, S5.4 §7); reported per entry 96 (`eef31c8`) |
 | CR-00 | BUG | — | Campaign `cells` | Trigger-time runs keyed under the binding-time name | None | DONE (`54becfb`) |
 
 ## Items
@@ -118,6 +118,7 @@
 - **Evidence.** RCAEval has no traces, so G is skipped every time. HELIOS-G, HELIOS-D and noLLM give identical rankings there, so the graph-only comparisons (A-H6 and others that use G) have nothing to compare on RCAEval.
 - **Proposed approach.** Check which pre-registered tests read G on RCAEval; draft an addendum note (never an edit to `metric_contract.md`) saying those tests are informative on OTel only.
 - **Done when.** The affected tests are listed and the addendum text is approved by the owner.
+- **Done (2026-11-18).** Entry 93: A-H6, A-H8 and E-H10 are untestable on a system none of whose sealed captures carries traces. Computed by the analysis (`helios/analysis/reporting.py`, `eef31c8`); addendum §2.15. On RCAEval build part 1 both A-H6 and A-H8 move from p = 1 (tied by construction) to untestable; every other result is unchanged.
 
 ### CR-10 · CpR median at the censoring ceiling
 
@@ -125,6 +126,7 @@
 - **Evidence.** The median log-CpR sits at 12.03 for many systems, which is the censoring cap. A-H5 is below its threshold in every campaign.
 - **Proposed approach.** Report the censoring share and a censoring-aware summary (for example restricted mean or Kaplan–Meier style) as exploratory. Any change to the binding metric goes to the addendum draft; the signed contract stays untouched.
 - **Done when.** Addendum text drafted and approved, or explicitly declined.
+- **Done (2026-11-18).** Entry 94: censored share, timing-noise statement, p-value with rerun values substituted and a sensitivity reading beside every timing-derived result (`eef31c8`; addendum §2.15). A restricted-mean or Kaplan–Meier summary was not adopted. On OTel build v3 the reading flags B-H7 (p about 0.038 against threshold 0.025; about 0.022 with its 6 reruns substituted).
 
 ### CR-11 · HR@3 at ceiling on RCAEval
 
@@ -132,6 +134,7 @@
 - **Evidence.** Full HR@3 is 96–98% on RCAEval, so the A-family top-3 tests have few differing cases.
 - **Proposed approach.** Report HR@1 and MRR alongside as exploratory; note the power limit in the addendum.
 - **Done when.** Addendum note approved, or declined.
+- **Done (2026-11-18).** Entry 95: HR@1 and MRR exploratory columns (paired BCa, no p-value) and the HR@3 discordant pairs beside each HR@3 test (`eef31c8`; addendum §2.15).
 
 ### CR-12 · FGSV gate marks half of clean OTel targets STALE
 
@@ -168,6 +171,7 @@
 - **Evidence.** Never changes a ranking; works as designed.
 - **Open decision.** E-H5 (owner).
 - **Done when.** E-H5 decided and Reconcile's role set accordingly.
+- **Done (2026-11-18).** Entry 92: E-H5 is read in the same-case form. Reconcile is assessed through E-H5 and the learning curves, and stays inert in the confirmatory rankings under the static frozen router.
 
 ### CR-17 · Cogni and HIS3 have no consumer
 
@@ -211,6 +215,7 @@
 - **Evidence.** On 3 of 495 RCAEval build cases, 6 of 5,580 baseline runs, Multi-source RCD returned a different ranked list (order and length) in the clean clone. Snapshot hash, run seed, image digest and config hash were identical. HR@1 and HR@3 are unchanged in all six runs; Avg@5 and MRR change on two cases; no analysis field changes. The S5.5 rerun subset covers HELIOS only, so this was not seen before.
 - **Proposed approach.** Either accept it and say in phase E that RCD's lower ranks can move between reruns, or pin the RCD container to one thread or a fixed search order. A fix is a baseline change: deviation entry and RCD rerun before the freeze.
 - **Decision (owner, 2026-11-18).** Accepted as a baseline environment difference; not fixed before the freeze. Phase E states the limit.
+- **Reporting (2026-11-18).** Entry 96: the analysis reports each system's determinism reruns, and Multi-source RCD's beside B-H5 and, when it is the best baseline, B-H8 (`eef31c8`). The RCAEval build part 1 campaign has no baseline reruns (its S5.1 baseline reruns ran under export v1, entry 91), so those figures show no pairs there; OTel v3 shows 6 RCD pairs, all identical.
 - **Revisit:** after the freeze, as a baseline fix for exploratory reruns only; done when a rerun of the six runs matches itself.
 
 ### CR-00 · `cells` keyed trigger-time runs under the binding-time name (closed)
