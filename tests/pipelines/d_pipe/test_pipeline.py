@@ -226,3 +226,51 @@ def test_all_zero_scores_abstain_instead_of_ranking_by_name(
     out = _run(window, _trigger_at(t0 + 300))
     assert out["status"] == "abstained"
     assert out["ranked_candidates"] == []
+
+
+# ── CR-02: the runner's pre-cut call edges replace the pruned graph's ──────
+
+
+def _graph_with(edges: list[Any]) -> Any:
+    from helios.schemas.ueg_c import NodeType, UEGCNode, UEGCSnapshot
+
+    return UEGCSnapshot(
+        incident_id="opaque",
+        variant_config_hash="a" * 64,
+        nodes=[
+            UEGCNode(node_id=s, node_type=NodeType.SERVICE, service_name=s)
+            for s in ("cart", "ad")
+        ],
+        edges=edges,
+        captured_at_iso="",
+    )
+
+
+def _scores(window: TelemetryWindow, graph: Any, calls: Any) -> dict[str, float]:
+    out = run_dpipe(
+        window=window,
+        ueg_c=graph,
+        incident_id="opaque",
+        snapshot_hash="b" * 64,
+        variant_config_hash="a" * 64,
+        evaluation_phase=EvaluationPhase.EXPLORATORY,
+        run_id="r",
+        trigger=_trigger_at(1_790_000_000 + 15 * 20),
+        evidence_ref=6,
+        call_edges=calls,
+    )
+    return dict(out["candidate_scores"])
+
+
+def test_call_edges_given_replace_the_pruned_graphs_edges(
+    manifest, tmp_path: Path
+) -> None:
+    from helios.schemas.ueg_c import EdgeType, UEGCEdge
+
+    window = _rcaeval_window(tmp_path)
+    call = UEGCEdge(source="cart", target="ad", edge_type=EdgeType.CALL, weight=1)
+    with_edge = _scores(window, _graph_with([call]), None)
+    assert _scores(window, _graph_with([]), [call]) == with_edge
+    assert _scores(window, _graph_with([call]), []) == _scores(
+        window, _graph_with([]), None
+    )

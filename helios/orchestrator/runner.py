@@ -40,7 +40,7 @@ from helios.consensus.timing import (
     staged_finish_times,
     staged_schedule,
 )
-from helios.graph.khop_pruner import khop_prune
+from helios.graph.khop_pruner import khop_prune, propagation_edges
 from helios.graph.structural_bundle import apply_structural_bundle
 from helios.graph.ueg_c_builder import build_ueg_c
 from helios.integrity_gate import AppendOnlyLedger, MetricIntegrityGate
@@ -121,10 +121,16 @@ if TYPE_CHECKING:
     from helios.pipelines.l_pipe.cache import ResponseCache
     from helios.pipelines.l_pipe.ollama_client import OllamaClient
     from helios.schemas.telemetry import TelemetryWindow
-    from helios.schemas.ueg_c import UEGCSnapshot
+    from helios.schemas.ueg_c import UEGCEdge, UEGCSnapshot
     from helios.vcl.config import VCLManifest
 
-__all__ = ["RunOrchestrator", "RunOutcome", "incident_graph", "run_covariates"]
+__all__ = [
+    "RunOrchestrator",
+    "RunOutcome",
+    "incident_graph",
+    "incident_graph_with_calls",
+    "run_covariates",
+]
 
 HELIOS_ENABLE_ORCHESTRATOR: bool = True
 
@@ -462,7 +468,7 @@ class RunOrchestrator:
                 self._registry.register(snapshot_hash, self._config_hash)
 
         # Build UEG-C once per incident
-        ueg_c, seeds = incident_graph(
+        ueg_c, seeds, d_calls = incident_graph_with_calls(
             window, self._manifest, self._config_hash, trigger
         )
         graph_done_unix = time.time()
@@ -491,6 +497,7 @@ class RunOrchestrator:
             lambda: run_dpipe(
                 window=window,
                 ueg_c=ueg_c,
+                call_edges=d_calls,
                 incident_id=incident_id,
                 snapshot_hash=snapshot_hash,
                 variant_config_hash=self._config_hash,
@@ -987,11 +994,33 @@ def incident_graph(
     ``(None, [])`` without traces or with the graph flag off. D-pipe
     calibration calls this too, so it ranks on the graph the runner uses.
     """
+    ueg_c, seeds, _calls = incident_graph_with_calls(
+        window, manifest, config_hash, trigger
+    )
+    return ueg_c, seeds
+
+
+def incident_graph_with_calls(
+    window: TelemetryWindow,
+    manifest: VCLManifest,
+    config_hash: str,
+    trigger: TriggerRecord,
+) -> tuple[UEGCSnapshot | None, list[str], list[UEGCEdge]]:
+    """``incident_graph`` plus the D-pipe's propagation edges (CR-02).
+
+    The propagation edges are every call edge (untyped under noStructural)
+    between the pruned graph's candidate services, taken **before**
+    Algorithm 5's correlation cut. The cut removes behavioural edges with
+    |r| < 0.7, which suits the graph G-pipe ranks on but removes real call
+    paths from the D-pipe's propagation; untyped edges carry no correlation,
+    so before this the D-pipe saw every call only under noStructural. The
+    pruned graph, its hash and Algorithm 5 are unchanged.
+    """
     if not manifest.l2b_graph or window.p2_traces_path is None:
-        return None, []
+        return None, [], []
     ueg_c = build_ueg_c(window, config_hash)
     if ueg_c is None:
-        return None, []
+        return None, [], []
     # ueg_structural ON keeps the typed graph; OFF flattens it to one
     # untyped edge kind (HELIOS-noStructural, S1.6).
     ueg_c = apply_structural_bundle(ueg_c).snapshot
@@ -999,10 +1028,10 @@ def incident_graph(
     # trigger's suspects that are services of the graph.
     candidates = set(ueg_c.candidate_ids())
     seeds = [s for s in trigger.suspects if s in candidates]
-    ueg_c, _prune_result = khop_prune(
+    pruned, _prune_result = khop_prune(
         ueg_c, seeds=seeds or None, exclude=OUT_OF_SCOPE_SERVICES
     )
-    return ueg_c, seeds
+    return pruned, seeds, propagation_edges(ueg_c, pruned)
 
 
 def _self_metrics(

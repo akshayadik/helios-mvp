@@ -26,7 +26,7 @@ from helios.pipelines.d_pipe.params import load_dpipe_params
 from helios.pipelines.d_pipe.pipeline import run_dpipe as run_dpipe_unpatched
 from helios.pipelines.g_pipe.params import load_gpipe_params
 from helios.schemas.telemetry import EvaluationPhase, TelemetryWindow
-from helios.schemas.ueg_c import NodeType, UEGCNode, UEGCSnapshot
+from helios.schemas.ueg_c import EdgeType, NodeType, UEGCEdge, UEGCNode, UEGCSnapshot
 from helios.schemas.verdict import PipelineName
 from helios.store.result_store import ResultStore
 from helios.telemetry.seal import write_seal
@@ -372,6 +372,7 @@ class _Spy:
         self.events: list[str] = []
         self.prune_kwargs: dict[str, Any] = {}
         self.dpipe_trigger: TriggerRecord | None = None
+        self.dpipe_calls: Any = None
 
     def install(self, monkeypatch: pytest.MonkeyPatch) -> None:
         def detect(window: TelemetryWindow, params: Any, **_: Any) -> TriggerRecord:
@@ -387,6 +388,7 @@ class _Spy:
 
         def dpipe(**kwargs: Any) -> dict[str, Any]:
             self.dpipe_trigger = kwargs["trigger"]
+            self.dpipe_calls = kwargs.get("call_edges")
             return dict(real_dpipe(**kwargs))
 
         monkeypatch.setattr(runner_module, "detect", detect)
@@ -451,6 +453,7 @@ class TestSharedTrigger:
             _store(tmp_path).fetch_trigger("inc-001", variant_hash) == spy.dpipe_trigger
         )
         assert spy.dpipe_trigger == spy.record
+        assert spy.dpipe_calls == []  # CR-02: passed, empty for an edgeless graph
 
     def test_rankings_exclude_out_of_scope_services_for_every_pipeline(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -723,6 +726,42 @@ class TestIncidentGraph:
         assert seeds == ["cart"]
         assert spy.events == ["prune"]
         assert "prometheus" in spy.prune_kwargs["exclude"]
+
+    def test_dpipe_gets_the_call_edges_from_before_the_cut(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """CR-02: a weak call edge leaves the pruned graph but reaches D-pipe."""
+        weak = UEGCEdge(
+            source="cart",
+            target="ad",
+            edge_type=EdgeType.CALL,
+            weight=1,
+            correlation=0.1,
+        )
+        graph = _graph().model_copy(update={"edges": [weak]})
+        monkeypatch.setattr(runner_module, "build_ueg_c", lambda *a, **k: graph)
+        monkeypatch.setattr(
+            runner_module,
+            "apply_structural_bundle",
+            lambda s: types.SimpleNamespace(snapshot=s),
+        )
+        captures = tmp_path / "captures"
+        _capture_with_traces(captures, "inc-001")
+        window = TelemetryWindow.model_validate(
+            {
+                k: v
+                for k, v in json.loads(
+                    (captures / "inc-001" / "manifest.json").read_text()
+                ).items()
+                if k != "window_hash"
+            }
+        )
+        pruned, _seeds, calls = runner_module.incident_graph_with_calls(
+            window, get_variant(_VARIANT), "c" * 64, _record("cart")
+        )
+        assert pruned is not None
+        assert weak not in pruned.edges
+        assert calls == [weak]
 
 
 class TestGPipeS22:

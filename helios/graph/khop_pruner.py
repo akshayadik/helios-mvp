@@ -59,6 +59,7 @@ __all__ = [
     "KHopResult",
     "SeedSource",
     "khop_prune",
+    "propagation_edges",
     "seed_nodes",
 ]
 
@@ -295,3 +296,22 @@ def khop_prune(
         edges_over_budget=len(inside) - len(weak) - len(edges),
         snapshot_hash=pruned.compute_snapshot_hash(),
     )
+
+
+_PROPAGATION_TYPES = frozenset({EdgeType.CALL, EdgeType.UNTYPED})
+
+
+def propagation_edges(full: UEGCSnapshot, pruned: UEGCSnapshot) -> list[UEGCEdge]:
+    """The D-pipe's propagation edges (CR-02): call edges (untyped edges when
+    ueg_structural is OFF) of ``full`` between two candidate services of
+    ``pruned``, before the correlation cut and the edge budget. The pruned
+    graph keeps only strongly correlated call edges; a call whose latencies do
+    not co-move is still a path a failure travels along."""
+    candidates = set(pruned.candidate_ids())
+    return [
+        e
+        for e in full.edges
+        if e.edge_type in _PROPAGATION_TYPES
+        and e.source in candidates
+        and e.target in candidates
+    ]
