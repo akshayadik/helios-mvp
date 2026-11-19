@@ -1,0 +1,4058 @@
+{
+  "version": "analysis-v2",
+  "label": "exploratory",
+  "guard_reasons": [
+    "corpus is ['otel_build_v3'], not the pool",
+    "tag build-freeze does not exist",
+    "a run's variant hash is not a confirmatory variant"
+  ],
+  "systems": {
+    "BARO (metrics only)": 63,
+    "BARO (metrics only) [trigger time]": 63,
+    "HELIOS-D": 63,
+    "HELIOS-Full": 63,
+    "HELIOS-G": 63,
+    "HELIOS-LLM-only": 63,
+    "HELIOS-noACP": 63,
+    "HELIOS-noConsensus": 63,
+    "HELIOS-noExpl": 63,
+    "HELIOS-noFGSV": 63,
+    "HELIOS-noIOL": 63,
+    "HELIOS-noLLM": 63,
+    "HELIOS-noReconcile": 63,
+    "HELIOS-noRouter": 63,
+    "HELIOS-noStructural": 63,
+    "Multi-source BARO": 63,
+    "Multi-source BARO [trigger time]": 50,
+    "Multi-source RCD": 63,
+    "Multi-source RCD [trigger time]": 63,
+    "PDiagnose": 63,
+    "PDiagnose [trigger time]": 63,
+    "TraceRCA": 63,
+    "TraceRCA [trigger time]": 63
+  },
+  "cases": 63,
+  "cells": [
+    {
+      "system": "BARO (metrics only)",
+      "app": "otel_build_v3",
+      "metric": "hr_at_3",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only)",
+      "app": "otel_build_v3",
+      "metric": "avg_at_5",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only)",
+      "app": "otel_build_v3",
+      "metric": "log_cpr",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only)",
+      "app": "otel_build_v3",
+      "metric": "log_ttcd",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only)",
+      "app": "otel_build_v3",
+      "metric": "ttt_ms",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only)",
+      "app": "otel_build_v3",
+      "metric": "h_fact",
+      "scheduled": 63,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "BARO (metrics only)",
+      "app": "otel_build_v3",
+      "metric": "h_struct",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only) [trigger time]",
+      "app": "otel_build_v3",
+      "metric": "hr_at_3",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only) [trigger time]",
+      "app": "otel_build_v3",
+      "metric": "avg_at_5",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only) [trigger time]",
+      "app": "otel_build_v3",
+      "metric": "log_cpr",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only) [trigger time]",
+      "app": "otel_build_v3",
+      "metric": "log_ttcd",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only) [trigger time]",
+      "app": "otel_build_v3",
+      "metric": "ttt_ms",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "BARO (metrics only) [trigger time]",
+      "app": "otel_build_v3",
+      "metric": "h_fact",
+      "scheduled": 63,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "BARO (metrics only) [trigger time]",
+      "app": "otel_build_v3",
+      "metric": "h_struct",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-D",
+      "app": "otel_build_v3",
+      "metric": "hr_at_3",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-D",
+      "app": "otel_build_v3",
+      "metric": "avg_at_5",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-D",
+      "app": "otel_build_v3",
+      "metric": "log_cpr",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-D",
+      "app": "otel_build_v3",
+      "metric": "log_ttcd",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-D",
+      "app": "otel_build_v3",
+      "metric": "ttt_ms",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-D",
+      "app": "otel_build_v3",
+      "metric": "h_fact",
+      "scheduled": 63,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-D",
+      "app": "otel_build_v3",
+      "metric": "h_struct",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-Full",
+      "app": "otel_build_v3",
+      "metric": "hr_at_3",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-Full",
+      "app": "otel_build_v3",
+      "metric": "avg_at_5",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-Full",
+      "app": "otel_build_v3",
+      "metric": "log_cpr",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-Full",
+      "app": "otel_build_v3",
+      "metric": "log_ttcd",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-Full",
+      "app": "otel_build_v3",
+      "metric": "ttt_ms",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-Full",
+      "app": "otel_build_v3",
+      "metric": "h_fact",
+      "scheduled": 63,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-Full",
+      "app": "otel_build_v3",
+      "metric": "h_struct",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-G",
+      "app": "otel_build_v3",
+      "metric": "hr_at_3",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-G",
+      "app": "otel_build_v3",
+      "metric": "avg_at_5",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-G",
+      "app": "otel_build_v3",
+      "metric": "log_cpr",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-G",
+      "app": "otel_build_v3",
+      "metric": "log_ttcd",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-G",
+      "app": "otel_build_v3",
+      "metric": "ttt_ms",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-G",
+      "app": "otel_build_v3",
+      "metric": "h_fact",
+      "scheduled": 63,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-G",
+      "app": "otel_build_v3",
+      "metric": "h_struct",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-LLM-only",
+      "app": "otel_build_v3",
+      "metric": "hr_at_3",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-LLM-only",
+      "app": "otel_build_v3",
+      "metric": "avg_at_5",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-LLM-only",
+      "app": "otel_build_v3",
+      "metric": "log_cpr",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-LLM-only",
+      "app": "otel_build_v3",
+      "metric": "log_ttcd",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-LLM-only",
+      "app": "otel_build_v3",
+      "metric": "ttt_ms",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-LLM-only",
+      "app": "otel_build_v3",
+      "metric": "h_fact",
+      "scheduled": 63,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-LLM-only",
+      "app": "otel_build_v3",
+      "metric": "h_struct",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noACP",
+      "app": "otel_build_v3",
+      "metric": "hr_at_3",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noACP",
+      "app": "otel_build_v3",
+      "metric": "avg_at_5",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noACP",
+      "app": "otel_build_v3",
+      "metric": "log_cpr",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noACP",
+      "app": "otel_build_v3",
+      "metric": "log_ttcd",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noACP",
+      "app": "otel_build_v3",
+      "metric": "ttt_ms",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noACP",
+      "app": "otel_build_v3",
+      "metric": "h_fact",
+      "scheduled": 63,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-noACP",
+      "app": "otel_build_v3",
+      "metric": "h_struct",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noConsensus",
+      "app": "otel_build_v3",
+      "metric": "hr_at_3",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noConsensus",
+      "app": "otel_build_v3",
+      "metric": "avg_at_5",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noConsensus",
+      "app": "otel_build_v3",
+      "metric": "log_cpr",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noConsensus",
+      "app": "otel_build_v3",
+      "metric": "log_ttcd",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noConsensus",
+      "app": "otel_build_v3",
+      "metric": "ttt_ms",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noConsensus",
+      "app": "otel_build_v3",
+      "metric": "h_fact",
+      "scheduled": 63,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-noConsensus",
+      "app": "otel_build_v3",
+      "metric": "h_struct",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noExpl",
+      "app": "otel_build_v3",
+      "metric": "hr_at_3",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noExpl",
+      "app": "otel_build_v3",
+      "metric": "avg_at_5",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noExpl",
+      "app": "otel_build_v3",
+      "metric": "log_cpr",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noExpl",
+      "app": "otel_build_v3",
+      "metric": "log_ttcd",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noExpl",
+      "app": "otel_build_v3",
+      "metric": "ttt_ms",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noExpl",
+      "app": "otel_build_v3",
+      "metric": "h_fact",
+      "scheduled": 63,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-noExpl",
+      "app": "otel_build_v3",
+      "metric": "h_struct",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noFGSV",
+      "app": "otel_build_v3",
+      "metric": "hr_at_3",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noFGSV",
+      "app": "otel_build_v3",
+      "metric": "avg_at_5",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noFGSV",
+      "app": "otel_build_v3",
+      "metric": "log_cpr",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noFGSV",
+      "app": "otel_build_v3",
+      "metric": "log_ttcd",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noFGSV",
+      "app": "otel_build_v3",
+      "metric": "ttt_ms",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noFGSV",
+      "app": "otel_build_v3",
+      "metric": "h_fact",
+      "scheduled": 63,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-noFGSV",
+      "app": "otel_build_v3",
+      "metric": "h_struct",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noIOL",
+      "app": "otel_build_v3",
+      "metric": "hr_at_3",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noIOL",
+      "app": "otel_build_v3",
+      "metric": "avg_at_5",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noIOL",
+      "app": "otel_build_v3",
+      "metric": "log_cpr",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noIOL",
+      "app": "otel_build_v3",
+      "metric": "log_ttcd",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noIOL",
+      "app": "otel_build_v3",
+      "metric": "ttt_ms",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noIOL",
+      "app": "otel_build_v3",
+      "metric": "h_fact",
+      "scheduled": 63,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-noIOL",
+      "app": "otel_build_v3",
+      "metric": "h_struct",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noLLM",
+      "app": "otel_build_v3",
+      "metric": "hr_at_3",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noLLM",
+      "app": "otel_build_v3",
+      "metric": "avg_at_5",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noLLM",
+      "app": "otel_build_v3",
+      "metric": "log_cpr",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noLLM",
+      "app": "otel_build_v3",
+      "metric": "log_ttcd",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noLLM",
+      "app": "otel_build_v3",
+      "metric": "ttt_ms",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noLLM",
+      "app": "otel_build_v3",
+      "metric": "h_fact",
+      "scheduled": 63,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-noLLM",
+      "app": "otel_build_v3",
+      "metric": "h_struct",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noReconcile",
+      "app": "otel_build_v3",
+      "metric": "hr_at_3",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noReconcile",
+      "app": "otel_build_v3",
+      "metric": "avg_at_5",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noReconcile",
+      "app": "otel_build_v3",
+      "metric": "log_cpr",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noReconcile",
+      "app": "otel_build_v3",
+      "metric": "log_ttcd",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noReconcile",
+      "app": "otel_build_v3",
+      "metric": "ttt_ms",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noReconcile",
+      "app": "otel_build_v3",
+      "metric": "h_fact",
+      "scheduled": 63,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-noReconcile",
+      "app": "otel_build_v3",
+      "metric": "h_struct",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noRouter",
+      "app": "otel_build_v3",
+      "metric": "hr_at_3",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noRouter",
+      "app": "otel_build_v3",
+      "metric": "avg_at_5",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noRouter",
+      "app": "otel_build_v3",
+      "metric": "log_cpr",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noRouter",
+      "app": "otel_build_v3",
+      "metric": "log_ttcd",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noRouter",
+      "app": "otel_build_v3",
+      "metric": "ttt_ms",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noRouter",
+      "app": "otel_build_v3",
+      "metric": "h_fact",
+      "scheduled": 63,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-noRouter",
+      "app": "otel_build_v3",
+      "metric": "h_struct",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noStructural",
+      "app": "otel_build_v3",
+      "metric": "hr_at_3",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noStructural",
+      "app": "otel_build_v3",
+      "metric": "avg_at_5",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noStructural",
+      "app": "otel_build_v3",
+      "metric": "log_cpr",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noStructural",
+      "app": "otel_build_v3",
+      "metric": "log_ttcd",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noStructural",
+      "app": "otel_build_v3",
+      "metric": "ttt_ms",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "HELIOS-noStructural",
+      "app": "otel_build_v3",
+      "metric": "h_fact",
+      "scheduled": 63,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "HELIOS-noStructural",
+      "app": "otel_build_v3",
+      "metric": "h_struct",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO",
+      "app": "otel_build_v3",
+      "metric": "hr_at_3",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO",
+      "app": "otel_build_v3",
+      "metric": "avg_at_5",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO",
+      "app": "otel_build_v3",
+      "metric": "log_cpr",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO",
+      "app": "otel_build_v3",
+      "metric": "log_ttcd",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO",
+      "app": "otel_build_v3",
+      "metric": "ttt_ms",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO",
+      "app": "otel_build_v3",
+      "metric": "h_fact",
+      "scheduled": 63,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "Multi-source BARO",
+      "app": "otel_build_v3",
+      "metric": "h_struct",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source BARO [trigger time]",
+      "app": "otel_build_v3",
+      "metric": "hr_at_3",
+      "scheduled": 63,
+      "included": 50,
+      "share": 0.7936507936507936,
+      "passes": false
+    },
+    {
+      "system": "Multi-source BARO [trigger time]",
+      "app": "otel_build_v3",
+      "metric": "avg_at_5",
+      "scheduled": 63,
+      "included": 50,
+      "share": 0.7936507936507936,
+      "passes": false
+    },
+    {
+      "system": "Multi-source BARO [trigger time]",
+      "app": "otel_build_v3",
+      "metric": "log_cpr",
+      "scheduled": 63,
+      "included": 50,
+      "share": 0.7936507936507936,
+      "passes": false
+    },
+    {
+      "system": "Multi-source BARO [trigger time]",
+      "app": "otel_build_v3",
+      "metric": "log_ttcd",
+      "scheduled": 63,
+      "included": 50,
+      "share": 0.7936507936507936,
+      "passes": false
+    },
+    {
+      "system": "Multi-source BARO [trigger time]",
+      "app": "otel_build_v3",
+      "metric": "ttt_ms",
+      "scheduled": 63,
+      "included": 50,
+      "share": 0.7936507936507936,
+      "passes": false
+    },
+    {
+      "system": "Multi-source BARO [trigger time]",
+      "app": "otel_build_v3",
+      "metric": "h_fact",
+      "scheduled": 63,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "Multi-source BARO [trigger time]",
+      "app": "otel_build_v3",
+      "metric": "h_struct",
+      "scheduled": 63,
+      "included": 50,
+      "share": 0.7936507936507936,
+      "passes": false
+    },
+    {
+      "system": "Multi-source RCD",
+      "app": "otel_build_v3",
+      "metric": "hr_at_3",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD",
+      "app": "otel_build_v3",
+      "metric": "avg_at_5",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD",
+      "app": "otel_build_v3",
+      "metric": "log_cpr",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD",
+      "app": "otel_build_v3",
+      "metric": "log_ttcd",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD",
+      "app": "otel_build_v3",
+      "metric": "ttt_ms",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD",
+      "app": "otel_build_v3",
+      "metric": "h_fact",
+      "scheduled": 63,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "Multi-source RCD",
+      "app": "otel_build_v3",
+      "metric": "h_struct",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD [trigger time]",
+      "app": "otel_build_v3",
+      "metric": "hr_at_3",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD [trigger time]",
+      "app": "otel_build_v3",
+      "metric": "avg_at_5",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD [trigger time]",
+      "app": "otel_build_v3",
+      "metric": "log_cpr",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD [trigger time]",
+      "app": "otel_build_v3",
+      "metric": "log_ttcd",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD [trigger time]",
+      "app": "otel_build_v3",
+      "metric": "ttt_ms",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "Multi-source RCD [trigger time]",
+      "app": "otel_build_v3",
+      "metric": "h_fact",
+      "scheduled": 63,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "Multi-source RCD [trigger time]",
+      "app": "otel_build_v3",
+      "metric": "h_struct",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose",
+      "app": "otel_build_v3",
+      "metric": "hr_at_3",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose",
+      "app": "otel_build_v3",
+      "metric": "avg_at_5",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose",
+      "app": "otel_build_v3",
+      "metric": "log_cpr",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose",
+      "app": "otel_build_v3",
+      "metric": "log_ttcd",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose",
+      "app": "otel_build_v3",
+      "metric": "ttt_ms",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose",
+      "app": "otel_build_v3",
+      "metric": "h_fact",
+      "scheduled": 63,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "PDiagnose",
+      "app": "otel_build_v3",
+      "metric": "h_struct",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose [trigger time]",
+      "app": "otel_build_v3",
+      "metric": "hr_at_3",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose [trigger time]",
+      "app": "otel_build_v3",
+      "metric": "avg_at_5",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose [trigger time]",
+      "app": "otel_build_v3",
+      "metric": "log_cpr",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose [trigger time]",
+      "app": "otel_build_v3",
+      "metric": "log_ttcd",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose [trigger time]",
+      "app": "otel_build_v3",
+      "metric": "ttt_ms",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "PDiagnose [trigger time]",
+      "app": "otel_build_v3",
+      "metric": "h_fact",
+      "scheduled": 63,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "PDiagnose [trigger time]",
+      "app": "otel_build_v3",
+      "metric": "h_struct",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "TraceRCA",
+      "app": "otel_build_v3",
+      "metric": "hr_at_3",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "TraceRCA",
+      "app": "otel_build_v3",
+      "metric": "avg_at_5",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "TraceRCA",
+      "app": "otel_build_v3",
+      "metric": "log_cpr",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "TraceRCA",
+      "app": "otel_build_v3",
+      "metric": "log_ttcd",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "TraceRCA",
+      "app": "otel_build_v3",
+      "metric": "ttt_ms",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "TraceRCA",
+      "app": "otel_build_v3",
+      "metric": "h_fact",
+      "scheduled": 63,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA",
+      "app": "otel_build_v3",
+      "metric": "h_struct",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "TraceRCA [trigger time]",
+      "app": "otel_build_v3",
+      "metric": "hr_at_3",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "TraceRCA [trigger time]",
+      "app": "otel_build_v3",
+      "metric": "avg_at_5",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "TraceRCA [trigger time]",
+      "app": "otel_build_v3",
+      "metric": "log_cpr",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "TraceRCA [trigger time]",
+      "app": "otel_build_v3",
+      "metric": "log_ttcd",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "TraceRCA [trigger time]",
+      "app": "otel_build_v3",
+      "metric": "ttt_ms",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    },
+    {
+      "system": "TraceRCA [trigger time]",
+      "app": "otel_build_v3",
+      "metric": "h_fact",
+      "scheduled": 63,
+      "included": 0,
+      "share": 0.0,
+      "passes": false
+    },
+    {
+      "system": "TraceRCA [trigger time]",
+      "app": "otel_build_v3",
+      "metric": "h_struct",
+      "scheduled": 63,
+      "included": 63,
+      "share": 1.0,
+      "passes": true
+    }
+  ],
+  "trace_coverage": {
+    "otel_build_v3": {
+      "cases": 63,
+      "with_traces": 63,
+      "capture_missing": 0
+    }
+  },
+  "family_a": {
+    "holm_reading": "data_order",
+    "hypotheses": [
+      {
+        "id": "A-H3",
+        "rank": 1,
+        "comparison": "HELIOS-Full vs HELIOS-D",
+        "metric": "HR@3",
+        "test": "wilcoxon_signed_rank",
+        "stratum": null,
+        "asymmetric_rule": false,
+        "a": "HELIOS-Full",
+        "b": "HELIOS-D",
+        "apps_tested": {
+          "hr_at_3": [
+            "otel_build_v3"
+          ]
+        },
+        "n_pairs": 63,
+        "p_value": 0.3125,
+        "by_measure": {
+          "hr_at_3": {
+            "statistic": 7.5,
+            "p_value": 0.3125,
+            "n_pairs": 63,
+            "n_informative": 4,
+            "mean_a": 0.7936507936507936,
+            "mean_b": 0.7619047619047619,
+            "mean_difference": 0.031746031746031744,
+            "bca_low": -0.015873015873015872,
+            "bca_high": 0.1111111111111111,
+            "bca_note": null,
+            "bca_seed": 10007328,
+            "hodges_lehmann": 0.0,
+            "cliffs_delta": 0.031746031746031744,
+            "cohens_h": 0.07640384852602988
+          }
+        },
+        "note": "0/1 outcome: with zeros dropped the signed-rank test equals the exact sign test on discordant pairs (design T-b)",
+        "below_threshold_descriptive": false,
+        "sensitivity": {
+          "group_level_wilcoxon": {
+            "p_value": 0.375,
+            "n_groups": 9
+          },
+          "rank_mixed_model": {
+            "coefficient": 2.000000000000002,
+            "p_value": 0.29499468397721973,
+            "icc": 0.40071511115210645,
+            "n_groups": 9,
+            "converged": true
+          },
+          "missing_data": {
+            "metric": "hr_at_3",
+            "mcar": {
+              "n_pairs_scheduled": 63,
+              "n_missing": 0,
+              "status": "complete; MCAR not applicable"
+            },
+            "ipw": {
+              "n_complete": 63,
+              "n_missing": 0,
+              "status": "complete; no weighting needed"
+            }
+          }
+        },
+        "splits": {},
+        "exploratory_hr": {
+          "status": "exploratory, descriptive (entry 95)",
+          "hr_at_3_discordant_pairs": 4,
+          "hr_at_1": {
+            "n": 63,
+            "mean_a": 0.49206349206349204,
+            "mean_b": 0.30158730158730157,
+            "by_system": {
+              "otel_build_v3": {
+                "n": 63,
+                "mean_a": 0.49206349206349204,
+                "mean_b": 0.30158730158730157
+              }
+            },
+            "mean_difference": 0.19047619047619047,
+            "bca_low": 0.09523809523809523,
+            "bca_high": 0.30158730158730157,
+            "bca_seed": 10007328
+          },
+          "mrr": {
+            "n": 63,
+            "mean_a": 0.6403944820611487,
+            "mean_b": 0.5299284978648828,
+            "by_system": {
+              "otel_build_v3": {
+                "n": 63,
+                "mean_a": 0.6403944820611487,
+                "mean_b": 0.5299284978648828
+              }
+            },
+            "mean_difference": 0.11046598419626578,
+            "bca_low": 0.057021611431128,
+            "bca_high": 0.17317563841987962,
+            "bca_seed": 10007328
+          }
+        }
+      },
+      {
+        "id": "A-H7",
+        "rank": 2,
+        "comparison": "HELIOS-Full vs HELIOS-noLLM",
+        "metric": "H_fact, H_struct",
+        "test": "sign_test",
+        "stratum": null,
+        "asymmetric_rule": false,
+        "a": "HELIOS-Full",
+        "b": "HELIOS-noLLM",
+        "apps_tested": {
+          "h_fact": [],
+          "h_struct": [
+            "otel_build_v3"
+          ]
+        },
+        "n_pairs": 0,
+        "p_value": null,
+        "untestable": "no values for h_fact (not scored yet)",
+        "below_threshold_descriptive": false,
+        "sensitivity": {
+          "missing_data": {}
+        },
+        "splits": {}
+      },
+      {
+        "id": "A-H1",
+        "rank": 3,
+        "comparison": "HELIOS-Full vs HELIOS-noLLM",
+        "metric": "HR@3",
+        "test": "wilcoxon_signed_rank",
+        "stratum": null,
+        "asymmetric_rule": false,
+        "a": "HELIOS-Full",
+        "b": "HELIOS-noLLM",
+        "apps_tested": {
+          "hr_at_3": [
+            "otel_build_v3"
+          ]
+        },
+        "n_pairs": 63,
+        "p_value": 0.125,
+        "by_measure": {
+          "hr_at_3": {
+            "statistic": 6.0,
+            "p_value": 0.125,
+            "n_pairs": 63,
+            "n_informative": 3,
+            "mean_a": 0.7936507936507936,
+            "mean_b": 0.746031746031746,
+            "mean_difference": 0.047619047619047616,
+            "bca_low": 0.015873015873015872,
+            "bca_high": 0.12698412698412698,
+            "bca_note": null,
+            "bca_seed": 10007330,
+            "hodges_lehmann": 0.0,
+            "cliffs_delta": 0.047619047619047616,
+            "cohens_h": 0.11326234209672581
+          }
+        },
+        "note": "0/1 outcome: with zeros dropped the signed-rank test equals the exact sign test on discordant pairs (design T-b)",
+        "below_threshold_descriptive": false,
+        "sensitivity": {
+          "group_level_wilcoxon": {
+            "p_value": 0.25,
+            "n_groups": 9
+          },
+          "rank_mixed_model": {
+            "coefficient": 3.0000000000000018,
+            "p_value": 0.21105344220896977,
+            "icc": 0.4067012591507392,
+            "n_groups": 9,
+            "converged": true
+          },
+          "missing_data": {
+            "metric": "hr_at_3",
+            "mcar": {
+              "n_pairs_scheduled": 63,
+              "n_missing": 0,
+              "status": "complete; MCAR not applicable"
+            },
+            "ipw": {
+              "n_complete": 63,
+              "n_missing": 0,
+              "status": "complete; no weighting needed"
+            }
+          }
+        },
+        "splits": {
+          "by_escalation": {
+            "escalated": {
+              "n": 57,
+              "mean_difference": 0.05263157894736842,
+              "bca_low": 0.017543859649122806,
+              "bca_high": 0.14035087719298245
+            },
+            "stopped": {
+              "n": 6,
+              "mean_difference": 0.0,
+              "bca_low": null,
+              "bca_high": null
+            }
+          }
+        },
+        "exploratory_hr": {
+          "status": "exploratory, descriptive (entry 95)",
+          "hr_at_3_discordant_pairs": 3,
+          "hr_at_1": {
+            "n": 63,
+            "mean_a": 0.49206349206349204,
+            "mean_b": 0.49206349206349204,
+            "by_system": {
+              "otel_build_v3": {
+                "n": 63,
+                "mean_a": 0.49206349206349204,
+                "mean_b": 0.49206349206349204
+              }
+            },
+            "mean_difference": 0.0,
+            "bca_low": -0.07936507936507936,
+            "bca_high": 0.09523809523809523,
+            "bca_seed": 10007330
+          },
+          "mrr": {
+            "n": 63,
+            "mean_a": 0.6403944820611487,
+            "mean_b": 0.6383057924024311,
+            "by_system": {
+              "otel_build_v3": {
+                "n": 63,
+                "mean_a": 0.6403944820611487,
+                "mean_b": 0.6383057924024311
+              }
+            },
+            "mean_difference": 0.0020886896587176632,
+            "bca_low": -0.05047114076652104,
+            "bca_high": 0.056439470094149825,
+            "bca_seed": 10007330
+          }
+        }
+      },
+      {
+        "id": "A-H2",
+        "rank": 4,
+        "comparison": "HELIOS-Full vs HELIOS-LLM-only",
+        "metric": "HR@3",
+        "test": "wilcoxon_signed_rank",
+        "stratum": null,
+        "asymmetric_rule": false,
+        "a": "HELIOS-Full",
+        "b": "HELIOS-LLM-only",
+        "apps_tested": {
+          "hr_at_3": [
+            "otel_build_v3"
+          ]
+        },
+        "n_pairs": 63,
+        "p_value": 0.1050567626953125,
+        "by_measure": {
+          "hr_at_3": {
+            "statistic": 93.5,
+            "p_value": 0.1050567626953125,
+            "n_pairs": 63,
+            "n_informative": 16,
+            "mean_a": 0.7936507936507936,
+            "mean_b": 0.6984126984126984,
+            "mean_difference": 0.09523809523809523,
+            "bca_low": -0.015873015873015872,
+            "bca_high": 0.2222222222222222,
+            "bca_note": null,
+            "bca_seed": 10007331,
+            "hodges_lehmann": 0.0,
+            "cliffs_delta": 0.09523809523809523,
+            "cohens_h": 0.21966514035663431
+          }
+        },
+        "note": "0/1 outcome: with zeros dropped the signed-rank test equals the exact sign test on discordant pairs (design T-b)",
+        "below_threshold_descriptive": false,
+        "sensitivity": {
+          "group_level_wilcoxon": {
+            "p_value": 0.1875,
+            "n_groups": 9
+          },
+          "rank_mixed_model": {
+            "coefficient": 5.999999999999996,
+            "p_value": 0.06098854419073521,
+            "icc": 0.3960655769654202,
+            "n_groups": 9,
+            "converged": true
+          },
+          "missing_data": {
+            "metric": "hr_at_3",
+            "mcar": {
+              "n_pairs_scheduled": 63,
+              "n_missing": 0,
+              "status": "complete; MCAR not applicable"
+            },
+            "ipw": {
+              "n_complete": 63,
+              "n_missing": 0,
+              "status": "complete; no weighting needed"
+            }
+          }
+        },
+        "splits": {},
+        "exploratory_hr": {
+          "status": "exploratory, descriptive (entry 95)",
+          "hr_at_3_discordant_pairs": 16,
+          "hr_at_1": {
+            "n": 63,
+            "mean_a": 0.49206349206349204,
+            "mean_b": 0.49206349206349204,
+            "by_system": {
+              "otel_build_v3": {
+                "n": 63,
+                "mean_a": 0.49206349206349204,
+                "mean_b": 0.49206349206349204
+              }
+            },
+            "mean_difference": 0.0,
+            "bca_low": -0.09523809523809523,
+            "bca_high": 0.07936507936507936,
+            "bca_seed": 10007331
+          },
+          "mrr": {
+            "n": 63,
+            "mean_a": 0.6403944820611487,
+            "mean_b": 0.6243386243386244,
+            "by_system": {
+              "otel_build_v3": {
+                "n": 63,
+                "mean_a": 0.6403944820611487,
+                "mean_b": 0.6243386243386244
+              }
+            },
+            "mean_difference": 0.016055857722524387,
+            "bca_low": -0.04958952429615002,
+            "bca_high": 0.08194069853867988,
+            "bca_seed": 10007331
+          }
+        }
+      },
+      {
+        "id": "A-H6",
+        "rank": 5,
+        "comparison": "HELIOS-Full vs HELIOS-G",
+        "metric": "HR@3",
+        "test": "wilcoxon_signed_rank",
+        "stratum": "narrative_heavy",
+        "asymmetric_rule": false,
+        "a": "HELIOS-Full",
+        "b": "HELIOS-G",
+        "apps_untestable_no_traces": [],
+        "apps_tested": {
+          "hr_at_3": [
+            "otel_build_v3"
+          ]
+        },
+        "n_pairs": 43,
+        "p_value": 0.3125,
+        "by_measure": {
+          "hr_at_3": {
+            "statistic": 7.5,
+            "p_value": 0.3125,
+            "n_pairs": 43,
+            "n_informative": 4,
+            "mean_a": 0.7674418604651163,
+            "mean_b": 0.7209302325581395,
+            "mean_difference": 0.046511627906976744,
+            "bca_low": -0.023255813953488372,
+            "bca_high": 0.13953488372093023,
+            "bca_note": null,
+            "bca_seed": 10007332,
+            "hodges_lehmann": 0.0,
+            "cliffs_delta": 0.046511627906976744,
+            "cohens_h": 0.10669860057039982
+          }
+        },
+        "note": "0/1 outcome: with zeros dropped the signed-rank test equals the exact sign test on discordant pairs (design T-b)",
+        "below_threshold_descriptive": false,
+        "sensitivity": {
+          "group_level_wilcoxon": {
+            "p_value": 0.5,
+            "n_groups": 8
+          },
+          "rank_mixed_model": {
+            "coefficient": 1.9999999999999998,
+            "p_value": 0.24350884792771482,
+            "icc": 0.580936917294661,
+            "n_groups": 8,
+            "converged": true
+          },
+          "missing_data": {
+            "metric": "hr_at_3",
+            "mcar": {
+              "n_pairs_scheduled": 43,
+              "n_missing": 0,
+              "status": "complete; MCAR not applicable"
+            },
+            "ipw": {
+              "n_complete": 43,
+              "n_missing": 0,
+              "status": "complete; no weighting needed"
+            }
+          }
+        },
+        "splits": {},
+        "exploratory_hr": {
+          "status": "exploratory, descriptive (entry 95)",
+          "hr_at_3_discordant_pairs": 4,
+          "hr_at_1": {
+            "n": 43,
+            "mean_a": 0.5581395348837209,
+            "mean_b": 0.5581395348837209,
+            "by_system": {
+              "otel_build_v3": {
+                "n": 43,
+                "mean_a": 0.5581395348837209,
+                "mean_b": 0.5581395348837209
+              }
+            },
+            "mean_difference": 0.0,
+            "bca_low": -0.11627906976744187,
+            "bca_high": 0.11627906976744186,
+            "bca_seed": 10007332
+          },
+          "mrr": {
+            "n": 43,
+            "mean_a": 0.67289758045572,
+            "mean_b": 0.6656017180433985,
+            "by_system": {
+              "otel_build_v3": {
+                "n": 43,
+                "mean_a": 0.67289758045572,
+                "mean_b": 0.6656017180433985
+              }
+            },
+            "mean_difference": 0.007295862412321478,
+            "bca_low": -0.06580522394226232,
+            "bca_high": 0.0741858851121196,
+            "bca_seed": 10007332
+          }
+        }
+      },
+      {
+        "id": "A-H5",
+        "rank": 6,
+        "comparison": "HELIOS-noRouter vs HELIOS-Full",
+        "metric": "log-CpR at matched HR@3",
+        "test": "wilcoxon_signed_rank",
+        "stratum": null,
+        "asymmetric_rule": false,
+        "a": "HELIOS-noRouter",
+        "b": "HELIOS-Full",
+        "apps_tested": {
+          "log_cpr": [
+            "otel_build_v3"
+          ]
+        },
+        "n_pairs": 63,
+        "matched_share": 1.0,
+        "n_matched": 63,
+        "p_value": 1.2949600153389605e-05,
+        "by_measure": {
+          "log_cpr": {
+            "statistic": 1600.5,
+            "p_value": 1.2949600153389605e-05,
+            "n_pairs": 63,
+            "n_informative": 63,
+            "mean_a": 9.64660377228743,
+            "mean_b": 8.151811723913163,
+            "mean_difference": 1.4947920483742665,
+            "bca_low": 1.0875233876868617,
+            "bca_high": 2.023152413607657,
+            "bca_note": null,
+            "bca_seed": 10007333,
+            "hodges_lehmann": 1.2132954656942196,
+            "cliffs_delta": 0.31116150163769213
+          }
+        },
+        "below_threshold_descriptive": true,
+        "sensitivity": {
+          "group_level_wilcoxon": {
+            "p_value": 0.001953125,
+            "n_groups": 9
+          },
+          "rank_mixed_model": {
+            "coefficient": 19.603174603174605,
+            "p_value": 8.883334953008358e-06,
+            "icc": 0.49811912957157056,
+            "n_groups": 9,
+            "converged": true
+          },
+          "all_cases": {
+            "p_value": 1.2949600153389605e-05,
+            "n_pairs": 63
+          },
+          "missing_data": {
+            "metric": "log_cpr",
+            "mcar": {
+              "n_pairs_scheduled": 63,
+              "n_missing": 0,
+              "status": "complete; MCAR not applicable"
+            },
+            "ipw": {
+              "n_complete": 63,
+              "n_missing": 0,
+              "status": "complete; no weighting needed"
+            }
+          }
+        },
+        "splits": {
+          "by_stage": {
+            "escalated": {
+              "n": 57,
+              "mean_difference": 1.3210174888874129,
+              "bca_low": 0.9004353713417359,
+              "bca_high": 1.9071345460394742
+            },
+            "stopped": {
+              "n": 6,
+              "mean_difference": 3.1456503634993758,
+              "bca_low": 3.063542091124517,
+              "bca_high": 3.2849616792395353
+            }
+          }
+        },
+        "timing": {
+          "censored_share": {
+            "a": {
+              "n": 63,
+              "share": 0.5079365079365079,
+              "by_system": {
+                "otel_build_v3": 0.5079365079365079
+              }
+            },
+            "b": {
+              "n": 63,
+              "share": 0.4444444444444444,
+              "by_system": {
+                "otel_build_v3": 0.4444444444444444
+              }
+            }
+          },
+          "reruns": {
+            "n_substituted": 6
+          },
+          "p_with_reruns": 1.6328775349006485e-06,
+          "rerun_p_movement": 1.1316722618488957e-05,
+          "build_p_movement": 0.061,
+          "threshold": 0.00625,
+          "sensitive_to_timing_noise": true,
+          "crosses_threshold_with_reruns": false,
+          "statement": "Timing-derived results carry run-to-run noise: in the S5.4 replication (identical code, data and seeds) every accuracy result was identical while timing-derived p-values moved by up to about 0.06 (OTel B-H7, about 0.038 to about 0.099). The censored share is the fraction of runs whose TTCD hit the 1,800 s cap."
+        }
+      },
+      {
+        "id": "A-H4",
+        "rank": 7,
+        "comparison": "HELIOS-Full vs HELIOS-noConsensus",
+        "metric": "HR@3",
+        "test": "wilcoxon_signed_rank",
+        "stratum": "ambiguous",
+        "asymmetric_rule": true,
+        "a": "HELIOS-Full",
+        "b": "HELIOS-noConsensus",
+        "apps_tested": {
+          "hr_at_3": [
+            "otel_build_v3"
+          ]
+        },
+        "n_pairs": 39,
+        "p_value": 0.75,
+        "by_measure": {
+          "hr_at_3": {
+            "statistic": 1.5,
+            "p_value": 0.75,
+            "n_pairs": 39,
+            "n_informative": 2,
+            "mean_a": 0.7435897435897436,
+            "mean_b": 0.7435897435897436,
+            "mean_difference": 0.0,
+            "bca_low": -0.07692307692307693,
+            "bca_high": 0.07692307692307693,
+            "bca_note": null,
+            "bca_seed": 10007334,
+            "hodges_lehmann": 0.0,
+            "cliffs_delta": 0.0,
+            "cohens_h": 0.0
+          }
+        },
+        "note": "0/1 outcome: with zeros dropped the signed-rank test equals the exact sign test on discordant pairs (design T-b)",
+        "below_threshold_descriptive": false,
+        "reading": "inconclusive at delivered power (asymmetric rule)",
+        "sensitivity": {
+          "group_level_wilcoxon": {
+            "p_value": 0.5,
+            "n_groups": 7
+          },
+          "rank_mixed_model": {
+            "coefficient": 4.372570681600616e-15,
+            "p_value": 0.49999999999999944,
+            "icc": 0.3557925595134463,
+            "n_groups": 7,
+            "converged": true
+          },
+          "missing_data": {
+            "metric": "hr_at_3",
+            "mcar": {
+              "n_pairs_scheduled": 39,
+              "n_missing": 0,
+              "status": "complete; MCAR not applicable"
+            },
+            "ipw": {
+              "n_complete": 39,
+              "n_missing": 0,
+              "status": "complete; no weighting needed"
+            }
+          }
+        },
+        "splits": {},
+        "exploratory_hr": {
+          "status": "exploratory, descriptive (entry 95)",
+          "hr_at_3_discordant_pairs": 2,
+          "hr_at_1": {
+            "n": 39,
+            "mean_a": 0.38461538461538464,
+            "mean_b": 0.41025641025641024,
+            "by_system": {
+              "otel_build_v3": {
+                "n": 39,
+                "mean_a": 0.38461538461538464,
+                "mean_b": 0.41025641025641024
+              }
+            },
+            "mean_difference": -0.02564102564102564,
+            "bca_low": -0.15384615384615385,
+            "bca_high": 0.0,
+            "bca_seed": 10007334
+          },
+          "mrr": {
+            "n": 39,
+            "mean_a": 0.567959177574562,
+            "mean_b": 0.5832707178861025,
+            "by_system": {
+              "otel_build_v3": {
+                "n": 39,
+                "mean_a": 0.567959177574562,
+                "mean_b": 0.5832707178861025
+              }
+            },
+            "mean_difference": -0.01531154031154031,
+            "bca_low": -0.07179315208541377,
+            "bca_high": 0.001862026862026862,
+            "bca_seed": 10007334
+          }
+        }
+      },
+      {
+        "id": "A-H8",
+        "rank": 8,
+        "comparison": "HELIOS-Full vs HELIOS-noStructural",
+        "metric": "HR@3",
+        "test": "wilcoxon_signed_rank",
+        "stratum": null,
+        "asymmetric_rule": true,
+        "a": "HELIOS-Full",
+        "b": "HELIOS-noStructural",
+        "apps_untestable_no_traces": [],
+        "apps_tested": {
+          "hr_at_3": [
+            "otel_build_v3"
+          ]
+        },
+        "n_pairs": 63,
+        "p_value": 0.875,
+        "by_measure": {
+          "hr_at_3": {
+            "statistic": 2.0,
+            "p_value": 0.875,
+            "n_pairs": 63,
+            "n_informative": 3,
+            "mean_a": 0.7936507936507936,
+            "mean_b": 0.8095238095238095,
+            "mean_difference": -0.015873015873015872,
+            "bca_low": -0.07936507936507936,
+            "bca_high": 0.031746031746031744,
+            "bca_note": null,
+            "bca_seed": 10007335,
+            "hodges_lehmann": 0.0,
+            "cliffs_delta": -0.015873015873015872,
+            "cohens_h": -0.039808626977920536
+          }
+        },
+        "note": "0/1 outcome: with zeros dropped the signed-rank test equals the exact sign test on discordant pairs (design T-b)",
+        "below_threshold_descriptive": false,
+        "reading": "inconclusive at delivered power (asymmetric rule)",
+        "sensitivity": {
+          "group_level_wilcoxon": {
+            "p_value": 1.0,
+            "n_groups": 9
+          },
+          "rank_mixed_model": {
+            "coefficient": -1.0,
+            "p_value": 0.6157063421540746,
+            "icc": 0.45762290571667225,
+            "n_groups": 9,
+            "converged": true
+          },
+          "missing_data": {
+            "metric": "hr_at_3",
+            "mcar": {
+              "n_pairs_scheduled": 63,
+              "n_missing": 0,
+              "status": "complete; MCAR not applicable"
+            },
+            "ipw": {
+              "n_complete": 63,
+              "n_missing": 0,
+              "status": "complete; no weighting needed"
+            }
+          }
+        },
+        "splits": {},
+        "exploratory_hr": {
+          "status": "exploratory, descriptive (entry 95)",
+          "hr_at_3_discordant_pairs": 3,
+          "hr_at_1": {
+            "n": 63,
+            "mean_a": 0.49206349206349204,
+            "mean_b": 0.5396825396825397,
+            "by_system": {
+              "otel_build_v3": {
+                "n": 63,
+                "mean_a": 0.49206349206349204,
+                "mean_b": 0.5396825396825397
+              }
+            },
+            "mean_difference": -0.047619047619047616,
+            "bca_low": -0.12698412698412698,
+            "bca_high": 0.015873015873015872,
+            "bca_seed": 10007335
+          },
+          "mrr": {
+            "n": 63,
+            "mean_a": 0.6403944820611487,
+            "mean_b": 0.6839228452323691,
+            "by_system": {
+              "otel_build_v3": {
+                "n": 63,
+                "mean_a": 0.6403944820611487,
+                "mean_b": 0.6839228452323691
+              }
+            },
+            "mean_difference": -0.04352836317122032,
+            "bca_low": -0.0906395936724017,
+            "bca_high": -0.008413663516694725,
+            "bca_seed": 10007335
+          }
+        }
+      }
+    ],
+    "holm_binding": [
+      {
+        "id": "A-H3",
+        "rank": 1,
+        "p_value": 0.3125,
+        "threshold": 0.01,
+        "adjusted_p": 1.0,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "A-H7",
+        "rank": 2,
+        "p_value": null,
+        "threshold": null,
+        "adjusted_p": null,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "A-H1",
+        "rank": 3,
+        "p_value": 0.125,
+        "threshold": 0.008333333333333333,
+        "adjusted_p": 0.75,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "A-H2",
+        "rank": 4,
+        "p_value": 0.1050567626953125,
+        "threshold": 0.0071428571428571435,
+        "adjusted_p": 0.7353973388671875,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "A-H6",
+        "rank": 5,
+        "p_value": 0.3125,
+        "threshold": 0.0125,
+        "adjusted_p": 1.0,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "A-H5",
+        "rank": 6,
+        "p_value": 1.2949600153389605e-05,
+        "threshold": 0.00625,
+        "adjusted_p": 0.00010359680122711684,
+        "below_threshold_descriptive": true
+      },
+      {
+        "id": "A-H4",
+        "rank": 7,
+        "p_value": 0.75,
+        "threshold": 0.016666666666666666,
+        "adjusted_p": 1.0,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "A-H8",
+        "rank": 8,
+        "p_value": 0.875,
+        "threshold": 0.025,
+        "adjusted_p": 1.0,
+        "below_threshold_descriptive": false
+      }
+    ],
+    "holm_other_reading": [
+      {
+        "id": "A-H3",
+        "rank": 1,
+        "p_value": 0.3125,
+        "threshold": 0.00625,
+        "adjusted_p": null,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "A-H7",
+        "rank": 2,
+        "p_value": null,
+        "threshold": 0.0071428571428571435,
+        "adjusted_p": null,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "A-H1",
+        "rank": 3,
+        "p_value": 0.125,
+        "threshold": 0.008333333333333333,
+        "adjusted_p": null,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "A-H2",
+        "rank": 4,
+        "p_value": 0.1050567626953125,
+        "threshold": 0.01,
+        "adjusted_p": null,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "A-H6",
+        "rank": 5,
+        "p_value": 0.3125,
+        "threshold": 0.0125,
+        "adjusted_p": null,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "A-H5",
+        "rank": 6,
+        "p_value": 1.2949600153389605e-05,
+        "threshold": 0.016666666666666666,
+        "adjusted_p": null,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "A-H4",
+        "rank": 7,
+        "p_value": 0.75,
+        "threshold": 0.025,
+        "adjusted_p": null,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "A-H8",
+        "rank": 8,
+        "p_value": 0.875,
+        "threshold": 0.05,
+        "adjusted_p": null,
+        "below_threshold_descriptive": false
+      }
+    ],
+    "benjamini_hochberg": [
+      {
+        "id": "A-H3",
+        "rank": 1,
+        "p_value": 0.3125,
+        "threshold": 0.025,
+        "adjusted_p": 0.5,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "A-H7",
+        "rank": 2,
+        "p_value": null,
+        "threshold": 0.05,
+        "adjusted_p": 1.0,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "A-H1",
+        "rank": 3,
+        "p_value": 0.125,
+        "threshold": 0.018750000000000003,
+        "adjusted_p": 0.3333333333333333,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "A-H2",
+        "rank": 4,
+        "p_value": 0.1050567626953125,
+        "threshold": 0.0125,
+        "adjusted_p": 0.3333333333333333,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "A-H6",
+        "rank": 5,
+        "p_value": 0.3125,
+        "threshold": 0.03125,
+        "adjusted_p": 0.5,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "A-H5",
+        "rank": 6,
+        "p_value": 1.2949600153389605e-05,
+        "threshold": 0.00625,
+        "adjusted_p": 0.00010359680122711684,
+        "below_threshold_descriptive": true
+      },
+      {
+        "id": "A-H4",
+        "rank": 7,
+        "p_value": 0.75,
+        "threshold": 0.037500000000000006,
+        "adjusted_p": 1.0,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "A-H8",
+        "rank": 8,
+        "p_value": 0.875,
+        "threshold": 0.043750000000000004,
+        "adjusted_p": 1.0,
+        "below_threshold_descriptive": false
+      }
+    ]
+  },
+  "family_b": {
+    "holm_reading": "data_order",
+    "hypotheses": [
+      {
+        "id": "B-H1",
+        "rank": 1,
+        "comparison": "HELIOS-Full vs BASELINE-1",
+        "metric": "HR@3 (paired binary)",
+        "test": "mcnemar_exact_mid_p",
+        "stratum": null,
+        "asymmetric_rule": true,
+        "a": "HELIOS-Full",
+        "b": "Multi-source BARO",
+        "apps_tested": {
+          "hr_at_3": [
+            "otel_build_v3"
+          ]
+        },
+        "n_pairs": 63,
+        "p_value": 0.000244140625,
+        "by_measure": {
+          "hr_at_3": {
+            "statistic": 19,
+            "p_value": 0.000244140625,
+            "n_pairs": 63,
+            "n_informative": 22,
+            "mean_a": 0.7936507936507936,
+            "mean_b": 0.5396825396825397,
+            "mean_difference": 0.25396825396825395,
+            "bca_low": 0.12698412698412698,
+            "bca_high": 0.38095238095238093,
+            "bca_note": null,
+            "bca_seed": 10007336,
+            "hodges_lehmann": 0.0,
+            "cliffs_delta": 0.25396825396825395,
+            "cohens_h": 0.5482721835727755
+          }
+        },
+        "below_threshold_descriptive": true,
+        "sensitivity": {
+          "group_level_wilcoxon": {
+            "p_value": 0.03125,
+            "n_groups": 9
+          },
+          "rank_mixed_model": {
+            "coefficient": 15.999999999999991,
+            "p_value": 3.919892926092147e-05,
+            "icc": 0.40214527561040153,
+            "n_groups": 9,
+            "converged": true
+          },
+          "missing_data": {
+            "metric": "hr_at_3",
+            "mcar": {
+              "n_pairs_scheduled": 63,
+              "n_missing": 0,
+              "status": "complete; MCAR not applicable"
+            },
+            "ipw": {
+              "n_complete": 63,
+              "n_missing": 0,
+              "status": "complete; no weighting needed"
+            }
+          }
+        },
+        "splits": {},
+        "exploratory_hr": {
+          "status": "exploratory, descriptive (entry 95)",
+          "hr_at_3_discordant_pairs": 22,
+          "hr_at_1": {
+            "n": 63,
+            "mean_a": 0.49206349206349204,
+            "mean_b": 0.4126984126984127,
+            "by_system": {
+              "otel_build_v3": {
+                "n": 63,
+                "mean_a": 0.49206349206349204,
+                "mean_b": 0.4126984126984127
+              }
+            },
+            "mean_difference": 0.07936507936507936,
+            "bca_low": -0.031746031746031744,
+            "bca_high": 0.20634920634920634,
+            "bca_seed": 10007336
+          },
+          "mrr": {
+            "n": 63,
+            "mean_a": 0.6403944820611487,
+            "mean_b": 0.5424841472460521,
+            "by_system": {
+              "otel_build_v3": {
+                "n": 63,
+                "mean_a": 0.6403944820611487,
+                "mean_b": 0.5424841472460521
+              }
+            },
+            "mean_difference": 0.09791033481509671,
+            "bca_low": 0.009525661593529033,
+            "bca_high": 0.18175633520136913,
+            "bca_seed": 10007336
+          }
+        }
+      },
+      {
+        "id": "B-H2",
+        "rank": 2,
+        "comparison": "HELIOS-Full vs BASELINE-2",
+        "metric": "HR@3 (paired binary)",
+        "test": "mcnemar_exact_mid_p",
+        "stratum": null,
+        "asymmetric_rule": true,
+        "a": "HELIOS-Full",
+        "b": "TraceRCA",
+        "apps_tested": {
+          "hr_at_3": [
+            "otel_build_v3"
+          ]
+        },
+        "n_pairs": 63,
+        "p_value": 1.4551915228366852e-11,
+        "by_measure": {
+          "hr_at_3": {
+            "statistic": 35,
+            "p_value": 1.4551915228366852e-11,
+            "n_pairs": 63,
+            "n_informative": 35,
+            "mean_a": 0.7936507936507936,
+            "mean_b": 0.23809523809523808,
+            "mean_difference": 0.5555555555555556,
+            "bca_low": 0.42857142857142855,
+            "bca_high": 0.6825396825396826,
+            "bca_note": null,
+            "bca_seed": 10007337,
+            "hodges_lehmann": 0.5,
+            "cliffs_delta": 0.5555555555555556,
+            "cohens_h": 1.1790377867897952
+          }
+        },
+        "below_threshold_descriptive": true,
+        "sensitivity": {
+          "group_level_wilcoxon": {
+            "p_value": 0.00390625,
+            "n_groups": 9
+          },
+          "rank_mixed_model": {
+            "coefficient": 34.999999999999986,
+            "p_value": 1.6987393131462385e-19,
+            "icc": 0.33081964062041563,
+            "n_groups": 9,
+            "converged": true
+          },
+          "missing_data": {
+            "metric": "hr_at_3",
+            "mcar": {
+              "n_pairs_scheduled": 63,
+              "n_missing": 0,
+              "status": "complete; MCAR not applicable"
+            },
+            "ipw": {
+              "n_complete": 63,
+              "n_missing": 0,
+              "status": "complete; no weighting needed"
+            }
+          }
+        },
+        "splits": {},
+        "exploratory_hr": {
+          "status": "exploratory, descriptive (entry 95)",
+          "hr_at_3_discordant_pairs": 35,
+          "hr_at_1": {
+            "n": 63,
+            "mean_a": 0.49206349206349204,
+            "mean_b": 0.06349206349206349,
+            "by_system": {
+              "otel_build_v3": {
+                "n": 63,
+                "mean_a": 0.49206349206349204,
+                "mean_b": 0.06349206349206349
+              }
+            },
+            "mean_difference": 0.42857142857142855,
+            "bca_low": 0.31746031746031744,
+            "bca_high": 0.5555555555555556,
+            "bca_seed": 10007337
+          },
+          "mrr": {
+            "n": 63,
+            "mean_a": 0.6403944820611487,
+            "mean_b": 0.2546685677638058,
+            "by_system": {
+              "otel_build_v3": {
+                "n": 63,
+                "mean_a": 0.6403944820611487,
+                "mean_b": 0.2546685677638058
+              }
+            },
+            "mean_difference": 0.3857259142973429,
+            "bca_low": 0.30693308900949434,
+            "bca_high": 0.4658896485679875,
+            "bca_seed": 10007337
+          }
+        }
+      },
+      {
+        "id": "B-H3",
+        "rank": 3,
+        "comparison": "HELIOS-Full vs BASELINE-3",
+        "metric": "HR@3 (paired binary)",
+        "test": "mcnemar_exact_mid_p",
+        "stratum": null,
+        "asymmetric_rule": true,
+        "a": "HELIOS-Full",
+        "b": "BARO (metrics only)",
+        "apps_tested": {
+          "hr_at_3": [
+            "otel_build_v3"
+          ]
+        },
+        "n_pairs": 63,
+        "p_value": 9.70612745732069e-09,
+        "by_measure": {
+          "hr_at_3": {
+            "statistic": 33,
+            "p_value": 9.70612745732069e-09,
+            "n_pairs": 63,
+            "n_informative": 35,
+            "mean_a": 0.7936507936507936,
+            "mean_b": 0.30158730158730157,
+            "mean_difference": 0.49206349206349204,
+            "bca_low": 0.3492063492063492,
+            "bca_high": 0.6190476190476191,
+            "bca_note": null,
+            "bca_seed": 10007338,
+            "hodges_lehmann": 0.5,
+            "cliffs_delta": 0.49206349206349204,
+            "cohens_h": 1.035776494959191
+          }
+        },
+        "below_threshold_descriptive": true,
+        "sensitivity": {
+          "group_level_wilcoxon": {
+            "p_value": 0.001953125,
+            "n_groups": 9
+          },
+          "rank_mixed_model": {
+            "coefficient": 31.000000000000018,
+            "p_value": 1.436488999952622e-14,
+            "icc": 0.32859493202952456,
+            "n_groups": 9,
+            "converged": true
+          },
+          "missing_data": {
+            "metric": "hr_at_3",
+            "mcar": {
+              "n_pairs_scheduled": 63,
+              "n_missing": 0,
+              "status": "complete; MCAR not applicable"
+            },
+            "ipw": {
+              "n_complete": 63,
+              "n_missing": 0,
+              "status": "complete; no weighting needed"
+            }
+          }
+        },
+        "splits": {},
+        "exploratory_hr": {
+          "status": "exploratory, descriptive (entry 95)",
+          "hr_at_3_discordant_pairs": 35,
+          "hr_at_1": {
+            "n": 63,
+            "mean_a": 0.49206349206349204,
+            "mean_b": 0.12698412698412698,
+            "by_system": {
+              "otel_build_v3": {
+                "n": 63,
+                "mean_a": 0.49206349206349204,
+                "mean_b": 0.12698412698412698
+              }
+            },
+            "mean_difference": 0.36507936507936506,
+            "bca_low": 0.23809523809523808,
+            "bca_high": 0.49206349206349204,
+            "bca_seed": 10007338
+          },
+          "mrr": {
+            "n": 63,
+            "mean_a": 0.6403944820611487,
+            "mean_b": 0.3038846922784708,
+            "by_system": {
+              "otel_build_v3": {
+                "n": 63,
+                "mean_a": 0.6403944820611487,
+                "mean_b": 0.3038846922784708
+              }
+            },
+            "mean_difference": 0.3365097897826779,
+            "bca_low": 0.23793806204934015,
+            "bca_high": 0.42874509899172897,
+            "bca_seed": 10007338
+          }
+        }
+      },
+      {
+        "id": "B-H4",
+        "rank": 4,
+        "comparison": "HELIOS-Full vs BASELINE-4",
+        "metric": "HR@3 (paired binary)",
+        "test": "mcnemar_exact_mid_p",
+        "stratum": null,
+        "asymmetric_rule": true,
+        "a": "HELIOS-Full",
+        "b": "PDiagnose",
+        "apps_tested": {
+          "hr_at_3": [
+            "otel_build_v3"
+          ]
+        },
+        "n_pairs": 63,
+        "p_value": 7.005874067544937e-07,
+        "by_measure": {
+          "hr_at_3": {
+            "statistic": 29,
+            "p_value": 7.005874067544937e-07,
+            "n_pairs": 63,
+            "n_informative": 32,
+            "mean_a": 0.7936507936507936,
+            "mean_b": 0.38095238095238093,
+            "mean_difference": 0.4126984126984127,
+            "bca_low": 0.2698412698412698,
+            "bca_high": 0.5555555555555556,
+            "bca_note": null,
+            "bca_seed": 10007339,
+            "hodges_lehmann": 0.5,
+            "cliffs_delta": 0.4126984126984127,
+            "cohens_h": 0.8681250344271718
+          }
+        },
+        "below_threshold_descriptive": true,
+        "sensitivity": {
+          "group_level_wilcoxon": {
+            "p_value": 0.015625,
+            "n_groups": 9
+          },
+          "rank_mixed_model": {
+            "coefficient": 26.0,
+            "p_value": 2.2635424114591053e-11,
+            "icc": 0.4151774888391843,
+            "n_groups": 9,
+            "converged": true
+          },
+          "missing_data": {
+            "metric": "hr_at_3",
+            "mcar": {
+              "n_pairs_scheduled": 63,
+              "n_missing": 0,
+              "status": "complete; MCAR not applicable"
+            },
+            "ipw": {
+              "n_complete": 63,
+              "n_missing": 0,
+              "status": "complete; no weighting needed"
+            }
+          }
+        },
+        "splits": {},
+        "exploratory_hr": {
+          "status": "exploratory, descriptive (entry 95)",
+          "hr_at_3_discordant_pairs": 32,
+          "hr_at_1": {
+            "n": 63,
+            "mean_a": 0.49206349206349204,
+            "mean_b": 0.15873015873015872,
+            "by_system": {
+              "otel_build_v3": {
+                "n": 63,
+                "mean_a": 0.49206349206349204,
+                "mean_b": 0.15873015873015872
+              }
+            },
+            "mean_difference": 0.3333333333333333,
+            "bca_low": 0.19047619047619047,
+            "bca_high": 0.47619047619047616,
+            "bca_seed": 10007339
+          },
+          "mrr": {
+            "n": 63,
+            "mean_a": 0.6403944820611487,
+            "mean_b": 0.3581723171008884,
+            "by_system": {
+              "otel_build_v3": {
+                "n": 63,
+                "mean_a": 0.6403944820611487,
+                "mean_b": 0.3581723171008884
+              }
+            },
+            "mean_difference": 0.2822221649602602,
+            "bca_low": 0.18321393425729524,
+            "bca_high": 0.3774390262159477,
+            "bca_seed": 10007339
+          }
+        }
+      },
+      {
+        "id": "B-H5",
+        "rank": 5,
+        "comparison": "HELIOS-Full vs BASELINE-5",
+        "metric": "HR@3 (paired binary)",
+        "test": "mcnemar_exact_mid_p",
+        "stratum": null,
+        "asymmetric_rule": true,
+        "a": "HELIOS-Full",
+        "b": "Multi-source RCD",
+        "apps_tested": {
+          "hr_at_3": [
+            "otel_build_v3"
+          ]
+        },
+        "n_pairs": 63,
+        "p_value": 5.002220859751105e-12,
+        "by_measure": {
+          "hr_at_3": {
+            "statistic": 41,
+            "p_value": 5.002220859751105e-12,
+            "n_pairs": 63,
+            "n_informative": 42,
+            "mean_a": 0.7936507936507936,
+            "mean_b": 0.15873015873015872,
+            "mean_difference": 0.6349206349206349,
+            "bca_low": 0.49206349206349204,
+            "bca_high": 0.746031746031746,
+            "bca_note": null,
+            "bca_seed": 10007340,
+            "hodges_lehmann": 0.5,
+            "cliffs_delta": 0.6349206349206349,
+            "cohens_h": 1.3789528167845484
+          }
+        },
+        "below_threshold_descriptive": true,
+        "sensitivity": {
+          "group_level_wilcoxon": {
+            "p_value": 0.001953125,
+            "n_groups": 9
+          },
+          "rank_mixed_model": {
+            "coefficient": 40.00000000000001,
+            "p_value": 2.806307967684921e-24,
+            "icc": 0.19087046314584166,
+            "n_groups": 9,
+            "converged": true
+          },
+          "missing_data": {
+            "metric": "hr_at_3",
+            "mcar": {
+              "n_pairs_scheduled": 63,
+              "n_missing": 0,
+              "status": "complete; MCAR not applicable"
+            },
+            "ipw": {
+              "n_complete": 63,
+              "n_missing": 0,
+              "status": "complete; no weighting needed"
+            }
+          }
+        },
+        "splits": {},
+        "rerun_determinism": {
+          "pairs": 6,
+          "compared": 6,
+          "identical_share": 1.0,
+          "hr_at_1": {
+            "n": 6,
+            "changed": 0,
+            "mean_abs_change": 0.0
+          },
+          "hr_at_3": {
+            "n": 6,
+            "changed": 0,
+            "mean_abs_change": 0.0
+          },
+          "avg_at_5": {
+            "n": 6,
+            "changed": 0,
+            "mean_abs_change": 0.0
+          },
+          "mrr": {
+            "n": 6,
+            "changed": 0,
+            "mean_abs_change": 0.0
+          }
+        },
+        "exploratory_hr": {
+          "status": "exploratory, descriptive (entry 95)",
+          "hr_at_3_discordant_pairs": 42,
+          "hr_at_1": {
+            "n": 63,
+            "mean_a": 0.49206349206349204,
+            "mean_b": 0.09523809523809523,
+            "by_system": {
+              "otel_build_v3": {
+                "n": 63,
+                "mean_a": 0.49206349206349204,
+                "mean_b": 0.09523809523809523
+              }
+            },
+            "mean_difference": 0.3968253968253968,
+            "bca_low": 0.23809523809523808,
+            "bca_high": 0.5396825396825397,
+            "bca_seed": 10007340
+          },
+          "mrr": {
+            "n": 63,
+            "mean_a": 0.6403944820611487,
+            "mean_b": 0.12566137566137564,
+            "by_system": {
+              "otel_build_v3": {
+                "n": 63,
+                "mean_a": 0.6403944820611487,
+                "mean_b": 0.12566137566137564
+              }
+            },
+            "mean_difference": 0.5147331063997731,
+            "bca_low": 0.3869115153824332,
+            "bca_high": 0.620538827123553,
+            "bca_seed": 10007340
+          }
+        }
+      },
+      {
+        "id": "B-H7",
+        "rank": 6,
+        "comparison": "BEST-BASELINE vs HELIOS-Full",
+        "metric": "log-CpR",
+        "test": "wilcoxon_signed_rank",
+        "stratum": null,
+        "asymmetric_rule": false,
+        "a": "Multi-source BARO",
+        "b": "HELIOS-Full",
+        "apps_tested": {
+          "log_cpr": [
+            "otel_build_v3"
+          ]
+        },
+        "n_pairs": 63,
+        "p_value": 0.037765209693848334,
+        "by_measure": {
+          "log_cpr": {
+            "statistic": 1268.0,
+            "p_value": 0.037765209693848334,
+            "n_pairs": 63,
+            "n_informative": 63,
+            "mean_a": 9.042136879025666,
+            "mean_b": 8.151811723913163,
+            "mean_difference": 0.890325155112501,
+            "bca_low": 0.0662518094155379,
+            "bca_high": 1.7330734316272571,
+            "bca_note": null,
+            "bca_seed": 10007341,
+            "hodges_lehmann": 0.05734569256626454,
+            "cliffs_delta": -0.009322247417485512
+          }
+        },
+        "below_threshold_descriptive": false,
+        "sensitivity": {
+          "group_level_wilcoxon": {
+            "p_value": 0.064453125,
+            "n_groups": 9
+          },
+          "rank_mixed_model": {
+            "coefficient": -0.5873015873015855,
+            "p_value": 0.5503956817193412,
+            "icc": 0.5215896969884983,
+            "n_groups": 9,
+            "converged": true
+          },
+          "paired_t": {
+            "p_value": 0.020205284059105964,
+            "scale": "log"
+          },
+          "missing_data": {
+            "metric": "log_cpr",
+            "mcar": {
+              "n_pairs_scheduled": 63,
+              "n_missing": 0,
+              "status": "complete; MCAR not applicable"
+            },
+            "ipw": {
+              "n_complete": 63,
+              "n_missing": 0,
+              "status": "complete; no weighting needed"
+            }
+          }
+        },
+        "splits": {},
+        "timing": {
+          "censored_share": {
+            "a": {
+              "n": 63,
+              "share": 0.5873015873015873,
+              "by_system": {
+                "otel_build_v3": 0.5873015873015873
+              }
+            },
+            "b": {
+              "n": 63,
+              "share": 0.4444444444444444,
+              "by_system": {
+                "otel_build_v3": 0.4444444444444444
+              }
+            }
+          },
+          "reruns": {
+            "n_substituted": 6
+          },
+          "p_with_reruns": 0.02198174159658354,
+          "rerun_p_movement": 0.015783468097264795,
+          "build_p_movement": 0.061,
+          "threshold": 0.025,
+          "sensitive_to_timing_noise": true,
+          "crosses_threshold_with_reruns": true,
+          "statement": "Timing-derived results carry run-to-run noise: in the S5.4 replication (identical code, data and seeds) every accuracy result was identical while timing-derived p-values moved by up to about 0.06 (OTel B-H7, about 0.038 to about 0.099). The censored share is the fraction of runs whose TTCD hit the 1,800 s cap."
+        }
+      },
+      {
+        "id": "B-H6",
+        "rank": 7,
+        "comparison": "BEST-BASELINE vs HELIOS-Full",
+        "metric": "log time to correct diagnosis",
+        "test": "wilcoxon_signed_rank",
+        "stratum": null,
+        "asymmetric_rule": false,
+        "a": "Multi-source BARO",
+        "b": "HELIOS-Full",
+        "apps_tested": {
+          "log_ttcd": [
+            "otel_build_v3"
+          ]
+        },
+        "n_pairs": 63,
+        "p_value": 0.05535588581369666,
+        "by_measure": {
+          "log_ttcd": {
+            "statistic": 505.0,
+            "p_value": 0.05535588581369666,
+            "n_pairs": 63,
+            "n_informative": 39,
+            "mean_a": 4.446843372031213,
+            "mean_b": 3.56364968793297,
+            "mean_difference": 0.8831936840982444,
+            "bca_low": 0.053272910046533575,
+            "bca_high": 1.7366434543464722,
+            "bca_note": null,
+            "bca_seed": 10007342,
+            "hodges_lehmann": 0.0,
+            "cliffs_delta": 0.03854875283446712
+          }
+        },
+        "below_threshold_descriptive": false,
+        "sensitivity": {
+          "group_level_wilcoxon": {
+            "p_value": 0.064453125,
+            "n_groups": 9
+          },
+          "rank_mixed_model": {
+            "coefficient": 2.428571428571429,
+            "p_value": 0.2698446640999652,
+            "icc": 0.598211368290985,
+            "n_groups": 9,
+            "converged": true
+          },
+          "paired_t": {
+            "p_value": 0.022777797766232826,
+            "scale": "log"
+          },
+          "missing_data": {
+            "metric": "log_ttcd",
+            "mcar": {
+              "n_pairs_scheduled": 63,
+              "n_missing": 0,
+              "status": "complete; MCAR not applicable"
+            },
+            "ipw": {
+              "n_complete": 63,
+              "n_missing": 0,
+              "status": "complete; no weighting needed"
+            }
+          }
+        },
+        "splits": {},
+        "timing": {
+          "censored_share": {
+            "a": {
+              "n": 63,
+              "share": 0.5873015873015873,
+              "by_system": {
+                "otel_build_v3": 0.5873015873015873
+              }
+            },
+            "b": {
+              "n": 63,
+              "share": 0.4444444444444444,
+              "by_system": {
+                "otel_build_v3": 0.4444444444444444
+              }
+            }
+          },
+          "reruns": {
+            "n_substituted": 6
+          },
+          "p_with_reruns": 0.04784171498067735,
+          "rerun_p_movement": 0.007514170833019307,
+          "build_p_movement": 0.061,
+          "threshold": 0.05,
+          "sensitive_to_timing_noise": true,
+          "crosses_threshold_with_reruns": true,
+          "statement": "Timing-derived results carry run-to-run noise: in the S5.4 replication (identical code, data and seeds) every accuracy result was identical while timing-derived p-values moved by up to about 0.06 (OTel B-H7, about 0.038 to about 0.099). The censored share is the fraction of runs whose TTCD hit the 1,800 s cap."
+        }
+      },
+      {
+        "id": "B-H8",
+        "rank": 8,
+        "comparison": "HELIOS-Full vs BEST-BASELINE",
+        "metric": "Avg@5",
+        "test": "wilcoxon_signed_rank",
+        "stratum": null,
+        "asymmetric_rule": false,
+        "a": "HELIOS-Full",
+        "b": "Multi-source BARO",
+        "apps_tested": {
+          "avg_at_5": [
+            "otel_build_v3"
+          ]
+        },
+        "n_pairs": 63,
+        "p_value": 0.0018867207691073418,
+        "by_measure": {
+          "avg_at_5": {
+            "statistic": 414.5,
+            "p_value": 0.0018867207691073418,
+            "n_pairs": 63,
+            "n_informative": 32,
+            "mean_a": 0.7111111111111111,
+            "mean_b": 0.5650793650793651,
+            "mean_difference": 0.14603174603174604,
+            "bca_low": 0.05079365079365079,
+            "bca_high": 0.23809523809523805,
+            "bca_note": null,
+            "bca_seed": 10007343,
+            "hodges_lehmann": 0.09999999999999999,
+            "cliffs_delta": 0.1675485008818342
+          }
+        },
+        "below_threshold_descriptive": true,
+        "sensitivity": {
+          "group_level_wilcoxon": {
+            "p_value": 0.0390625,
+            "n_groups": 9
+          },
+          "rank_mixed_model": {
+            "coefficient": 10.555555555555557,
+            "p_value": 0.0032021353290921937,
+            "icc": 0.6224553934045501,
+            "n_groups": 9,
+            "converged": true
+          },
+          "paired_t": {
+            "p_value": 0.0017680461930471721,
+            "scale": "raw"
+          },
+          "missing_data": {
+            "metric": "avg_at_5",
+            "mcar": {
+              "n_pairs_scheduled": 63,
+              "n_missing": 0,
+              "status": "complete; MCAR not applicable"
+            },
+            "ipw": {
+              "n_complete": 63,
+              "n_missing": 0,
+              "status": "complete; no weighting needed"
+            }
+          }
+        },
+        "splits": {}
+      }
+    ],
+    "holm_binding": [
+      {
+        "id": "B-H1",
+        "rank": 1,
+        "p_value": 0.000244140625,
+        "threshold": 0.0125,
+        "adjusted_p": 0.0009765625,
+        "below_threshold_descriptive": true
+      },
+      {
+        "id": "B-H2",
+        "rank": 2,
+        "p_value": 1.4551915228366852e-11,
+        "threshold": 0.0071428571428571435,
+        "adjusted_p": 1.0186340659856796e-10,
+        "below_threshold_descriptive": true
+      },
+      {
+        "id": "B-H3",
+        "rank": 3,
+        "p_value": 9.70612745732069e-09,
+        "threshold": 0.008333333333333333,
+        "adjusted_p": 5.823676474392414e-08,
+        "below_threshold_descriptive": true
+      },
+      {
+        "id": "B-H4",
+        "rank": 4,
+        "p_value": 7.005874067544937e-07,
+        "threshold": 0.01,
+        "adjusted_p": 3.5029370337724686e-06,
+        "below_threshold_descriptive": true
+      },
+      {
+        "id": "B-H5",
+        "rank": 5,
+        "p_value": 5.002220859751105e-12,
+        "threshold": 0.00625,
+        "adjusted_p": 4.001776687800884e-11,
+        "below_threshold_descriptive": true
+      },
+      {
+        "id": "B-H7",
+        "rank": 6,
+        "p_value": 0.037765209693848334,
+        "threshold": 0.025,
+        "adjusted_p": 0.07553041938769667,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "B-H6",
+        "rank": 7,
+        "p_value": 0.05535588581369666,
+        "threshold": 0.05,
+        "adjusted_p": 0.07553041938769667,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "B-H8",
+        "rank": 8,
+        "p_value": 0.0018867207691073418,
+        "threshold": 0.016666666666666666,
+        "adjusted_p": 0.005660162307322025,
+        "below_threshold_descriptive": true
+      }
+    ],
+    "holm_other_reading": [
+      {
+        "id": "B-H1",
+        "rank": 1,
+        "p_value": 0.000244140625,
+        "threshold": 0.00625,
+        "adjusted_p": null,
+        "below_threshold_descriptive": true
+      },
+      {
+        "id": "B-H2",
+        "rank": 2,
+        "p_value": 1.4551915228366852e-11,
+        "threshold": 0.0071428571428571435,
+        "adjusted_p": null,
+        "below_threshold_descriptive": true
+      },
+      {
+        "id": "B-H3",
+        "rank": 3,
+        "p_value": 9.70612745732069e-09,
+        "threshold": 0.008333333333333333,
+        "adjusted_p": null,
+        "below_threshold_descriptive": true
+      },
+      {
+        "id": "B-H4",
+        "rank": 4,
+        "p_value": 7.005874067544937e-07,
+        "threshold": 0.01,
+        "adjusted_p": null,
+        "below_threshold_descriptive": true
+      },
+      {
+        "id": "B-H5",
+        "rank": 5,
+        "p_value": 5.002220859751105e-12,
+        "threshold": 0.0125,
+        "adjusted_p": null,
+        "below_threshold_descriptive": true
+      },
+      {
+        "id": "B-H7",
+        "rank": 6,
+        "p_value": 0.037765209693848334,
+        "threshold": 0.016666666666666666,
+        "adjusted_p": null,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "B-H6",
+        "rank": 7,
+        "p_value": 0.05535588581369666,
+        "threshold": 0.025,
+        "adjusted_p": null,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "B-H8",
+        "rank": 8,
+        "p_value": 0.0018867207691073418,
+        "threshold": 0.05,
+        "adjusted_p": null,
+        "below_threshold_descriptive": false
+      }
+    ],
+    "benjamini_hochberg": [
+      {
+        "id": "B-H1",
+        "rank": 1,
+        "p_value": 0.000244140625,
+        "threshold": 0.03125,
+        "adjusted_p": 0.000390625,
+        "below_threshold_descriptive": true
+      },
+      {
+        "id": "B-H2",
+        "rank": 2,
+        "p_value": 1.4551915228366852e-11,
+        "threshold": 0.0125,
+        "adjusted_p": 5.820766091346741e-11,
+        "below_threshold_descriptive": true
+      },
+      {
+        "id": "B-H3",
+        "rank": 3,
+        "p_value": 9.70612745732069e-09,
+        "threshold": 0.018750000000000003,
+        "adjusted_p": 2.5883006552855175e-08,
+        "below_threshold_descriptive": true
+      },
+      {
+        "id": "B-H4",
+        "rank": 4,
+        "p_value": 7.005874067544937e-07,
+        "threshold": 0.025,
+        "adjusted_p": 1.4011748135089874e-06,
+        "below_threshold_descriptive": true
+      },
+      {
+        "id": "B-H5",
+        "rank": 5,
+        "p_value": 5.002220859751105e-12,
+        "threshold": 0.00625,
+        "adjusted_p": 4.001776687800884e-11,
+        "below_threshold_descriptive": true
+      },
+      {
+        "id": "B-H7",
+        "rank": 6,
+        "p_value": 0.037765209693848334,
+        "threshold": 0.043750000000000004,
+        "adjusted_p": 0.043160239650112384,
+        "below_threshold_descriptive": true
+      },
+      {
+        "id": "B-H6",
+        "rank": 7,
+        "p_value": 0.05535588581369666,
+        "threshold": 0.05,
+        "adjusted_p": 0.05535588581369666,
+        "below_threshold_descriptive": false
+      },
+      {
+        "id": "B-H8",
+        "rank": 8,
+        "p_value": 0.0018867207691073418,
+        "threshold": 0.037500000000000006,
+        "adjusted_p": 0.002515627692143122,
+        "below_threshold_descriptive": true
+      }
+    ]
+  },
+  "family_b_sensitivity": {
+    "chase_anchor": {
+      "hr_at_3": 0.6,
+      "sensitivity_band": 0.61,
+      "baselines_hr_at_3": {
+        "Multi-source BARO": 0.5396825396825397,
+        "TraceRCA": 0.23809523809523808,
+        "BARO (metrics only)": 0.30158730158730157,
+        "PDiagnose": 0.38095238095238093,
+        "Multi-source RCD": 0.15873015873015872
+      }
+    },
+    "trigger_time": [
+      {
+        "id": "B-H1",
+        "a": "HELIOS-Full",
+        "b": "Multi-source BARO",
+        "n_pairs": 0,
+        "p_value": null,
+        "below_threshold_descriptive": false,
+        "untestable": "cell rule: no system where both HELIOS-Full and Multi-source BARO have at least 4/5 of their cases on hr_at_3"
+      },
+      {
+        "id": "B-H2",
+        "a": "HELIOS-Full",
+        "b": "TraceRCA",
+        "n_pairs": 63,
+        "p_value": 3.9199221646413207e-10,
+        "below_threshold_descriptive": true
+      },
+      {
+        "id": "B-H3",
+        "a": "HELIOS-Full",
+        "b": "BARO (metrics only)",
+        "n_pairs": 63,
+        "p_value": 3.8300640881061554e-07,
+        "below_threshold_descriptive": true
+      },
+      {
+        "id": "B-H4",
+        "a": "HELIOS-Full",
+        "b": "PDiagnose",
+        "n_pairs": 63,
+        "p_value": 7.618218660354614e-06,
+        "below_threshold_descriptive": true
+      },
+      {
+        "id": "B-H5",
+        "a": "HELIOS-Full",
+        "b": "Multi-source RCD",
+        "n_pairs": 63,
+        "p_value": 2.944489096989855e-11,
+        "below_threshold_descriptive": true
+      },
+      {
+        "id": "B-H7",
+        "a": "Multi-source BARO",
+        "b": "HELIOS-Full",
+        "n_pairs": 0,
+        "p_value": null,
+        "below_threshold_descriptive": false,
+        "untestable": "cell rule: no system where both Multi-source BARO and HELIOS-Full have at least 4/5 of their cases on log_cpr"
+      },
+      {
+        "id": "B-H6",
+        "a": "Multi-source BARO",
+        "b": "HELIOS-Full",
+        "n_pairs": 0,
+        "p_value": null,
+        "below_threshold_descriptive": false,
+        "untestable": "cell rule: no system where both Multi-source BARO and HELIOS-Full have at least 4/5 of their cases on log_ttcd"
+      },
+      {
+        "id": "B-H8",
+        "a": "HELIOS-Full",
+        "b": "Multi-source BARO",
+        "n_pairs": 0,
+        "p_value": null,
+        "below_threshold_descriptive": false,
+        "untestable": "cell rule: no system where both HELIOS-Full and Multi-source BARO have at least 4/5 of their cases on avg_at_5"
+      }
+    ],
+    "no_human_time": [
+      {
+        "id": "B-H7",
+        "a": "Multi-source BARO",
+        "b": "HELIOS-Full",
+        "n_pairs": 63,
+        "p_value": 0.5634606473239283,
+        "below_threshold_descriptive": false
+      }
+    ]
+  },
+  "family_e": [
+    {
+      "id": "E-H1",
+      "comparison": "HELIOS-Full vs HELIOS-noCogni",
+      "metric": "HR@3 on Tier-4 cognitive faults",
+      "status": "exploratory",
+      "stage": "B",
+      "available": false
+    },
+    {
+      "id": "E-H2",
+      "comparison": "HELIOS-noRouter vs HELIOS-Full",
+      "metric": "time to triage",
+      "status": "exploratory",
+      "stage": "A",
+      "available": true,
+      "n_pairs": 63,
+      "mean_a": 15493.74339208358,
+      "mean_b": 1387.7058552064386,
+      "mean_difference": 14106.03753687714,
+      "bca_low": 13325.348439077927,
+      "bca_high": 14903.408596501225,
+      "bca_note": null,
+      "bca_seed": 10007345,
+      "hodges_lehmann": 14127.758228438324,
+      "cliffs_delta": 1.0,
+      "timing": {
+        "censored_share": {
+          "a": {
+            "n": 63,
+            "share": 0.5079365079365079,
+            "by_system": {
+              "otel_build_v3": 0.5079365079365079
+            }
+          },
+          "b": {
+            "n": 63,
+            "share": 0.4444444444444444,
+            "by_system": {
+              "otel_build_v3": 0.4444444444444444
+            }
+          }
+        },
+        "statement": "Timing-derived results carry run-to-run noise: in the S5.4 replication (identical code, data and seeds) every accuracy result was identical while timing-derived p-values moved by up to about 0.06 (OTel B-H7, about 0.038 to about 0.099). The censored share is the fraction of runs whose TTCD hit the 1,800 s cap.",
+        "reruns": {
+          "n_substituted": 6
+        },
+        "mean_difference_with_reruns": 14131.749207765559
+      }
+    },
+    {
+      "id": "E-H3",
+      "comparison": "HELIOS-Full vs HELIOS-noACP",
+      "metric": "latency-constraint satisfaction",
+      "status": "retired",
+      "stage": null,
+      "available": false
+    },
+    {
+      "id": "E-H4",
+      "comparison": "HELIOS-noFGSV vs HELIOS-Full",
+      "metric": "false-accept rate under fidelity-break perturbation",
+      "status": "exploratory",
+      "stage": "A (lite, if built) / B (full twin)",
+      "available": false
+    },
+    {
+      "id": "E-H5",
+      "comparison": "HELIOS-noReconcile vs HELIOS-Full",
+      "metric": "reward reconciliation error on the delayed-label subset",
+      "status": "exploratory",
+      "stage": "A",
+      "available": false
+    },
+    {
+      "id": "E-H6",
+      "comparison": "HELIOS-noIOL vs HELIOS-Full",
+      "metric": "detection latency under injected control-plane degradation",
+      "status": "exploratory",
+      "stage": "A (lite, if built) / B (full)",
+      "available": false
+    },
+    {
+      "id": "E-H7",
+      "comparison": "HELIOS-Full vs HELIOS-noExpl",
+      "metric": "correct interpretation; time to decision; trust (RQ4 user study)",
+      "status": "exploratory",
+      "stage": "A (if IRB approved)",
+      "available": false
+    },
+    {
+      "id": "E-H8",
+      "comparison": "HELIOS-Full vs HELIOS-noACP",
+      "metric": "latency-constraint satisfaction",
+      "status": "exploratory",
+      "stage": "A",
+      "available": false
+    },
+    {
+      "id": "E-H9",
+      "comparison": "HELIOS-HIS3 vs HELIOS-Full",
+      "metric": "per-incident latency by isolation tier",
+      "status": "exploratory",
+      "stage": "B",
+      "available": false
+    },
+    {
+      "id": "E-H10",
+      "comparison": "HELIOS-Full vs HELIOS-noStructural",
+      "metric": "delta HR@3 attributed across the structural sub-mechanisms",
+      "status": "exploratory",
+      "stage": "A",
+      "apps_untestable_no_traces": [],
+      "available": true,
+      "n_pairs": 63,
+      "mean_a": 0.7936507936507936,
+      "mean_b": 0.8095238095238095,
+      "mean_difference": -0.015873015873015872,
+      "bca_low": -0.07936507936507936,
+      "bca_high": 0.031746031746031744,
+      "bca_note": null,
+      "bca_seed": 10007353,
+      "hodges_lehmann": 0.0,
+      "cliffs_delta": -0.015873015873015872,
+      "cohens_h": -0.039808626977920536
+    }
+  ],
+  "rerun_determinism": {
+    "BARO (metrics only)": {
+      "pairs": 6,
+      "compared": 6,
+      "identical_share": 1.0,
+      "hr_at_1": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "hr_at_3": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "avg_at_5": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "mrr": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      }
+    },
+    "HELIOS-Full": {
+      "pairs": 6,
+      "compared": 6,
+      "identical_share": 1.0,
+      "hr_at_1": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "hr_at_3": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "avg_at_5": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "mrr": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      }
+    },
+    "HELIOS-LLM-only": {
+      "pairs": 6,
+      "compared": 6,
+      "identical_share": 1.0,
+      "hr_at_1": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "hr_at_3": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "avg_at_5": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "mrr": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      }
+    },
+    "HELIOS-noACP": {
+      "pairs": 6,
+      "compared": 6,
+      "identical_share": 1.0,
+      "hr_at_1": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "hr_at_3": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "avg_at_5": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "mrr": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      }
+    },
+    "HELIOS-noConsensus": {
+      "pairs": 6,
+      "compared": 6,
+      "identical_share": 1.0,
+      "hr_at_1": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "hr_at_3": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "avg_at_5": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "mrr": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      }
+    },
+    "HELIOS-noExpl": {
+      "pairs": 6,
+      "compared": 6,
+      "identical_share": 1.0,
+      "hr_at_1": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "hr_at_3": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "avg_at_5": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "mrr": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      }
+    },
+    "HELIOS-noFGSV": {
+      "pairs": 6,
+      "compared": 6,
+      "identical_share": 1.0,
+      "hr_at_1": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "hr_at_3": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "avg_at_5": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "mrr": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      }
+    },
+    "HELIOS-noIOL": {
+      "pairs": 6,
+      "compared": 6,
+      "identical_share": 1.0,
+      "hr_at_1": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "hr_at_3": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "avg_at_5": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "mrr": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      }
+    },
+    "HELIOS-noReconcile": {
+      "pairs": 6,
+      "compared": 6,
+      "identical_share": 1.0,
+      "hr_at_1": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "hr_at_3": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "avg_at_5": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "mrr": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      }
+    },
+    "HELIOS-noRouter": {
+      "pairs": 6,
+      "compared": 6,
+      "identical_share": 1.0,
+      "hr_at_1": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "hr_at_3": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "avg_at_5": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "mrr": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      }
+    },
+    "HELIOS-noStructural": {
+      "pairs": 6,
+      "compared": 6,
+      "identical_share": 1.0,
+      "hr_at_1": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "hr_at_3": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "avg_at_5": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "mrr": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      }
+    },
+    "Multi-source BARO": {
+      "pairs": 6,
+      "compared": 6,
+      "identical_share": 1.0,
+      "hr_at_1": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "hr_at_3": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "avg_at_5": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "mrr": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      }
+    },
+    "Multi-source RCD": {
+      "pairs": 6,
+      "compared": 6,
+      "identical_share": 1.0,
+      "hr_at_1": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "hr_at_3": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "avg_at_5": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "mrr": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      }
+    },
+    "PDiagnose": {
+      "pairs": 6,
+      "compared": 6,
+      "identical_share": 1.0,
+      "hr_at_1": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "hr_at_3": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "avg_at_5": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "mrr": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      }
+    },
+    "TraceRCA": {
+      "pairs": 6,
+      "compared": 6,
+      "identical_share": 1.0,
+      "hr_at_1": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "hr_at_3": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "avg_at_5": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      },
+      "mrr": {
+        "n": 6,
+        "changed": 0,
+        "mean_abs_change": 0.0
+      }
+    }
+  },
+  "timing_noise_statement": "Timing-derived results carry run-to-run noise: in the S5.4 replication (identical code, data and seeds) every accuracy result was identical while timing-derived p-values moved by up to about 0.06 (OTel B-H7, about 0.038 to about 0.099). The censored share is the fraction of runs whose TTCD hit the 1,800 s cap.",
+  "sanity_floors": {
+    "HR@1": {
+      "random_all_services": null,
+      "prior_only": 0.2,
+      "helios_d": 0.30158730158730157
+    },
+    "HR@3": {
+      "random_all_services": null,
+      "prior_only": 0.6,
+      "helios_d": 0.7619047619047619
+    },
+    "HR@10": {
+      "random_all_services": null,
+      "prior_only": 1.0,
+      "helios_d": 0.8571428571428571
+    }
+  }
+}

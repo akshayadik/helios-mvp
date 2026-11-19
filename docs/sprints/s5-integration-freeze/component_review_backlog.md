@@ -13,8 +13,8 @@
 
 | ID | Kind | Pri | Component (flag) | Title | Freeze impact | Status |
 |---|---|---|---|---|---|---|
-| CR-01 | IMP | P1 | Router (`cbr_routing`) | Skip rule drops the L-pipe on cases it would have solved | Ranking change | OPEN |
-| CR-02 | IMP | P1 | Structural features (`ueg_structural`) | Structural weighting slightly hurts OTel and adds latency | Ranking change | OPEN |
+| CR-01 | IMP | P1 | Router (`cbr_routing`) | Skip rule drops the L-pipe on cases it would have solved | Ranking change | DONE (entry 99, `072f65e`, `496962e`) |
+| CR-02 | IMP | P1 | Structural features (`ueg_structural`) | Structural weighting slightly hurts OTel and adds latency | Ranking change | DONE (entry 98, `5efd348`) |
 | CR-03 | BUG | P1 | MAHC (`mahc_hierarchical`) | CONFIRMED is less reliable than PROVISIONAL on RCAEval | State label only; no ranking change | OPEN |
 | CR-04 | BUG | P2 | L-pipe (`l2c_llm`) | Metric-worker prompts give different answers run to run | Ranking change on affected cases | OPEN |
 | CR-05 | IMP | P2 | MAHC (`mahc_hierarchical`) | No accuracy gain over plain Borda; confidence compressed on RCAEval | Ranking change if weights change | OPEN |
@@ -56,6 +56,7 @@
   2. Report the accuracy and cost frontier, and choose an operating point with the owner.
   3. Optionally add "escalate when D's confidence is low" as a guard.
 - **Done when.** A design note approved by the owner; a new rule that recovers most of the 36 cases at a stated cost; frozen parameters re-hashed; deviation entry appended after owner approval; S5.4 HELIOS part rerun.
+- **Done (2026-11-19).** Cause: the router was fitted and thresholded on HR@3, which is near ceiling on RCAEval, so it stopped on cases whose first candidate was wrong; the "threshold of 0.2" above was a misstatement (the frozen rule is a LinUCB lower bound against τ_acc). Entry 99: reward HR@1, R-d on HR@1 and HR@3; re-frozen from build run 4, τ_acc 0.684821. Held out: RCAEval top-1 438 of 495 against uniform 442 (frozen router before: 416), 238 stops (before 298); OTel 13 stops, no loss. Design note `cr01_router_reward_design.md`; refreshed S5.3 reading `s5_3_pilot_refresh.md`.
 
 ### CR-02 · Structural weighting slightly hurts OTel and adds latency
 
@@ -66,6 +67,7 @@
   - The direction is the opposite of what the structural ablation predicts.
 - **Proposed approach.** Review how structural features are weighted in the G-pipe ranking; look at the 5 cases that differ; test a lighter weighting or a gated use (only when the graph is dense enough); profile the 0.9 s.
 - **Done when.** Structural features do not lose to noStructural on build data, or the reason is documented and accepted; same freeze steps as CR-01.
+- **Done (2026-11-19).** Cause: not the structural features. Algorithm 5's correlation cut removed weak call edges from the typed graph only, so Full's D-pipe propagated over fewer calls than noStructural's (D top-1 20 against 29 on OTel); the G-pipe's learned ranker did gain from typing (30 against 21). Entry 98: the D-pipe reads every call edge between the kept candidates, before the cut. OTel build: Full 34 / 52 top-1 / top-3 against 31 / 50 before; noStructural 34 / 51. The extra 0.9 s is the G-pipe's trace features (not changed). Design note `cr02_structural_dpipe_design.md`.
 
 ### CR-03 · CONFIRMED is less reliable than PROVISIONAL on RCAEval
 
@@ -225,7 +227,7 @@
 ## Suggested order
 
 1. CR-21 and CR-22 go into the S5.4 report.
-2. CR-01, then CR-02: each needs a design note first. Settle them before running S5.4, or rerun its HELIOS part afterwards.
+2. CR-01, then CR-02: each needs a design note first. Settle them before running S5.4, or rerun its HELIOS part afterwards. **Done 2026-11-19** (CR-02 first, then CR-01; entries 98, 99; S5.3 reading refreshed, S5.4 HELIOS part rerun).
 3. CR-03 and CR-09, before the freeze.
 4. CR-04 through CR-08, CR-10 and CR-11 if time allows; otherwise the addendum notes only.
 5. CR-12 to CR-20 go to Stage B or after the freeze.
