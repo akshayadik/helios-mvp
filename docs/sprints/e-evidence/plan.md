@@ -1,38 +1,84 @@
 # Phase E — Evidence collection · plan
 
-**Window:** 15 Feb – 12 Mar 2027 (20 working days) · **Milestone:** S2-M11 · **Exit tag:** `rb-e-exit` (proposed) · **Status:** planned
+**Window:** planned 15 Feb – 12 Mar 2027 (20 working days). Refreshed 2026-11-20 after the S5 exit: the run streams E1–E3 and E6 can start early, on the owner's explicit go; rating (E5) follows rater training; E4 depends on IRB. Results are due 31 March 2027. · **Milestone:** S2-M11 · **Exit tag:** `rb-e-exit` · **Status:** planned (refreshed 2026-11-20; nothing has read the confirmatory pool yet)
 
-Task details: `docs/tracking/helios_task_breakdown.md` § Phase E (authoritative); design: `docs/tracking/s0_3_d11_corpus_run_design.md`.
+Task details: `docs/tracking/helios_task_breakdown.md` § Phase E (authoritative); run design: `docs/tracking/s0_3_d11_corpus_run_design.md`; frozen build: [S5 exit report](../s5-integration-freeze/exit_report.md).
 
 ## Goal
 
-Run the frozen build on the sealed confirmatory pool and collect every pre-registered measurement. **No code changes.**
+Run the frozen build on the sealed confirmatory pool and collect every pre-registered measurement. **No code changes to the frozen build.**
 
 ## Entry conditions
 
-Tag `build-freeze`; OSF deposit 2 DOI in the deviation log; rubric frozen; raters trained (κ ≥ 0.7); compute decided (S0.11 L5).
+The October plan listed one set of conditions for the whole phase. Entry 102 separated the run streams from rating, so each stream now has its own.
+
+| Condition | Needed by | State (2026-11-20) |
+|---|---|---|
+| Tag `build-freeze` | All | **Met**: annotated, on `c4037c0`; `build_freeze.py --check` and `--verify` pass on a fresh worktree of the tag (entry 101) |
+| OSF deposit 2 DOI in the deviation log | All | **Met**: 10.17605/OSF.IO/8PJ5A (entry 103) |
+| Pool converted and sealed | E1–E3, E6 | **Met**: 240 sealed windows (S1.1); no window has been read by a run |
+| Compute decided (L5) | E1–E3 | **Met**: about 5 h on this machine on a cold cache, no rented compute (S5.3 pilot, L5) |
+| Rubric frozen | E5 | **Met**: SHA-256 `f705edb81576…` (entry 102), in deposit 2 |
+| Raters trained to κ ≥ 0.7 on build data | E5 only | **Not met**: raters are recruited in December; training December – early January (entry 102) |
+| L6 larger model and L7 judge budget decided | E6 subset, E5 judges | **Not met**: owner, by 5 Feb 2027 |
+| IRB approval for RQ4 | E4 only | **Not met**: owner, by 5 Feb 2027 |
+| Owner's explicit go for the first pool run | E1 | **Pending**: the first pool read cannot be undone |
 
 ## Streams
 
-| Stream | Tracking | Work | Done when |
-|---|---|---|---|
-| E1 Confirmatory ablation (Family A) | S2-M11-EVAL01 | 8 variants × 240 pool cases (1,920 runs) | Every cell complete or excluded with reasons |
-| E2 Baselines (Family B) | S2-M11-EVAL02 | 5 baselines × 240 cases (1,200 runs) | Paired tables complete |
-| E3 Exploratory | S2-M11-EVAL03 | Built Tier-2 variants × 240 | Results labelled exploratory |
-| E4 RQ4 user study | S2-M11-RES01 | If IRB approved: 24 participants, Full vs noExpl, Latin square | Dataset stored; IRB number logged |
-| E5 Rating | S2-M11-RES02 | Two raters label every Full and noLLM narrative (480 each); κ ≥ 0.7; adjudicator below; judges if budget | Agreement reported |
-| E6 Sensitivity | S2-M11-EVAL04 | 70B subset if budget; 10% rerun replication | Reported |
+| Stream | Tracking | Work | Starts | Done when |
+|---|---|---|---|---|
+| Day-one pool-only checks | S2-M11-EVAL05 | Span status-code format in the pool traces; rebuilt log and trace series (export v2) on the pool (S4.8 open item, S5 carry-over) | First, before any campaign phase | Both checks pass, or the defect is recorded and handled under the rules below |
+| E1 Confirmatory ablation (Family A) | S2-M11-EVAL01 | 8 variants × 240 pool cases (1,920 runs), phase `confirmatory` | After the day-one checks | Every cell complete or excluded with reasons |
+| E2 Baselines (Family B) | S2-M11-EVAL02 | 5 baselines × 240 cases (1,200 runs), phases `baseline` and `baseline_trigger` (B-b sensitivity) | After E1 | Paired tables complete |
+| E3 Exploratory | S2-M11-EVAL03 | The runnable exploratory variants × 240 (noCogni and HIS3 stay refused), phase `exploratory` | After E2 | Results labelled exploratory |
+| E6 Sensitivity | S2-M11-EVAL04 | Phase `rerun`: every 10th case of each system with the response cache bypassed (the 10% replication), plus the E-H5 delayed-label subset (every 4th case); the larger-model subset if L6 says so | Rerun after E3; larger model after L6 | Reported |
+| E5 Rating (A-H7) | S2-M11-RES02 | Two blind raters label every displayed claim of the 480 Full and noLLM pool narratives; adjudicator on disagreements; κ rule R-m; judges if L7 funds them | After rater training reaches κ ≥ 0.7 | Agreement reported; adjudicated set stored; A-H7 reported as incomplete, never dropped, if not done by 31 March (entry 102) |
+| E4 RQ4 user study | S2-M11-RES01 | If IRB approves: 24 participants, Full vs noExpl, Latin square | After IRB | Dataset stored; IRB number logged |
+
+The schedule is generated by `helios/orchestrator/schedule.py` from the pool manifest; `plan` prints the counts per phase, and those counts are the reference for "every cell complete".
+
+## How the pool runs
+
+1. **A dedicated checkout of the tag.** `git worktree add --detach <path> build-freeze`, outside the main working tree. Never run the pool from `main`: Stage B changes frozen paths there, and the pool gate then refuses it.
+2. **Provision it** as the S5.4 clone was (S5.4 report §6, CR-22): copy `.env`, the response cache and the model; point `--captures` at the sealed pool windows (`data/rcaeval/pool/`, git-ignored, so not part of the checkout). Then `bin/build_freeze.py --check` must report the frozen build.
+3. **Plan one pool campaign:** `bin/helios_campaign.py plan --dir <campaign> --manifest data/rcaeval/pool_manifest.json --gt-corpus pool --captures <pool windows>`. The plan records the frozen-paths digest (`8078c267c95f…`); every later `run` refuses another build.
+4. **Run the phases in stream order**, resuming with `run` after any interruption: `confirmatory`, `baseline`, `baseline_trigger`, `exploratory`, `rerun`. Then `score_runs.py --metrics`, `cells`, `compare`.
+5. **Machine free during timed phases.** TTT, TTCD and CpR's opportunity term are pre-registered timing measures. No other heavy job (for example another project's batch job) runs alongside E1–E3; the pilot showed shared load lengthens wall times.
+6. **Counts only.** Tools print counts, never case IDs or labels. Analysis is phase A; phase E stores runs, scores and cells.
 
 ## Owner items
 
-Rater 2 and adjudicator available for E5; RQ4 sessions with participants (E4, if approved).
+| Item | Needed by |
+|---|---|
+| Explicit go for the first pool run (E1), once this plan is merged | Before the day-one checks |
+| The machine kept free during E1–E3 (about 5 h, cold cache) | During the run |
+| Recruit two raters and one adjudicator; `bin/label_server.py keygen` and the `.env.labelling` backup; tunnel access | December 2026 |
+| L6 (larger-model subset) and L7 (judge models) | 5 Feb 2027 |
+| IRB approval for RQ4 | 5 Feb 2027 |
+| CR-03 (MAHC CONFIRMED label): Stage B fix or reported limitation. Does not block phase E | Before phase A reporting |
 
 ## Rules
 
-- A defect found here is fixed under a deviation entry; affected runs are rerun or excluded with ledger entries, never edited.
-- Runs use registered seeds only; the run seed is set by case position in the sealed pool order and the system slot.
-- Labelling starts only after deposit 2 carries the frozen rubric.
+- **A defect found here is fixed under a deviation entry.** The affected runs are rerun or excluded with ledger entries, never edited. A fix to a frozen path needs that entry before the change, a new freeze record and a rerun (D11, entry 101).
+- **Seeds.** Runs use registered seeds only: the run seed is set by case position in the sealed pool order and the system slot.
+- **Labelling** starts only after deposit 2 carries the frozen rubric (met) and training reaches κ ≥ 0.7.
+- **Exclusions.** The pool campaign writes the repo-root exclusion ledger; every exclusion carries its reason.
+
+## Expected deviation entries
+
+None planned. An entry is needed only for a defect found during the runs, a rubric change found in rater training (entry 102), or the L6/L7 decisions if they change what E5 or E6 measure.
 
 ## Exit criteria
 
-Every cell complete or formally excluded; inclusion reported; 10% clean-environment replication; tag `rb-e-exit`; exit report written.
+Every cell complete or formally excluded; inclusion reported; 10% rerun replication reported; E5 agreement reported (or A-H7 reported as incomplete, per entry 102); tag `rb-e-exit`; exit report written.
+
+## Risks
+
+| Risk | Response |
+|---|---|
+| A defect shows up only on pool data (the day-one checks exist for this) | Deviation entry, then rerun or exclusion with ledger entries; never an edit |
+| Model-server nondeterminism (S5.5: 8 of 57 RCAEval prompts) | Measured by the rerun phase and reported, as on build data |
+| Multi-source RCD reorders a few cases (CR-23) | Reporting rule, entry 96 |
+| Shared machine load distorts timing | Keep the machine free; rerun the timed phase if load is found |
+| Raters late, so E5 runs out of time | A-H7 reported as incomplete, never dropped (entry 102); the run streams do not wait |
