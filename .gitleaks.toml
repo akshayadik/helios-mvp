@@ -7,5 +7,5 @@ useDefault = true
 
 # Allowlist known false positives in poetry.lock (sha256 hashes match token patterns)
 [allowlist]
-description = "False positive sha256 hashes in poetry.lock"
-paths = ["poetry.lock"]
+description = "False positive sha256 hashes in poetry.lock and the build-freeze record (generated digests only)"
+paths = ["poetry.lock", "data/frozen/build_freeze.json"]
