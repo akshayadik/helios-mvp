@@ -35,7 +35,10 @@ from helios.schemas.telemetry import TelemetryWindow
 from helios.telemetry import pool_lock
 from helios.telemetry.reader import CaptureReader
 from helios.telemetry.seal import check_seal
-from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
+from helios.vcl import (
+    VCLFlag,  # noqa: F401 — flag-guard compliance
+    freeze,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -413,12 +416,25 @@ def _git_repo(path: Path) -> Path:
 
 def test_pool_is_locked_until_the_build_freeze_tag(tmp_path: Path) -> None:
     repo = _git_repo(tmp_path / "repo")
+    freeze.clear_cache()
     assert not pool_lock.build_frozen(repo)
     with pytest.raises(pool_lock.PoolLockedError, match="build-freeze"):
         pool_lock.require_unlocked("abc", repo)
+    # S5.6: the tag alone does not unlock; the freeze record must be there.
     subprocess.run(["git", "tag", "build-freeze"], cwd=repo, check=True)
+    freeze.clear_cache()
+    assert pool_lock.lock_reasons(repo) == [f"{freeze.RECORD_PATH} is missing"]
+    record = repo / freeze.RECORD_PATH
+    record.parent.mkdir(parents=True)
+    record.write_text(json.dumps({"frozen_paths": freeze.frozen_paths_section(repo)}))
+    git = ["git", "-c", "user.name=t", "-c", "user.email=t@t"]
+    subprocess.run([*git, "add", "-A"], cwd=repo, check=True)
+    subprocess.run([*git, "commit", "-q", "-m", "freeze"], cwd=repo, check=True)
+    subprocess.run(["git", "tag", "-f", "build-freeze"], cwd=repo, check=True)
+    freeze.clear_cache()
     assert pool_lock.build_frozen(repo)
     pool_lock.require_unlocked("abc", repo)
+    freeze.clear_cache()
 
 
 def test_reader_refuses_confirmatory_windows_while_locked(tmp_path: Path) -> None:
