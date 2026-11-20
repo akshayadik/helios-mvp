@@ -32,6 +32,7 @@ from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
+from helios.telemetry.span_status import is_error_status
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
 
 if TYPE_CHECKING:
@@ -61,7 +62,6 @@ _ENTRY_COLUMNS = [
 ]
 _WAIT_COLUMNS = ["trace_id", "span_id", "caller", "callee", "start_us", "wait_us"]
 _US_PER_S = 1_000_000
-ERROR_CODES = frozenset({"2", "ERROR", "STATUS_CODE_ERROR"})  # OTel text or enum
 
 
 @dataclass(frozen=True)
@@ -101,7 +101,7 @@ def _interval(row: dict[str, Any]) -> tuple[int, int]:
 
 
 def _is_error(row: dict[str, Any]) -> bool:
-    return str(row.get("status_code", "")).strip().upper() in ERROR_CODES
+    return is_error_status(row.get("status_code"))  # shared rule, entry 104
 
 
 def analyse_spans(spans: pd.DataFrame) -> SpanAnalysis:

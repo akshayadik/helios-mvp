@@ -204,7 +204,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--corpus", choices=("build", "pool"), default="build")
     args = parser.parse_args(argv)
     if args.corpus == "pool":
-        print("[reward] the pool is locked until tag build-freeze", file=sys.stderr)
+        print("[reward] the pool is locked until tag build-freeze-2", file=sys.stderr)
         return 2
     out = args.out or REPO_ROOT / f"data/replay/reward_run{args.run}"
     if out.exists():

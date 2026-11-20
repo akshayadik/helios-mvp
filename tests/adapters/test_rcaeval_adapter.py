@@ -421,7 +421,7 @@ def test_pool_is_locked_until_the_build_freeze_tag(tmp_path: Path) -> None:
     with pytest.raises(pool_lock.PoolLockedError, match="build-freeze"):
         pool_lock.require_unlocked("abc", repo)
     # S5.6: the tag alone does not unlock; the freeze record must be there.
-    subprocess.run(["git", "tag", "build-freeze"], cwd=repo, check=True)
+    subprocess.run(["git", "tag", freeze.BUILD_FREEZE_TAG], cwd=repo, check=True)
     freeze.clear_cache()
     assert pool_lock.lock_reasons(repo) == [f"{freeze.RECORD_PATH} is missing"]
     record = repo / freeze.RECORD_PATH
@@ -430,7 +430,7 @@ def test_pool_is_locked_until_the_build_freeze_tag(tmp_path: Path) -> None:
     git = ["git", "-c", "user.name=t", "-c", "user.email=t@t"]
     subprocess.run([*git, "add", "-A"], cwd=repo, check=True)
     subprocess.run([*git, "commit", "-q", "-m", "freeze"], cwd=repo, check=True)
-    subprocess.run(["git", "tag", "-f", "build-freeze"], cwd=repo, check=True)
+    subprocess.run(["git", "tag", "-f", freeze.BUILD_FREEZE_TAG], cwd=repo, check=True)
     freeze.clear_cache()
     assert pool_lock.build_frozen(repo)
     pool_lock.require_unlocked("abc", repo)
