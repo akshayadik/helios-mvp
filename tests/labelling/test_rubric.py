@@ -30,3 +30,14 @@ def test_rubric_sha_matches_the_set_manifest() -> None:
         entries(2), planted_share=1 / 4, rubric_sha=sha, params=load_narrator_params()
     )
     assert s.manifest["rubric_sha"] == sha and len(sha) == 64
+
+
+# Frozen for OSF deposit 2 (deviation entry 102). A change needs a deviation
+# entry before confirmatory labelling starts, and then this value changes.
+FROZEN_RUBRIC_SHA256 = (
+    "f705edb815767f00f5ca84c04359a9edf0d7cd5782d3292d12f657d7a13b01ef"
+)
+
+
+def test_the_rubric_is_the_frozen_one() -> None:
+    assert rubric_sha(RUBRIC) == FROZEN_RUBRIC_SHA256
