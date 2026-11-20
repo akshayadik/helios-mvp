@@ -2,7 +2,7 @@
 
 _Manual until a weekly CI job regenerates the dynamic sections. Refreshed at every sprint exit (see `docs/sprints/README.md`)._
 
-**Last updated:** 2026-11-14 (S4 exit documentation sync)
+**Last updated:** 2026-11-20 (S5 exit documentation sync)
 
 ## Sprint progress (manual)
 
@@ -20,7 +20,7 @@ gantt
     S2 Reasoning (closed 1 Nov)          :done, s2, 2026-10-27, 6d
     S3 Routing and learning (closed 9 Nov) :done, s3, 2026-11-06, 4d
     S4 Product shell, eval tooling (closed 14 Nov) :done, s4, 2026-11-11, 4d
-    S5 Integration and build freeze      :crit, s5, 2027-02-01, 2027-02-12
+    S5 Integration, build freeze (closed 20 Nov) :done, s5, 2026-11-15, 6d
 
     section Evidence and analysis
     E Evidence collection                :e, 2027-02-15, 2027-03-12
@@ -41,7 +41,7 @@ gantt
 | S2 Reasoning, consensus, narratives | Closed 2026-11-01 (started early, 2026-10-27); S2.9 rater training scheduled before S5 | `rb-s2-exit`; [exit report](../sprints/s2-reasoning/exit_report.md) |
 | S3 Routing and learning | Closed 2026-11-09 (started early, 2026-11-06); S3.4 moved to Stage B | `rb-s3-exit`; [exit report](../sprints/s3-routing/exit_report.md) |
 | S4 Product shell, evaluation tooling | Closed 2026-11-14 (started early, 2026-11-11); all four Tier-2 items built | `rb-s4-exit`; [exit report](../sprints/s4-product-eval-tooling/exit_report.md) |
-| S5 Integration and freeze | Next (plan refresh before it starts) | — |
+| S5 Integration and freeze | Closed 2026-11-20 (started early, 2026-11-15); build frozen, OSF deposit 2 public; rater training carried to December | `build-freeze` on `c4037c0`; [exit report](../sprints/s5-integration-freeze/exit_report.md) |
 
 ## Architecture flow (manual; updated when ablation_architecture.md changes)
 

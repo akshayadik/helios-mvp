@@ -33,8 +33,8 @@
 | CR-18 | BUG | — | Baselines (Multi-source BARO) | Late-trigger IndexError; 13 OTel exclusions | Baseline change | WONT_FIX before freeze (owner, R-g) |
 | CR-19 | EVAL | P3 | Baselines (TraceRCA) | TraceRCA cannot run on RCAEval (no traces) | None | OPEN (record in report) |
 | CR-20 | EVAL | P3 | Seed register | 7,200 slots cap campaign size | None now | OPEN |
-| CR-21 | DOC | P1 | S5.4 design | Wrong claim that `raw/checksums_build.json` is tracked | None | OPEN (fix in S5.4 report) |
-| CR-22 | DOC | P1 | Provisioning | Part manifests must be regenerated in a fresh clone | None | OPEN (fix in S5.4 report) |
+| CR-21 | DOC | P1 | S5.4 design | Wrong claim that `raw/checksums_build.json` is tracked | None | DONE (corrected in `s5_4_replication.md` §1 and §7) |
+| CR-22 | DOC | P1 | Provisioning | Part manifests must be regenerated in a fresh clone | None | DONE (provisioning step in `s5_4_replication.md` §7) |
 | CR-23 | BUG | P2 | Baselines (Multi-source RCD) | Ranked list varies between runs with identical input, seed and image | Baseline change if fixed | WONT_FIX before freeze (owner accepted 2026-11-18, S5.4 §7); reported per entry 96 (`eef31c8`) |
 | CR-00 | BUG | — | Campaign `cells` | Trigger-time runs keyed under the binding-time name | None | DONE (`54becfb`) |
 
