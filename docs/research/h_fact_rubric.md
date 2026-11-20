@@ -1,6 +1,6 @@
 # H_fact rating rubric
 
-**Status:** draft for rater training (S2.9). Frozen by its SHA-256 once training reaches κ ≥ 0.7, then deposited with OSF deposit 2; no change after confirmatory labelling starts. Design: `docs/sprints/s2-reasoning/s2_9_rubric_design.md`. Definition: deviation entry 65.
+**Status:** frozen (S2.9, deviation entry 102). Frozen by its SHA-256 and deposited with OSF deposit 2 before any confirmatory narrative was read and before rater training. If rater training on build data (κ ≥ 0.7) shows a change is needed, the change gets a deviation entry before confirmatory labelling starts; no change after that. Design: `docs/sprints/s2-reasoning/s2_9_rubric_design.md`. Definition: deviation entry 65.
 
 ## What you are judging
 
