@@ -15,7 +15,7 @@ One folder per sprint for the whole product: Stage A (S0–S5, evidence, analysi
 | S2 Reasoning, consensus, narratives | [`s2-reasoning/`](s2-reasoning/) | 7–25 Dec 2026 | S2-M7 | `rb-s2-exit` | **Closed 2026-11-01** · [exit report](s2-reasoning/exit_report.md) (tag pushed; S2.9 rater training scheduled before S5) |
 | S3 Routing and learning | [`s3-routing/`](s3-routing/) | 4–15 Jan 2027 | S2-M8 | `rb-s3-exit` | **Closed 2026-11-09** · [exit report](s3-routing/exit_report.md) (S3.4 Knowledge Cortex moved to Stage B, entry 82) |
 | S4 Product shell and evaluation tooling | [`s4-product-eval-tooling/`](s4-product-eval-tooling/) | 18–29 Jan 2027 | S2-M9 | `rb-s4-exit` | **Closed 2026-11-14** · [exit report](s4-product-eval-tooling/exit_report.md) (all four Tier-2 items built; entries 84–89) |
-| S5 Integration and freeze | [`s5-integration-freeze/`](s5-integration-freeze/) | 1–12 Feb 2027 | S2-M10 | `build-freeze` | Planned |
+| S5 Integration and freeze | [`s5-integration-freeze/`](s5-integration-freeze/) | 1–12 Feb 2027 | S2-M10 | `build-freeze` | **Closed 2026-11-20** · [exit report](s5-integration-freeze/exit_report.md) (started early, 2026-11-15; tag `build-freeze` on `c4037c0`; OSF deposit 2 DOI 10.17605/OSF.IO/8PJ5A; rater training carried to December) |
 | E Evidence collection | [`e-evidence/`](e-evidence/) | 15 Feb – 12 Mar 2027 | S2-M11 | `rb-e-exit` | Planned |
 | A Analysis | [`a-analysis/`](a-analysis/) | 15–31 Mar 2027 | S2-M12 | `results-ready` | Planned — **results ready 31 March** |
 | Stage B Full product | [`stage-b/`](stage-b/) | 15 Feb – end Jul 2027 | S3-M13 … S3-M17 | `rb-b1-exit` … `rb-b5-exit` | Planned |

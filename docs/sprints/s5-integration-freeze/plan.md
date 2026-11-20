@@ -1,6 +1,6 @@
 # Sprint S5 — Integration and freeze · plan
 
-**Window:** 1–12 Feb 2027 (10 working days). Can start early once the owner confirms, as S1–S4 did; S4 closed on 2026-11-14, about eleven weeks before this window. · **Milestone:** S2-M10 · **Exit tag:** `build-freeze` · **Status:** in progress (verification part started early 2026-11-15, owner; S5.6 and S5.7 when their inputs are in). Refreshed 2026-11-14 with the S4 carry-overs, capacity and owner items.
+**Window:** 1–12 Feb 2027 (10 working days). Can start early once the owner confirms, as S1–S4 did; S4 closed on 2026-11-14, about eleven weeks before this window. · **Milestone:** S2-M10 · **Exit tag:** `build-freeze` · **Status:** closed 2026-11-20 ([exit report](exit_report.md); verification part started early 2026-11-15, owner; tag `build-freeze` on `c4037c0`). Refreshed 2026-11-14 with the S4 carry-overs, capacity and owner items.
 
 Task details: `docs/tracking/helios_task_breakdown.md` § Sprint S5 (authoritative).
 
