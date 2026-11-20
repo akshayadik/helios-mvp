@@ -1,5 +1,7 @@
 # OSF deposit 2 · build freeze and frozen rating rubric
 
+**Status:** deposited 2026-11-20 as DOI 10.17605/OSF.IO/8PJ5A (https://osf.io/8pj5a), public, not embargoed. `osf_deposit_2.zip` (SHA-256 `cf11125d375bf9aebb67c660c14f41134fe59416d6d1a6bbd95fea55b017d8af`) is `git archive` of commit `3e657eb`, tagged `osf-deposit-2`; deviation entry 103 (`b2c3abcb561d`). The zip holds this note as it was at that commit, without this status line.
+
 **What:** the note and file list for `osf_deposit_2.zip`, the third OSF registration of HELIOS. Deposit 1 is KMR3D (DOI 10.17605/OSF.IO/KMR3D, entry 37) and addendum 1 is VG5TE (DOI 10.17605/OSF.IO/VG5TE, entry fec687b3c173). · **Task:** S5.7, row S2-M10-GATE02. · **Built by:** `git archive` of one commit of this repository, listed paths only, as the earlier deposits were. The commit, the zip's SHA-256 and the DOI are recorded in the deviation entry that records the deposit, and the commit is tagged `osf-deposit-2`.
 
 ## 1. What this deposit fixes
