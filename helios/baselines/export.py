@@ -27,8 +27,9 @@ A modality the capture does not have (RCAEval build has no traces or logs) is
 written as a header-only ``logs.csv`` / ``traces.csv`` and time-only series,
 never as a file with no columns (rcaeval-export-v2, S5.3 Q-a).
 
-A span is an error when its status is ``ERROR`` / ``STATUS_CODE_ERROR`` or an
-HTTP code of at least 400. A log line is an error when its severity is ERROR,
+A span is an error by the rule HELIOS uses (``helios.telemetry.span_status``,
+deviation entry 104): OTel ``ERROR`` / ``STATUS_CODE_ERROR``, a gRPC code from
+2 to 16, or an HTTP code of at least 400 (v3; v2 missed gRPC codes). A log line is an error when its severity is ERROR,
 FATAL or CRITICAL or its body matches ``error|fail`` (any case).
 """
 
@@ -42,6 +43,7 @@ from typing import TYPE_CHECKING, Any
 import pandas as pd
 import pyarrow.parquet as pq
 
+from helios.telemetry.span_status import is_error_status
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
 
 if TYPE_CHECKING:
@@ -59,13 +61,10 @@ __all__ = [
     "is_error_span",
 ]
 
-EXPORT_VERSION = (
-    "rcaeval-export-v2"  # v2: header-only files for absent modalities (S5.3 Q-a)
-)
+EXPORT_VERSION = "rcaeval-export-v3"  # v3: shared span-error rule (entry 104)
 BUCKET_S = 15
 _NS_PER_S = 1_000_000_000
 _US_PER_MS = 1000
-_HTTP_ERROR = 400
 LOG_COLUMNS: tuple[str, ...] = (
     "time",
     "timestamp",
@@ -85,17 +84,13 @@ TRACE_COLUMNS: tuple[str, ...] = (
     "duration",
     "statusCode",
 )
-_ERROR_STATUS = frozenset({"ERROR", "STATUS_CODE_ERROR"})
 _ERROR_SEVERITY = frozenset({"ERROR", "FATAL", "CRITICAL"})
 _ERROR_WORDS = r"(?i)error|fail"
 
 
 def is_error_span(status: Any) -> bool:
-    """A span error: textual ERROR status or an HTTP code of at least 400."""
-    text = str(status).strip().upper()
-    if text in _ERROR_STATUS:
-        return True
-    return text.isdigit() and int(text) >= _HTTP_ERROR
+    """A span error, by the shared rule (``span_status.is_error_status``)."""
+    return is_error_status(status)
 
 
 def is_error_log(severity: Any, body: Any) -> bool:

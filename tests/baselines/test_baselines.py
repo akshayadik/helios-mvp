@@ -114,6 +114,9 @@ def test_error_rules() -> None:
     assert is_error_span("ERROR") and is_error_span("STATUS_CODE_ERROR")
     assert is_error_span("500") and not is_error_span("200")
     assert not is_error_span("UNSET") and not is_error_span("OK")
+    # Entry 104: gRPC codes from 2 to 16 count (the pool); 0 and 1 do not.
+    assert is_error_span("14") and is_error_span("2") and is_error_span("400")
+    assert not is_error_span("0") and not is_error_span("1") and not is_error_span("")
     assert is_error_log("fatal", "x") and is_error_log("", "upstream Error")
     assert not is_error_log("INFO", "all good")
 

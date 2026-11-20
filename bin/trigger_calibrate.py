@@ -133,7 +133,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--corpus", choices=(*CORPORA, "pool"), action="append")
     args = parser.parse_args(argv)
     if args.corpus and "pool" in args.corpus:
-        print("[calibrate] the pool is locked until tag build-freeze", file=sys.stderr)
+        print(
+            "[calibrate] the pool is locked until tag build-freeze-2", file=sys.stderr
+        )
         return 2
 
     key = load_key()

@@ -153,7 +153,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--gpipe-params", default=str(GPIPE_PARAMS_PATH))
     args = parser.parse_args(argv)
     if args.corpus == "pool":
-        print("[trigger] the pool is locked until tag build-freeze", file=sys.stderr)
+        print("[trigger] the pool is locked until tag build-freeze-2", file=sys.stderr)
         return 2
 
     params = load_detector_params(Path(args.params))

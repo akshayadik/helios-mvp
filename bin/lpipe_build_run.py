@@ -113,7 +113,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     if args.corpus == "pool":
-        print("[lpipe] the pool is locked until tag build-freeze", file=sys.stderr)
+        print("[lpipe] the pool is locked until tag build-freeze-2", file=sys.stderr)
         return 2
     detector = load_detector_params()
     if detector.provisional:

@@ -3,7 +3,7 @@
 
 The freeze record ``data/frozen/build_freeze.json`` holds the SHA-256 of every
 tracked file under the frozen paths. A confirmatory run needs three things:
-tag ``build-freeze`` exists, the record in the working tree is the record the
+tag ``build-freeze-2`` exists, the record in the working tree is the record the
 tag holds, and every frozen file matches its digest, with no file added or
 left untracked. ``helios.telemetry.pool_lock`` asks this module, so every
 pool gate (reader, scoring, strata, run metrics, analysis, campaign, API)
@@ -36,7 +36,9 @@ __all__ = [
     "tree_digest",
 ]
 
-BUILD_FREEZE_TAG = "build-freeze"
+# Deviation entry 104: the fix to the pool span-error rule is frozen as
+# build-freeze-2; build-freeze (c4037c0, entry 101) is superseded for phase E.
+BUILD_FREEZE_TAG = "build-freeze-2"
 RECORD_PATH = "data/frozen/build_freeze.json"
 
 # Code, frozen parameters, the deposited artefacts and the container recipes.

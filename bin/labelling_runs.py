@@ -59,7 +59,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--corpus", choices=("build", "pool"), default="build")
     args = parser.parse_args(argv)
     if args.corpus == "pool":
-        print("[labelling] the pool is locked until tag build-freeze", file=sys.stderr)
+        print(
+            "[labelling] the pool is locked until tag build-freeze-2", file=sys.stderr
+        )
         return 2
     if args.out.exists():
         print(f"[labelling] refused: {args.out} exists", file=sys.stderr)

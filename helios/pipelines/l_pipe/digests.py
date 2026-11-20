@@ -26,7 +26,6 @@ from helios.graph.anomaly_intensity import (
     bucket_count,
     service_of,
 )
-from helios.graph.span_features import ERROR_CODES
 from helios.pipelines.l_pipe.lpipe_config import (
     DIGEST_TOKEN_CAP,
     LOG_LINES_PER_SERVICE,
@@ -41,6 +40,7 @@ from helios.pipelines.l_pipe.lpipe_config import (
     TRACE_VALIDATED_ROOTS,
 )
 from helios.telemetry.log_templates import BUCKET_SECONDS, features_for_window
+from helios.telemetry.span_status import error_mask
 from helios.telemetry.trigger import load_detector_params, robust_scale
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
 
@@ -404,14 +404,7 @@ def trace_digest(
     after = (
         spans["start_time_us"].astype("float64") >= trigger.trigger_time_s * 1_000_000
     )
-    error = (
-        spans["status_code"]
-        .astype("string")
-        .fillna("")
-        .str.strip()
-        .str.upper()
-        .isin(ERROR_CODES)
-    )
+    error = error_mask(spans["status_code"])  # shared rule, entry 104
     start = pd.Timestamp(window.window_start_iso).timestamp()
     seconds = _split_seconds(window, max(trigger.trigger_time_s, start))
     per_service: dict[str, list[DigestLine]] = {}

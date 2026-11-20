@@ -160,7 +160,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     if args.corpus == "pool":
-        print("[narrator] the pool is locked until tag build-freeze", file=sys.stderr)
+        print("[narrator] the pool is locked until tag build-freeze-2", file=sys.stderr)
         return 2
     if Path.cwd().resolve() != REPO_ROOT:
         print(
