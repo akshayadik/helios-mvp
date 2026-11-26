@@ -72,7 +72,43 @@ def test_verify_reward_fails_on_a_forged_pair(
     assert _verify(tmp_path / "runs", pub, "--public-only") == 1
 
 
-def test_tool_refuses_pool_and_existing_outputs(tmp_path: Path) -> None:
-    assert tool.main(["--run", "1", "--corpus", "pool"]) == 2
+def test_tool_refuses_pool_without_campaign_and_existing_outputs(
+    tmp_path: Path,
+) -> None:
+    # Entry 110: the pool replay needs a scored campaign; the build replay a run.
+    with pytest.raises(SystemExit):
+        tool.main(["--corpus", "pool"])
+    with pytest.raises(SystemExit):
+        tool.main([])
     (tmp_path / "exists").mkdir()
     assert tool.main(["--run", "1", "--out", str(tmp_path / "exists")]) == 2
+    pool = ["--corpus", "pool", "--campaign", str(tmp_path), "--out"]
+    assert tool.main([*pool, str(tmp_path / "exists")]) == 2
+
+
+def test_pool_replay_refuses_a_prewarm_off_the_frozen_router(
+    tmp_path: Path, keys: tuple[Path, Any]
+) -> None:
+    # The toy cases are not the build cases, so their fit is not the frozen one.
+    with pytest.raises(ValueError, match="differs from the frozen router"):
+        tool.run_pool_replay(CASES[:8], CASES, tmp_path / "pool", streams=1)
+    assert not (tmp_path / "pool").exists()
+
+
+def test_pool_replay_report_carries_both_e_h5_forms(
+    tmp_path: Path, keys: tuple[Path, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    pub, _ = keys
+    monkeypatch.setattr(tool, "MEAN_GAPS_S", (3_600,))
+    monkeypatch.setattr(tool, "PREWARM_TOLERANCE", float("inf"))
+    report = tool.run_pool_replay(CASES[:8], CASES, tmp_path / "pool", streams=2)
+    assert report["reward"] == "hr_at_1"
+    assert report["cases"] == 8 and report["build_cases"] == len(CASES)
+    gap = report["gaps"]["3600"]
+    assert set(gap) == {"HELIOS-Full", "HELIOS-noReconcile", "e_h5"}
+    assert set(gap["e_h5"]) >= {"registered_form", "same_case_form"}
+    names = sorted(p.name for p in (tmp_path / "pool").glob("*.reward.jsonl"))
+    assert len(names) == 2 * 2  # variants x streams
+    assert _verify(tmp_path / "pool", pub) == 0
+    text = json.dumps(report)
+    assert "incident0" not in text  # aggregates only, never a case ID

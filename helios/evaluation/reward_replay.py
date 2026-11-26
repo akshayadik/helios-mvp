@@ -57,10 +57,12 @@ if TYPE_CHECKING:
     from helios.orchestrator.reward_ledger import RewardLedger
 
 __all__ = [
+    "BUILD_MEASURE",
     "MEAN_GAPS_S",
     "R1_DELAY_S",
     "R2_MU_LOG",
     "R2_SIGMA_LOG",
+    "REWARD_MEASURES",
     "SEED_SLOT",
     "STREAMS",
     "Decision",
@@ -74,6 +76,9 @@ __all__ = [
     "reconcile",
     "replay",
     "rre",
+    "rre_by_case_stream",
+    "single_draws",
+    "state_gap",
     "terminal_reward",
 ]
 
@@ -84,6 +89,11 @@ R1_DELAY_S: tuple[int, int] = (60, 300)
 R2_MU_LOG = 8.7
 R2_SIGMA_LOG = 1.4
 MEAN_GAPS_S: tuple[int, ...] = (3_600, 900, 14_400)  # primary, then sensitivity
+# Terminal reward r²: HR@3 for the build replay (entry 74); the pool replay
+# uses the frozen router's fit reward (router_calibration.REWARD, HR@1 since
+# CR-01; entry 110).
+BUILD_MEASURE = "hr_at_3"
+REWARD_MEASURES = ("hr_at_1", "hr_at_3")
 STREAMS = 8
 SEED_SLOT = "orar_prewarm_order"
 
@@ -103,13 +113,19 @@ def _fusion(case: RouterCase, arm: Arm, mahc: MAHCParams) -> Fusion | None:
     return fuse(votes, priors)
 
 
-def terminal_reward(case: RouterCase, arm: Arm, mahc: MAHCParams) -> int:
-    """r²: HR@3 hit of the arm's fused list (an arm with a missing list fuses
-    what there is, as the S3.1 simulation)."""
+def terminal_reward(
+    case: RouterCase, arm: Arm, mahc: MAHCParams, measure: str = BUILD_MEASURE
+) -> int:
+    """r²: the ``measure`` hit of the arm's fused list (an arm with a missing
+    list fuses what there is, as the S3.1 simulation). The build replay keeps
+    HR@3 (entry 74); the pool replay uses the frozen router's fit reward,
+    HR@1 since CR-01 (entry 110)."""
+    if measure not in REWARD_MEASURES:
+        raise ValueError(f"unknown reward measure {measure!r}")
     fusion = _fusion(case, arm, mahc)
     if fusion is None or not fusion.ranked:
         return 0
-    return score_ranking(list(fusion.ranked), case.root).hr_at_3
+    return int(getattr(score_ranking(list(fusion.ranked), case.root), measure))
 
 
 def provisional_reward(case: RouterCase, arm: Arm, mahc: MAHCParams) -> float | None:
@@ -182,7 +198,10 @@ class ThawedRouter:
 
 
 def full_information_rows(
-    cases: Sequence[RouterCase], idx: Sequence[int], mahc: MAHCParams
+    cases: Sequence[RouterCase],
+    idx: Sequence[int],
+    mahc: MAHCParams,
+    measure: str = BUILD_MEASURE,
 ) -> dict[Arm, list[tuple[tuple[float, ...], float]]]:
     """Every arm's (features, r²) on the cases ``idx``: the batch pre-warm,
     the rows the S3.1 fit used (arms whose pipelines all gave a list)."""
@@ -192,7 +211,7 @@ def full_information_rows(
         for arm in SELECTABLE:
             x = features_for(case, arm)
             if x is not None and all(p in case.votes for p in ARM_PIPELINES[arm]):
-                rows[arm].append((x, terminal_reward(case, arm, mahc)))
+                rows[arm].append((x, terminal_reward(case, arm, mahc, measure)))
     return rows
 
 
@@ -227,6 +246,31 @@ def draws(
             )
         )
     return out[0], out[1]
+
+
+def single_draws(stream: int, n: int) -> StreamDraws:
+    """One sub-stream over ``n`` cases (the pool replay, design P-d), from the
+    same registered seed ``training_seed(SEED_SLOT, stream)``: the order, the
+    arrival gaps and both reward delays, in the order ``draws`` draws them."""
+    rng = np.random.default_rng(training_seed(SEED_SLOT, stream))
+    return StreamDraws(
+        order=tuple(int(k) for k in rng.permutation(n)),
+        gaps=tuple(float(v) for v in rng.standard_exponential(n)),
+        r1_delay_s=tuple(float(v) for v in rng.uniform(*R1_DELAY_S, n)),
+        r2_delay_s=tuple(float(v) for v in rng.lognormal(R2_MU_LOG, R2_SIGMA_LOG, n)),
+    )
+
+
+def state_gap(a: RouterParams, b: RouterParams) -> float:
+    """Largest absolute difference between two routers' per-arm theta and
+    A⁻¹ (design P-c: the pool replay's pre-warm against the frozen router)."""
+    gap: float = 0
+    for arm in SELECTABLE:
+        ma, mb = a.arms[arm], b.arms[arm]
+        for u, v in ((ma.theta, mb.theta), *zip(ma.a_inv, mb.a_inv, strict=True)):
+            diff = np.abs(np.asarray(u, dtype=float) - np.asarray(v, dtype=float))
+            gap = max(gap, float(diff.max(initial=0)))
+    return gap
 
 
 @dataclass(frozen=True)
@@ -291,6 +335,7 @@ def replay(
     label: str,
     mean_gap_s: float,
     counts: dict[str, int] | None = None,
+    measure: str = BUILD_MEASURE,
 ) -> list[Decision]:
     """Play one sub-stream; every reward event is drained at the end.
 
@@ -354,7 +399,7 @@ def replay(
         rewards: dict[Arm, tuple[float | None, int]] = {}
         for arm in published:
             r1 = provisional_reward(case, arm, mahc)
-            r2 = terminal_reward(case, arm, mahc)
+            r2 = terminal_reward(case, arm, mahc, measure)
             rewards[arm] = (r1, r2)
             if features_for(case, arm) is None:
                 continue
@@ -389,3 +434,20 @@ def rre(decision: Decision, tau: float) -> int | None:
     if decision.r1 is None:
         return None
     return int((decision.r1 >= tau) != (decision.r2 >= tau))
+
+
+def rre_by_case_stream(
+    decisions: Sequence[Decision],
+    cases: Sequence[RouterCase],
+    tau: float,
+    label: str,
+) -> dict[str, int]:
+    """RRE per (case, stream) for ``e_h5_forms`` (entry 92), keyed
+    ``incident_id|label``. Decisions without a provisional reward are left
+    out, so the same-case form pairs only cases both variants escalated."""
+    out: dict[str, int] = {}
+    for d in decisions:
+        value = rre(d, tau)
+        if value is not None:
+            out[f"{cases[d.case].incident_id}|{label}"] = value
+    return out

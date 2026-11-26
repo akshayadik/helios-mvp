@@ -245,7 +245,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
     if args.corpus == "pool":
-        print("[mahc] the pool is locked until tag build-freeze-4", file=sys.stderr)
+        print("[mahc] the pool is locked until tag build-freeze-5", file=sys.stderr)
         return 2
     if Path.cwd().resolve() != REPO_ROOT:
         print(

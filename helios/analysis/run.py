@@ -186,7 +186,7 @@ def confirmatory_guard(
         reasons.append(f"corpus is {sorted(corpora)}, not the pool")
     if not frozen():
         reasons.append(
-            "not the frozen build (tag build-freeze-4, record or frozen files)"
+            "not the frozen build (tag build-freeze-5, record or frozen files)"
         )
     known = {
         m.compute_variant_config_hash()

@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING
 from phase_a_bundle import REPO_ROOT, bca_seeds, build_manifest, main, readme
 
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
-from helios.vcl.freeze import BUILD_FREEZE_TAG
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -49,7 +48,10 @@ def test_manifest_records_build_ledger_deposit_and_inputs(tmp_path: Path) -> Non
         encoding="utf-8",
     )
     m = build_manifest(REPO_ROOT, [good, other], [art])
-    assert m["build"]["record_tag"] == BUILD_FREEZE_TAG
+    # The record's own tag: it lags BUILD_FREEZE_TAG between a constant bump
+    # and the new record (two PRs), so the manifest reports what the record says.
+    assert m["build"]["record_tag"] == record["tag"]
+    assert str(record["tag"]).startswith("build-freeze")
     assert m["build"]["frozen_paths_digest"] == record["frozen_paths"]["digest"]
     assert m["build"]["frozen_paths_count"] == record["frozen_paths"]["count"]
     assert m["deviation_log"]["entries"] >= 1
@@ -58,7 +60,7 @@ def test_manifest_records_build_ledger_deposit_and_inputs(tmp_path: Path) -> Non
     assert set(m["campaigns"][0]["stores"]) == {"results.duckdb"}
     assert m["artefacts"][str(art)]["label"] == "exploratory"
     text = readme(m)
-    assert "**Warning:**" in text and BUILD_FREEZE_TAG in text
+    assert "**Warning:**" in text and str(record["tag"]) in text
 
 
 def test_main_writes_manifest_and_readme(tmp_path: Path) -> None:
