@@ -238,3 +238,13 @@ def test_frozen_prompt_inputs_outside_the_template_are_pinned() -> None:
 PINNED_PROMPT_INPUTS = (
     "c0cd179d33e431f96e72a660b9b03fd926527f8a690fa09a304331524ea644e7"
 )
+
+
+def test_prompt_shows_the_raw_state_not_the_reader_reason() -> None:
+    # CR-03: the reason is header wording only; the model sees the state as
+    # stored, so the frozen narrator's inputs are unchanged.
+    f = next(s for s in ENTRY["steps"] if s["id"] == "F")
+    prompt = render_prompt("story", ENTRY, P)
+    assert f"state {f['state']})" in prompt
+    for reason in ("one pipeline ran", "below floor", "two or more pipelines"):
+        assert reason not in prompt

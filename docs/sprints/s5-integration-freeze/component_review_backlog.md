@@ -15,7 +15,9 @@
 |---|---|---|---|---|---|---|
 | CR-01 | IMP | P1 | Router (`cbr_routing`) | Skip rule drops the L-pipe on cases it would have solved | Ranking change | DONE (entry 99, `072f65e`, `496962e`) |
 | CR-02 | IMP | P1 | Structural features (`ueg_structural`) | Structural weighting slightly hurts OTel and adds latency | Ranking change | DONE (entry 98, `5efd348`) |
-| CR-03 | BUG | P1 | MAHC (`mahc_hierarchical`) | CONFIRMED is less reliable than PROVISIONAL on RCAEval | State label only; no ranking change | OPEN |
+| CR-03 | BUG | P1 | MAHC (`mahc_hierarchical`) | CONFIRMED is less reliable than PROVISIONAL on RCAEval | State label only; no ranking change | IN_PROGRESS (option A approved 2026-11-26; design `docs/sprints/e-evidence/cr03_state_label_design.md`) |
+| CR-03b | IMP | P3 | MAHC (`mahc_hierarchical`) | Raise the CONFIRMED floor so CONFIRMED is the more reliable label | Changes state and CpR (A-H5, B-H7) | DEFERRED (Stage B, exploratory; CR-03 option B) |
+| CR-03c | IMP | P3 | MAHC (`mahc_hierarchical`), Router (`cbr_routing`) | Let a confident router stop publish CONFIRMED (relax R-e) | Changes state and CpR (A-H5, B-H7) | DEFERRED (Stage B, exploratory; CR-03 option C) |
 | CR-04 | BUG | P2 | L-pipe (`l2c_llm`) | Metric-worker prompts give different answers run to run | Ranking change on affected cases | OPEN |
 | CR-05 | IMP | P2 | MAHC (`mahc_hierarchical`) | No accuracy gain over plain Borda; confidence compressed on RCAEval | Ranking change if weights change | OPEN |
 | CR-06 | IMP | P2 | L-pipe (`l2c_llm`) | Little gain on OTel; prompts may lack topology context | Ranking change | OPEN |
@@ -76,6 +78,19 @@
 - **Problem.** A production user reads CONFIRMED as more trustworthy, and here it is not.
 - **Proposed approach.** Redefine the state rule so CONFIRMED needs both agreement and calibrated confidence above a threshold; or rename the states to describe what happened ("LLM-corroborated") rather than imply reliability. Check the rule against the confidence bins on build data.
 - **Done when.** On build data, CONFIRMED is at least as reliable as PROVISIONAL, or the label no longer implies reliability. State label only; check whether any pre-registered measure reads the state before deciding if a deviation entry is needed.
+- **Outcome (2026-11-26).** The design note (`docs/sprints/e-evidence/cr03_state_label_design.md`) finds a mix effect. The router's stops leave one pipeline, and R-e never lets one pipeline be CONFIRMED, so the easiest cases sit in PROVISIONAL. Among cases with two or more pipelines, and without the router, CONFIRMED is at least as reliable. CpR reads the state (A-H5, B-H7), so the owner chose option A: the state rule is unchanged, and the narrative header names the reason ("provisional: one pipeline ran", "provisional: confidence below floor", "confirmed: two or more pipelines, confidence above floor", "not converged"). It needs a deviation entry and `build-freeze-3` before E1. Options B and C are CR-03b and CR-03c.
+
+### CR-03b · Raise the CONFIRMED floor (Stage B)
+
+- **Kind / priority:** IMP, P3. **Flag:** `mahc_hierarchical`.
+- **Evidence (CR-03 note §4, in sample).** A floor of 0.99 makes HELIOS-Full's CONFIRMED 69 of 70 top-3 on RCAEval, against PROVISIONAL 410 of 425; OTel 5 of 5. Human requests rise from 315 to 425 (RCAEval) and from 47 to 58 (OTel), and for noRouter from 50 to 177.
+- **Done when.** Evaluated as an exploratory Stage B variant after March, with the floor chosen on build data and read on held-out data.
+
+### CR-03c · Confident router stop publishes CONFIRMED (Stage B)
+
+- **Kind / priority:** IMP, P3. **Flags:** `mahc_hierarchical`, `cbr_routing`.
+- **Evidence (CR-03 note §4, in sample).** CONFIRMED 433 of 445 top-3 on RCAEval against PROVISIONAL 46 of 50. Full's human requests fall from 315 to 50. This moves A-H5 in its predicted direction, so it stays off the evidence build.
+- **Done when.** Evaluated as an exploratory Stage B variant after March; the R-e rationale (agreement is trivial for one pipeline) is revisited with held-out calibration of single-pipeline confidence.
 
 ### CR-04 · L-pipe metric-worker nondeterminism
 
