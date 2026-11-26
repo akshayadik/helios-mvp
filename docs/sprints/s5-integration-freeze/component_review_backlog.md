@@ -15,7 +15,7 @@
 |---|---|---|---|---|---|---|
 | CR-01 | IMP | P1 | Router (`cbr_routing`) | Skip rule drops the L-pipe on cases it would have solved | Ranking change | DONE (entry 99, `072f65e`, `496962e`) |
 | CR-02 | IMP | P1 | Structural features (`ueg_structural`) | Structural weighting slightly hurts OTel and adds latency | Ranking change | DONE (entry 98, `5efd348`) |
-| CR-03 | BUG | P1 | MAHC (`mahc_hierarchical`) | CONFIRMED is less reliable than PROVISIONAL on RCAEval | State label only; no ranking change | IN_PROGRESS (option A approved 2026-11-26; design `docs/sprints/e-evidence/cr03_state_label_design.md`) |
+| CR-03 | BUG | P1 | MAHC (`mahc_hierarchical`) | CONFIRMED is less reliable than PROVISIONAL on RCAEval | State label only; no ranking change | DONE (option A, entry 106, `b4ca7ba`; tag build-freeze-3, entry 107) |
 | CR-03b | IMP | P3 | MAHC (`mahc_hierarchical`) | Raise the CONFIRMED floor so CONFIRMED is the more reliable label | Changes state and CpR (A-H5, B-H7) | DEFERRED (Stage B, exploratory; CR-03 option B) |
 | CR-03c | IMP | P3 | MAHC (`mahc_hierarchical`), Router (`cbr_routing`) | Let a confident router stop publish CONFIRMED (relax R-e) | Changes state and CpR (A-H5, B-H7) | DEFERRED (Stage B, exploratory; CR-03 option C) |
 | CR-04 | BUG | P2 | L-pipe (`l2c_llm`) | Metric-worker prompts give different answers run to run | Ranking change on affected cases | OPEN |
