@@ -134,7 +134,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.corpus and "pool" in args.corpus:
         print(
-            "[calibrate] the pool is locked until tag build-freeze-4", file=sys.stderr
+            "[calibrate] the pool is locked until tag build-freeze-5", file=sys.stderr
         )
         return 2
 

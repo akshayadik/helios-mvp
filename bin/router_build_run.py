@@ -308,7 +308,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--candidate", type=Path, default=None)
     args = parser.parse_args(argv)
     if args.corpus == "pool":
-        print("[router] the pool is locked until tag build-freeze-4", file=sys.stderr)
+        print("[router] the pool is locked until tag build-freeze-5", file=sys.stderr)
         return 2
     if args.freeze:
         return _freeze(args.run, args.candidate)
