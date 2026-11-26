@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
     from helios.narrative.claims import Claim
 
-__all__ = ["header", "render"]
+__all__ = ["header", "render", "state_text"]
 
 _TITLES = {
     "story": "What happened",
@@ -25,6 +25,29 @@ def _fusion(entry: Mapping[str, Any]) -> Mapping[str, Any]:
     return next(s for s in entry["steps"] if s["id"] == "F")
 
 
+def state_text(f: Mapping[str, Any]) -> str:
+    """The published state with the reason it was published (CR-03).
+
+    Derived from the F step alone, so the state, CpR and the narrator's LLM
+    input are unchanged; only the wording the reader sees says *why*: a
+    router stop leaves one pipeline, which is never CONFIRMED (R-e), and is
+    not the same thing as a consensus below the confidence floor.
+    """
+    state = str(f["state"])
+    if state == "non_converged":
+        return "not converged"
+    if state == "confirmed":
+        if f.get("confidence") is None:  # noConsensus: no gate, no floor
+            return "confirmed: two or more pipelines voted"
+        return "confirmed: two or more pipelines, confidence above floor"
+    contributing = (f.get("detail") or {}).get("contributing")
+    if state != "provisional" or contributing is None:
+        return state
+    if len(contributing) <= 1:
+        return "provisional: one pipeline ran"
+    return "provisional: confidence below floor"
+
+
 def header(entry: Mapping[str, Any]) -> str:
     """The code-filled first line: fused top 3, confidence and state."""
     f = _fusion(entry)
@@ -33,7 +56,8 @@ def header(entry: Mapping[str, Any]) -> str:
         return "No suspect ranked. [F]"
     top = ", ".join(f"{n}. {s}" for n, s in enumerate(ranked, start=1))
     conf = f.get("confidence")
-    detail = f"{f['state']}" if conf is None else f"confidence {conf:.2f}, {f['state']}"
+    said = state_text(f)
+    detail = said if conf is None else f"confidence {conf:.2f}, {said}"
     return f"Top suspects: {top} ({detail}). [F]"
 
 
