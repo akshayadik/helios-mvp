@@ -96,20 +96,22 @@ def test_the_tag_alone_does_not_unlock(tmp_path: Path) -> None:
 
 
 def test_the_superseded_tag_does_not_unlock(tmp_path: Path) -> None:
-    """Entry 104: a build frozen under the old tag build-freeze stays locked."""
+    """Entries 104 and 106: a build frozen under an old tag (build-freeze,
+    build-freeze-2) stays locked."""
     repo = _repo(tmp_path / "r")
     _freeze(repo)
     subprocess.run(["git", "tag", "-d", freeze.BUILD_FREEZE_TAG], cwd=repo, check=True)
-    subprocess.run(["git", "tag", "build-freeze"], cwd=repo, check=True)
+    for old in ("build-freeze", "build-freeze-2"):
+        subprocess.run(["git", "tag", old], cwd=repo, check=True)
     freeze.clear_cache()
-    assert freeze.BUILD_FREEZE_TAG == "build-freeze-2"
-    assert freeze.freeze_problems(repo) == ["git tag 'build-freeze-2' does not exist"]
+    assert freeze.BUILD_FREEZE_TAG == "build-freeze-3"
+    assert freeze.freeze_problems(repo) == ["git tag 'build-freeze-3' does not exist"]
     assert not pool_lock.build_frozen(repo)
 
 
 def test_no_tag_is_locked(tmp_path: Path) -> None:
     repo = _repo(tmp_path / "r")
-    assert freeze.freeze_problems(repo) == ["git tag 'build-freeze-2' does not exist"]
+    assert freeze.freeze_problems(repo) == ["git tag 'build-freeze-3' does not exist"]
 
 
 def test_a_changed_frozen_file_blocks_a_pool_run_and_is_named(tmp_path: Path) -> None:
@@ -154,7 +156,7 @@ def test_a_regenerated_record_does_not_pass_for_the_tagged_one(tmp_path: Path) -
     record.write_text(json.dumps({"frozen_paths": freeze.frozen_paths_section(repo)}))
     freeze.clear_cache()
     assert freeze.freeze_problems(repo) == [
-        f"{freeze.RECORD_PATH} differs from the record at tag 'build-freeze-2'"
+        f"{freeze.RECORD_PATH} differs from the record at tag 'build-freeze-3'"
     ]
 
 

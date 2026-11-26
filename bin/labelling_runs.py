@@ -60,7 +60,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.corpus == "pool":
         print(
-            "[labelling] the pool is locked until tag build-freeze-2", file=sys.stderr
+            "[labelling] the pool is locked until tag build-freeze-3", file=sys.stderr
         )
         return 2
     if args.out.exists():
