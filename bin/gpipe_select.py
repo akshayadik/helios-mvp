@@ -194,7 +194,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     columns = COLUMN_SETS[args.columns]
     if args.corpus == "pool":
-        print("[gpipe] the pool is locked until tag build-freeze-2", file=sys.stderr)
+        print("[gpipe] the pool is locked until tag build-freeze-3", file=sys.stderr)
         return 2
     detector = load_detector_params()
     dp = load_dpipe_params()
