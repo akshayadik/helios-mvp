@@ -54,7 +54,7 @@ from helios.evaluation.cells import (
     cell_table,
     passing_apps,
 )
-from helios.evaluation.run_metrics import METRICS_VERSION
+from helios.evaluation.run_metrics import BASELINE_STATE, METRICS_VERSION
 from helios.evaluation.scoring import SCORING_VERSION
 from helios.orchestrator.schedule import TRIGGER_SUFFIX
 from helios.research.analysis_plan import (
@@ -171,19 +171,32 @@ def confirmatory_guard(
     *,
     frozen: Callable[[], bool] = build_frozen,
 ) -> Guard:
-    """T-i: pool corpus, build-freeze, known variant hashes, current versions."""
+    """T-i: pool corpus, build-freeze, known variant hashes, current versions.
+
+    Every HELIOS run must carry one of the 15 frozen variant hashes (the 8
+    confirmatory and 7 exploratory variants share one campaign store; Family E
+    is reported apart and never enters Holm). Baseline runs (state BASELINE,
+    S4.8) carry their executor's config hash, not a variant hash; their code
+    and container images are pinned by the freeze record, which ``frozen``
+    checks (entry 108).
+    """
     reasons: list[str] = []
     corpora = {str(r["corpus"]) for r in [*scores, *runs]}
     if corpora != {"pool"}:
         reasons.append(f"corpus is {sorted(corpora)}, not the pool")
     if not frozen():
         reasons.append(
-            "not the frozen build (tag build-freeze-3, record or frozen files)"
+            "not the frozen build (tag build-freeze-4, record or frozen files)"
         )
-    known = {m.compute_variant_config_hash() for m in CONFIRMATORY_VARIANTS.values()}
-    hashes = {str(r["variant_config_hash"]) for r in runs}
+    known = {
+        m.compute_variant_config_hash()
+        for m in {**CONFIRMATORY_VARIANTS, **EXPLORATORY_VARIANTS}.values()
+    }
+    hashes = {
+        str(r["variant_config_hash"]) for r in runs if r.get("state") != BASELINE_STATE
+    }
     if not hashes <= known:
-        reasons.append("a run's variant hash is not a confirmatory variant")
+        reasons.append("a HELIOS run's variant hash is not a frozen variant")
     if {str(s["scoring_version"]) for s in scores} - {SCORING_VERSION}:
         reasons.append("scoring version differs from the frozen one")
     if {str(r["metrics_version"]) for r in runs} - {METRICS_VERSION}:

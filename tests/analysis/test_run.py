@@ -17,7 +17,7 @@ from helios.analysis.run import (
 from helios.evaluation.run_metrics import METRICS_VERSION
 from helios.evaluation.scoring import SCORING_VERSION
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
-from helios.vcl.variants import CONFIRMATORY_VARIANTS
+from helios.vcl.variants import CONFIRMATORY_VARIANTS, EXPLORATORY_VARIANTS
 
 N = 10
 CASES = [f"c{i:02d}" for i in range(N)]
@@ -115,6 +115,51 @@ def test_guard_passes_only_with_pool_freeze_hashes_and_versions() -> None:
     assert not confirmatory_guard(old, runs, frozen=lambda: True).confirmatory
     alien = [dict(r, variant_config_hash="feedface") for r in runs]
     assert not confirmatory_guard(scores, alien, frozen=lambda: True).confirmatory
+
+
+def test_guard_accepts_the_whole_campaign_store() -> None:
+    # Entry 108: one pool store holds E1 (confirmatory variants), E2 (baselines)
+    # and E3 (exploratory variants); all of it may be labelled confirmatory.
+    scores, runs = _rows("HELIOS-Full", [1] * N, corpus="pool")
+    expl = EXPLORATORY_VARIANTS["HELIOS-noACP"].compute_variant_config_hash()
+    explore = [
+        dict(r, run_id=f"x-{r['run_id']}", variant_config_hash=expl) for r in runs
+    ]
+    baseline = [
+        dict(
+            r,
+            run_id=f"b-{r['run_id']}",
+            variant_config_hash="ab" * 32,
+            state="BASELINE",
+        )
+        for r in runs
+    ]
+    guard = confirmatory_guard(scores, runs + explore + baseline, frozen=lambda: True)
+    assert guard.confirmatory, guard.reasons
+
+
+def test_guard_still_refuses_an_unknown_helios_hash() -> None:
+    scores, runs = _rows("HELIOS-Full", [1] * N, corpus="pool")
+    for state in ("confirmed", "provisional", None):
+        alien = [dict(runs[0], variant_config_hash="feedface", state=state)]
+        guard = confirmatory_guard(scores, runs + alien, frozen=lambda: True)
+        assert not guard.confirmatory
+        assert guard.reasons == ("a HELIOS run's variant hash is not a frozen variant",)
+
+
+def test_guard_baseline_runs_still_need_pool_freeze_and_versions() -> None:
+    scores, runs = _rows("HELIOS-Full", [1] * N, corpus="pool")
+    base = dict(runs[0], run_id="b", variant_config_hash="ab" * 32, state="BASELINE")
+    for bad in (
+        dict(base, corpus="build"),
+        dict(base, metrics_version="run-metrics-v0"),
+    ):
+        assert not confirmatory_guard(
+            scores, [*runs, bad], frozen=lambda: True
+        ).confirmatory
+    assert not confirmatory_guard(
+        scores, [*runs, base], frozen=lambda: False
+    ).confirmatory
 
 
 def _family_a_fixture() -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
