@@ -55,6 +55,7 @@ __all__ = [
     "main",
     "render_markdown",
     "routing_savings",
+    "variant_summary",
 ]
 
 N_BINS = 10
@@ -305,6 +306,29 @@ def routing_savings(runs: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     }
 
 
+def variant_summary(runs: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    """Per variant: runs, HR@1, HR@3, median log-CpR and median TTT (for the
+    cost against accuracy and HR-by-variant figures). Descriptive; each
+    variant over the cases it ran."""
+    by: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
+    for r in runs:
+        by[r["variant"]].append(r)
+    return {
+        name: {
+            "runs": len(rs),
+            "hr_at_1": statistics.fmean(int(r["hr_at_1"]) for r in rs),
+            "hr_at_3": statistics.fmean(int(r["hr_at_3"]) for r in rs),
+            "median_log_cpr": _median(
+                [float(r["log_cpr"]) for r in rs if r["log_cpr"] is not None]
+            ),
+            "median_ttt_ms": _median(
+                [float(r["ttt_ms"]) for r in rs if r["ttt_ms"] is not None]
+            ),
+        }
+        for name, rs in sorted(by.items())
+    }
+
+
 def integrity(campaigns: Iterable[Path]) -> dict[str, Any]:
     """Exclusions per campaign (counts only): the final event of each run key
     in ``campaign_log.jsonl`` by gate check (a run carried from an earlier
@@ -490,6 +514,23 @@ def render_markdown(ev: Mapping[str, Any]) -> str:
         "",
         *_routing_lines(ev["routing"]),
     ]
+    variants = ev.get("variants") or {}
+    if variants:
+        lines += ["", "## By variant", ""]
+        lines += _table(
+            ["Variant", "Runs", "HR@1", "HR@3", "Median log-CpR", "Median TTT (ms)"],
+            [
+                [
+                    name,
+                    v["runs"],
+                    _f(v["hr_at_1"]),
+                    _f(v["hr_at_3"]),
+                    _f(v["median_log_cpr"]),
+                    _f(v["median_ttt_ms"]),
+                ]
+                for name, v in variants.items()
+            ],
+        )
     it = ev.get("integrity")
     if it is not None:
         lines += [
@@ -514,6 +555,7 @@ def evidence(dbs: Sequence[Path], campaigns: Sequence[Path]) -> dict[str, Any]:
         "narratives": narratives(runs),
         "calibration": calibration(runs),
         "routing": routing_savings(runs),
+        "variants": variant_summary(runs),
         "integrity": integrity(campaigns) if campaigns else None,
     }
 
