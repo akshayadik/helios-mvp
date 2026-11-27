@@ -17,6 +17,7 @@ from phase_a_evidence import (
     narratives,
     render_markdown,
     routing_savings,
+    variant_summary,
 )
 
 from helios.vcl import VCLFlag  # noqa: F401 — flag-guard compliance
@@ -179,6 +180,24 @@ def _store(path: Path) -> None:
     con.close()
 
 
+def test_variant_summary_per_variant() -> None:
+    runs = [
+        _run("HELIOS-Full", "a", log_cpr=2, ttt_ms=40),
+        _run("HELIOS-Full", "b", log_cpr=4, ttt_ms=None, hr_at_1=0),
+        _run("HELIOS-D", "a", hr_at_3=0, hr_at_1=0, log_cpr=None),
+    ]
+    out = variant_summary(runs)
+    assert list(out) == ["HELIOS-D", "HELIOS-Full"]
+    full = out["HELIOS-Full"]
+    assert full["runs"] == 2
+    assert 2 * full["hr_at_1"] == 1
+    assert full["hr_at_3"] == 1
+    assert full["median_log_cpr"] == 3
+    assert full["median_ttt_ms"] == 40
+    assert out["HELIOS-D"]["median_log_cpr"] is None
+    assert out["HELIOS-D"]["hr_at_3"] == 0
+
+
 def test_main_end_to_end(tmp_path: Path) -> None:
     db = tmp_path / "results.duckdb"
     _store(db)
@@ -190,7 +209,9 @@ def test_main_end_to_end(tmp_path: Path) -> None:
     assert ev["narratives"]["HELIOS-Full"]["claims_drafted"] == 6
     assert ev["calibration"]["HELIOS-Full"]["with_confidence"] == 1
     assert ev["integrity"] is None
+    assert ev["variants"]["HELIOS-Full"]["runs"] == 1
     text = render_markdown(ev)
+    assert "## By variant" in text
     assert "## Cheap-first routing" in text
     assert "share no case" in text
     assert "c1" not in text  # never a case ID
