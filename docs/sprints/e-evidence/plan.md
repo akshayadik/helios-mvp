@@ -20,7 +20,7 @@ The October plan listed one set of conditions for the whole phase. Entry 102 sep
 | Compute decided (L5) | E1–E3 | **Met**: about 5 h on this machine on a cold cache, no rented compute (S5.3 pilot, L5) |
 | Rubric frozen | E5 | **Met**: SHA-256 `f705edb81576…` (entry 102), in deposit 2 |
 | Raters trained to κ ≥ 0.7 on build data | E5 only | **Not met**: raters are recruited in December; training December – early January (entry 102) |
-| L6 larger model and L7 judge budget decided | E6 subset, E5 judges | **Not met**: owner, by 5 Feb 2027 |
+| L6 larger model and L7 judge budget decided | E6 subset, E5 judges | **Met 2026-11-27:** L6 llama3.1:70b subset (entry 112), L7 local judge (entry 113); design `l6_l7_design.md` |
 | IRB approval for RQ4 | E4 only | **Not met**: owner, by 5 Feb 2027 |
 | Owner's explicit go for the first pool run | E1 | **Met** 2026-11-20 (day-one checks); E1 waits for `build-freeze-2` and a free machine |
 
