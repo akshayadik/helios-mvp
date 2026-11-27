@@ -27,6 +27,8 @@ Build every remaining part of the product, so that nothing in the approved scope
 
 Plus every Tier-2 item recorded as moved to Stage B during S1–S5.
 
+**B1 starts early** (chair call, 26 Nov 2026): plan in [`b1-ingest-deployment/plan.md`](b1-ingest-deployment/plan.md). It opens with six quality items from the Stage A build rehearsal (confidence and state labels, claim verifier, shared trace parsing, partial-modality answers, baseline adapters after E2, analysis provenance) before the module contents.
+
 ## Carried in from Stage A
 
 | Item | From | Module |
